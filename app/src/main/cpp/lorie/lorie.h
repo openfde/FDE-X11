@@ -9,6 +9,11 @@ Bool lorieChangeWindow(ClientPtr pClient, void *closure);
 void lorieConfigureNotify(int width, int height, int framerate);
 void lorieEnableClipboardSync(Bool enable);
 void lorieSendClipboardData(const char* data);
+typedef struct {
+        long id;
+        jobject surface;
+    ANativeWindow *psf;
+} SurfaceRes;
 
 static int android_to_linux_keycode[304] = {
         [ 4   /* ANDROID_KEYCODE_BACK */] = KEY_ESC,

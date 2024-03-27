@@ -41,10 +41,19 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
         try {
             ctx = createContext();
         } catch (Throwable e) {
-            Log.e("Context", "Failed to instantiate context:", e);
+            Log.e("CmdEntryPoint", "Failed to instantiate context:", e);
             ctx = null;
         }
     }
+
+    public static void startActivityForWindow(long windowPtr) {
+        Log.d("CmdEntryPoint", "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
+//        Intent intent = new Intent(baseContext, MainActivity1.class);
+//        intent.putExtra("KEY_WindowPtr", windowPtr);
+//        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+//        baseContext.startActivity(intent);
+    }
+
 
     /**
      * Command-line entry point.
@@ -82,13 +91,17 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
         if (getuid() == 0 || getuid() == 2000)
             intent.setFlags(0x00400000 /* FLAG_RECEIVER_FROM_SHELL */);
 
+
         try {
             ctx.sendBroadcast(intent);
+//            Log.d("CmdEntryPoint", "sendBroadcast() try");
         } catch (Exception e) {
             if (e instanceof NullPointerException && ctx == null)
-                Log.i("Broadcast", "Context is null, falling back to manual broadcasting");
+                Log.e("CmdEntryPoint", "Context is null, falling back to manual broadcasting");
             else
-                Log.e("Broadcast", "Falling back to manual broadcasting, failed to broadcast intent through Context:", e);
+                Log.e("CmdEntryPoint", "Falling back to manual broadcasting, failed to broadcast intent through Context:", e);
+
+
 
             String packageName;
             try {
@@ -102,7 +115,11 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
                 am = (IActivityManager) android.app.ActivityManager.class
                         .getMethod("getService")
                         .invoke(null);
+
+
             } catch (Exception e2) {
+
+
                 try {
                     am = (IActivityManager) Class.forName("android.app.ActivityManagerNative")
                             .getMethod("getDefault")
@@ -122,6 +139,8 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
                         .invoke(sender, 0, intent, null, null, new IIntentReceiver.Stub() {
                             @Override public void performReceive(Intent i, int r, String d, Bundle e, boolean o, boolean s, int a) {}
                         }, null, null);
+
+                Log.d("CmdEntryPoint", "sendBroadcast() send");
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
@@ -131,8 +150,10 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     // In some cases Android Activity part can not connect opened port.
     // In this case opened port works like a lock file.
     private void sendBroadcastDelayed() {
-        if (!connected())
+
+        if (!connected()){
             sendBroadcast();
+        }
 
         handler.postDelayed(this::sendBroadcastDelayed, 1000);
     }
@@ -204,7 +225,7 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     }
 
     public static native boolean start(String[] args);
-    public native void windowChanged(Surface surface);
+    public native void windowChanged(Surface surface, long id);
     public native ParcelFileDescriptor getXConnection();
     public native ParcelFileDescriptor getLogcatOutput();
     private static native boolean connected();

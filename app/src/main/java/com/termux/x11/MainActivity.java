@@ -71,6 +71,7 @@ import com.termux.x11.utils.FullscreenWorkaround;
 import com.termux.x11.utils.KeyInterceptor;
 import com.termux.x11.utils.SamsungDexUtils;
 import com.termux.x11.utils.TermuxX11ExtraKeys;
+import com.termux.x11.utils.Util;
 import com.termux.x11.utils.X11ToolbarViewPager;
 
 import java.util.Map;
@@ -94,6 +95,13 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     private View.OnKeyListener mLorieKeyListener;
     private boolean filterOutWinKey = false;
     private static final int KEY_BACK = 158;
+
+    protected long WindowCode = 0;
+
+
+    protected long getWindowId() {
+        return WindowCode;
+    }
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -142,6 +150,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        WindowCode = getIntent().getLongExtra("KEY_WindowPtr", 0);
+        Util.setBaseContext(this);
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         int modeValue = Integer.parseInt(preferences.getString("touchMode", "1")) - 1;
         if (modeValue > 2) {
@@ -162,7 +172,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         LorieView lorieView = findViewById(R.id.lorieView);
         View lorieParent = (View) lorieView.getParent();
-
+        lorieView.setTag(R.id.window_id, getWindowId());
         mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
             @Override
             public void swipeDown() {
@@ -212,7 +222,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
             if (service != null) {
                 try {
-                    service.windowChanged(sfc);
+                    service.windowChanged(sfc, (long) lorieView.getTag(R.id.window_id));
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
@@ -447,9 +457,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         try {
             if (service != null && service.asBinder().isBinderAlive()) {
                 Log.v("LorieBroadcastReceiver", "Extracting logcat fd.");
-                ParcelFileDescriptor logcatOutput = service.getLogcatOutput();
-                if (logcatOutput != null)
-                    LorieView.startLogcat(logcatOutput.detachFd());
+//                ParcelFileDescriptor logcatOutput = service.getLogcatOutput();
+//                if (logcatOutput != null)
+//                    LorieView.startLogcat(logcatOutput.detachFd());
 
                 tryConnect();
             }

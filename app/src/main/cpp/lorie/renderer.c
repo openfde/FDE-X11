@@ -18,9 +18,10 @@
 #include <dlfcn.h>
 #include "renderer.h"
 #include "os.h"
+#include <globals.h>
 
-#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "gles-renderer", __VA_ARGS__)
-#define loge(...) __android_log_print(ANDROID_LOG_ERROR, "gles-renderer", __VA_ARGS__)
+#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__)
+#define loge(...) __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__)
 
 static GLuint create_program(const char* p_vertex_source, const char* p_fragment_source);
 
@@ -127,6 +128,7 @@ static const char fragment_shader_bgra[] = FRAGMENT_SHADER(".bgra");
 static EGLDisplay egl_display = EGL_NO_DISPLAY;
 static EGLContext ctx = EGL_NO_CONTEXT;
 static EGLSurface sfc = EGL_NO_SURFACE;
+static EGLSurface sfc1 = EGL_NO_SURFACE;
 static EGLConfig cfg = 0;
 static EGLNativeWindowType win = 0;
 static jobject surface = NULL;
@@ -136,6 +138,7 @@ static int renderedFrames = 0;
 
 static jmethodID Surface_release = NULL;
 static jmethodID Surface_destroy = NULL;
+extern void modifyGlobalVariable(WindowPtr windowPtr);
 
 static struct {
     GLuint id;
@@ -145,6 +148,11 @@ static struct {
     GLuint id;
     float x, y, width, height, xhot, yhot;
 } cursor;
+
+static struct {
+    GLuint id;
+    float width, height;
+} otherDisplay;
 
 GLuint g_texture_program = 0, gv_pos = 0, gv_coords = 0;
 GLuint g_texture_program_bgra = 0, gv_pos_bgra = 0, gv_coords_bgra = 0;
@@ -363,6 +371,7 @@ static void renderer_unset_buffer(void) {
 }
 
 void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
+    log("renderer_set_buffer");
     const EGLint imageAttributes[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
     EGLClientBuffer clientBuffer;
     AHardwareBuffer_Desc desc = {0};
@@ -382,10 +391,12 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); checkGlError();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); checkGlError();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); checkGlError();
+    log("renderer_set_buffer 1");
+
     if (buffer) {
         AHardwareBuffer_acquire(buffer);
         AHardwareBuffer_describe(buffer, &desc);
-
+        log("renderer_set_buffer width:%d height:%d", desc.width, desc.height);
         display.width = (float) desc.width;
         display.height = (float) desc.height;
 
@@ -418,10 +429,23 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
         loge("There is no AHardwareBuffer, nothing to be bound.");
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data); checkGlError();
     }
+    log("renderer_set_buffer 2");
 
     renderer_redraw(env, flip);
 
     log("renderer_set_buffer %p %d %d", buffer, desc.width, desc.height);
+}
+
+void initAnotherSurface(JNIEnv* env, jobject new_surface){
+    EGLNativeWindowType w = ANativeWindow_fromSurface(env, new_surface);
+    log("initAnotherSurface w:%p", w);
+    EGLSurface eglSurface = eglCreateWindowSurface(egl_display, cfg, w, NULL);
+    if (eglSurface == EGL_NO_SURFACE) {
+        eglCheckError(__LINE__);
+        return;
+    } else {
+        sfc1 = eglSurface;
+    }
 }
 
 void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_buffer) {
@@ -515,6 +539,7 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
 
         glActiveTexture(GL_TEXTURE0); checkGlError();
         glGenTextures(1, &display.id); checkGlError();
+        glGenTextures(1, &otherDisplay.id); checkGlError();
         glGenTextures(1, &cursor.id); checkGlError();
     }
 
@@ -535,6 +560,9 @@ void renderer_update_root(int w, int h, void* data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h)
         return;
 
+
+//    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+//        w, h, data, flip, display.width, display.height );
     if (display.width != (float) w || display.height != (float) h) {
         display.width = (float) w;
         display.height = (float) h;
@@ -547,6 +575,29 @@ void renderer_update_root(int w, int h, void* data, uint8_t flip) {
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data); checkGlError();
     } else {
         glBindTexture(GL_TEXTURE_2D, display.id); checkGlError();
+
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        checkGlError();
+    }
+}
+
+void renderer_update_root_process1(int w, int h, void* data, uint8_t flip) {
+    if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h)
+        return;
+    log("renderer_update_root_process1 w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+        w, h, data, flip, otherDisplay.width, otherDisplay.height );
+    if (otherDisplay.width != (float) w || otherDisplay.height != (float) h) {
+        otherDisplay.width = (float) w;
+        otherDisplay.height = (float) h;
+
+        glBindTexture(GL_TEXTURE_2D, otherDisplay.id); checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); checkGlError();
+        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data); checkGlError();
+    } else {
+        glBindTexture(GL_TEXTURE_2D, otherDisplay.id); checkGlError();
 
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
@@ -587,14 +638,47 @@ int renderer_should_redraw(void) {
 }
 
 int renderer_redraw(JNIEnv* env, uint8_t flip) {
+    log("renderer_redraw sfc:%p sfc1:%p", sfc, sfc1);
     int err = EGL_SUCCESS;
 
     if (!sfc || eglGetCurrentContext() == EGL_NO_CONTEXT)
         return FALSE;
 
+    if (eglMakeCurrent(egl_display, sfc, sfc, ctx) != EGL_TRUE) {
+        log("Xlorie: eglMakeCurrent failed.\n");
+        eglCheckError(__LINE__);
+    }
+
     draw(display.id,  -1.f, -1.f, 1.f, 1.f, flip);
     draw_cursor();
     if (eglSwapBuffers(egl_display, sfc) != EGL_TRUE) {
+        err = eglGetError();
+        eglCheckError(__LINE__);
+        if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
+            log("We've got %s so window is to be destroyed. "
+                "Native window disconnected/abandoned, probably activity is destroyed or in background",
+                eglErrorLabel(err));
+            renderer_set_window(env, NULL, NULL);
+            return FALSE;
+        }
+    }
+
+    if (!sfc1 || eglGetCurrentContext() == EGL_NO_CONTEXT || !otherDisplay.id) {
+        return FALSE;
+    }
+
+    modifyGlobalVariable(NULL);
+
+    if (eglMakeCurrent(egl_display, sfc1, sfc1, ctx) != EGL_TRUE) {
+        log("Xlorie: eglMakeCurrent failed.\n");
+        eglCheckError(__LINE__);
+    }
+    log("renderer_redraw otherDisplayid:%d displayid:%d", otherDisplay.id, display.id);
+
+    draw(otherDisplay.id,  -1.f, -1.f, 1.f, 1.f, flip);
+    draw_cursor();
+
+    if (eglSwapBuffers(egl_display, sfc1) != EGL_TRUE) {
         err = eglGetError();
         eglCheckError(__LINE__);
         if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {

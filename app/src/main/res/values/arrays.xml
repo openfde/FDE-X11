@@ -42,4 +42,7 @@
         <item>3840x2160</item>
         <item>7680x4320</item>
     </string-array>
+
+    <item type="id" name="window_id"></item>
+
 </resources>

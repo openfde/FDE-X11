@@ -22,7 +22,7 @@
 #include "renderer.h"
 #include "lorie.h"
 
-#define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "LorieNative", __VA_ARGS__)
+#define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__)
 
 static int argc = 0;
 static char** argv = NULL;
@@ -32,9 +32,54 @@ extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
 extern int ucs2keysym(long ucs);
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
+extern JNIEnv* ANDROID_JniEnv();
+void start_android_window(WindowPtr pWindow);
 
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
+
+extern SurfaceRes *S1, *S2;
+PixmapPtr tempPixmap = NULL;
+WindowPtr separateWindowPtr;
+static JNIEnv*  static_env = NULL;
+static JavaVM* vm = NULL;
+
+    //todo init two surface
+void modifyGlobalVariable(WindowPtr windowPtr) {
+//    if(!windowPtr && separateWindowPtr){
+//        windowPtr = separateWindowPtr;
+//    }
+        if(windowPtr){
+            separateWindowPtr = windowPtr;
+            log(ERROR, "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
+            separateWindowPtr, separateWindowPtr->drawable.width, separateWindowPtr->drawable.height,
+            separateWindowPtr->drawable.x, separateWindowPtr->drawable.y);
+        }
+    if (separateWindowPtr) {
+        tempPixmap = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr);
+    }
+
+//        start_android_window(separateWindowPtr);
+    if (tempPixmap) {
+        renderer_update_root_process1(tempPixmap->drawable.width, tempPixmap->drawable.height,
+                                      tempPixmap->devPrivate.ptr, 0);
+    }
+}
+
+void start_android_window(WindowPtr pWindow) {
+    JNIEnv *env = ANDROID_JniEnv();
+    log(ERROR, "start_android_window env:%p", env);
+//    jclass cls = (*env)->FindClass(env, "com/termux/x11/utils/Util");
+    jclass cls = (*env)->FindClass(env, "android/view/Surface");
+
+    log(ERROR, "start_android_window cls:%p", cls);
+//    jmethodID method = !cls ? NULL : (*env)->GetStaticMethodID(env, cls, "startActivityForWindow", "(J)V");
+//    log(ERROR, "start_android_window method:%p", method);
+//    if (method){
+//        log(ERROR, "start_android_window");
+//        (*env)->CallStaticVoidMethod(env, cls, method, pWindow);
+//    }
+}
 
 typedef enum {
     EVENT_SCREEN_SIZE, EVENT_TOUCH, EVENT_MOUSE, EVENT_KEY, EVENT_UNICODE, EVENT_CLIPBOARD_SYNC
@@ -75,13 +120,19 @@ static void* startServer(unused void* cookie) {
     exit(dix_main(argc, (char**) argv, envp));
 }
 
+JNIEnv* ANDROID_JniEnv()
+{
+    return static_env;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jclass cls, jobjectArray args) {
     pthread_t t;
-    JavaVM* vm = NULL;
+    vm = NULL;
     // execv's argv array is a bit incompatible with Java's String[], so we do some converting here...
     argc = (*env)->GetArrayLength(env, args) + 1; // Leading executable path
     argv = (char**) calloc(argc, sizeof(char*));
+    static_env = env;
 
     argv[0] = (char*) "Xlorie";
     for(int i=1; i<argc; i++) {
@@ -198,8 +249,18 @@ Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jclass cls, jobjectA
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls, jobject surface) {
-    QueueWorkProc(lorieChangeWindow, NULL, surface ? (*env)->NewGlobalRef(env, surface) : NULL);
+Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls, jobject surface, jlong window_id) {
+        long id = (long)window_id;
+        jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
+        log(ERROR, "windowChanged ID:%d surface:%p", id, sfc);
+        SurfaceRes *res = (SurfaceRes*)malloc(sizeof(SurfaceRes));
+        res->id = (long)window_id;
+        res->surface = sfc;
+        ANativeWindow* psf = ANativeWindow_fromSurface(env, res->surface);
+        res->psf = psf;
+    log(ERROR, "windowChanged ID:%d surface:%p psf:%p", id, sfc, psf);
+    QueueWorkProc(lorieChangeWindow, NULL, res);
+//            QueueWorkProc(lorieChangeWindow, NULL, sfc);
 }
 
 void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) {
