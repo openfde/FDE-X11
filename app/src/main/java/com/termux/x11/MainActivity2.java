@@ -2,12 +2,12 @@ package com.termux.x11;
 
 import android.os.Bundle;
 
-public class MainActivity1 extends MainActivity {
+public class MainActivity2 extends MainActivity {
 
 
     @Override
     protected long getWindowId() {
-        return 1;
+        return 2;
     }
 
     @Override

@@ -103,20 +103,39 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         return WindowCode;
     }
 
+    private IReceive.Stub listener = new IReceive.Stub() {
+        @Override
+        public void startWindow(long windowPtr) throws RemoteException {
+            Log.d("MainActivity", "startWindow() called with: windowPtr = [" + windowPtr + "]");
+            if(windowPtr == 1){
+                Intent intent = new Intent(MainActivity.this, MainActivity1.class);
+                intent.putExtra("KEY_WindowPtr", windowPtr);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                MainActivity.this.startActivity(intent);
+            } else {
+                Intent intent = new Intent(MainActivity.this, MainActivity2.class);
+                intent.putExtra("KEY_WindowPtr", windowPtr);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                MainActivity.this.startActivity(intent);
+            }
+        }
+    };
+
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
             if (ACTION_START.equals(intent.getAction())) {
                 try {
-                    Log.v("LorieBroadcastReceiver", "Got new ACTION_START intent");
+                    Log.v("MainActivity", "Got new ACTION_START intent");
                     IBinder b = Objects.requireNonNull(intent.getBundleExtra("")).getBinder("");
                     service = ICmdEntryInterface.Stub.asInterface(b);
+                    service.registerListener(listener);
                     Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
                         service = null;
                         CmdEntryPoint.requestConnection();
 
-                        Log.v("Lorie", "Disconnected");
+                        Log.v("MainActivity", "Disconnected");
                         runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
                     }, 0);
 
@@ -152,6 +171,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         WindowCode = getIntent().getLongExtra("KEY_WindowPtr", 0);
         Util.setBaseContext(this);
+        CmdEntryPoint.ctx = this;
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         int modeValue = Integer.parseInt(preferences.getString("touchMode", "1")) - 1;
         if (modeValue > 2) {
@@ -229,11 +249,12 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             }
         });
 
-        registerReceiver(receiver, new IntentFilter(ACTION_START) {{
-            addAction(ACTION_PREFERENCES_CHANGED);
-            addAction(ACTION_STOP);
-        }}, SDK_INT >= VERSION_CODES.TIRAMISU ? RECEIVER_EXPORTED : 0);
-
+//        if(getWindowId() == 0){
+            registerReceiver(receiver, new IntentFilter(ACTION_START) {{
+                addAction(ACTION_PREFERENCES_CHANGED);
+                addAction(ACTION_STOP);
+            }}, SDK_INT >= VERSION_CODES.TIRAMISU ? RECEIVER_EXPORTED : 0);
+//        }
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);
         mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -260,6 +281,11 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected void onDestroy() {
         unregisterReceiver(receiver);
         super.onDestroy();
+        try {
+            service.unregisterListener(listener);
+        } catch (RemoteException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     //Register the needed events to handle stylus as left, middle and right click

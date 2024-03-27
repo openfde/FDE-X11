@@ -29,6 +29,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.HashSet;
 
 @Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
 public class CmdEntryPoint extends ICmdEntryInterface.Stub {
@@ -36,7 +37,10 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     public static final int PORT = 7892;
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final Handler handler;
+    private static final String TAG = "CmdEntryPoint";
     public static Context ctx;
+    public static IReceive receiver;
+
     static {
         try {
             ctx = createContext();
@@ -46,12 +50,23 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
         }
     }
 
+    private static HashSet<Long> Ptrs = new HashSet<>();
+
     public static void startActivityForWindow(long windowPtr) {
-        Log.d("CmdEntryPoint", "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
-//        Intent intent = new Intent(baseContext, MainActivity1.class);
-//        intent.putExtra("KEY_WindowPtr", windowPtr);
-//        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-//        baseContext.startActivity(intent);
+        if(Ptrs.contains(windowPtr)){
+            return;
+        }
+        Ptrs.add(windowPtr);
+        Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
+        if(receiver != null){
+            try {
+                Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
+                receiver.startWindow(windowPtr);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
     }
 
 
@@ -76,6 +91,7 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
 
     @SuppressLint({"WrongConstant", "PrivateApi"})
     void sendBroadcast() {
+
         String targetPackage = getenv("TERMUX_X11_OVERRIDE_PACKAGE");
         if (targetPackage == null)
             targetPackage = "com.termux.x11";
@@ -94,7 +110,7 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
 
         try {
             ctx.sendBroadcast(intent);
-//            Log.d("CmdEntryPoint", "sendBroadcast() try");
+            Log.d("CmdEntryPoint", "sendBroadcast() try");
         } catch (Exception e) {
             if (e instanceof NullPointerException && ctx == null)
                 Log.e("CmdEntryPoint", "Context is null, falling back to manual broadcasting");
@@ -227,6 +243,19 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     public static native boolean start(String[] args);
     public native void windowChanged(Surface surface, long id);
     public native ParcelFileDescriptor getXConnection();
+
+    @Override
+    public void registerListener(IReceive receiver) throws RemoteException {
+        this.receiver = receiver;
+    }
+
+    @Override
+    public void unregisterListener(IReceive receiver) throws RemoteException {
+        if(this.receiver == receiver){
+            this.receiver = null;
+        }
+    }
+
     public native ParcelFileDescriptor getLogcatOutput();
     private static native boolean connected();
 

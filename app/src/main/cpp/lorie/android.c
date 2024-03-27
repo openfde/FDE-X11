@@ -32,53 +32,81 @@ extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
 extern int ucs2keysym(long ucs);
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
-extern JNIEnv* ANDROID_JniEnv();
-void start_android_window(WindowPtr pWindow);
+void start_android_window(long pWindow);
 
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
 
-extern SurfaceRes *S1, *S2;
-PixmapPtr tempPixmap = NULL;
-WindowPtr separateWindowPtr;
-static JNIEnv*  static_env = NULL;
-static JavaVM* vm = NULL;
+extern SurfaceRes *S1, *S2, *S3;
+PixmapPtr tempPixmap1 = NULL;
+PixmapPtr tempPixmap2 = NULL;
 
-    //todo init two surface
+WindowPtr separateWindowPtr1;
+WindowPtr separateWindowPtr2;
+
+static jobject CmdEntryPointObject;
+static jclass JavaCmdEntryPointClass;
+static JavaVM *jniVM = NULL;
+
+
+static inline JNIEnv *GetJavaEnv(void)
+{
+    if(!jniVM){
+        return NULL;
+    }
+    JNIEnv *ret = NULL;
+    (*jniVM)->GetEnv(jniVM, (void **) &ret, JNI_VERSION_1_6);
+    return ret;
+}
+
 void modifyGlobalVariable(WindowPtr windowPtr) {
-//    if(!windowPtr && separateWindowPtr){
-//        windowPtr = separateWindowPtr;
-//    }
-        if(windowPtr){
-            separateWindowPtr = windowPtr;
-            log(ERROR, "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
-            separateWindowPtr, separateWindowPtr->drawable.width, separateWindowPtr->drawable.height,
-            separateWindowPtr->drawable.x, separateWindowPtr->drawable.y);
-        }
-    if (separateWindowPtr) {
-        tempPixmap = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr);
+    if (windowPtr && !separateWindowPtr1) {
+        separateWindowPtr1 = windowPtr;
+        log(ERROR,
+            "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
+            separateWindowPtr1, separateWindowPtr1->drawable.width,
+            separateWindowPtr1->drawable.height,
+            separateWindowPtr1->drawable.x, separateWindowPtr1->drawable.y);
     }
 
-//        start_android_window(separateWindowPtr);
-    if (tempPixmap) {
-        renderer_update_root_process1(tempPixmap->drawable.width, tempPixmap->drawable.height,
-                                      tempPixmap->devPrivate.ptr, 0);
+    if (windowPtr && !separateWindowPtr2) {
+        separateWindowPtr2 = windowPtr;
+        log(ERROR,
+            "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
+            separateWindowPtr2, separateWindowPtr2->drawable.width,
+            separateWindowPtr2->drawable.height,
+            separateWindowPtr2->drawable.x, separateWindowPtr2->drawable.y);
+    }
+
+
+    if (separateWindowPtr1) {
+        tempPixmap1 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
+        start_android_window(1);
+    }
+
+    if (tempPixmap1) {
+        renderer_update_root_process1(tempPixmap1->drawable.width, tempPixmap1->drawable.height,
+                                      tempPixmap1->devPrivate.ptr, 0, 1);
+    }
+
+    if (separateWindowPtr2) {
+        tempPixmap2 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
+        start_android_window(2);
+    }
+
+    if (tempPixmap2) {
+        renderer_update_root_process1(tempPixmap2->drawable.width, tempPixmap2->drawable.height,
+                                      tempPixmap2->devPrivate.ptr, 0, 2);
     }
 }
 
-void start_android_window(WindowPtr pWindow) {
-    JNIEnv *env = ANDROID_JniEnv();
-    log(ERROR, "start_android_window env:%p", env);
-//    jclass cls = (*env)->FindClass(env, "com/termux/x11/utils/Util");
-    jclass cls = (*env)->FindClass(env, "android/view/Surface");
-
-    log(ERROR, "start_android_window cls:%p", cls);
-//    jmethodID method = !cls ? NULL : (*env)->GetStaticMethodID(env, cls, "startActivityForWindow", "(J)V");
-//    log(ERROR, "start_android_window method:%p", method);
-//    if (method){
-//        log(ERROR, "start_android_window");
-//        (*env)->CallStaticVoidMethod(env, cls, method, pWindow);
-//    }
+void start_android_window(long  pWindow) {
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if(JavaEnv && JavaCmdEntryPointClass){
+        jmethodID method = !CmdEntryPointObject ? NULL : (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityForWindow", "(J)V");
+        log(ERROR, "start_android_window pWindow:%p", method);
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, CmdEntryPointObject, method, pWindow);
+    }
 }
 
 typedef enum {
@@ -120,19 +148,28 @@ static void* startServer(unused void* cookie) {
     exit(dix_main(argc, (char**) argv, envp));
 }
 
-JNIEnv* ANDROID_JniEnv()
-{
-    return static_env;
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    JNIEnv* env;
+    if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
+    jniVM = vm;
+    return JNI_VERSION_1_6;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jclass cls, jobjectArray args) {
+Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jobject thiz, jobjectArray args) {
     pthread_t t;
-    vm = NULL;
+    JavaVM * vm = NULL;
     // execv's argv array is a bit incompatible with Java's String[], so we do some converting here...
     argc = (*env)->GetArrayLength(env, args) + 1; // Leading executable path
     argv = (char**) calloc(argc, sizeof(char*));
-    static_env = env;
+
+
+    JNIEnv *JavaEnv = env;
+    JavaCmdEntryPointClass = (*JavaEnv)->NewGlobalRef( JavaEnv, thiz);
+
 
     argv[0] = (char*) "Xlorie";
     for(int i=1; i<argc; i++) {
@@ -258,9 +295,11 @@ Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
         res->surface = sfc;
         ANativeWindow* psf = ANativeWindow_fromSurface(env, res->surface);
         res->psf = psf;
-    log(ERROR, "windowChanged ID:%d surface:%p psf:%p", id, sfc, psf);
-    QueueWorkProc(lorieChangeWindow, NULL, res);
-//            QueueWorkProc(lorieChangeWindow, NULL, sfc);
+//        CmdEntryPointClass = (*env)->FindClass(env, "com/termux/x11/CmdEntryPoint");
+        CmdEntryPointObject = cls;
+        QueueWorkProc(lorieChangeWindow, NULL, res);
+//        start_android_window(1000);
+
 }
 
 void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) {
