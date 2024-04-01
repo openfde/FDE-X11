@@ -44,5 +44,6 @@
     </string-array>
 
     <item type="id" name="window_id"></item>
+    <item type="id" name="window_coordinate"></item>
 
 </resources>

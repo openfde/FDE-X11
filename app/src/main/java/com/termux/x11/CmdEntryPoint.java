@@ -50,18 +50,18 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
         }
     }
 
-    private static HashSet<Long> Ptrs = new HashSet<>();
+    private static HashSet<Integer> Ptrs = new HashSet<>();
 
-    public static void startActivityForWindow(long windowPtr) {
-        if(Ptrs.contains(windowPtr)){
+    public static void startActivityForWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) {
+//        Log.d(TAG, "startActivityForWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
+        if(Ptrs.contains(index)){
             return;
         }
-        Ptrs.add(windowPtr);
-        Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
+        Ptrs.add(index);
         if(receiver != null){
             try {
-                Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
-                receiver.startWindow(windowPtr);
+                receiver.startWindow(offsetX, offsetY , width, height, index , windowPtr);
+//                receiver.startWindow(0, 0 , 1920, 989, 1 , 0);
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }
@@ -241,7 +241,11 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     }
 
     public static native boolean start(String[] args);
-    public native void windowChanged(Surface surface, long id);
+//    public native void windowChanged(Surface surface, long id);
+
+    public native void windowChanged(Surface surface, float offsetX, float offsetY,
+                                     float width, float height, int index, long windPtr);
+
     public native ParcelFileDescriptor getXConnection();
 
     @Override

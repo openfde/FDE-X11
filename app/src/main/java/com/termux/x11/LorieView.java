@@ -24,12 +24,24 @@ import android.view.View;
 import androidx.annotation.NonNull;
 
 import com.termux.x11.input.InputStub;
+import com.termux.x11.window.Coordinate;
 
 import java.util.regex.PatternSyntaxException;
 
 @SuppressLint("WrongConstant")
 @SuppressWarnings("deprecation")
 public class LorieView extends SurfaceView implements InputStub {
+
+    public Coordinate getCoordinate() {
+        return mCoordinate;
+    }
+
+    private Coordinate mCoordinate;
+
+    public void updateCoordinate(Coordinate coordinate) {
+        this.mCoordinate = coordinate;
+    }
+
     interface Callback {
         void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight);
     }
@@ -49,12 +61,14 @@ public class LorieView extends SurfaceView implements InputStub {
             width = getMeasuredWidth();
             height = getMeasuredHeight();
 
-            Log.d("SurfaceChangedListener", "Surface was changed: " + width + "x" + height);
+            Log.d("SurfaceChangedListener", "Surface was changed: " + width + " x " + height);
+            Log.d("SurfaceChangedListener", "screen size: " + p.x + " x " + p.y);
+
             if (mCallback == null)
                 return;
 
             getDimensionsFromSettings();
-            mCallback.changed(holder.getSurface(), width, height, p.x, p.y);
+            mCallback.changed(holder.getSurface(), 1920, 989, 1920 , 989);
         }
 
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {

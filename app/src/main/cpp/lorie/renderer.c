@@ -153,12 +153,15 @@ static struct {
 typedef struct {
     GLuint id;
     float width, height;
+    float offset_x, offset_y;
+    int index;
+    long pWind;
 } DisplayRes;
 
 
-static DisplayRes otherDisplay1;
-static DisplayRes otherDisplay2;
-
+static DisplayRes otherDisplay1 = {1, 807, 592};
+static DisplayRes otherDisplay2 = {2, 1920, 989};
+static float CursorWidth, CursorHeight = 0;
 
 GLuint g_texture_program = 0, gv_pos = 0, gv_coords = 0;
 GLuint g_texture_program_bgra = 0, gv_pos_bgra = 0, gv_coords_bgra = 0;
@@ -442,15 +445,31 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
     log("renderer_set_buffer %p %d %d", buffer, desc.width, desc.height);
 }
 
-void initAnotherSurface(JNIEnv* env, SurfaceRes *surfaceRes){
-    EGLNativeWindowType w = ANativeWindow_fromSurface(env, surfaceRes->surface);
-    log("initAnotherSurface w:%p", w);
+void initAnotherSurface(JNIEnv *env, jobject surface, int id, float offsetX, float offsetY,
+                        float width, float height,
+                        long windPtr) {
+    log("initAnotherSurface sfc1:%p", sfc1);
+    DisplayRes  displayRes;
+    if(id = 1){
+        displayRes = otherDisplay1;
+    } else {
+        displayRes = otherDisplay2;
+    }
+    displayRes.offset_x = offsetX;
+    displayRes.offset_y = offsetY;
+    displayRes.width = width;
+    displayRes.height = height;
+    displayRes.pWind = windPtr;
+
+    EGLNativeWindowType w = ANativeWindow_fromSurface(env, surface);
     EGLSurface eglSurface = eglCreateWindowSurface(egl_display, cfg, w, NULL);
+//    if (w && ctx && ANativeWindow_getWidth(w) > 0 && ANativeWindow_getHeight(w) > 0)
+//        glViewport(0, 0, ANativeWindow_getWidth(w), ANativeWindow_getHeight(w)); checkGlError();
     if (eglSurface == EGL_NO_SURFACE) {
         eglCheckError(__LINE__);
         return;
     } else {
-        if(surfaceRes->id == 1){
+        if(id == 1){
             sfc1 = eglSurface;
         } else {
             sfc2 = eglSurface;
@@ -556,8 +575,10 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
 
     eglSwapInterval(egl_display, 0);
 
-    if (win && ctx && ANativeWindow_getWidth(win) > 0 && ANativeWindow_getHeight(win) > 0)
+    if (win && ctx && ANativeWindow_getWidth(win) > 0 && ANativeWindow_getHeight(win) > 0){
+//            glViewport(0, 0, 1920, 592); checkGlError();
         glViewport(0, 0, ANativeWindow_getWidth(win), ANativeWindow_getHeight(win)); checkGlError();
+    }
 
     log("Xlorie: new surface applied: %p\n", sfc);
 
@@ -595,8 +616,7 @@ void renderer_update_root(int w, int h, void* data, uint8_t flip) {
 void renderer_update_root_process1(int w, int h, void *data, uint8_t flip, int index) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h)
         return;
-//    log("renderer_update_root_process1 w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-//        w, h, data, flip, otherDisplay.width, otherDisplay.height );
+
 
     DisplayRes otherDisplay;
     if (index == 1) {
@@ -605,7 +625,10 @@ void renderer_update_root_process1(int w, int h, void *data, uint8_t flip, int i
         otherDisplay = otherDisplay2;
     }
 
-    if (otherDisplay.width != (float) w || otherDisplay.height != (float) h) {
+//    log("renderer_update_root_process1 w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+//        w, h, data, flip, otherDisplay.width, otherDisplay.height );
+
+//    if (otherDisplay.width != (float) w || otherDisplay.height != (float) h) {
         otherDisplay.width = (float) w;
         otherDisplay.height = (float) h;
 
@@ -622,18 +645,18 @@ void renderer_update_root_process1(int w, int h, void *data, uint8_t flip, int i
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
-    } else {
-        glBindTexture(GL_TEXTURE_2D, otherDisplay.id);
-        checkGlError();
-
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-                        GL_UNSIGNED_BYTE, data);
-        checkGlError();
-    }
+//    } else {
+//        glBindTexture(GL_TEXTURE_2D, otherDisplay.id);
+//        checkGlError();
+//
+//        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+//                        GL_UNSIGNED_BYTE, data);
+//        checkGlError();
+//    }
 }
 
 void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
-    log("Xlorie: updating cursor\n");
+    log("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
     cursor.width = (float) w;
     cursor.height = (float) h;
     cursor.xhot = (float) xhot;
@@ -652,12 +675,13 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
+    log("set_cursor x%d, y :%d", x , y);
     cursor.x = (float) x;
     cursor.y = (float) y;
 }
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip);
-static void draw_cursor(void);
+static void draw_cursor(int index);
 
 float ia = 0;
 
@@ -666,19 +690,21 @@ int renderer_should_redraw(void) {
 }
 
 int renderer_redraw(JNIEnv* env, uint8_t flip) {
-    log("renderer_redraw sfc:%p sfc1:%p", sfc, sfc1);
+//    log("renderer_redraw sfc:%p sfc1:%p", sfc, sfc1);
     int err = EGL_SUCCESS;
 
     if (!sfc || eglGetCurrentContext() == EGL_NO_CONTEXT)
         return FALSE;
-
+    glViewport(0, 0, 1920, 989); checkGlError();
     if (eglMakeCurrent(egl_display, sfc, sfc, ctx) != EGL_TRUE) {
         log("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
+//    log("renderer_redraw display1:%d sfc1:%p", otherDisplay1.id, sfc1);
+//    glViewport(0, 0, 1920, 989); checkGlError();
 
     draw(display.id,  -1.f, -1.f, 1.f, 1.f, flip);
-    draw_cursor();
+    draw_cursor(0);
     if (eglSwapBuffers(egl_display, sfc) != EGL_TRUE) {
         err = eglGetError();
         eglCheckError(__LINE__);
@@ -696,15 +722,16 @@ int renderer_redraw(JNIEnv* env, uint8_t flip) {
     }
 
     modifyGlobalVariable(NULL);
-
+    glViewport(0, 0, 807, 592); checkGlError();
     if (eglMakeCurrent(egl_display, sfc1, sfc1, ctx) != EGL_TRUE) {
         log("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-    log("renderer_redraw otherDisplayid:%d displayid:%d", otherDisplay1.id, display.id);
+//    log("renderer_redraw otherDisplayid:%d displayid:%d", otherDisplay1.id, display.id);
+//    glViewport(480, 247, 1440, 741); checkGlError();
 
     draw(otherDisplay1.id,  -1.f, -1.f, 1.f, 1.f, flip);
-    draw_cursor();
+    draw_cursor(1);
 
     if (eglSwapBuffers(egl_display, sfc1) != EGL_TRUE) {
         err = eglGetError();
@@ -726,10 +753,10 @@ int renderer_redraw(JNIEnv* env, uint8_t flip) {
         log("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-    log("renderer_redraw otherDisplayid:%d displayid:%d", otherDisplay2.id, display.id);
+//    log("renderer_redraw otherDisplayid:%d displayid:%d", otherDisplay2.id, display.id);
 
     draw(otherDisplay2.id,  -1.f, -1.f, 1.f, 1.f, flip);
-    draw_cursor();
+    draw_cursor(2);
 
     if (eglSwapBuffers(egl_display, sfc2) != EGL_TRUE) {
         err = eglGetError();
@@ -833,16 +860,42 @@ static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); checkGlError();
 }
 
-maybe_unused static void draw_cursor(void) {
+maybe_unused static void draw_cursor(int index) {
     float x, y, w, h;
 
     if (!cursor.width || !cursor.height)
         return;
 
-    x = 2.f * (cursor.x - cursor.xhot) / display.width - 1.f;
-    y = 2.f * (cursor.y - cursor.yhot) / display.height - 1.f;
-    w = 2.f * cursor.width / display.width;
-    h = 2.f * cursor.height / display.height;
+
+    float width = display.width;
+    float height = display.height;
+    float cursor_x = cursor.x;
+    float cursor_y = cursor.y;
+    float cursor_xhot = cursor.xhot;
+    float cursor_yhot = cursor.yhot;
+
+    if (index == 1) {
+        width = otherDisplay1.width;
+        height = otherDisplay1.height;
+        cursor_x -= 556;
+        cursor_y -= 198;
+//        cursor_y += 42;
+    } else if( index == 2) {
+        width = otherDisplay2.width;
+        height = otherDisplay2.height;
+    }
+
+    x = 2.f * (cursor_x - cursor_xhot) / width - 1.f;
+    y = 2.f * (cursor_y - cursor_yhot) / height - 1.f;
+
+    w = 2.f * cursor.width / width;
+    h = 2.f * cursor.height / height;
+
+//    log("draw_cursor index:%d width:%f height:%f", index, width, height);
+//    log("draw_cursor index:%d width:%f height:%f", index, width, height);
+//    log("draw_cursor index:%d x:%f y:%f", index, x, y);
+
+
     glEnable(GL_BLEND); checkGlError();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); checkGlError();
     draw(cursor.id, x, y, x + w, y + h, false);

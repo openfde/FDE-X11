@@ -3,7 +3,6 @@
 #include <android/hardware_buffer.h>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
-#include "lorie.h"
 
 #ifndef maybe_unused
 #define maybe_unused __attribute__((__unused__))
@@ -19,7 +18,8 @@ maybe_unused void renderer_message_func(renderer_message_func_type function);
 maybe_unused int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip);
 maybe_unused void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buffer);
 maybe_unused void renderer_set_window(JNIEnv* env, jobject surface, AHardwareBuffer* buffer);
-maybe_unused void initAnotherSurface(JNIEnv* env, SurfaceRes *surface);
+maybe_unused void initAnotherSurface(JNIEnv *env, jobject surface, int id, float d, float d1, float d2, float d3,
+                   long i);
 maybe_unused int renderer_should_redraw(void);
 maybe_unused int renderer_redraw(JNIEnv* env, uint8_t flip);
 maybe_unused void renderer_print_fps(float millis);

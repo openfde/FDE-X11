@@ -49,5 +49,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22"
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
     implementation 'androidx.preference:preference:1.2.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     compileOnly project(':shell-loader:stub')
 }

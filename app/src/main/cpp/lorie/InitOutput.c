@@ -79,6 +79,7 @@ from The Open Group.
 #include "renderer.h"
 #include "inpututils.h"
 #include "lorie.h"
+#include "../xserver/dix/enterleave.h"
 
 #define unused __attribute__((unused))
 #define wrap(priv, real, mem, func) { priv->mem = real->mem; real->mem = func; }
@@ -88,7 +89,7 @@ from The Open Group.
 
 #define logh(...) __android_log_print(ANDROID_LOG_ERROR, "huyang_InitOutput", __VA_ARGS__)
 
-extern DeviceIntPtr lorieMouse, lorieKeyboard;
+extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 
 typedef struct {
     DestroyPixmapProcPtr DestroyPixmap;
@@ -114,10 +115,10 @@ typedef struct {
     JNIEnv* env;
 } lorieScreenInfo, *lorieScreenInfoPtr;
 
-SurfaceRes *S1;
-SurfaceRes *S2;
-SurfaceRes *S3;
 ScreenPtr pScreenPtr;
+WindowPtr separateWindowPtr1;
+WindowPtr separateWindowPtr2;
+WindowPtr focusWindowPtr;
 static lorieScreenInfo lorieScreen = { .root.width = 1280, .root.height = 1024 };
 static lorieScreenInfoPtr pvfb = &lorieScreen;
 static char *xstartup = NULL;
@@ -715,62 +716,52 @@ CursorForDevice(DeviceIntPtr pDev) {
 }
 
 
-Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
-    SurfaceRes *res = (SurfaceRes*) closure;
-    jobject surface = res->surface;
-    logh("lorieChangeWindow surface:%p id:%d", surface, res->id);
-    renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
-    lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
-
-    if (pvfb->root.legacyDrawing) {
-        renderer_update_root(pScreenPtr->width, pScreenPtr->height, ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr, pvfb->root.flip);
-        renderer_redraw(pvfb->env, pvfb->root.flip);
-    }
-
-    return TRUE;
-}
-
 //Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
-//    SurfaceRes *res = (SurfaceRes *) closure;
+//    SurfaceRes *res = (SurfaceRes*) closure;
 //    jobject surface = res->surface;
-//    logh("lorieChangeWindow surface:%p id:%d S1:%p", surface, res->id, S1);
-//    //todo init two surface
-//    if (res->id == 1) {
-//        S2 = res;
-//        initAnotherSurface(pvfb->env, S2);
-//        logh("lorieChangeWindow buffer:%p", pvfb->root.buffer);
-//        if (pvfb->root.legacyDrawing) {
-//            renderer_update_root(pScreenPtr->width, pScreenPtr->height,
-//                                 ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
-//                                 pvfb->root.flip);
-//            renderer_redraw(pvfb->env, pvfb->root.flip);
-//        }
-//        return TRUE;
-//    } else if (res->id == 2) {
-//        S3 = res;
-//        initAnotherSurface(pvfb->env, S3);
-//        logh("lorieChangeWindow buffer:%p", pvfb->root.buffer);
-//        if (pvfb->root.legacyDrawing) {
-//            renderer_update_root(pScreenPtr->width, pScreenPtr->height,
-//                                 ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
-//                                 pvfb->root.flip);
-//            renderer_redraw(pvfb->env, pvfb->root.flip);
-//        }
-//        return TRUE;
-//    } else {
-//        S1 = res;
-//        renderer_set_window(pvfb->env, S1->surface, pvfb->root.buffer);
-//        lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
-//        logh("lorieChangeWindow buffer:%p", pvfb->root.buffer);
-//        if (pvfb->root.legacyDrawing) {
-//            renderer_update_root(pScreenPtr->width, pScreenPtr->height,
-//                                 ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
-//                                 pvfb->root.flip);
-//            renderer_redraw(pvfb->env, pvfb->root.flip);
-//        }
-//        return TRUE;
+//    logh("lorieChangeWindow surface:%p id:%d", surface, res->id);
+//    renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
+//    lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
+//
+//    if (pvfb->root.legacyDrawing) {
+//        renderer_update_root(pScreenPtr->width, pScreenPtr->height, ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr, pvfb->root.flip);
+//        renderer_redraw(pvfb->env, pvfb->root.flip);
 //    }
+//
+//    return TRUE;
 //}
+
+Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
+    SurfaceRes *res = (SurfaceRes *) closure;
+    jobject surface = res->surface;
+    //todo init two surface
+    if (res->id != 0) {
+        lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
+        initAnotherSurface(pvfb->env, surface, res->id, res->offset_x, res->offset_y,
+                           res->width, res->height, res->pWin);
+        logh("lorieChangeWindow buffer:%p  lorieMouseRelative:%d lorieMouseRelative:%d"
+             "lorieKeyboard:%d lorieTouch:%d",
+             pvfb->root.buffer, lorieMouseRelative->id, lorieMouse->id, lorieKeyboard->id, lorieTouch->id);
+        if (pvfb->root.legacyDrawing) {
+            renderer_update_root(pScreenPtr->width, pScreenPtr->height,
+                                 ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
+                                 pvfb->root.flip);
+            renderer_redraw(pvfb->env, pvfb->root.flip);
+        }
+        return TRUE;
+    } else {
+        renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
+        lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
+        logh("lorieChangeWindow buffer:%p", pvfb->root.buffer);
+        if (pvfb->root.legacyDrawing) {
+            renderer_update_root(pScreenPtr->width, pScreenPtr->height,
+                                 ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
+                                 pvfb->root.flip);
+            renderer_redraw(pvfb->env, pvfb->root.flip);
+        }
+        return TRUE;
+    }
+}
 
 void lorieConfigureNotify(int width, int height, int framerate) {
     ScreenPtr pScreen = pScreenPtr;

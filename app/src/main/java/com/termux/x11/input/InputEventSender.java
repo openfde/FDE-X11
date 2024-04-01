@@ -7,13 +7,19 @@ package com.termux.x11.input;
 import static android.view.KeyEvent.*;
 import static android.view.MotionEvent.*;
 import static androidx.core.math.MathUtils.clamp;
+import static com.termux.x11.MainActivity.DECORCATIONVIEW_HEIGHT;
 import static com.termux.x11.input.InputStub.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.graphics.PointF;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+
+import com.termux.x11.LorieView;
+import com.termux.x11.R;
+import com.termux.x11.window.Coordinate;
 
 import java.util.List;
 import java.util.TreeSet;
@@ -36,6 +42,7 @@ public final class InputEventSender {
 
     /** Set of pressed keys for which we've sent TextEvent. */
     private final TreeSet<Integer> mPressedTextKeys;
+    private String TAG = "InputEventSender";
 
     public InputEventSender(InputStub injector) {
         if (injector == null)
@@ -71,7 +78,18 @@ public final class InputEventSender {
     }
 
     public void sendCursorMove(float x, float y, boolean relative) {
-        mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative);
+        LorieView lorieView = (LorieView) mInjector;
+        if(lorieView.getCoordinate() != null){
+            Coordinate coordinate = lorieView.getCoordinate();
+            float offsetX = coordinate.getOffsetX();
+            float offsetY = coordinate.getOffsetY();
+            x += offsetX;
+            y += offsetY;
+            y -= DECORCATIONVIEW_HEIGHT;
+            mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative);
+        } else {
+            mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative);
+        }
     }
 
     public void sendMouseWheelEvent(float distanceX, float distanceY) {

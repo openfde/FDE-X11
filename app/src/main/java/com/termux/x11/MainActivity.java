@@ -12,6 +12,7 @@ import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ActivityOptions;
 import android.app.AppOpsManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -27,6 +28,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Build.VERSION_CODES;
@@ -73,6 +75,7 @@ import com.termux.x11.utils.SamsungDexUtils;
 import com.termux.x11.utils.TermuxX11ExtraKeys;
 import com.termux.x11.utils.Util;
 import com.termux.x11.utils.X11ToolbarViewPager;
+import com.termux.x11.window.Coordinate;
 
 import java.util.Map;
 import java.util.Objects;
@@ -82,6 +85,7 @@ import java.util.Objects;
 public class MainActivity extends AppCompatActivity implements View.OnApplyWindowInsetsListener {
     static final String ACTION_STOP = "com.termux.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
+    public static final float DECORCATIONVIEW_HEIGHT = 42;
 
     public static Handler handler = new Handler();
     FrameLayout frm;
@@ -96,8 +100,11 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     private boolean filterOutWinKey = false;
     private static final int KEY_BACK = 158;
 
-    protected long WindowCode = 0;
+    private String TAG = "Xevent_MainActivity";
 
+    protected long WindowCode = 0;
+    protected int index = 0;
+    protected Coordinate mCoordinate;
 
     protected long getWindowId() {
         return WindowCode;
@@ -105,18 +112,33 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
     private IReceive.Stub listener = new IReceive.Stub() {
         @Override
-        public void startWindow(long windowPtr) throws RemoteException {
-            Log.d("MainActivity", "startWindow() called with: windowPtr = [" + windowPtr + "]");
-            if(windowPtr == 1){
+        public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) throws RemoteException {
+            Log.d(TAG, "startWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
+            if(index == 1){
+                offsetY += DECORCATIONVIEW_HEIGHT;
+                ActivityOptions options = ActivityOptions.makeBasic();
+                options.setLaunchBounds(new Rect(offsetX, (int)(offsetY - DECORCATIONVIEW_HEIGHT), width + offsetX, height + offsetY));
                 Intent intent = new Intent(MainActivity.this, MainActivity1.class);
+                intent.putExtra("index", index);
                 intent.putExtra("KEY_WindowPtr", windowPtr);
+                Coordinate coordinate = new Coordinate(offsetX, offsetY, width, height,
+                        index, windowPtr);
+                Log.d(TAG, "coordinate:" + coordinate);
+                intent.putExtra("NativeWindow_data", coordinate);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                MainActivity.this.startActivity(intent);
+                startActivity(intent, options.toBundle());
             } else {
+                ActivityOptions options = ActivityOptions.makeBasic();
+                options.setLaunchBounds(new Rect(offsetX, (int)(offsetY - DECORCATIONVIEW_HEIGHT), width + offsetX, height + offsetY));
                 Intent intent = new Intent(MainActivity.this, MainActivity2.class);
+                intent.putExtra("index", index);
                 intent.putExtra("KEY_WindowPtr", windowPtr);
+                Coordinate coordinate = new Coordinate(offsetX, offsetY, width, height,
+                        index, windowPtr);
+                Log.d(TAG, "coordinate:" + coordinate);
+                intent.putExtra("NativeWindow_data", coordinate);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                MainActivity.this.startActivity(intent);
+                startActivity(intent, options.toBundle());
             }
         }
     };
@@ -169,7 +191,13 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        WindowCode = getIntent().getLongExtra("KEY_WindowPtr", 0);
+        mCoordinate = getIntent().getParcelableExtra("NativeWindow_data");
+        if(mCoordinate != null){
+            index = mCoordinate.getIndex();
+            WindowCode = mCoordinate.getWindowPtr();
+        }
+        Log.d(TAG, "onCreate() called with: mCoordinate = [" + mCoordinate + "]" +
+                " , WindowCode = " + Long.toHexString(WindowCode) + ", index = " + index);
         Util.setBaseContext(this);
         CmdEntryPoint.ctx = this;
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -191,8 +219,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         findViewById(R.id.help_button).setOnClickListener((l) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/termux/termux-x11/blob/master/README.md#running-graphical-applications"))));
 
         LorieView lorieView = findViewById(R.id.lorieView);
+        lorieView.updateCoordinate(mCoordinate);
         View lorieParent = (View) lorieView.getParent();
-        lorieView.setTag(R.id.window_id, getWindowId());
+        lorieView.setTag(R.id.window_coordinate, mCoordinate);
         mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
             @Override
             public void swipeDown() {
@@ -238,14 +267,32 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
             mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
             mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
-            LorieView.sendWindowChange(screenWidth, screenHeight, framerate);
 
-            if (service != null) {
-                try {
-                    service.windowChanged(sfc, (long) lorieView.getTag(R.id.window_id));
-                } catch (RemoteException e) {
-                    e.printStackTrace();
+            if(getWindowId() == 0){
+                LorieView.sendWindowChange(screenWidth, screenHeight, framerate);
+            }
+            Coordinate coordinate = (Coordinate) lorieView.getTag(R.id.window_coordinate);
+            if (service != null ) {
+                if(coordinate == null){
+                    try {
+                        service.windowChanged(sfc, 0, 0,
+                                surfaceWidth, surfaceHeight, 0,
+                                1000);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    try {
+                        service.windowChanged(sfc, coordinate.getOffsetX(), coordinate.getOffsetY(),
+                                coordinate.getWidth(), coordinate.getHeight(), coordinate.getIndex(),
+                                coordinate.getWindowPtr());
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
                 }
+
+
+
             }
         });
 
@@ -592,6 +639,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         setTerminalToolbarView();
         getLorieView().requestFocus();
+        String hexString = Long.toHexString(getWindowId());
+        Log.d(TAG, String.format("onResume() called: 0x%s", hexString));
     }
 
     @Override
@@ -643,7 +692,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
             if (show) {
                 setTerminalToolbarView();
-                getTerminalToolbarViewPager().bringToFront();
+//                getTerminalToolbarViewPager().bringToFront();
             } else {
                 parent.removeView(pager);
                 parent.addView(pager, 0);
@@ -795,6 +844,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         if (hasFocus)
             getLorieView().regenerate();
 
+        Log.d(TAG, "onWindowFocusChanged() called with: hasFocus = [" + hasFocus + "]");
         getLorieView().requestFocus();
     }
 
@@ -862,8 +912,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             if (!connected)
                 tryConnect();
 
-            if (connected)
-                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+            if (connected && index != 0){
+//                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+            }
         });
     }
 

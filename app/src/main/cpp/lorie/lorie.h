@@ -9,10 +9,14 @@ Bool lorieChangeWindow(ClientPtr pClient, void *closure);
 void lorieConfigureNotify(int width, int height, int framerate);
 void lorieEnableClipboardSync(Bool enable);
 void lorieSendClipboardData(const char* data);
+
 typedef struct {
-        long id;
-        jobject surface;
+    int id;
+    jobject surface;
     ANativeWindow *psf;
+    float width, height;
+    float offset_x, offset_y;
+    long pWin;
 } SurfaceRes;
 
 static int android_to_linux_keycode[304] = {

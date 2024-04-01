@@ -32,17 +32,14 @@ extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
 extern int ucs2keysym(long ucs);
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
-void start_android_window(long pWindow);
+void start_android_window(int index, WindowPtr pWindow);
 
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
 
-extern SurfaceRes *S1, *S2, *S3;
 PixmapPtr tempPixmap1 = NULL;
 PixmapPtr tempPixmap2 = NULL;
 
-WindowPtr separateWindowPtr1;
-WindowPtr separateWindowPtr2;
 
 static jobject CmdEntryPointObject;
 static jclass JavaCmdEntryPointClass;
@@ -62,15 +59,19 @@ static inline JNIEnv *GetJavaEnv(void)
 void modifyGlobalVariable(WindowPtr windowPtr) {
     if (windowPtr && !separateWindowPtr1) {
         separateWindowPtr1 = windowPtr;
+        if(focusWindowPtr->parent == separateWindowPtr1){
+            separateWindowPtr1->focus = focusWindowPtr;
+        }
         log(ERROR,
             "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
             separateWindowPtr1, separateWindowPtr1->drawable.width,
             separateWindowPtr1->drawable.height,
             separateWindowPtr1->drawable.x, separateWindowPtr1->drawable.y);
-    }
-
-    if (windowPtr && !separateWindowPtr2) {
+    } else if (windowPtr && !separateWindowPtr2 && windowPtr != separateWindowPtr1) {
         separateWindowPtr2 = windowPtr;
+        if(focusWindowPtr->parent == separateWindowPtr2){
+            separateWindowPtr2->focus = focusWindowPtr;
+        }
         log(ERROR,
             "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
             separateWindowPtr2, separateWindowPtr2->drawable.width,
@@ -81,7 +82,7 @@ void modifyGlobalVariable(WindowPtr windowPtr) {
 
     if (separateWindowPtr1) {
         tempPixmap1 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
-        start_android_window(1);
+        start_android_window(1, separateWindowPtr1);
     }
 
     if (tempPixmap1) {
@@ -90,22 +91,27 @@ void modifyGlobalVariable(WindowPtr windowPtr) {
     }
 
     if (separateWindowPtr2) {
-        tempPixmap2 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
-        start_android_window(2);
+        tempPixmap2 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr2);
+//        start_android_window(2, separateWindowPtr2);
     }
 
     if (tempPixmap2) {
-        renderer_update_root_process1(tempPixmap2->drawable.width, tempPixmap2->drawable.height,
+        renderer_update_root_process1(pScreenPtr->width, pScreenPtr->height,
                                       tempPixmap2->devPrivate.ptr, 0, 2);
     }
 }
 
-void start_android_window(long  pWindow) {
+void start_android_window(int index, WindowPtr windowPtr) {
     JNIEnv *JavaEnv = GetJavaEnv();
     if(JavaEnv && JavaCmdEntryPointClass){
-        jmethodID method = !CmdEntryPointObject ? NULL : (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityForWindow", "(J)V");
+        int offsetX = windowPtr->drawable.x;
+        int offsetY = windowPtr->drawable.y;
+        int width = windowPtr->drawable.width;
+        int height = windowPtr->drawable.height;
+        jmethodID method = !CmdEntryPointObject ? NULL : (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityForWindow", "(IIIIIJ)V");
         log(ERROR, "start_android_window pWindow:%p", method);
-        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, CmdEntryPointObject, method, pWindow);
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, CmdEntryPointObject, method,
+                                         offsetX, offsetY, width, height, index, (long)windowPtr);
     }
 }
 
@@ -286,20 +292,24 @@ Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jobject thiz, jobjec
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls, jobject surface, jlong window_id) {
-        long id = (long)window_id;
-        jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
-        log(ERROR, "windowChanged ID:%d surface:%p", id, sfc);
-        SurfaceRes *res = (SurfaceRes*)malloc(sizeof(SurfaceRes));
-        res->id = (long)window_id;
-        res->surface = sfc;
-        ANativeWindow* psf = ANativeWindow_fromSurface(env, res->surface);
-        res->psf = psf;
-//        CmdEntryPointClass = (*env)->FindClass(env, "com/termux/x11/CmdEntryPoint");
-        CmdEntryPointObject = cls;
-        QueueWorkProc(lorieChangeWindow, NULL, res);
-//        start_android_window(1000);
-
+Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
+                                                jobject surface, jfloat offsetX, jfloat offsetY,
+                                                jfloat width, jfloat height, jint index,
+                                                jlong windowPtr) {
+    int id = (int) index;
+    jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
+    log(ERROR, "windowChanged ID:%d surface:%p", id, sfc);
+    SurfaceRes *res = (SurfaceRes *) malloc(sizeof(SurfaceRes));
+    res->id = (int) index;
+    res->surface = sfc;
+    res->offset_x = (int) offsetX;
+    res->offset_y = (int) offsetY;
+    res->width = (int) width;
+    res->height = (int) height;
+    ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
+    res->psf = psf;
+    CmdEntryPointObject = cls;
+    QueueWorkProc(lorieChangeWindow, NULL, res);
 }
 
 void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) {

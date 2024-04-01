@@ -4,6 +4,7 @@ import android.os.Bundle;
 
 public class MainActivity2 extends MainActivity {
 
+    private String TAG = "Xevent_MainActivity2";
 
     @Override
     protected long getWindowId() {
