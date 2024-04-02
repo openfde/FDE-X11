@@ -39,7 +39,8 @@ char *xtrans_unix_dir_x11 = NULL;
 
 PixmapPtr tempPixmap1 = NULL;
 PixmapPtr tempPixmap2 = NULL;
-
+extern WindowPtr separateWindowPtr1;
+extern WindowPtr separateWindowPtr2;
 
 static jobject CmdEntryPointObject;
 static jclass JavaCmdEntryPointClass;
@@ -59,21 +60,15 @@ static inline JNIEnv *GetJavaEnv(void)
 void modifyGlobalVariable(WindowPtr windowPtr) {
     if (windowPtr && !separateWindowPtr1) {
         separateWindowPtr1 = windowPtr;
-        if(focusWindowPtr->parent == separateWindowPtr1){
-            separateWindowPtr1->focus = focusWindowPtr;
-        }
         log(ERROR,
-            "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
+            "modifyGlobalVariable1 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
             separateWindowPtr1, separateWindowPtr1->drawable.width,
             separateWindowPtr1->drawable.height,
             separateWindowPtr1->drawable.x, separateWindowPtr1->drawable.y);
     } else if (windowPtr && !separateWindowPtr2 && windowPtr != separateWindowPtr1) {
         separateWindowPtr2 = windowPtr;
-        if(focusWindowPtr->parent == separateWindowPtr2){
-            separateWindowPtr2->focus = focusWindowPtr;
-        }
         log(ERROR,
-            "modifyGlobalVariable separatePtr:%p width:%d height:%d screex:%d screeny:%d",
+            "modifyGlobalVariable2 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
             separateWindowPtr2, separateWindowPtr2->drawable.width,
             separateWindowPtr2->drawable.height,
             separateWindowPtr2->drawable.x, separateWindowPtr2->drawable.y);
@@ -92,11 +87,11 @@ void modifyGlobalVariable(WindowPtr windowPtr) {
 
     if (separateWindowPtr2) {
         tempPixmap2 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr2);
-//        start_android_window(2, separateWindowPtr2);
+        start_android_window(2, separateWindowPtr2);
     }
 
     if (tempPixmap2) {
-        renderer_update_root_process1(pScreenPtr->width, pScreenPtr->height,
+        renderer_update_root_process1(tempPixmap2->drawable.width, tempPixmap2->drawable.height,
                                       tempPixmap2->devPrivate.ptr, 0, 2);
     }
 }

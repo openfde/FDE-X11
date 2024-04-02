@@ -22,6 +22,8 @@ maybe_unused void initAnotherSurface(JNIEnv *env, jobject surface, int id, float
                    long i);
 maybe_unused int renderer_should_redraw(void);
 maybe_unused int renderer_redraw(JNIEnv* env, uint8_t flip);
+maybe_unused int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int indext);
+
 maybe_unused void renderer_print_fps(float millis);
 
 maybe_unused void renderer_update_root(int w, int h, void* data, uint8_t flip);

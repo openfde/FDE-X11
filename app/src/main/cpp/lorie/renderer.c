@@ -448,18 +448,22 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
 void initAnotherSurface(JNIEnv *env, jobject surface, int id, float offsetX, float offsetY,
                         float width, float height,
                         long windPtr) {
-    log("initAnotherSurface sfc1:%p", sfc1);
-    DisplayRes  displayRes;
-    if(id = 1){
-        displayRes = otherDisplay1;
-    } else {
-        displayRes = otherDisplay2;
+    log("initAnotherSurface surface:%p index:%d offsetx:%f offsety:%f width:%f height:%f winPtr:%ld",
+        surface, id, offsetX, offsetY
+        ,width, height, windPtr);
+    if(id == 1){
+        otherDisplay1.offset_x = offsetX;
+        otherDisplay1.offset_y = offsetY;
+        otherDisplay1.width = width;
+        otherDisplay1.height = height;
+        otherDisplay1.pWind = windPtr;
+    } else if(id == 2) {
+        otherDisplay2.offset_x = offsetX;
+        otherDisplay2.offset_y = offsetY;
+        otherDisplay2.width = width;
+        otherDisplay2.height = height;
+        otherDisplay2.pWind = windPtr;
     }
-    displayRes.offset_x = offsetX;
-    displayRes.offset_y = offsetY;
-    displayRes.width = width;
-    displayRes.height = height;
-    displayRes.pWind = windPtr;
 
     EGLNativeWindowType w = ANativeWindow_fromSurface(env, surface);
     EGLSurface eglSurface = eglCreateWindowSurface(egl_display, cfg, w, NULL);
@@ -471,7 +475,7 @@ void initAnotherSurface(JNIEnv *env, jobject surface, int id, float offsetX, flo
     } else {
         if(id == 1){
             sfc1 = eglSurface;
-        } else {
+        } else if(id == 2) {
             sfc2 = eglSurface;
         }
     }
@@ -618,21 +622,21 @@ void renderer_update_root_process1(int w, int h, void *data, uint8_t flip, int i
         return;
 
 
-    DisplayRes otherDisplay;
-    if (index == 1) {
-        otherDisplay = otherDisplay1;
-    } else if( index == 2) {
-        otherDisplay = otherDisplay2;
-    }
 
 //    log("renderer_update_root_process1 w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
 //        w, h, data, flip, otherDisplay.width, otherDisplay.height );
 
 //    if (otherDisplay.width != (float) w || otherDisplay.height != (float) h) {
-        otherDisplay.width = (float) w;
-        otherDisplay.height = (float) h;
 
-        glBindTexture(GL_TEXTURE_2D, otherDisplay.id);
+        if(index == 1){
+            otherDisplay1.width = (float) w;
+            otherDisplay1.height = (float) h;
+            glBindTexture(GL_TEXTURE_2D, otherDisplay1.id);
+        } else if( index == 2){
+            otherDisplay2.width = (float) w;
+            otherDisplay2.height = (float) h;
+            glBindTexture(GL_TEXTURE_2D, otherDisplay2.id);
+        }
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         checkGlError();
@@ -690,87 +694,69 @@ int renderer_should_redraw(void) {
 }
 
 int renderer_redraw(JNIEnv* env, uint8_t flip) {
-//    log("renderer_redraw sfc:%p sfc1:%p", sfc, sfc1);
-    int err = EGL_SUCCESS;
-
-    if (!sfc || eglGetCurrentContext() == EGL_NO_CONTEXT)
-        return FALSE;
-    glViewport(0, 0, 1920, 989); checkGlError();
-    if (eglMakeCurrent(egl_display, sfc, sfc, ctx) != EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
-        eglCheckError(__LINE__);
-    }
-//    log("renderer_redraw display1:%d sfc1:%p", otherDisplay1.id, sfc1);
-//    glViewport(0, 0, 1920, 989); checkGlError();
-
-    draw(display.id,  -1.f, -1.f, 1.f, 1.f, flip);
-    draw_cursor(0);
-    if (eglSwapBuffers(egl_display, sfc) != EGL_TRUE) {
-        err = eglGetError();
-        eglCheckError(__LINE__);
-        if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
-            log("We've got %s so window is to be destroyed. "
-                "Native window disconnected/abandoned, probably activity is destroyed or in background",
-                eglErrorLabel(err));
-            renderer_set_window(env, NULL, NULL);
-            return FALSE;
-        }
-    }
-
-    if (!sfc1 || eglGetCurrentContext() == EGL_NO_CONTEXT || !otherDisplay1.id) {
+    int err_traversal = TRUE;
+    err_traversal = renderer_redraw_traversal(env, flip, 0);
+    if(!err_traversal){
         return FALSE;
     }
-
-    modifyGlobalVariable(NULL);
-    glViewport(0, 0, 807, 592); checkGlError();
-    if (eglMakeCurrent(egl_display, sfc1, sfc1, ctx) != EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
-        eglCheckError(__LINE__);
-    }
-//    log("renderer_redraw otherDisplayid:%d displayid:%d", otherDisplay1.id, display.id);
-//    glViewport(480, 247, 1440, 741); checkGlError();
-
-    draw(otherDisplay1.id,  -1.f, -1.f, 1.f, 1.f, flip);
-    draw_cursor(1);
-
-    if (eglSwapBuffers(egl_display, sfc1) != EGL_TRUE) {
-        err = eglGetError();
-        eglCheckError(__LINE__);
-        if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
-            log("We've got %s so window is to be destroyed. "
-                "Native window disconnected/abandoned, probably activity is destroyed or in background",
-                eglErrorLabel(err));
-            renderer_set_window(env, NULL, NULL);
-            return FALSE;
-        }
-    }
-
-    if (!sfc2 || eglGetCurrentContext() == EGL_NO_CONTEXT || !otherDisplay2.id) {
+    err_traversal = renderer_redraw_traversal(env, flip, 1);
+    if(!err_traversal){
         return FALSE;
     }
-
-    if (eglMakeCurrent(egl_display, sfc2, sfc2, ctx) != EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
-        eglCheckError(__LINE__);
+    err_traversal = renderer_redraw_traversal(env, flip, 2);
+    if(!err_traversal){
+        return FALSE;
     }
-//    log("renderer_redraw otherDisplayid:%d displayid:%d", otherDisplay2.id, display.id);
-
-    draw(otherDisplay2.id,  -1.f, -1.f, 1.f, 1.f, flip);
-    draw_cursor(2);
-
-    if (eglSwapBuffers(egl_display, sfc2) != EGL_TRUE) {
-        err = eglGetError();
-        eglCheckError(__LINE__);
-        if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
-            log("We've got %s so window is to be destroyed. "
-                "Native window disconnected/abandoned, probably activity is destroyed or in background",
-                eglErrorLabel(err));
-            renderer_set_window(env, NULL, NULL);
-            return FALSE;
-        }
-    }
-
     renderedFrames++;
+    return TRUE;
+}
+
+
+int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
+    int err = EGL_SUCCESS;
+    EGLSurface eglSurface;
+    int id;
+    float width, height;
+    if (index == 0){
+        eglSurface = sfc;
+        id = display.id;
+        width = display.width;
+        height = display.height;
+    } else if(index == 1){
+        modifyGlobalVariable(NULL);
+        eglSurface = sfc1;
+        id = otherDisplay1.id;
+        width = otherDisplay1.width;
+        height = otherDisplay1.height;
+    } else if(index == 2){
+        modifyGlobalVariable(NULL);
+        eglSurface = sfc2;
+        id = otherDisplay2.id;
+        width = otherDisplay2.width;
+        height = otherDisplay2.height;
+    }
+    if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id)
+        return FALSE;
+
+    log("renderer_redraw_traversal eglSurface:%p id:%d width:%f height:%f", eglSurface, id, width, height);
+    glViewport(0, 0, width, height); checkGlError();
+    if (eglMakeCurrent(egl_display, eglSurface, eglSurface, ctx) != EGL_TRUE) {
+        log("Xlorie: eglMakeCurrent failed.\n");
+        eglCheckError(__LINE__);
+    }
+    draw(id,  -1.f, -1.f, 1.f, 1.f, flip);
+    draw_cursor(index);
+    if (eglSwapBuffers(egl_display, eglSurface) != EGL_TRUE) {
+        err = eglGetError();
+        eglCheckError(__LINE__);
+        if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
+            log("We've got %s so window is to be destroyed. "
+                "Native window disconnected/abandoned, probably activity is destroyed or in background",
+                eglErrorLabel(err));
+            renderer_set_window(env, NULL, NULL);
+            return FALSE;
+        }
+    }
     return TRUE;
 }
 
@@ -866,7 +852,6 @@ maybe_unused static void draw_cursor(int index) {
     if (!cursor.width || !cursor.height)
         return;
 
-
     float width = display.width;
     float height = display.height;
     float cursor_x = cursor.x;
@@ -877,12 +862,15 @@ maybe_unused static void draw_cursor(int index) {
     if (index == 1) {
         width = otherDisplay1.width;
         height = otherDisplay1.height;
-        cursor_x -= 556;
-        cursor_y -= 198;
-//        cursor_y += 42;
+        cursor_x -= otherDisplay1.offset_x;
+        cursor_y -= otherDisplay1.offset_y;
+        cursor_y += 42;
     } else if( index == 2) {
         width = otherDisplay2.width;
         height = otherDisplay2.height;
+        cursor_x -= otherDisplay2.offset_x;
+        cursor_y -= otherDisplay2.offset_y;
+//        cursor_y += 42;
     }
 
     x = 2.f * (cursor_x - cursor_xhot) / width - 1.f;
@@ -891,8 +879,8 @@ maybe_unused static void draw_cursor(int index) {
     w = 2.f * cursor.width / width;
     h = 2.f * cursor.height / height;
 
-//    log("draw_cursor index:%d width:%f height:%f", index, width, height);
-//    log("draw_cursor index:%d width:%f height:%f", index, width, height);
+    log("draw_cursor index:%d x:%f y:%f", index, x, y);
+    log("draw_cursor index:%d w:%f h:%f", index, w, h);
 //    log("draw_cursor index:%d x:%f y:%f", index, x, y);
 
 

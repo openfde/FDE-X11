@@ -323,31 +323,31 @@ static miPointerScreenFuncRec loriePointerCursorFuncs = {
         .WarpCursor = miPointerWarpCursor
 };
 
-static void lorieUpdateBufferSeparate(void) {
-    if(!pScreenPtr->separatePixPtr1){
-        return;
-    }
-    logh("lorieUpdateBufferSeparate separatePixPtr1 %p", pScreenPtr->separatePixPtr1);
-    AHardwareBuffer_Desc d0 = {}, d1 = {};
-    AHardwareBuffer *new = NULL, *old = pvfb->root.buffer;
-    int status, wasLocked = pvfb->root.locked;
-    void *data0 = NULL, *data1 = NULL;
-
-    if (pvfb->root.legacyDrawing) {
-        PixmapPtr pixmap = (PixmapPtr) pScreenPtr->separatePixPtr1;
-        DrawablePtr draw = &pixmap->drawable;
-        data0 = malloc(pScreenPtr->width * pScreenPtr->height * 4);
-        data1 = (draw->width && draw->height) ? pixmap->devPrivate.ptr : NULL;
-        if (data1)
-            pixman_blt(data1, data0, draw->width, pScreenPtr->width, 32, 32, 0, 0, 0, 0,
-                       min(draw->width, pScreenPtr->width), min(draw->height, pScreenPtr->height));
-        pScreenPtr->ModifyPixmapHeader(pScreenPtr->separatePixPtr1, pScreenPtr->width,
-                                       pScreenPtr->height, 32, 32, pScreenPtr->width * 4, data0);
-        free(data1);
-        return;
-    }
-
-}
+//static void lorieUpdateBufferSeparate(void) {
+//    if(!pScreenPtr->separatePixPtr1){
+//        return;
+//    }
+//    logh("lorieUpdateBufferSeparate separatePixPtr1 %p", pScreenPtr->separatePixPtr1);
+//    AHardwareBuffer_Desc d0 = {}, d1 = {};
+//    AHardwareBuffer *new = NULL, *old = pvfb->root.buffer;
+//    int status, wasLocked = pvfb->root.locked;
+//    void *data0 = NULL, *data1 = NULL;
+//
+//    if (pvfb->root.legacyDrawing) {
+//        PixmapPtr pixmap = (PixmapPtr) pScreenPtr->separatePixPtr1;
+//        DrawablePtr draw = &pixmap->drawable;
+//        data0 = malloc(pScreenPtr->width * pScreenPtr->height * 4);
+//        data1 = (draw->width && draw->height) ? pixmap->devPrivate.ptr : NULL;
+//        if (data1)
+//            pixman_blt(data1, data0, draw->width, pScreenPtr->width, 32, 32, 0, 0, 0, 0,
+//                       min(draw->width, pScreenPtr->width), min(draw->height, pScreenPtr->height));
+//        pScreenPtr->ModifyPixmapHeader(pScreenPtr->separatePixPtr1, pScreenPtr->width,
+//                                       pScreenPtr->height, 32, 32, pScreenPtr->width * 4, data0);
+//        free(data1);
+//        return;
+//    }
+//
+//}
 
 static void lorieUpdateBuffer(void) {
     logh("lorieUpdateBuffer legacydraw %d", pvfb->root.legacyDrawing);
@@ -739,9 +739,8 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
         lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
         initAnotherSurface(pvfb->env, surface, res->id, res->offset_x, res->offset_y,
                            res->width, res->height, res->pWin);
-        logh("lorieChangeWindow buffer:%p  lorieMouseRelative:%d lorieMouseRelative:%d"
-             "lorieKeyboard:%d lorieTouch:%d",
-             pvfb->root.buffer, lorieMouseRelative->id, lorieMouse->id, lorieKeyboard->id, lorieTouch->id);
+        logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
+             pvfb->root.buffer, res->id, surface );
         if (pvfb->root.legacyDrawing) {
             renderer_update_root(pScreenPtr->width, pScreenPtr->height,
                                  ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,

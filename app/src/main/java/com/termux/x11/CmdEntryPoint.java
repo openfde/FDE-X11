@@ -53,7 +53,7 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     private static HashSet<Integer> Ptrs = new HashSet<>();
 
     public static void startActivityForWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) {
-//        Log.d(TAG, "startActivityForWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
+        Log.d(TAG, "startActivityForWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
         if(Ptrs.contains(index)){
             return;
         }
