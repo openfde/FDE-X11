@@ -6,7 +6,7 @@ import com.termux.x11.IReceive;
 interface ICmdEntryInterface {
     void windowChanged(in Surface surface, float offsetX, float offsetY, float width, float height, int index, long windPtr);
     ParcelFileDescriptor getXConnection();
-    void registerListener(IReceive receiver);
-    void unregisterListener(IReceive receiver);
+    void registerListener(int index, IReceive receiver);
+    void unregisterListener(int index, IReceive receiver);
 //    ParcelFileDescriptor getLogcatOutput();
 }

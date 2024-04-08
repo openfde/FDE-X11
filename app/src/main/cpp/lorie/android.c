@@ -37,8 +37,8 @@ void start_android_window(int index, WindowPtr pWindow);
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
 
-PixmapPtr tempPixmap1 = NULL;
-PixmapPtr tempPixmap2 = NULL;
+extern PixmapPtr tempPixmap1;
+extern PixmapPtr tempPixmap2;
 extern WindowPtr separateWindowPtr1;
 extern WindowPtr separateWindowPtr2;
 
@@ -75,24 +75,52 @@ void modifyGlobalVariable(WindowPtr windowPtr) {
     }
 
 
-    if (separateWindowPtr1) {
+    if (separateWindowPtr1 && !tempPixmap1) {
         tempPixmap1 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
-        start_android_window(1, separateWindowPtr1);
     }
 
     if (tempPixmap1) {
-        renderer_update_root_process1(tempPixmap1->drawable.width, tempPixmap1->drawable.height,
-                                      tempPixmap1->devPrivate.ptr, 0, 1);
+        renderer_update_root_process1(tempPixmap1->screen_x, tempPixmap1->screen_y, tempPixmap1->drawable.width,
+                                      tempPixmap1->drawable.height, tempPixmap1->devPrivate.ptr, 0, 1);
+        start_android_window(1, separateWindowPtr1);
     }
 
-    if (separateWindowPtr2) {
+    if (separateWindowPtr2 && !tempPixmap2) {
         tempPixmap2 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr2);
-        start_android_window(2, separateWindowPtr2);
     }
 
     if (tempPixmap2) {
-        renderer_update_root_process1(tempPixmap2->drawable.width, tempPixmap2->drawable.height,
-                                      tempPixmap2->devPrivate.ptr, 0, 2);
+        renderer_update_root_process1(tempPixmap2->screen_x, tempPixmap2->screen_y, tempPixmap2->drawable.width,
+                                      tempPixmap2->drawable.height, tempPixmap2->devPrivate.ptr, 0, 2);
+        start_android_window(2, separateWindowPtr2);
+    }
+
+    //todo huyang_log
+    if(separateWindowPtr1 && separateWindowPtr2){
+        log(ERROR,
+            "modifyGlobalVariable1 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
+            separateWindowPtr1, separateWindowPtr1->drawable.width,
+            separateWindowPtr1->drawable.height,
+            separateWindowPtr1->drawable.x, separateWindowPtr1->drawable.y);
+        log(ERROR,
+            "modifyGlobalVariable2 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
+            separateWindowPtr2, separateWindowPtr2->drawable.width,
+            separateWindowPtr2->drawable.height,
+            separateWindowPtr2->drawable.x, separateWindowPtr2->drawable.y);
+    }
+    //todo huyang_log
+    if(tempPixmap1 && tempPixmap2){
+        PixmapPtr pixmapPtr1 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
+        log(ERROR,
+            "logoffset pixmapPtr1:%p width:%d height:%d screex:%d screeny:%d",
+            pixmapPtr1, pixmapPtr1->drawable.width,
+            pixmapPtr1->drawable.height,
+            pixmapPtr1->screen_x, pixmapPtr1->screen_y);
+        log(ERROR,
+            "logoffset tempPixmap1:%p width:%d height:%d screex:%d screeny:%d",
+            tempPixmap1, tempPixmap1->drawable.width,
+            tempPixmap1->drawable.height,
+            tempPixmap1->screen_x, tempPixmap1->screen_y);
     }
 }
 
@@ -103,7 +131,7 @@ void start_android_window(int index, WindowPtr windowPtr) {
         int offsetY = windowPtr->drawable.y;
         int width = windowPtr->drawable.width;
         int height = windowPtr->drawable.height;
-        jmethodID method = !CmdEntryPointObject ? NULL : (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityForWindow", "(IIIIIJ)V");
+        jmethodID method = !CmdEntryPointObject ? NULL : (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityOrUpdateOffsetForWindow", "(IIIIIJ)V");
         log(ERROR, "start_android_window pWindow:%p", method);
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, CmdEntryPointObject, method,
                                          offsetX, offsetY, width, height, index, (long)windowPtr);
@@ -575,7 +603,7 @@ Java_com_termux_x11_LorieView_sendWindowChange(unused JNIEnv* env, unused jobjec
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_sendMouseEvent(unused JNIEnv* env, unused jobject cls, jfloat x, jfloat y, jint which_button, jboolean button_down, jboolean relative) {
+Java_com_termux_x11_LorieView_sendMouseEvent(unused JNIEnv* env, unused jobject cls, jfloat x, jfloat y, jint which_button, jboolean button_down, jboolean relative, jint index) {
     if (conn_fd != -1) {
         lorieEvent e = { .mouse = { .t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative } };
         write(conn_fd, &e, sizeof(e));

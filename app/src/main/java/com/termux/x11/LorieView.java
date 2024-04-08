@@ -204,7 +204,7 @@ public class LorieView extends SurfaceView implements InputStub {
 
     @Override
     public void sendMouseWheelEvent(float deltaX, float deltaY) {
-        sendMouseEvent(deltaX, deltaY, BUTTON_SCROLL, false, true);
+        sendMouseEvent(deltaX, deltaY, BUTTON_SCROLL, false, true, getCoordinate() == null ? 0 : getCoordinate().getIndex());
     }
 
     @Override
@@ -224,7 +224,7 @@ public class LorieView extends SurfaceView implements InputStub {
     static native void startLogcat(int fd);
     static native void setClipboardSyncEnabled(boolean enabled);
     static native void sendWindowChange(int width, int height, int framerate);
-    public native void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative);
+    public native void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index);
     public native void sendTouchEvent(int action, int id, int x, int y);
     public native boolean sendKeyEvent(int scanCode, int keyCode, boolean keyDown);
     public native void sendTextEvent(byte[] text);

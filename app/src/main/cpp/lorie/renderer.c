@@ -617,25 +617,33 @@ void renderer_update_root(int w, int h, void* data, uint8_t flip) {
     }
 }
 
-void renderer_update_root_process1(int w, int h, void *data, uint8_t flip, int index) {
+void renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8_t flip, int index) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h)
         return;
 
+    DisplayRes displayRes;
+    if(index == 1 ){
+        displayRes = otherDisplay1;
+        otherDisplay1.offset_x = (float) x;
+        otherDisplay1.offset_y = (float) y;
+    } else if ( index == 2 ){
+        displayRes = otherDisplay2;
+        otherDisplay2.offset_x = (float) x;
+        otherDisplay2.offset_y = (float) y;
+    }
 
+    log("renderer_update_root_process1 x:%d y:%d offsetx:%f offsety:%f data:%p flip:%d display.width=%f display.height:%f index:%d id:%d",
+        x, y, displayRes.offset_x, displayRes.offset_y, data, flip, displayRes.width, displayRes.height, index, displayRes.id );
 
-//    log("renderer_update_root_process1 w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-//        w, h, data, flip, otherDisplay.width, otherDisplay.height );
-
-//    if (otherDisplay.width != (float) w || otherDisplay.height != (float) h) {
-
+    if (displayRes.width != (float) w || displayRes.height != (float) h) {
         if(index == 1){
             otherDisplay1.width = (float) w;
             otherDisplay1.height = (float) h;
-            glBindTexture(GL_TEXTURE_2D, otherDisplay1.id);
+            glBindTexture(GL_TEXTURE_2D, displayRes.id);
         } else if( index == 2){
             otherDisplay2.width = (float) w;
             otherDisplay2.height = (float) h;
-            glBindTexture(GL_TEXTURE_2D, otherDisplay2.id);
+            glBindTexture(GL_TEXTURE_2D, displayRes.id);
         }
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -649,14 +657,13 @@ void renderer_update_root_process1(int w, int h, void *data, uint8_t flip, int i
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
-//    } else {
-//        glBindTexture(GL_TEXTURE_2D, otherDisplay.id);
-//        checkGlError();
-//
-//        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-//                        GL_UNSIGNED_BYTE, data);
-//        checkGlError();
-//    }
+    } else {
+        glBindTexture(GL_TEXTURE_2D, displayRes.id);
+        checkGlError();
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+                        GL_UNSIGNED_BYTE, data);
+        checkGlError();
+    }
 }
 
 void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
@@ -679,7 +686,7 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
-    log("set_cursor x%d, y :%d", x , y);
+    log("set_cursor x:%d, y :%d", x , y);
     cursor.x = (float) x;
     cursor.y = (float) y;
 }
@@ -696,17 +703,17 @@ int renderer_should_redraw(void) {
 int renderer_redraw(JNIEnv* env, uint8_t flip) {
     int err_traversal = TRUE;
     err_traversal = renderer_redraw_traversal(env, flip, 0);
-    if(!err_traversal){
-        return FALSE;
-    }
+//    if(!err_traversal){
+//        return FALSE;
+//    }
     err_traversal = renderer_redraw_traversal(env, flip, 1);
-    if(!err_traversal){
-        return FALSE;
-    }
+//    if(!err_traversal){
+//        return FALSE;
+//    }
     err_traversal = renderer_redraw_traversal(env, flip, 2);
-    if(!err_traversal){
-        return FALSE;
-    }
+//    if(!err_traversal){
+//        return FALSE;
+//    }
     renderedFrames++;
     return TRUE;
 }
@@ -864,7 +871,7 @@ maybe_unused static void draw_cursor(int index) {
         height = otherDisplay1.height;
         cursor_x -= otherDisplay1.offset_x;
         cursor_y -= otherDisplay1.offset_y;
-        cursor_y += 42;
+//        cursor_y += 42;
     } else if( index == 2) {
         width = otherDisplay2.width;
         height = otherDisplay2.height;

@@ -55,26 +55,33 @@ public final class InputEventSender {
     public void sendMouseEvent(PointF pos, int button, boolean down, boolean relative) {
         if (!buttons.contains(button))
             return;
-        mInjector.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative);
+        mInjector.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
+                ((LorieView)mInjector).getCoordinate() == null ? 0 : ((LorieView)mInjector).getCoordinate().getIndex() );
     }
 
     public void sendMouseDown(int button, boolean relative) {
         if (!buttons.contains(button)) 
             return;
-        mInjector.sendMouseEvent(0, 0, button, true, relative);
+        mInjector.sendMouseEvent(0, 0, button, true, relative,
+                ((LorieView)mInjector).getCoordinate() == null ? 0 : ((LorieView)mInjector).getCoordinate().getIndex() );
     }
 
     public void sendMouseUp(int button, boolean relative) {
         if (!buttons.contains(button))
             return;
-        mInjector.sendMouseEvent(0, 0, button, false, relative);
+        mInjector.sendMouseEvent(0, 0, button, false, relative,
+                ((LorieView)mInjector).getCoordinate() == null ? 0 : ((LorieView)mInjector).getCoordinate().getIndex()  );
     }
 
     public void sendMouseClick(int button, boolean relative) {
         if (!buttons.contains(button))
             return;
-        mInjector.sendMouseEvent(0, 0, button, true, relative);
-        mInjector.sendMouseEvent(0, 0, button, false, relative);
+        LorieView lorieView = (LorieView) mInjector;
+
+        mInjector.sendMouseEvent(0, 0, button, true, relative,
+                lorieView.getCoordinate() == null ? 0 : lorieView.getCoordinate().getIndex());
+        mInjector.sendMouseEvent(0, 0, button, false, relative,
+                lorieView.getCoordinate() == null ? 0 : lorieView.getCoordinate().getIndex());
     }
 
     public void sendCursorMove(float x, float y, boolean relative) {
@@ -85,11 +92,11 @@ public final class InputEventSender {
             float offsetY = coordinate.getOffsetY();
             x += offsetX;
             y += offsetY;
-            y -= DECORCATIONVIEW_HEIGHT;
-            mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative);
-        } else {
-            mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative);
+//            y -= DECORCATIONVIEW_HEIGHT;
+            Log.d(TAG, "sendCursorMove() called with: x = [" + x + "], y = [" + y + "], coordinate = [" + coordinate + "]");
         }
+        mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
+                lorieView.getCoordinate() == null ? 0 : lorieView.getCoordinate().getIndex());
     }
 
     public void sendMouseWheelEvent(float distanceX, float distanceY) {

@@ -27,7 +27,7 @@ maybe_unused int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int indext
 maybe_unused void renderer_print_fps(float millis);
 
 maybe_unused void renderer_update_root(int w, int h, void* data, uint8_t flip);
-maybe_unused void renderer_update_root_process1(int w, int h, void* data, uint8_t flip, int index);
+maybe_unused void renderer_update_root_process1(int x, int y, int w, int h, void* data, uint8_t flip, int index);
 maybe_unused void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data);
 maybe_unused void renderer_set_cursor_coordinates(int x, int y);
 

@@ -29,6 +29,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 
 @Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
@@ -39,7 +40,7 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     private static final Handler handler;
     private static final String TAG = "CmdEntryPoint";
     public static Context ctx;
-    public static IReceive receiver;
+    public static HashMap<Integer, IReceive> receiverMap = new HashMap<>();
 
     static {
         try {
@@ -52,10 +53,13 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
 
     private static HashSet<Integer> Ptrs = new HashSet<>();
 
-    public static void startActivityForWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) {
+    public static void startActivityOrUpdateOffsetForWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) {
         Log.d(TAG, "startActivityForWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
+        IReceive receiver = receiverMap.get(0);
         if(Ptrs.contains(index)){
-            return;
+            receiver = receiverMap.get(index);
+        } else {
+            receiver = receiverMap.get(0);
         }
         Ptrs.add(index);
         if(receiver != null){
@@ -249,15 +253,13 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     public native ParcelFileDescriptor getXConnection();
 
     @Override
-    public void registerListener(IReceive receiver) throws RemoteException {
-        this.receiver = receiver;
+    public void registerListener(int index, IReceive receiver) throws RemoteException {
+        receiverMap.put(index, receiver);
     }
 
     @Override
-    public void unregisterListener(IReceive receiver) throws RemoteException {
-        if(this.receiver == receiver){
-            this.receiver = null;
-        }
+    public void unregisterListener(int index, IReceive receiver) throws RemoteException {
+        receiverMap.remove(index);
     }
 
     public native ParcelFileDescriptor getLogcatOutput();

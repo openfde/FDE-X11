@@ -46,7 +46,6 @@ import android.view.DragEvent;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
@@ -103,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     private String TAG = "Xevent_MainActivity";
 
     protected long WindowCode = 0;
-    protected int index = 0;
+    protected int mIndex = 0;
     protected Coordinate mCoordinate;
 
     protected long getWindowId() {
@@ -113,8 +112,11 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     private IReceive.Stub listener = new IReceive.Stub() {
         @Override
         public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) throws RemoteException {
-            Log.d(TAG, "startWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
-            if(index == 1){
+            Log.d(TAG, "startWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], mIndex = [" + mIndex + "]");
+            if(index  == mIndex){
+                mCoordinate.setOffsetX(offsetX);
+                mCoordinate.setOffsetY(offsetY);
+            } else if(index == 1){
                 offsetY += DECORCATIONVIEW_HEIGHT;
                 ActivityOptions options = ActivityOptions.makeBasic();
                 options.setLaunchBounds(new Rect(offsetX, (int)(offsetY - DECORCATIONVIEW_HEIGHT), width + offsetX, height + offsetY));
@@ -127,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 intent.putExtra("NativeWindow_data", coordinate);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent, options.toBundle());
-            } else {
+            } else if(index == 2 ){
                 ActivityOptions options = ActivityOptions.makeBasic();
                 options.setLaunchBounds(new Rect(offsetX, (int)(offsetY - DECORCATIONVIEW_HEIGHT), width + offsetX, height + offsetY));
                 Intent intent = new Intent(MainActivity.this, MainActivity2.class);
@@ -152,7 +154,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     Log.v("MainActivity", "Got new ACTION_START intent");
                     IBinder b = Objects.requireNonNull(intent.getBundleExtra("")).getBinder("");
                     service = ICmdEntryInterface.Stub.asInterface(b);
-                    service.registerListener(listener);
+                    service.registerListener(mIndex, listener);
                     Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
                         service = null;
                         CmdEntryPoint.requestConnection();
@@ -193,11 +195,11 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         mCoordinate = getIntent().getParcelableExtra("NativeWindow_data");
         if(mCoordinate != null){
-            index = mCoordinate.getIndex();
+            mIndex = mCoordinate.getIndex();
             WindowCode = mCoordinate.getWindowPtr();
         }
-        Log.d(TAG, "onCreate() called with: mCoordinate = [" + mCoordinate + "]" +
-                " , WindowCode = " + Long.toHexString(WindowCode) + ", index = " + index);
+        Log.d(TAG, "onCreate() " +  this  +  " mCoordinate = [" + mCoordinate + "]" +
+                " , WindowCode = " + Long.toHexString(WindowCode) + ", index = " + mIndex);
         Util.setBaseContext(this);
         CmdEntryPoint.ctx = this;
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -240,7 +242,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     if (e.getRepeatCount() != 0) // ignore auto-repeat
                         return true;
                     if (e.getAction() == KeyEvent.ACTION_UP || e.getAction() == KeyEvent.ACTION_DOWN)
-                        lorieView.sendMouseEvent(-1, -1, InputStub.BUTTON_RIGHT, e.getAction() == KeyEvent.ACTION_DOWN, true);
+                        lorieView.sendMouseEvent(-1, -1, InputStub.BUTTON_RIGHT, e.getAction() == KeyEvent.ACTION_DOWN, true, mIndex);
                     return true;
                 }
 
@@ -283,9 +285,17 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     }
                 } else {
                     try {
-                        service.windowChanged(sfc, coordinate.getOffsetX(), coordinate.getOffsetY(),
-                                coordinate.getWidth(), coordinate.getHeight(), coordinate.getIndex(),
-                                coordinate.getWindowPtr());
+                        if(surfaceWidth == 0 || surfaceHeight == 0){
+                            service.windowChanged(sfc, 0, 0,
+                                    0, 0, coordinate.getIndex(),
+                                    coordinate.getWindowPtr());
+                        } else {
+                            service.windowChanged(sfc, coordinate.getOffsetX(), coordinate.getOffsetY(),
+                                    coordinate.getWidth(), coordinate.getHeight(), coordinate.getIndex(),
+                                    coordinate.getWindowPtr());
+                        }
+
+
                     } catch (RemoteException e) {
                         e.printStackTrace();
                     }
@@ -329,7 +339,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         unregisterReceiver(receiver);
         super.onDestroy();
         try {
-            service.unregisterListener(listener);
+            service.unregisterListener(mIndex, listener);
         } catch (RemoteException e) {
             throw new RuntimeException(e);
         }
@@ -470,12 +480,12 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             switch(e.getAction()) {
                 case MotionEvent.ACTION_DOWN:
                 case MotionEvent.ACTION_POINTER_DOWN:
-                    getLorieView().sendMouseEvent(0, 0, b, true, true);
+                    getLorieView().sendMouseEvent(0, 0, b, true, true, mIndex);
                     v.setPressed(true);
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_POINTER_UP:
-                    getLorieView().sendMouseEvent(0, 0, b, false, true);
+                    getLorieView().sendMouseEvent(0, 0, b, false, true, mIndex);
                     v.setPressed(false);
                     break;
             }
@@ -912,7 +922,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             if (!connected)
                 tryConnect();
 
-            if (connected && index != 0){
+            if (connected && mIndex != 0){
 //                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
             }
         });
