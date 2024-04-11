@@ -82,7 +82,7 @@ void modifyGlobalVariable(WindowPtr windowPtr) {
     if (tempPixmap1) {
         renderer_update_root_process1(tempPixmap1->screen_x, tempPixmap1->screen_y, tempPixmap1->drawable.width,
                                       tempPixmap1->drawable.height, tempPixmap1->devPrivate.ptr, 0, 1);
-        start_android_window(1, separateWindowPtr1);
+//        start_android_window(1, separateWindowPtr1);
     }
 
     if (separateWindowPtr2 && !tempPixmap2) {
@@ -92,7 +92,7 @@ void modifyGlobalVariable(WindowPtr windowPtr) {
     if (tempPixmap2) {
         renderer_update_root_process1(tempPixmap2->screen_x, tempPixmap2->screen_y, tempPixmap2->drawable.width,
                                       tempPixmap2->drawable.height, tempPixmap2->devPrivate.ptr, 0, 2);
-        start_android_window(2, separateWindowPtr2);
+//        start_android_window(2, separateWindowPtr2);
     }
 
     //todo huyang_log
