@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+<!--    android:extractNativeLibs="true"-->
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -36,7 +38,7 @@
         </activity>
 
         <activity
-            android:name=".ListActivity"
+            android:name=".ControlActivity"
             android:taskAffinity=".ListActivity"
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
