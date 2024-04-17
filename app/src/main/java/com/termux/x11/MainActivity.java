@@ -64,6 +64,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
+import com.fde.fusionwindowmanager.NativeLib;
 import com.termux.x11.input.InputEventSender;
 import com.termux.x11.input.InputStub;
 import com.termux.x11.input.TouchInputHandler.RenderStub;
@@ -76,6 +77,8 @@ import com.termux.x11.utils.Util;
 import com.termux.x11.utils.X11ToolbarViewPager;
 import com.termux.x11.window.Coordinate;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 
@@ -331,6 +334,26 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PERMISSION_GRANTED
                 && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
             requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 0);
+        }
+//        execWindowManager();
+    }
+
+    private void execWindowManager() {
+        try {
+            Log.d(TAG, "execWindowManager() called");
+            File file = new File(getApplicationInfo().nativeLibraryDir + "/libbspwm.so");
+            file.setExecutable(true); // make program executable
+            ProcessBuilder pb = new ProcessBuilder(file.getPath());
+            Map<String, String> env = pb.environment();
+            env.put("DISPLAY", "127.0.0.1:0");
+            File file1 = new File(getApplicationInfo().dataDir);
+            Log.d(TAG, "execWindowManager() called " + file1.exists());
+            pb.directory(file1); // execute within dataDir
+            Process start = pb.start();
+            Log.d(TAG, "execWindowManager() called after");
+        } catch (Exception e) {
+            Log.d(TAG, "execWindowManager() called e:" + e);
+            e.printStackTrace();
         }
     }
 
@@ -646,7 +669,6 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         super.onResume();
 
         mNotificationManager.notify(mNotificationId, mNotification);
-
         setTerminalToolbarView();
         getLorieView().requestFocus();
         String hexString = Long.toHexString(getWindowId());
@@ -932,4 +954,6 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         getLorieView().handleXEvents();
         handler.postDelayed(this::checkXEvents, 300);
     }
+
+
 }
