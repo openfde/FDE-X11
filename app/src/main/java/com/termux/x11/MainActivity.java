@@ -64,7 +64,6 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
-import com.fde.fusionwindowmanager.NativeLib;
 import com.termux.x11.input.InputEventSender;
 import com.termux.x11.input.InputStub;
 import com.termux.x11.input.TouchInputHandler.RenderStub;
@@ -882,6 +881,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
     @Override
     public void onBackPressed() {
+        super.onBackPressed();
     }
 
     public static boolean hasPipPermission(@NonNull Context context) {

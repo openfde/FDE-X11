@@ -38,7 +38,7 @@
         </activity>
 
         <activity
-            android:name=".ListActivity"
+            android:name=".ControlActivity"
             android:taskAffinity=".ListActivity"
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"

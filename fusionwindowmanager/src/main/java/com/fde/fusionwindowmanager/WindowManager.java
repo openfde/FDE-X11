@@ -1,6 +1,6 @@
 package com.fde.fusionwindowmanager;
 
-public class NativeLib {
+public class FusionWindowManager {
 
     // Used to load the 'fusionwindowmanager' library on application startup.
     static {
