@@ -198,6 +198,7 @@ Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jobject thiz, jobjec
 
     JNIEnv *JavaEnv = env;
     JavaCmdEntryPointClass = (*JavaEnv)->NewGlobalRef( JavaEnv, thiz);
+    setenv("XKB_CONFIG_ROOT", "/data/data/com.termux.x11/files/xkb/", 1);
 
 
     argv[0] = (char*) "Xlorie";
@@ -307,6 +308,9 @@ Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jobject thiz, jobjec
         printf("%s is unaccessible: %s\n", XkbBaseDirectory, strerror(errno));
         return JNI_FALSE;
     }
+
+    char* xkb_root  = getenv("XKB_CONFIG_ROOT");
+    log(ERROR, "XKB_CONFIG_ROOT :%s", xkb_root);
 
     (*env)->GetJavaVM(env, &vm);
 

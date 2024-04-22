@@ -3,13 +3,19 @@ package com.termux.x11.utils;
 import android.app.ActivityOptions;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.AssetManager;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 
 import com.termux.x11.MainActivity1;
 
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 
@@ -46,6 +52,82 @@ public class Util {
         baseContext.startActivity(intent);
     }
 
+
+
+    public static void copyAssetsToFiles(Context context, String sourceDir, String targetDir) {
+        AssetManager assetManager = context.getAssets();
+        String[] files = null;
+        try {
+            files = assetManager.list(sourceDir);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        if (files != null && files.length > 0) {
+            File dir = new File(context.getFilesDir(), targetDir);
+            if (!dir.exists()) {
+                if (!dir.mkdirs()) {
+                    Log.e("AssetCopy", "Failed to create directory: " + dir.getAbsolutePath());
+                    return;
+                }
+            }
+
+            for (String filename : files) {
+                String sourceFile = sourceDir.equals("") ? filename : sourceDir + File.separator + filename;
+                String targetFile = targetDir.equals("") ? filename : targetDir + File.separator + filename;
+
+                if (isAssetDirectory(assetManager, sourceFile)) {
+                    copyAssetsToFiles(context, sourceFile, targetFile);
+                } else {
+                    copyAssetFile(assetManager, context.getFilesDir(), sourceFile, targetFile);
+                }
+            }
+        }
+    }
+
+    private static boolean isAssetDirectory(AssetManager assetManager, String path) {
+        try {
+            String[] list = assetManager.list(path);
+            return list != null && list.length > 0;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static void copyAssetFile(AssetManager assetManager, File targetDir, String sourceFile, String targetFile) {
+        InputStream in = null;
+        OutputStream out = null;
+        File outFile = new File(targetDir, targetFile);
+        try {
+            in = assetManager.open(sourceFile);
+            out = new FileOutputStream(outFile);
+            copyFile(in, out);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            closeStream(in);
+            closeStream(out);
+        }
+    }
+
+    private static void copyFile(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[1024];
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
+        }
+    }
+
+    private static void closeStream(Closeable stream) {
+        if (stream != null) {
+            try {
+                stream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 
     public static Class<?> getClassByName(String name) {
         Class<?> xwindowActivityClass = null;

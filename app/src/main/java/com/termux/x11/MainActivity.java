@@ -951,8 +951,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     }
 
     private void checkXEvents() {
-        getLorieView().handleXEvents();
-        handler.postDelayed(this::checkXEvents, 300);
+//        getLorieView().handleXEvents();
+//        handler.postDelayed(this::checkXEvents, 300);
     }
 
 

@@ -14,11 +14,13 @@ import com.fde.fusionwindowmanager.fusionview.FusionActivity;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.service.WMService;
 import com.fde.fusionwindowmanager.service.WMServiceConnection;
+import com.termux.x11.utils.Util;
 
 public class ControlActivity extends Activity implements View.OnClickListener {
 
     private static final int DECORCATIONVIEW_HEIGHT = 42;
-    private Button btCreateWindow, btStartScreen, btBindWindowManager,
+    private Button btCreateWindow, btstartXserver,
+            btStartScreen, btBindWindowManager,
             btCreateFromWM, btMoveNative, btResizeNative, btCloseWindowNative, btRaiseNative,
             btStopWindowManager;
     private WMServiceConnection connection;
@@ -37,6 +39,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btCloseWindowNative = findViewById(R.id.button_closewindow);
         btRaiseNative = findViewById(R.id.button_raisewindow);
         btStopWindowManager = findViewById(R.id.button_stopwm);
+        btstartXserver = findViewById(R.id.button_startServer);
 
         btCreateWindow.setOnClickListener(this);
         btStartScreen.setOnClickListener(this);
@@ -47,10 +50,14 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btCloseWindowNative.setOnClickListener(this);
         btRaiseNative.setOnClickListener(this);
         btStopWindowManager.setOnClickListener(this);
+        btstartXserver.setOnClickListener(this);
+
+        Util.copyAssetsToFiles(this, "xkb", "xkb");
 
         if(connection == null ){
             connection = new WMServiceConnection();
         }
+
         Intent intent = new Intent(this, WMService.class);
         bindService(intent, connection, BIND_AUTO_CREATE);
         windowManager = new WindowManager();
@@ -82,6 +89,8 @@ public class ControlActivity extends Activity implements View.OnClickListener {
             Log.d("TAG", "raiseWindow: ret = [" + ret + "]");
         } else if ( v == btStopWindowManager){
             windowManager.stopWindowManager();
+        } else if ( v == btstartXserver){
+            CmdEntryPoint.main(new String[]{":0", "-legacy-drawing", "-listen", "tcp"});
         }
     }
 

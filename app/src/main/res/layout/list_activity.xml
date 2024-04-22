@@ -90,4 +90,14 @@
         app:layout_constraintStart_toEndOf="@+id/button_manager"
         app:layout_constraintTop_toTopOf="@+id/button_manager"
         app:layout_constraintVertical_bias="0.0" />
+
+    <Button
+        android:id="@+id/button_startServer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:text="start xserver"
+        app:layout_constraintBottom_toBottomOf="@+id/button_startscreen"
+        app:layout_constraintStart_toEndOf="@+id/button_startscreen"
+        app:layout_constraintTop_toTopOf="@+id/button_startscreen" />
 </androidx.constraintlayout.widget.ConstraintLayout>

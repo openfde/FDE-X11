@@ -214,8 +214,8 @@ void WindowManager::Unframe(Window w) {
 }
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent& e) {
-    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
-    XCompositeNameWindowPixmap(display_, frame_window);
+//    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
+//    XCompositeNameWindowPixmap(display_, frame_window);
     XSync(display_, False);
 }
 
@@ -243,8 +243,8 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     XConfigureWindow(display_, e.window, e.value_mask, &changes);
     log("Resize %lu to %s" , e.window , Size<int>(e.width, e.height).ToString().c_str());
 
-    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
-    XCompositeNameWindowPixmap(display_, frame_window);
+//    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
+//    XCompositeNameWindowPixmap(display_, frame_window);
     XSync(display_, False);
 
 }
