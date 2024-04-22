@@ -82,7 +82,7 @@ void modifyGlobalVariable(WindowPtr windowPtr) {
     if (tempPixmap1) {
         renderer_update_root_process1(tempPixmap1->screen_x, tempPixmap1->screen_y, tempPixmap1->drawable.width,
                                       tempPixmap1->drawable.height, tempPixmap1->devPrivate.ptr, 0, 1);
-//        start_android_window(1, separateWindowPtr1);
+        start_android_window(1, separateWindowPtr1);
     }
 
     if (separateWindowPtr2 && !tempPixmap2) {

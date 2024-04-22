@@ -632,8 +632,8 @@ void renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8
         otherDisplay2.offset_y = (float) y;
     }
 
-    log("renderer_update_root_process1 x:%d y:%d offsetx:%f offsety:%f data:%p flip:%d display.width=%f display.height:%f index:%d id:%d",
-        x, y, displayRes.offset_x, displayRes.offset_y, data, flip, displayRes.width, displayRes.height, index, displayRes.id );
+//    log("renderer_update_root_process1 x:%d y:%d offsetx:%f offsety:%f data:%p flip:%d display.width=%f display.height:%f index:%d id:%d",
+//        x, y, displayRes.offset_x, displayRes.offset_y, data, flip, displayRes.width, displayRes.height, index, displayRes.id );
 
     if (displayRes.width != (float) w || displayRes.height != (float) h) {
         if(index == 1){
@@ -686,7 +686,7 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
-    log("set_cursor x:%d, y :%d", x , y);
+//    log("set_cursor x:%d, y :%d", x , y);
     cursor.x = (float) x;
     cursor.y = (float) y;
 }
@@ -745,7 +745,7 @@ int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
     if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id)
         return FALSE;
 
-    log("renderer_redraw_traversal eglSurface:%p id:%d width:%f height:%f", eglSurface, id, width, height);
+//    log("renderer_redraw_traversal eglSurface:%p id:%d width:%f height:%f", eglSurface, id, width, height);
     glViewport(0, 0, width, height); checkGlError();
     if (eglMakeCurrent(egl_display, eglSurface, eglSurface, ctx) != EGL_TRUE) {
         log("Xlorie: eglMakeCurrent failed.\n");
@@ -886,8 +886,8 @@ maybe_unused static void draw_cursor(int index) {
     w = 2.f * cursor.width / width;
     h = 2.f * cursor.height / height;
 
-    log("draw_cursor index:%d x:%f y:%f", index, x, y);
-    log("draw_cursor index:%d w:%f h:%f", index, w, h);
+//    log("draw_cursor index:%d x:%f y:%f", index, x, y);
+//    log("draw_cursor index:%d w:%f h:%f", index, w, h);
 //    log("draw_cursor index:%d x:%f y:%f", index, x, y);
 
 

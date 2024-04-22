@@ -1,4 +1,4 @@
-package com.termux.x11.window;
+package com.fde.fusionwindowmanager;
 
 import android.os.Parcel;
 import android.os.Parcelable;

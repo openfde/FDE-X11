@@ -114,7 +114,7 @@ SOFTWARE.
 
 #define XK_VoidSymbol                  0xffffff  /* Void symbol */
 
-#ifdef XK_MISCELLANY
+//#ifdef XK_MISCELLANY
 /*
  * TTY function keys, cleverly chosen to map to ASCII, for convenience of
  * programming, but could have been arbitrary (at the cost of lookup
@@ -327,7 +327,7 @@ SOFTWARE.
 #define XK_Super_R                       0xffec  /* Right super */
 #define XK_Hyper_L                       0xffed  /* Left hyper */
 #define XK_Hyper_R                       0xffee  /* Right hyper */
-#endif /* XK_MISCELLANY */
+//#endif /* XK_MISCELLANY */
 
 /*
  * Keyboard (XKB) Extension function and modifier keys

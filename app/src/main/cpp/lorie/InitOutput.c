@@ -467,7 +467,7 @@ static inline Bool loriePixmapLock(PixmapPtr pixmap) {
 }
 
 static void lorieTimerCallback(int fd, unused int r, void *arg) {
-    logh("lorieTimerCallback");
+//    logh("lorieTimerCallback");
     char dummy[8];
     read(fd, dummy, 8);
     if (renderer_should_redraw() && RegionNotEmpty(DamageRegion(pvfb->damage))) {

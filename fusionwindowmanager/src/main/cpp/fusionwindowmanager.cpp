@@ -2,14 +2,13 @@
 #include <string>
 #include "include/xcb/xcb.h"
 #include "include/X11/Xlib.h"
-
 #include <android/log.h>
+#include "include/window_manager.h"
 #define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_native", __VA_ARGS__)
+WindowManager *window_manager;
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_com_fde_fusionwindowmanager_NativeLib_stringFromJNI(
-        JNIEnv* env,
-        jobject /* this */) {
+JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
+{
     setenv("DISPLAY", ":0", 1);
     Display *display;
     Window root, window;
@@ -19,7 +18,7 @@ Java_com_fde_fusionwindowmanager_NativeLib_stringFromJNI(
     // 连接到 X 服务器
     display = XOpenDisplay(NULL);
     if (display == NULL) {
-//        fprintf(stderr, "Cannot open display\n");
+        log("Cannot open display\n");
         exit(1);
     }
 
@@ -31,10 +30,8 @@ Java_com_fde_fusionwindowmanager_NativeLib_stringFromJNI(
     window = XCreateSimpleWindow(display, root, 200, 200, 640, 480, 1,
                                  BlackPixel(display, screen),
                                  WhitePixel(display, screen));
-
     // 设置窗口标题
     XStoreName(display, window, "Simple Window Manager");
-
     // 显示窗口
     XMapWindow(display, window);
 
@@ -53,6 +50,85 @@ Java_com_fde_fusionwindowmanager_NativeLib_stringFromJNI(
                 break;
         }
     }
-    std::string hello = "Hello from C++";
-    return env->NewStringUTF(hello.c_str());
+}
+
+JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj){
+    setenv("DISPLAY", ":0", 1);
+    window_manager = WindowManager::create();
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    window_manager->Run();
+    return True;
+}
+
+JNIEXPORT jint JNICALL moveWindow(JNIEnv * env, jobject obj, jlong ptr, jint x, jint y){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    return window_manager->moveWindow(ptr, x, y);
+}
+
+JNIEXPORT jint JNICALL resizeWindow(JNIEnv * env, jobject obj, jlong ptr, jint x, jint y){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    return window_manager->resizeWindow(ptr, x, y);
+}
+
+JNIEXPORT jint JNICALL closeWindow(JNIEnv * env, jobject obj, jlong ptr){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    return window_manager->closeWindow(ptr);
+}
+
+JNIEXPORT jint JNICALL raiseWindow(JNIEnv * env, jobject obj, jlong ptr){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    return window_manager->raiseWindow(ptr);
+}
+
+JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
+    if(window_manager){
+        log("disconnect2Server");
+        window_manager->stoped = True;
+        delete window_manager;
+        window_manager = NULL;
+    }
+    return True;
+}
+
+static JNINativeMethod method_table[] = {
+        {"createXWindow","()V", (void *) createXWindow},
+        {"connect2Server","()I", (void *) connect2Server},
+        {"moveWindow","(JII)I", (void *) moveWindow},
+        {"resizeWindow","(JII)I", (void *) resizeWindow},
+        {"closeWindow","(J)I", (void *) closeWindow},
+        {"raiseWindow","(J)I", (void *) raiseWindow},
+        {"disconnect2Server","()I", (void *) disconnect2Server},
+
+};
+
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void *reserved){
+    JNIEnv *env = NULL;
+    if (vm->AttachCurrentThread(&env,NULL) == JNI_OK){
+        jclass clazz = env->FindClass("com/fde/fusionwindowmanager/WindowManager");
+        if (clazz == NULL){
+            return JNI_ERR;
+        }
+
+        if (env->RegisterNatives(clazz, method_table, sizeof(method_table)/ sizeof(method_table[0]))==JNI_OK) {
+            return JNI_VERSION_1_6;
+        }
+    }
+
+    return JNI_ERR;
 }

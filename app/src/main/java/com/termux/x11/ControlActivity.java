@@ -19,7 +19,8 @@ public class ControlActivity extends Activity implements View.OnClickListener {
 
     private static final int DECORCATIONVIEW_HEIGHT = 42;
     private Button btCreateWindow, btStartScreen, btBindWindowManager,
-            btCreateFromWM, btMoveNative, btResizeNative, btCloseWindow, btRaiseWindow;
+            btCreateFromWM, btMoveNative, btResizeNative, btCloseWindowNative, btRaiseNative,
+            btStopWindowManager;
     private WMServiceConnection connection;
     private WindowManager windowManager;
 
@@ -33,8 +34,9 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btCreateFromWM = findViewById(R.id.btcreateinwm);
         btMoveNative = findViewById(R.id.button_movenative);
         btResizeNative = findViewById(R.id.button_resize);
-        btCloseWindow = findViewById(R.id.button_closewindow);
-        btRaiseWindow = findViewById(R.id.button_raisewindow);
+        btCloseWindowNative = findViewById(R.id.button_closewindow);
+        btRaiseNative = findViewById(R.id.button_raisewindow);
+        btStopWindowManager = findViewById(R.id.button_stopwm);
 
         btCreateWindow.setOnClickListener(this);
         btStartScreen.setOnClickListener(this);
@@ -42,8 +44,9 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btCreateFromWM.setOnClickListener(this);
         btMoveNative.setOnClickListener(this);
         btResizeNative.setOnClickListener(this);
-        btCloseWindow.setOnClickListener(this);
-        btRaiseWindow.setOnClickListener(this);
+        btCloseWindowNative.setOnClickListener(this);
+        btRaiseNative.setOnClickListener(this);
+        btStopWindowManager.setOnClickListener(this);
 
         if(connection == null ){
             connection = new WMServiceConnection();
@@ -51,28 +54,18 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         Intent intent = new Intent(this, WMService.class);
         bindService(intent, connection, BIND_AUTO_CREATE);
         windowManager = new WindowManager();
+        windowManager.init();
     }
 
     @Override
     public void onClick(View v) {
         if(v == btCreateWindow){
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    windowManager.createXWindow();
-                }
-            }).start();
+            windowManager.createXWindow();
         } else if( v == btStartScreen){
             startActivityForXserver(0, 0 , 1920, 989, 0 , 0);
 //            startActivityForXserver(0, 0 , 960, 720, 0 , 0);
         } else if( v == btBindWindowManager){
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    int result = windowManager.connect2Server();
-                    Log.d("TAG", "onClick() called with: result = [" + result + "]");
-                }
-            }).start();
+            windowManager.startWindowManager();
         } else if ( v == btCreateFromWM){
             connection.startActivityForXserver(0, 0 , 300, 600, 0 , 0);
         } else if ( v == btMoveNative){
@@ -81,12 +74,14 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         } else if ( v == btResizeNative){
             int ret = windowManager.resizeWindow(1000, 800, 600);
             Log.d("TAG", "resizeWindow: ret = [" + ret + "]");
-        } else if ( v == btCloseWindow){
+        } else if ( v == btCloseWindowNative){
             int ret = windowManager.closeWindow(1000);
             Log.d("TAG", "closeWindow: ret = [" + ret + "]");
-        } else if ( v == btRaiseWindow){
+        } else if ( v == btRaiseNative){
             int ret = windowManager.raiseWindow(1000);
             Log.d("TAG", "raiseWindow: ret = [" + ret + "]");
+        } else if ( v == btStopWindowManager){
+            windowManager.stopWindowManager();
         }
     }
 
