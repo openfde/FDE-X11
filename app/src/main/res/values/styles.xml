@@ -4,5 +4,22 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowTranslucentNavigation">true</item>
+
+    </style>
+
+    <style name="CustomTheme" >
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+        <item name="minWidth">500dp</item>
+        <item name="minHeight">500dp</item>
+    </style>
+
+    <style name="divider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">0.5dp</item>
+        <item name="android:background">@color/line_bg</item>
+        <item name="android:layout_margin">2dp</item>
     </style>
 </resources>

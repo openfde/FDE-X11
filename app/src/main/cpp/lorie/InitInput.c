@@ -36,6 +36,11 @@ from The Open Group.
 #include "xserver-properties.h"
 #include "exevents.h"
 #include "renderer.h"
+#include <android/log.h>
+extern Bool LOG_ENABLE;
+#define PRINT_LOG (1 && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_initinput", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_initinput", __VA_ARGS__);}
 
 #define unused __attribute__((unused))
 

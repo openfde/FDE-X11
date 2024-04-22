@@ -6,8 +6,8 @@ index b06579c..bb5238b 100644
  
  
  #if defined(X11_t)
--#define UNIX_PATH "/tmp/.X11-unix/X"
--#define UNIX_DIR "/tmp/.X11-unix"
+-#define UNIX_PATH "/tmp/fde/.X11-unix/X"
+-#define UNIX_DIR "/tmp/fde/.X11-unix"
 +extern char* xtrans_unix_path_x11;
 +extern char* xtrans_unix_dir_x11;
 +#define UNIX_PATH xtrans_unix_path_x11

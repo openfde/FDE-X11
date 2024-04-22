@@ -1,0 +1,136 @@
+package com.fde.x11;
+
+import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+import static com.fde.x11.utils.AppUtils.CONTENT_HEIGHT;
+import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
+
+import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.graphics.Rect;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.util.Log;
+import android.view.View;
+import android.app.ActivityOptions;
+import android.widget.Button;
+import androidx.annotation.Nullable;
+
+import com.fde.fusionwindowmanager.WindowManager;
+import com.fde.fusionwindowmanager.service.WMServiceConnection;
+import com.fde.x11.utils.Util;
+
+public class ControlActivity extends Activity implements View.OnClickListener {
+
+    private static final int DECORCATIONVIEW_HEIGHT = 42;
+    private Button btCreateWindow, btstartXserver,
+            btStartScreen, btBindWindowManager,
+            btCreateFromWM, btMoveNative, btResizeNative, btCloseWindowNative, btRaiseNative, btConfigureNative,
+            btStopWindowManager;
+    private WMServiceConnection connection;
+    private WindowManager windowManager;
+    public ICmdEntryInterface service;
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.list_activity);
+        btCreateWindow = findViewById(R.id.button_create);
+        btStartScreen = findViewById(R.id.button_startscreen);
+        btBindWindowManager = findViewById(R.id.button_manager);
+        btCreateFromWM = findViewById(R.id.btcreateinwm);
+        btMoveNative = findViewById(R.id.button_movenative);
+        btResizeNative = findViewById(R.id.button_resize);
+        btCloseWindowNative = findViewById(R.id.button_closewindow);
+        btRaiseNative = findViewById(R.id.button_raisewindow);
+        btConfigureNative = findViewById(R.id.button_configure);
+        btStopWindowManager = findViewById(R.id.button_stopwm);
+        btstartXserver = findViewById(R.id.button_startServer);
+        btCreateWindow.setOnClickListener(this);
+        btStartScreen.setOnClickListener(this);
+        btBindWindowManager.setOnClickListener(this);
+        btCreateFromWM.setOnClickListener(this);
+        btMoveNative.setOnClickListener(this);
+        btResizeNative.setOnClickListener(this);
+        btCloseWindowNative.setOnClickListener(this);
+        btRaiseNative.setOnClickListener(this);
+        btStopWindowManager.setOnClickListener(this);
+        btstartXserver.setOnClickListener(this);
+        btConfigureNative.setOnClickListener(this);
+        Util.copyAssetsToFiles(this, "xkb", "xkb");
+//        if(connection == null ){
+//            connection = new WMServiceConnection();
+//        }
+        Intent intent = new Intent(this, XWindowService.class);
+        bindService(intent, new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder s) {
+                service = ICmdEntryInterface.Stub.asInterface(s);
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+
+            }
+        }, BIND_AUTO_CREATE);
+    }
+
+    @Override
+    public void onClick(View v) {
+        if(v == btCreateWindow){
+            windowManager.createXWindow();
+        } else if( v == btStartScreen){
+            startActivityForXserver(0, 0 , (int)DECOR_CAPTION_HEIGHT,
+                    (int)CONTENT_HEIGHT, 0 , 0);
+//            startActivityForXserver(0, 0 , 960, 720, 0 , 0);
+        } else if( v == btBindWindowManager){
+            windowManager.startWindowManager(DISPLAY_GLOBAL_PARAM);
+        } else if ( v == btCreateFromWM){
+            connection.startActivityForXserver(0, 0 , 300, 600, 0 , 0);
+        } else if ( v == btMoveNative){
+            int ret = windowManager.moveWindow(1000, 50, 50);
+            Log.d("TAG", "moveWindow: ret = [" + ret + "]");
+        } else if ( v == btResizeNative){
+            try {
+                service.resizeWindow(1000, 800, 600);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+        } else if ( v == btCloseWindowNative){
+            try {
+                service.closeWindow(1000, 100, 100);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+        } else if ( v == btRaiseNative){
+            try {
+                service.raiseWindow(2097153);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+        } else if ( v == btConfigureNative){
+            try {
+                service.configureWindow(0x000001, 0x200001, 200, 200, 300, 300);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+        } else if ( v == btStopWindowManager){
+            windowManager.stopWindowManager();
+        } else if ( v == btstartXserver){
+            Xserver.getInstance().startXserver();
+        }
+    }
+
+    void startActivityForXserver(int offsetX, int offsetY, int width, int height, int index, int windPtr){
+        ActivityOptions options = ActivityOptions.makeBasic();
+        options.setLaunchBounds(new Rect(offsetX, offsetY - DECORCATIONVIEW_HEIGHT, width + offsetX, height + offsetY));
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.putExtra("index", index);
+        intent.putExtra("KEY_WindowPtr", windPtr);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent, options.toBundle());
+    }
+
+
+}

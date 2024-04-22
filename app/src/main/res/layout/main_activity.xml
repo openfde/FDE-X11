@@ -18,7 +18,7 @@
         android:paddingBottom="0dp"
         android:background="@android:color/black">
 
-        <com.termux.x11.LorieView
+        <com.fde.x11.LorieView
             android:id="@+id/lorieView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -32,7 +32,7 @@
             android:background="@android:color/black"
             android:gravity="center_horizontal|center_vertical"
             android:orientation="vertical"
-            android:visibility="visible">
+            android:visibility="gone">
 
             <ImageView
                 android:id="@+id/x11_image"
@@ -46,7 +46,7 @@
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="20dp" />
+                />
 
             <TextView
                 android:id="@+id/textView"
@@ -60,7 +60,7 @@
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="40dp" />
+                />
 
             <Button
                 android:id="@+id/preferences_button"
@@ -71,7 +71,7 @@
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="10dp" />
+                />
 
             <Button
                 android:id="@+id/help_button"
@@ -82,6 +82,14 @@
 
 
     </FrameLayout>
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:text="Button" />
 
     <LinearLayout
         android:id="@+id/mouse_helper_visibility"
@@ -94,8 +102,6 @@
             android:id="@+id/button_visibility"
             android:layout_width="64px"
             android:layout_height="64px"
-            android:minWidth="44dip"
-            android:minHeight="22dip"
             android:padding="0px"
             android:paddingStart="0px"
             android:paddingLeft="0px"
@@ -117,8 +123,6 @@
                 android:id="@+id/button_left_click"
                 android:layout_width="64px"
                 android:layout_height="64px"
-                android:minWidth="44dip"
-                android:minHeight="22dip"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -134,8 +138,6 @@
                 android:id="@+id/button_middle_click"
                 android:layout_width="64px"
                 android:layout_height="64px"
-                android:minWidth="44dip"
-                android:minHeight="22dip"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -151,8 +153,6 @@
                 android:id="@+id/button_right_click"
                 android:layout_width="64px"
                 android:layout_height="64px"
-                android:minWidth="44dip"
-                android:minHeight="22dip"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -173,6 +173,7 @@
         android:layout_gravity="bottom|center"
         android:layout_marginBottom="40dp"
         android:orientation="vertical"
+        android:visibility="gone"
         android:alpha="0.7"
         android:translationX="0px"
         android:translationY="0px">
@@ -187,8 +188,6 @@
                 android:id="@+id/mouse_button_left_click"
                 android:layout_width="96dp"
                 android:layout_height="48dp"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -206,8 +205,6 @@
                 android:id="@+id/mouse_button_middle_click"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -225,8 +222,6 @@
                 android:id="@+id/mouse_button_right_click"
                 android:layout_width="96dp"
                 android:layout_height="48dp"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -245,8 +240,6 @@
             android:id="@+id/mouse_buttons_position"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:minWidth="40dp"
-            android:minHeight="40dp"
             android:adjustViewBounds="true"
             android:padding="2dp"
             android:scaleType="fitCenter"
@@ -271,4 +264,26 @@
         android:layout_height="1dp"
         android:background="@android:color/transparent"
         android:layout_gravity="bottom|center" />
+
+
+    <ImageView
+        android:id="@+id/bitmap_iv"
+        android:layout_width="50dp"
+        android:visibility="gone"
+        android:layout_height="50dp"/>
+
+    <com.fde.x11.input.DetectEventEditText
+        android:id="@+id/inputlayout"
+        android:layout_gravity="left|bottom"
+        android:layout_width="0.1dp"
+        android:layout_height="0.1dp"
+        android:onClick="onTextViewClicked"
+        android:bufferType="editable"
+        android:textSize="18sp"
+        android:clickable="true"
+        android:background="#dddddd"
+        android:layout_marginBottom="100dp"
+        android:orientation="horizontal" />
+
+
 </FrameLayout>

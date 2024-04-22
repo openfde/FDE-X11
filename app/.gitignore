@@ -1,3 +1,4 @@
 /build
 /release
 .externalNativeBuild
+/src/main/cpp/libxcb

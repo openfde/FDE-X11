@@ -9,19 +9,18 @@
         android:id="@+id/button_create"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="50dp"
-        android:text="create a window"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_marginStart="4dp"
+        android:text="xsimple create a window"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <Button
         android:id="@+id/button_startscreen"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
-        android:text="打开activity"
+        android:text="open screen"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button_create" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <Button
         android:id="@+id/button_manager"
@@ -37,7 +36,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="30dp"
-        android:text="create from window manager"
+        android:text="native: create activity"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/button_manager" />
 
@@ -54,19 +53,23 @@
         android:id="@+id/button_resize"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginStart="30dp"
         android:text="native: resize"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button_movenative" />
+        app:layout_constraintBottom_toBottomOf="@+id/button_movenative"
+        app:layout_constraintStart_toEndOf="@+id/button_movenative"
+        app:layout_constraintTop_toTopOf="@+id/button_movenative"
+        app:layout_constraintVertical_bias="0.0" />
 
     <Button
         android:id="@+id/button_closewindow"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginStart="30dp"
         android:text="native: close window"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button_resize" />
+        app:layout_constraintBottom_toBottomOf="@+id/btcreateinwm"
+        app:layout_constraintStart_toEndOf="@+id/btcreateinwm"
+        app:layout_constraintTop_toTopOf="@+id/btcreateinwm"
+        app:layout_constraintVertical_bias="0.0" />
 
     <Button
         android:id="@+id/button_raisewindow"
@@ -75,5 +78,36 @@
         android:layout_marginTop="30dp"
         android:text="native: raise window"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button_closewindow" />
+        app:layout_constraintTop_toBottomOf="@+id/button_movenative" />
+
+    <Button
+        android:id="@+id/button_stopwm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:text="stop window manager"
+        app:layout_constraintBottom_toBottomOf="@+id/button_manager"
+        app:layout_constraintStart_toEndOf="@+id/button_manager"
+        app:layout_constraintTop_toTopOf="@+id/button_manager"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <Button
+        android:id="@+id/button_startServer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:text="start xserver"
+        app:layout_constraintBottom_toBottomOf="@+id/button_startscreen"
+        app:layout_constraintStart_toEndOf="@+id/button_startscreen"
+        app:layout_constraintTop_toTopOf="@+id/button_startscreen" />
+
+    <Button
+        android:id="@+id/button_configure"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:text="native: configure"
+        app:layout_constraintBottom_toBottomOf="@+id/button_raisewindow"
+        app:layout_constraintStart_toEndOf="@+id/button_raisewindow"
+        app:layout_constraintTop_toTopOf="@+id/button_raisewindow" />
 </androidx.constraintlayout.widget.ConstraintLayout>
