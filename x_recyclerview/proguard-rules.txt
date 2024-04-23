@@ -1,0 +1,5 @@
+-keepclasseswithmembers class androidx.recyclerview.widget.RecyclerView$ViewHolder {
+   public final android.view.View *;
+}
+-keep,includedescriptorclasses class com.yanzhenjie.** { *; }
+-keep,includedescriptorclasses interface com.yanzhenjie.** { *; }

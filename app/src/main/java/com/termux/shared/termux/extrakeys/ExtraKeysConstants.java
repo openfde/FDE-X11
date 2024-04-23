@@ -16,7 +16,7 @@ public class ExtraKeysConstants {
         "PGUP", "PGDN");
 
     /** Defines the {@link KeyEvent} for common keys. */
-    public static Map<String, Integer> PRIMARY_KEY_CODES_FOR_STRINGS = new HashMap<>() {{
+    public static Map<String, Integer> PRIMARY_KEY_CODES_FOR_STRINGS = new HashMap<String, Integer>() {{
         put("SPACE", KeyEvent.KEYCODE_SPACE);
         put("ESC", KeyEvent.KEYCODE_ESCAPE);
         put("TAB", KeyEvent.KEYCODE_TAB);

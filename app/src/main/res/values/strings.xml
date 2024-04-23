@@ -1,7 +1,7 @@
 <!DOCTYPE resources [
     <!ENTITY TERMUX_PACKAGE_NAME "com.termux">
     <!ENTITY TERMUX_APP_NAME "Termux">
-    <!ENTITY TERMUX_X11_APP_NAME "Termux:X11">
+    <!ENTITY TERMUX_X11_APP_NAME "FDE:X11">
     ]>
 <resources>
     <string name="app_name">&TERMUX_X11_APP_NAME;</string>
@@ -47,4 +47,9 @@
     <string name="log_level_verbose">Verbose</string>
     <string name="log_level_unknown">*Unknown*</string>
     <string name="log_level_value">Logcat log level set to \"%1$s\"</string>
+    <string name="lunching_tip">lunching:</string>
+    <string name="open_x_app">open</string>
+    <string name="info_x_app">info</string>
+    <string name="shortcut_x_app">create shortcut</string>
+    <string name="refresh_x_app">refresh</string>
 </resources>
