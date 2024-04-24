@@ -21,6 +21,7 @@
 #include <randrstr.h>
 #include "renderer.h"
 #include "lorie.h"
+#include "node.h"
 
 #define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__)
 
@@ -33,6 +34,7 @@ extern ScreenPtr pScreenPtr;
 extern int ucs2keysym(long ucs);
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 void start_android_window(int index, WindowPtr pWindow);
+void create_android_window(WindowPtr windowPtr);
 
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
@@ -45,6 +47,8 @@ extern WindowPtr separateWindowPtr2;
 static jobject CmdEntryPointObject;
 static jclass JavaCmdEntryPointClass;
 static JavaVM *jniVM = NULL;
+static struct Node* NamedWindow_ids = NULL;
+void UpdateBuffer(int index);
 
 
 static inline JNIEnv *GetJavaEnv(void)
@@ -57,70 +61,41 @@ static inline JNIEnv *GetJavaEnv(void)
     return ret;
 }
 
-void modifyGlobalVariable(WindowPtr windowPtr) {
-    if (windowPtr && !separateWindowPtr1) {
-        separateWindowPtr1 = windowPtr;
-        log(ERROR,
-            "modifyGlobalVariable1 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
-            separateWindowPtr1, separateWindowPtr1->drawable.width,
-            separateWindowPtr1->drawable.height,
-            separateWindowPtr1->drawable.x, separateWindowPtr1->drawable.y);
-    } else if (windowPtr && !separateWindowPtr2 && windowPtr != separateWindowPtr1) {
-        separateWindowPtr2 = windowPtr;
-        log(ERROR,
-            "modifyGlobalVariable2 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
-            separateWindowPtr2, separateWindowPtr2->drawable.width,
-            separateWindowPtr2->drawable.height,
-            separateWindowPtr2->drawable.x, separateWindowPtr2->drawable.y);
+void UpdateBuffer(int index){
+    struct Node* node = getNodeAtPosition(NamedWindow_ids, index);
+    if(node){
+        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(node->data);
+        renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
+                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, 1);
     }
+}
 
+void TransferBuffer2FDE(WindowPtr windowPtr) {
 
-    if (separateWindowPtr1 && !tempPixmap1) {
-        tempPixmap1 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
+    Window wid = windowPtr->drawable.id;
+    log(ERROR, "TransferBuffer2FDE %x", wid);
+    if(search(NamedWindow_ids, windowPtr)) {
+        return;
+    } else {
+        insertAtEnd(&NamedWindow_ids, windowPtr);
+        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
+        renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
+                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, 1);
+        create_android_window(windowPtr);
     }
+}
 
-    if (tempPixmap1) {
-        renderer_update_root_process1(tempPixmap1->screen_x, tempPixmap1->screen_y, tempPixmap1->drawable.width,
-                                      tempPixmap1->drawable.height, tempPixmap1->devPrivate.ptr, 0, 1);
-        start_android_window(1, separateWindowPtr1);
-    }
-
-    if (separateWindowPtr2 && !tempPixmap2) {
-        tempPixmap2 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr2);
-    }
-
-    if (tempPixmap2) {
-        renderer_update_root_process1(tempPixmap2->screen_x, tempPixmap2->screen_y, tempPixmap2->drawable.width,
-                                      tempPixmap2->drawable.height, tempPixmap2->devPrivate.ptr, 0, 2);
-//        start_android_window(2, separateWindowPtr2);
-    }
-
-    //todo huyang_log
-    if(separateWindowPtr1 && separateWindowPtr2){
-        log(ERROR,
-            "modifyGlobalVariable1 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
-            separateWindowPtr1, separateWindowPtr1->drawable.width,
-            separateWindowPtr1->drawable.height,
-            separateWindowPtr1->drawable.x, separateWindowPtr1->drawable.y);
-        log(ERROR,
-            "modifyGlobalVariable2 separatePtr:%p width:%d height:%d screex:%d screeny:%d",
-            separateWindowPtr2, separateWindowPtr2->drawable.width,
-            separateWindowPtr2->drawable.height,
-            separateWindowPtr2->drawable.x, separateWindowPtr2->drawable.y);
-    }
-    //todo huyang_log
-    if(tempPixmap1 && tempPixmap2){
-        PixmapPtr pixmapPtr1 = (*pScreenPtr->GetWindowPixmap)(separateWindowPtr1);
-        log(ERROR,
-            "logoffset pixmapPtr1:%p width:%d height:%d screex:%d screeny:%d",
-            pixmapPtr1, pixmapPtr1->drawable.width,
-            pixmapPtr1->drawable.height,
-            pixmapPtr1->screen_x, pixmapPtr1->screen_y);
-        log(ERROR,
-            "logoffset tempPixmap1:%p width:%d height:%d screex:%d screeny:%d",
-            tempPixmap1, tempPixmap1->drawable.width,
-            tempPixmap1->drawable.height,
-            tempPixmap1->screen_x, tempPixmap1->screen_y);
+void create_android_window(WindowPtr windowPtr){
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if(JavaEnv && JavaCmdEntryPointClass){
+        int offsetX = windowPtr->drawable.x;
+        int offsetY = windowPtr->drawable.y;
+        int width = windowPtr->drawable.width;
+        int height = windowPtr->drawable.height;
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityOrUpdateOffsetForWindow", "(IIIIIJ)V");
+        log(ERROR, "start_android_window method:%p", method);
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
+                                         offsetX, offsetY, width, height, 1, (long)windowPtr);
     }
 }
 
@@ -131,9 +106,9 @@ void start_android_window(int index, WindowPtr windowPtr) {
         int offsetY = windowPtr->drawable.y;
         int width = windowPtr->drawable.width;
         int height = windowPtr->drawable.height;
-        jmethodID method = !CmdEntryPointObject ? NULL : (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityOrUpdateOffsetForWindow", "(IIIIIJ)V");
-        log(ERROR, "start_android_window pWindow:%p", method);
-        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, CmdEntryPointObject, method,
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityOrUpdateOffsetForWindow", "(IIIIIJ)V");
+        log(ERROR, "start_android_window method:%p", method);
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          offsetX, offsetY, width, height, index, (long)windowPtr);
     }
 }
@@ -356,7 +331,7 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
     if (read(fd, &e, sizeof(e)) == sizeof(e)) {
         switch(e.type) {
             case EVENT_SCREEN_SIZE:
-                __android_log_print(ANDROID_LOG_ERROR, "tx11-request", "window changed: %d %d", e.screenSize.width, e.screenSize.height);
+//                __android_log_print(ANDROID_LOG_ERROR, "tx11-request", "window changed: %d %d", e.screenSize.width, e.screenSize.height);
                 lorieConfigureNotify(e.screenSize.width, e.screenSize.height, e.screenSize.framerate);
                 break;
             case EVENT_TOUCH: {
@@ -521,10 +496,63 @@ Java_com_termux_x11_LorieView_connect(unused JNIEnv* env, unused jobject cls, ji
     log(DEBUG, "XCB connection is successfull");
 }
 
+JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_connect(unused JNIEnv* env, unused jobject cls, jint fd) {
+    conn_fd = fd;
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+    checkConnection(env);
+    log(DEBUG, "XCB connection is successfull");
+}
+
 static char clipboard[1024*1024] = {0};
 
 JNIEXPORT void JNICALL
 Java_com_termux_x11_LorieView_handleXEvents(JNIEnv *env, maybe_unused jobject thiz) {
+    checkConnection(env);
+    if (conn_fd != -1) {
+        char none;
+        memset(clipboard, 0, sizeof(clipboard));
+        if (read(conn_fd, clipboard, sizeof(clipboard)) > 0) {
+            clipboard[sizeof(clipboard) - 1] = 0;
+            log(DEBUG, "Clipboard content (%zu symbols) is %s", strlen(clipboard), clipboard);
+            jmethodID id = (*env)->GetMethodID(env, (*env)->GetObjectClass(env, thiz), "setClipboardText","(Ljava/lang/String;)V");
+
+            jclass cls_Charset = (*env)->FindClass(env, "java/nio/charset/Charset");
+            jclass cls_CharBuffer = (*env)->FindClass(env, "java/nio/CharBuffer");
+            jmethodID mid_Charset_forName = cls_Charset ? (*env)->GetStaticMethodID(env, cls_Charset, "forName", "(Ljava/lang/String;)Ljava/nio/charset/Charset;") : NULL;
+            jmethodID mid_Charset_decode = cls_Charset ? (*env)->GetMethodID(env, cls_Charset, "decode", "(Ljava/nio/ByteBuffer;)Ljava/nio/CharBuffer;") : NULL;
+            jmethodID mid_CharBuffer_toString = cls_CharBuffer ? (*env)->GetMethodID(env, cls_CharBuffer, "toString", "()Ljava/lang/String;") : NULL;
+
+            if (!id)
+                log(ERROR, "setClipboardText method not found");
+            if (!cls_Charset)
+                log(ERROR, "java.nio.charset.Charset class not found");
+            if (!cls_CharBuffer)
+                log(ERROR, "java.nio.CharBuffer class not found");
+            if (!mid_Charset_forName)
+                log(ERROR, "java.nio.charset.Charset.forName method not found");
+            if (!mid_Charset_decode)
+                log(ERROR, "java.nio.charset.Charset.decode method not found");
+            if (!mid_CharBuffer_toString)
+                log(ERROR, "java.nio.CharBuffer.toString method not found");
+
+            if (id && cls_Charset && cls_CharBuffer && mid_Charset_forName && mid_Charset_decode && mid_CharBuffer_toString) {
+                jobject bb = (*env)->NewDirectByteBuffer(env, clipboard, strlen(clipboard));
+                jobject charset = (*env)->CallStaticObjectMethod(env, cls_Charset, mid_Charset_forName, (*env)->NewStringUTF(env, "UTF-8"));
+                jobject cb = (*env)->CallObjectMethod(env, charset, mid_Charset_decode, bb);
+                (*env)->DeleteLocalRef(env, bb);
+
+                jstring str = (*env)->CallObjectMethod(env, cb, mid_CharBuffer_toString);
+                (*env)->CallVoidMethod(env, thiz, id, str);
+            }
+        }
+
+        while(read(conn_fd, &none, sizeof(none)) > 0);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_handleXEvents(JNIEnv *env, maybe_unused jobject thiz) {
     checkConnection(env);
     if (conn_fd != -1) {
         char none;
@@ -589,7 +617,36 @@ Java_com_termux_x11_LorieView_startLogcat(JNIEnv *env, unused jobject cls, jint 
 }
 
 JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_startLogcat(JNIEnv *env, unused jobject cls, jint fd) {
+    log(DEBUG, "Starting logcat with output to given fd");
+
+    switch(fork()) {
+        case -1:
+            log(ERROR, "fork: %s", strerror(errno));
+            return;
+        case 0:
+            dup2(fd, 1);
+            dup2(fd, 2);
+            prctl(PR_SET_PDEATHSIG, SIGTERM);
+            char buf[64] = {0};
+            sprintf(buf, "--pid=%d", getppid());
+            execl("/system/bin/logcat", "logcat", buf, NULL);
+            log(ERROR, "exec logcat: %s", strerror(errno));
+            (*env)->FatalError(env, "Exiting");
+    }
+}
+
+JNIEXPORT void JNICALL
 Java_com_termux_x11_LorieView_setClipboardSyncEnabled(unused JNIEnv* env, unused jobject cls, jboolean enable) {
+    if (conn_fd != -1) {
+        lorieEvent e = { .clipboardSync = { .t = EVENT_CLIPBOARD_SYNC, .enable = enable } };
+        write(conn_fd, &e, sizeof(e));
+        checkConnection(env);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_setClipboardSyncEnabled(unused JNIEnv* env, unused jobject cls, jboolean enable) {
     if (conn_fd != -1) {
         lorieEvent e = { .clipboardSync = { .t = EVENT_CLIPBOARD_SYNC, .enable = enable } };
         write(conn_fd, &e, sizeof(e));
@@ -607,7 +664,26 @@ Java_com_termux_x11_LorieView_sendWindowChange(unused JNIEnv* env, unused jobjec
 }
 
 JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_sendWindowChange(unused JNIEnv* env, unused jobject cls, jint width, jint height, jint framerate) {
+    if (conn_fd != -1) {
+        lorieEvent e = { .screenSize = { .t = EVENT_SCREEN_SIZE, .width = width, .height = height, .framerate = framerate } };
+        write(conn_fd, &e, sizeof(e));
+        checkConnection(env);
+    }
+}
+
+
+JNIEXPORT void JNICALL
 Java_com_termux_x11_LorieView_sendMouseEvent(unused JNIEnv* env, unused jobject cls, jfloat x, jfloat y, jint which_button, jboolean button_down, jboolean relative, jint index) {
+    if (conn_fd != -1) {
+        lorieEvent e = { .mouse = { .t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative } };
+        write(conn_fd, &e, sizeof(e));
+        checkConnection(env);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_sendMouseEvent(unused JNIEnv* env, unused jobject cls, jfloat x, jfloat y, jint which_button, jboolean button_down, jboolean relative, jint index) {
     if (conn_fd != -1) {
         lorieEvent e = { .mouse = { .t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative } };
         write(conn_fd, &e, sizeof(e));
@@ -624,8 +700,30 @@ Java_com_termux_x11_LorieView_sendTouchEvent(unused JNIEnv* env, unused jobject 
     }
 }
 
+JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_sendTouchEvent(unused JNIEnv* env, unused jobject cls, jint action, jint id, jint x, jint y) {
+    if (conn_fd != -1 && action != -1) {
+        lorieEvent e = { .touch = { .t = EVENT_TOUCH, .type = action, .id = id, .x = x, .y = y } };
+        write(conn_fd, &e, sizeof(e));
+        checkConnection(env);
+    }
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_termux_x11_LorieView_sendKeyEvent(unused JNIEnv* env, unused jobject cls, jint scan_code, jint key_code, jboolean key_down) {
+    if (conn_fd != -1) {
+        int code = (scan_code) ?: android_to_linux_keycode[key_code];
+        log(DEBUG, "Sending key: %d (%d %d %d)", code + 8, scan_code, key_code, key_down);
+        lorieEvent e = { .key = { .t = EVENT_KEY, .key = code + 8, .state = key_down } };
+        write(conn_fd, &e, sizeof(e));
+        checkConnection(env);
+    }
+
+    return true;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_termux_x11_XwindowView_sendKeyEvent(unused JNIEnv* env, unused jobject cls, jint scan_code, jint key_code, jboolean key_down) {
     if (conn_fd != -1) {
         int code = (scan_code) ?: android_to_linux_keycode[key_code];
         log(DEBUG, "Sending key: %d (%d %d %d)", code + 8, scan_code, key_code, key_down);
@@ -673,7 +771,54 @@ Java_com_termux_x11_LorieView_sendTextEvent(JNIEnv *env, unused jobject thiz, jb
 }
 
 JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_sendTextEvent(JNIEnv *env, unused jobject thiz, jbyteArray text) {
+    if (conn_fd != -1 && text) {
+        jsize length = (*env)->GetArrayLength(env, text);
+        jbyte *str = (*env)->GetByteArrayElements(env, text, JNI_FALSE);
+        char *p = (char*) str;
+        mbstate_t state = { 0 };
+        log(DEBUG, "Parsing text: %.*s", length, str);
+
+        while (*p) {
+            wchar_t wc;
+            size_t len = mbrtowc(&wc, p, MB_CUR_MAX, &state);
+
+            if (len == (size_t)-1 || len == (size_t)-2) {
+                log(ERROR, "Invalid UTF-8 sequence encountered");
+                break;
+            }
+
+            if (len == 0)
+                break;
+
+            log(DEBUG, "Sending unicode event: %lc (U+%X)", wc, wc);
+            lorieEvent e = { .unicode = { .t = EVENT_UNICODE, .code = wc } };
+            write(conn_fd, &e, sizeof(e));
+            p += len;
+            if (p - (char*) str >= length)
+                break;
+            usleep(30000);
+        }
+
+        (*env)->ReleaseByteArrayElements(env, text, str, JNI_ABORT);
+        checkConnection(env);
+    }
+}
+
+
+JNIEXPORT void JNICALL
 Java_com_termux_x11_LorieView_sendUnicodeEvent(JNIEnv *env, unused jobject thiz, jint code) {
+    if (conn_fd != -1) {
+        log(DEBUG, "Sending unicode event: %lc (U+%X)", code, code);
+        lorieEvent e = { .unicode = { .t = EVENT_UNICODE, .code = code } };
+        write(conn_fd, &e, sizeof(e));
+
+        checkConnection(env);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_termux_x11_XwindowView_sendUnicodeEvent(JNIEnv *env, unused jobject thiz, jint code) {
     if (conn_fd != -1) {
         log(DEBUG, "Sending unicode event: %lc (U+%X)", code, code);
         lorieEvent e = { .unicode = { .t = EVENT_UNICODE, .code = code } };

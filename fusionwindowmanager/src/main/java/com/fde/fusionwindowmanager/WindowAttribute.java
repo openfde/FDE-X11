@@ -1,11 +1,11 @@
-package com.termux.x11.window;
+package com.fde.fusionwindowmanager;
 
 import android.os.Parcel;
 import android.os.Parcelable;
 
 import androidx.annotation.NonNull;
 
-public class Coordinate implements Parcelable {
+public class WindowAttribute implements Parcelable {
     
     float offsetX;
     float offsetY;
@@ -63,7 +63,7 @@ public class Coordinate implements Parcelable {
         this.windowPtr = windowPtr;
     }
 
-    public Coordinate(int offsetX, int offsetY, int width, int height, int index, long windowPtr){
+    public WindowAttribute(int offsetX, int offsetY, int width, int height, int index, long windowPtr){
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.width = width;
@@ -73,7 +73,7 @@ public class Coordinate implements Parcelable {
     }
 
 
-    protected Coordinate(Parcel in) {
+    protected WindowAttribute(Parcel in) {
         offsetX = in.readFloat();
         offsetY = in.readFloat();
         width = in.readFloat();
@@ -97,15 +97,15 @@ public class Coordinate implements Parcelable {
             dest.writeLong(windowPtr);
     }
 
-    public static final Creator<Coordinate> CREATOR = new Creator<Coordinate>() {
+    public static final Creator<WindowAttribute> CREATOR = new Creator<WindowAttribute>() {
         @Override
-        public Coordinate createFromParcel(Parcel in) {
-            return new Coordinate(in);
+        public WindowAttribute createFromParcel(Parcel in) {
+            return new WindowAttribute(in);
         }
 
         @Override
-        public Coordinate[] newArray(int size) {
-            return new Coordinate[size];
+        public WindowAttribute[] newArray(int size) {
+            return new WindowAttribute[size];
         }
     };
 

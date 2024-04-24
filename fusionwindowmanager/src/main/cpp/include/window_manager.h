@@ -79,6 +79,7 @@ private:
     // this program is single threaded, but better safe than sorry.
     static ::std::mutex wm_detected_mutex_;
 
+    static bool support_composite;
 
     // Maps top-level windows to their frame windows.
     ::std::unordered_map<Window, Window> clients_;

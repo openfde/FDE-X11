@@ -116,7 +116,7 @@ public class TouchInputHandler {
         float density = /*desktop*/ ctx.getResources().getDisplayMetrics().density;
         mSwipeThreshold = 40 * density;
 
-//        mEdgeSlopInPx = ViewConfiguration.get(/*desktop*/ ctx).getScaledEdgeSlop();
+//        mEdgeSlopInPx = ViewConfiguration.get(/*desktop*/ global_ctx).getScaledEdgeSlop();
 
         setInputMode(InputMode.TRACKPAD);
         mDexListener = new DexListener(ctx);

@@ -5,6 +5,7 @@
 #include "include/window_manager.h"
 #include "include/X11/keysymdef.h"
 #include "include/X11/extensions/Xcomposite.h"
+#include <set>
 
 
 using ::std::max;
@@ -13,13 +14,16 @@ using ::std::string;
 using ::std::unique_ptr;
 
 bool WindowManager::wm_detected_;
+bool WindowManager::support_composite;
 mutex WindowManager::wm_detected_mutex_;
 Window frame_window;
 Window top_level_debug;
-
+std::set<Window> window_under_frames;
+std::set<Window> frames;
+std::set<Window> named_windows;
 
 ::WindowManager *WindowManager::create() {
-    Display* display = XOpenDisplay(nullptr);
+    Display* display = XOpenDisplay(":1");
     if (display == nullptr) {
         log("Failed to open X display");
         return nullptr;
@@ -152,13 +156,18 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             GrabModeAsync);
     frame_window = frame;
     top_level_debug = w;
+    window_under_frames.insert(w);
+    frames.insert(frame);
     log("Framed window %x frame %x" ,w , frame);
 }
 
 
 void WindowManager::OnCreateNotify(const XCreateWindowEvent& e) {}
 
-void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {}
+void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {
+    frames.erase(e.window);
+    window_under_frames.erase(e.window);
+}
 
 void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 
@@ -214,8 +223,11 @@ void WindowManager::Unframe(Window w) {
 }
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent& e) {
-//    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
-//    XCompositeNameWindowPixmap(display_, frame_window);
+    auto it = frames.find(e.window);
+    if (it != frames.end()) {
+        XCompositeNameWindowPixmap(display_, e.window);
+        named_windows.insert(e.window);
+    }
     XSync(display_, False);
 }
 
@@ -395,6 +407,7 @@ void WindowManager::Run() {
         XCompositeQueryVersion(display_, &composite_major, &composite_minor);
         log("composite_major:%d  composite_minor:%d", composite_major, composite_minor);
         if(composite_major > 0 || composite_minor > 2){
+            support_composite = true;
             initCompositor();
         }
         if (wm_detected_) {
@@ -561,5 +574,6 @@ int WindowManager::raiseWindow(long ptr) {
 }
 
 void WindowManager::initCompositor() {
-//    XCompositeRedirectWindow (display_, top_level_debug, CompositeRedirectAutomatic);
+    XCompositeRedirectSubwindows(display_, root_, CompositeRedirectAutomatic);
+    XSync(display_, false);
 }

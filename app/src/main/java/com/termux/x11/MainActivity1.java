@@ -8,7 +8,7 @@ public class MainActivity1 extends MainActivity {
 
     @Override
     protected long getWindowId() {
-        return 1;
+        return 0;
     }
 
     @Override

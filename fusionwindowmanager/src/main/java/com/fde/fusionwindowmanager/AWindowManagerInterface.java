@@ -9,20 +9,23 @@ import android.view.View;
  * define action for start android window(activity/dialog/floatview)
  * start/destory
  */
-public interface AWindowManagerInterface {
+public interface AWindowManagerInterface <ActivityType extends Activity, DialogType extends Dialog, ViewType extends View>{
 
-    void startActivityForXAPP(Coordinate coordinate);
+    //start use evnent bus
+    void startActivityForXMainWindow(WindowAttribute windowAttribute, Class<ActivityType> activityClass);
 
-    void startActivityForXWindow(Coordinate coordinate);
+    void startActivityForXWindow(WindowAttribute windowAttribute, Class<ActivityType> activityClass);
 
-    void destroyActivity(Activity activity);
+    void startDialogForXWindow(WindowAttribute windowAttribute, Class<DialogType> activityClass);
 
-    void startDialogForXWindow(Coordinate coordinate);
+    void startViewForXWindow(WindowAttribute windowAttribute, Class<ViewType> activityClass);
 
-    void destroyDialog(Dialog dialog);
 
-    void startViewForXWindow(Coordinate coordinate);
+    //destroy use broadcast
+    void destroyXActivity(Activity activity);
 
-    void destroyView(View view);
+    void destroyXDialog(Dialog dialog);
+
+    void destroyXView(View view);
 
 }

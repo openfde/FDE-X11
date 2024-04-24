@@ -14,6 +14,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class Util {
+
+    public static final String LINUX_WINDOW_ATTRIBUTE = "linux_window_attribute";
+
+    public static final String WINDOW_ATTRIBUTE = "window_attribute";
+
     private static final String TAG = "Util";
     private static Context baseContext;
 
@@ -48,7 +53,7 @@ public class Util {
 
 
 
-    public static void copyAssetsToFiles(Context context, String sourceDir, String targetDir) {
+    public static void copyAssetsToFilesIfNedd(Context context, String sourceDir, String targetDir) {
         AssetManager assetManager = context.getAssets();
         String[] files = null;
         try {
@@ -60,6 +65,11 @@ public class Util {
 
         if (files != null && files.length > 0) {
             File dir = new File(context.getFilesDir(), targetDir);
+            if(dir.exists()){
+                Log.d(TAG, "copyAssetsToFiles: exists, return");
+                return;
+            }
+
             if (!dir.exists()) {
                 if (!dir.mkdirs()) {
                     Log.e("AssetCopy", "Failed to create directory: " + dir.getAbsolutePath());
@@ -72,7 +82,7 @@ public class Util {
                 String targetFile = targetDir.equals("") ? filename : targetDir + File.separator + filename;
 
                 if (isAssetDirectory(assetManager, sourceFile)) {
-                    copyAssetsToFiles(context, sourceFile, targetFile);
+                    copyAssetsToFilesIfNedd(context, sourceFile, targetFile);
                 } else {
                     copyAssetFile(assetManager, context.getFilesDir(), sourceFile, targetFile);
                 }

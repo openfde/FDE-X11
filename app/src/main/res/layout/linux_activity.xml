@@ -18,8 +18,8 @@
         android:paddingBottom="0dp"
         android:background="@android:color/black">
 
-        <com.termux.x11.LorieView
-            android:id="@+id/lorieView"
+        <com.termux.x11.XwindowView
+            android:id="@+id/xwindowview"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="visible"
@@ -46,7 +46,7 @@
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                />
+                android:minHeight="20dp" />
 
             <TextView
                 android:id="@+id/textView"
@@ -60,7 +60,7 @@
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                />
+                android:minHeight="40dp" />
 
             <Button
                 android:id="@+id/preferences_button"
@@ -71,7 +71,7 @@
             <Space
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                />
+                android:minHeight="10dp" />
 
             <Button
                 android:id="@+id/help_button"
@@ -94,6 +94,8 @@
             android:id="@+id/button_visibility"
             android:layout_width="64px"
             android:layout_height="64px"
+            android:minWidth="44dip"
+            android:minHeight="22dip"
             android:padding="0px"
             android:paddingStart="0px"
             android:paddingLeft="0px"
@@ -115,6 +117,8 @@
                 android:id="@+id/button_left_click"
                 android:layout_width="64px"
                 android:layout_height="64px"
+                android:minWidth="44dip"
+                android:minHeight="22dip"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -130,6 +134,8 @@
                 android:id="@+id/button_middle_click"
                 android:layout_width="64px"
                 android:layout_height="64px"
+                android:minWidth="44dip"
+                android:minHeight="22dip"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -145,6 +151,8 @@
                 android:id="@+id/button_right_click"
                 android:layout_width="64px"
                 android:layout_height="64px"
+                android:minWidth="44dip"
+                android:minHeight="22dip"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -179,6 +187,8 @@
                 android:id="@+id/mouse_button_left_click"
                 android:layout_width="96dp"
                 android:layout_height="48dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -196,6 +206,8 @@
                 android:id="@+id/mouse_button_middle_click"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -213,6 +225,8 @@
                 android:id="@+id/mouse_button_right_click"
                 android:layout_width="96dp"
                 android:layout_height="48dp"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:padding="0px"
                 android:paddingStart="0px"
                 android:paddingLeft="0px"
@@ -231,6 +245,8 @@
             android:id="@+id/mouse_buttons_position"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:minWidth="40dp"
+            android:minHeight="40dp"
             android:adjustViewBounds="true"
             android:padding="2dp"
             android:scaleType="fitCenter"

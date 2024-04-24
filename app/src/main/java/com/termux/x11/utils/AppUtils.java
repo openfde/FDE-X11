@@ -109,7 +109,6 @@ public class AppUtils {
 
 
     public static Drawable getImage(String imageStr, String iconType, String name, Context context) {
-        Log.d("TAG", "getImage() called with: imageStr = [" + imageStr.length() + "], iconType = [" + iconType + "], name = [" + name + "]");
         if (Constants.SURFFIX_SVG.equals(iconType) || Constants.SURFFIX_SVGZ.equals(iconType)) {
             byte[] decodedData = Base64.decode(imageStr, Base64.DEFAULT);
             FileOutputStream svgFile = null;

@@ -29,8 +29,8 @@
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:resizeableActivity="true"
-            android:process=":abc1"
-            android:taskAffinity=".abc1"
+            android:process=":abc"
+            android:taskAffinity=".abc"
             android:windowSoftInputMode="stateHidden"
             android:exported="true">
 <!--            <intent-filter>-->
@@ -47,7 +47,7 @@
             android:name=".AppListActivity"
             android:taskAffinity=".AppListActivity"
             android:supportsPictureInPicture="true"
-            android:configChanges="orientation|keyboardHidden"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:resizeableActivity="true"
             android:windowSoftInputMode="stateHidden"
             android:exported="true">
@@ -62,8 +62,22 @@
         </activity>
 
         <activity
+            android:name=".window.LinuxActivity"
+            android:taskAffinity=".LinuxActivity"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+            <intent-filter>
+                <category android:name="android.intent.category.SECONDARY_HOME" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+        </activity>
+
+        <activity
             android:name=".ControlActivity"
-            android:taskAffinity=".ListActivity"
+            android:taskAffinity=".ControlActivity"
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:resizeableActivity="true"
@@ -73,15 +87,16 @@
 <!--                <action android:name="android.intent.action.MAIN" />-->
 <!--                <category android:name="android.intent.category.LAUNCHER" />-->
 <!--            </intent-filter>-->
-<!--            <intent-filter>-->
-<!--                <category android:name="android.intent.category.SECONDARY_HOME" />-->
-<!--            </intent-filter>-->
-<!--            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />-->
+            <intent-filter>
+                <category android:name="android.intent.category.SECONDARY_HOME" />
+            </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
         <activity
             android:name=".MainActivity1"
-            android:taskAffinity=".MainActivity1"
+            android:process=":abc1"
+            android:taskAffinity=".abc1"
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:resizeableActivity="true"

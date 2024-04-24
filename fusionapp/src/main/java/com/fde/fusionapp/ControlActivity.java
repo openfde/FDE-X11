@@ -57,7 +57,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btStopWindowManager.setOnClickListener(this);
         btstartXserver.setOnClickListener(this);
 
-        Util.copyAssetsToFiles(this, "xkb", "xkb");
+        Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
 
         if(connection == null ){
             connection = new WMServiceConnection();
@@ -66,7 +66,6 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         Intent intent = new Intent(this, WMService.class);
         bindService(intent, connection, BIND_AUTO_CREATE);
         windowManager = new WindowManager();
-        windowManager.init();
     }
 
     @Override

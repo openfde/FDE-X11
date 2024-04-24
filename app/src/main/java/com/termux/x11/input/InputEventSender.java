@@ -17,9 +17,10 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.fde.fusionwindowmanager.WindowAttribute;
 import com.termux.x11.LorieView;
 import com.termux.x11.R;
-import com.termux.x11.window.Coordinate;
+import com.termux.x11.XwindowView;
 
 import java.util.List;
 import java.util.TreeSet;
@@ -56,21 +57,21 @@ public final class InputEventSender {
         if (!buttons.contains(button))
             return;
         mInjector.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
-                ((LorieView)mInjector).getCoordinate() == null ? 0 : ((LorieView)mInjector).getCoordinate().getIndex() );
+                ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
     }
 
     public void sendMouseDown(int button, boolean relative) {
         if (!buttons.contains(button)) 
             return;
         mInjector.sendMouseEvent(0, 0, button, true, relative,
-                ((LorieView)mInjector).getCoordinate() == null ? 0 : ((LorieView)mInjector).getCoordinate().getIndex() );
+                ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
     }
 
     public void sendMouseUp(int button, boolean relative) {
         if (!buttons.contains(button))
             return;
         mInjector.sendMouseEvent(0, 0, button, false, relative,
-                ((LorieView)mInjector).getCoordinate() == null ? 0 : ((LorieView)mInjector).getCoordinate().getIndex()  );
+                ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex()  );
     }
 
     public void sendMouseClick(int button, boolean relative) {
@@ -79,24 +80,24 @@ public final class InputEventSender {
         LorieView lorieView = (LorieView) mInjector;
 
         mInjector.sendMouseEvent(0, 0, button, true, relative,
-                lorieView.getCoordinate() == null ? 0 : lorieView.getCoordinate().getIndex());
+                lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
         mInjector.sendMouseEvent(0, 0, button, false, relative,
-                lorieView.getCoordinate() == null ? 0 : lorieView.getCoordinate().getIndex());
+                lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
     }
 
     public void sendCursorMove(float x, float y, boolean relative) {
         LorieView lorieView = (LorieView) mInjector;
-        if(lorieView.getCoordinate() != null){
-            Coordinate coordinate = lorieView.getCoordinate();
-            float offsetX = coordinate.getOffsetX();
-            float offsetY = coordinate.getOffsetY();
+        if(lorieView.getAttribute() != null){
+            WindowAttribute attribute = lorieView.getAttribute();
+            float offsetX = attribute.getOffsetX();
+            float offsetY = attribute.getOffsetY();
             x += offsetX;
             y += offsetY;
 //            y -= DECORCATIONVIEW_HEIGHT;
-            Log.d(TAG, "sendCursorMove() called with: x = [" + x + "], y = [" + y + "], coordinate = [" + coordinate + "]");
+            Log.d(TAG, "sendCursorMove() called with: x = [" + x + "], y = [" + y + "], attribute = [" + attribute + "]");
         }
         mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
-                lorieView.getCoordinate() == null ? 0 : lorieView.getCoordinate().getIndex());
+                lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
     }
 
     public void sendMouseWheelEvent(float distanceX, float distanceY) {

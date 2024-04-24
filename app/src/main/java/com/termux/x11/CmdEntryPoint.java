@@ -22,6 +22,13 @@ import android.view.Surface;
 
 import androidx.annotation.Keep;
 
+import com.fde.fusionwindowmanager.WindowAttribute;
+import com.fde.fusionwindowmanager.WindowManager;
+import com.fde.fusionwindowmanager.eventbus.EventMessage;
+import com.fde.fusionwindowmanager.eventbus.EventType;
+
+import org.greenrobot.eventbus.EventBus;
+
 import java.io.DataInputStream;
 import java.net.ConnectException;
 import java.net.InetAddress;
@@ -35,6 +42,10 @@ import java.util.HashSet;
 @Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
 public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     public static final String ACTION_START = "com.termux.x11.CmdEntryPoint.ACTION_START";
+    public static final String ACTION_STOP = "com.termux.x11.ACTION_STOP";
+
+    public static final String ACTION_PREFERENCES_CHANGED = "com.termux.x11.ACTION_PREFERENCES_CHANGED";
+
     public static final int PORT = 7892;
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final Handler handler;
@@ -54,22 +65,24 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     private static HashSet<Integer> Ptrs = new HashSet<>();
 
     public static void startActivityOrUpdateOffsetForWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) {
-        Log.d(TAG, "startActivityForWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
-        IReceive receiver = receiverMap.get(0);
-        if(Ptrs.contains(index)){
-            receiver = receiverMap.get(index);
-        } else {
-            receiver = receiverMap.get(0);
-        }
-        Ptrs.add(index);
-        if(receiver != null){
-            try {
-                receiver.startWindow(offsetX, offsetY , width, height, index , windowPtr);
-//                receiver.startWindow(0, 0 , 1920, 989, 1 , 0);
-            } catch (RemoteException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        Log.d(TAG, "startActivityOrUpdateOffsetForWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
+        EventBus.getDefault().post(new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
+                " ", new WindowAttribute(offsetX, offsetY, width, height, 1, windowPtr)));
+//        IReceive receiver = receiverMap.get(0);
+//        if(Ptrs.contains(index)){
+//            receiver = receiverMap.get(index);
+//        } else {
+//            receiver = receiverMap.get(0);
+//        }
+//        Ptrs.add(index);
+//        if(receiver != null){
+//            try {
+//                receiver.startWindow(offsetX, offsetY , width, height, index , windowPtr);
+////                receiver.startWindow(0, 0 , 1920, 989, 1 , 0);
+//            } catch (RemoteException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
 
     }
 
@@ -115,7 +128,6 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
 
         try {
             ctx.sendBroadcast(intent);
-            Log.d("CmdEntryPoint", "sendBroadcast() try");
         } catch (Exception e) {
             if (e instanceof NullPointerException && ctx == null)
                 Log.e("CmdEntryPoint", "Context is null, falling back to manual broadcasting");
@@ -264,7 +276,7 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     }
 
     public native ParcelFileDescriptor getLogcatOutput();
-    private static native boolean connected();
+    public static native boolean connected();
 
     static {
         String path = "lib/" + Build.SUPPORTED_ABIS[0] + "/libXlorie.so";

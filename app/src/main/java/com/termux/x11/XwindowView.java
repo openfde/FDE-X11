@@ -8,18 +8,15 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
 
 import androidx.annotation.NonNull;
 
@@ -30,19 +27,19 @@ import java.util.regex.PatternSyntaxException;
 
 @SuppressLint("WrongConstant")
 @SuppressWarnings("deprecation")
-public class LorieView extends SurfaceView implements InputStub {
+public class XwindowView extends SurfaceView implements InputStub {
 
     public WindowAttribute getAttribute() {
-        return mCoordinate;
+        return mAttribute;
     }
 
-    private WindowAttribute mCoordinate;
+    private WindowAttribute mAttribute;
 
-    public void updateCoordinate(WindowAttribute coordinate) {
-        this.mCoordinate = coordinate;
+    public void updateCoordinate(WindowAttribute attribute) {
+        this.mAttribute = attribute;
     }
 
-    interface Callback {
+    public interface Callback {
         void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight);
     }
 
@@ -72,17 +69,16 @@ public class LorieView extends SurfaceView implements InputStub {
         }
 
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-            if (mCallback != null){
-//                mCallback.changed(holder.getSurface(), 0, 0, 0, 0);
-            }
+            if (mCallback != null)
+                mCallback.changed(holder.getSurface(), 0, 0, 0, 0);
         }
     };
 
-    public LorieView(Context context) { super(context); init(); }
-    public LorieView(Context context, AttributeSet attrs) { super(context, attrs); init(); }
-    public LorieView(Context context, AttributeSet attrs, int defStyleAttr) { super(context, attrs, defStyleAttr); init(); }
+    public XwindowView(Context context) { super(context); init(); }
+    public XwindowView(Context context, AttributeSet attrs) { super(context, attrs); init(); }
+    public XwindowView(Context context, AttributeSet attrs, int defStyleAttr) { super(context, attrs, defStyleAttr); init(); }
     @SuppressWarnings("unused")
-    public LorieView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) { super(context, attrs, defStyleAttr, defStyleRes); init(); }
+    public XwindowView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) { super(context, attrs, defStyleAttr, defStyleRes); init(); }
 
     private void init() {
         getHolder().addCallback(mSurfaceCallback);
@@ -220,11 +216,11 @@ public class LorieView extends SurfaceView implements InputStub {
         clipboard.setPrimaryClip(ClipData.newPlainText("X11 clipboard", text));
     }
 
-    static native void connect(int fd);
-    native void handleXEvents();
-    static native void startLogcat(int fd);
-    static native void setClipboardSyncEnabled(boolean enabled);
-    static native void sendWindowChange(int width, int height, int framerate);
+    public static native void connect(int fd);
+    public native void handleXEvents();
+    public static native void startLogcat(int fd);
+    public static native void setClipboardSyncEnabled(boolean enabled);
+    public static native void sendWindowChange(int width, int height, int framerate);
     public native void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index);
     public native void sendTouchEvent(int action, int id, int x, int y);
     public native boolean sendKeyEvent(int scanCode, int keyCode, boolean keyDown);

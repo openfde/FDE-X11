@@ -6,6 +6,7 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
+import static com.fde.fusionwindowmanager.Util.LINUX_WINDOW_ATTRIBUTE;
 import static com.termux.x11.CmdEntryPoint.ACTION_START;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 
@@ -64,6 +65,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
+import com.fde.fusionwindowmanager.WindowAttribute;
 import com.termux.x11.input.InputEventSender;
 import com.termux.x11.input.InputStub;
 import com.termux.x11.input.TouchInputHandler.RenderStub;
@@ -74,7 +76,6 @@ import com.termux.x11.utils.SamsungDexUtils;
 import com.termux.x11.utils.TermuxX11ExtraKeys;
 import com.termux.x11.utils.Util;
 import com.termux.x11.utils.X11ToolbarViewPager;
-import com.termux.x11.window.Coordinate;
 
 import java.io.File;
 import java.io.IOException;
@@ -105,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
     protected long WindowCode = 0;
     protected int mIndex = 0;
-    protected Coordinate mCoordinate;
+    protected WindowAttribute mAttribute;
 
     protected long getWindowId() {
         return WindowCode;
@@ -116,8 +117,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) throws RemoteException {
             Log.d(TAG, "startWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], mIndex = [" + mIndex + "]");
             if(index  == mIndex){
-                mCoordinate.setOffsetX(offsetX);
-                mCoordinate.setOffsetY(offsetY);
+                mAttribute.setOffsetX(offsetX);
+                mAttribute.setOffsetY(offsetY);
             } else if(index == 1){
                 offsetY += DECORCATIONVIEW_HEIGHT;
                 ActivityOptions options = ActivityOptions.makeBasic();
@@ -125,10 +126,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 Intent intent = new Intent(MainActivity.this, MainActivity1.class);
                 intent.putExtra("index", index);
                 intent.putExtra("KEY_WindowPtr", windowPtr);
-                Coordinate coordinate = new Coordinate(offsetX, offsetY, width, height,
+                WindowAttribute mAttribute = new WindowAttribute(offsetX, offsetY, width, height,
                         index, windowPtr);
-                Log.d(TAG, "coordinate:" + coordinate);
-                intent.putExtra("NativeWindow_data", coordinate);
+                intent.putExtra("NativeWindow_data", mAttribute);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent, options.toBundle());
             } else if(index == 2 ){
@@ -137,7 +137,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 Intent intent = new Intent(MainActivity.this, MainActivity2.class);
                 intent.putExtra("index", index);
                 intent.putExtra("KEY_WindowPtr", windowPtr);
-                Coordinate coordinate = new Coordinate(offsetX, offsetY, width, height,
+                WindowAttribute coordinate = new WindowAttribute(offsetX, offsetY, width, height,
                         index, windowPtr);
                 Log.d(TAG, "coordinate:" + coordinate);
                 intent.putExtra("NativeWindow_data", coordinate);
@@ -195,12 +195,12 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mCoordinate = getIntent().getParcelableExtra("NativeWindow_data");
-        if(mCoordinate != null){
-            mIndex = mCoordinate.getIndex();
-            WindowCode = mCoordinate.getWindowPtr();
+        mAttribute = getIntent().getParcelableExtra(LINUX_WINDOW_ATTRIBUTE);
+        if(mAttribute != null){
+            mIndex = mAttribute.getIndex();
+            WindowCode = mAttribute.getWindowPtr();
         }
-        Log.d(TAG, "onCreate() " +  this  +  " mCoordinate = [" + mCoordinate + "]" +
+        Log.d(TAG, "onCreate() " +  this  +  " mCoordinate = [" + mAttribute + "]" +
                 " , WindowCode = " + Long.toHexString(WindowCode) + ", index = " + mIndex);
         Util.setBaseContext(this);
         CmdEntryPoint.ctx = this;
@@ -223,9 +223,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         findViewById(R.id.help_button).setOnClickListener((l) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/termux/termux-x11/blob/master/README.md#running-graphical-applications"))));
 
         LorieView lorieView = findViewById(R.id.lorieView);
-        lorieView.updateCoordinate(mCoordinate);
+        lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
-        lorieView.setTag(R.id.window_coordinate, mCoordinate);
+        lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
         mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
             @Override
             public void swipeDown() {
@@ -272,15 +272,18 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
             mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
 
-            if(getWindowId() == 0){
-                LorieView.sendWindowChange(screenWidth, screenHeight, framerate);
-            }
-            Coordinate coordinate = (Coordinate) lorieView.getTag(R.id.window_coordinate);
+            Log.d(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
+                    + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
+            );
+//            if(getWindowId() == 0){
+                LorieView.sendWindowChange(1920, 989, framerate);
+//            }
+            WindowAttribute coordinate = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
             if (service != null ) {
                 if(coordinate == null){
                     try {
                         service.windowChanged(sfc, 0, 0,
-                                surfaceWidth, surfaceHeight, 0,
+                                1920, 989, 0,
                                 1000);
                     } catch (RemoteException e) {
                         e.printStackTrace();

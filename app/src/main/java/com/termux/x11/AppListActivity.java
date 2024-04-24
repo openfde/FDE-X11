@@ -1,14 +1,22 @@
 package com.termux.x11;
 
+import static com.termux.x11.CmdEntryPoint.ACTION_START;
+import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.termux.x11.data.Constants.BASEURL;
 import static com.termux.x11.data.Constants.URL_GETALLAPP;
 import static com.termux.x11.data.Constants.URL_STOPAPP;
 
+import android.app.ActivityOptions;
+import android.app.Dialog;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
+import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.Handler;
@@ -27,18 +35,32 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import com.fde.fusionwindowmanager.WindowManager;
+import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.fde.fusionwindowmanager.service.WMService;
+import com.fde.fusionwindowmanager.service.WMServiceConnection;
+import com.fde.fusionwindowmanager.Util;
 import com.fde.recyclerview.SwipeRecyclerView;
 import com.termux.x11.data.AppAdapter;
 import com.termux.x11.data.AppListResult;
 import com.termux.x11.data.VncResult;
+import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.termux.x11.utils.AppUtils;
 import com.termux.x11.utils.DimenUtils;
 import com.termux.x11.view.PopupSlideSmall;
 import com.xiaokun.dialogtiplib.dialog_tip.TipLoadDialog;
 import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.callback.JsonCallBack;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+
 import okhttp3.Call;
 import razerdp.basepopup.BasePopupWindow;
 import razerdp.util.animation.AnimationHelper;
@@ -65,8 +87,12 @@ public class AppListActivity extends AppCompatActivity {
     private int screenWidth;
     private int screenHeight;
     private int spanCount;
+    private boolean mAppListInit = false;
+    private boolean mWindowManagerInit = false;
     public TipLoadDialog tipLoadDialog;
-
+    private WindowManager windowManager;
+    private WMServiceConnection connection;
+    private boolean isLoading;
 
     public interface ItemClickListener {
         void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event);
@@ -77,13 +103,94 @@ public class AppListActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.applist_activity);
         loadingView = (ProgressBar) findViewById(R.id.loadingView);
+        EventBus.getDefault().register(this);
         initAppList();
+        Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
+        registerReceiver(receiver, new IntentFilter(ACTION_START));
+        getWindow().getDecorView().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                startXserver();
+                Log.d(TAG, "run() called");
+            }
+        }, 50);
+
+        getWindow().getDecorView().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                ActivityOptions options = ActivityOptions.makeBasic();
+                options.setLaunchBounds(new Rect(0,0,1,1));
+                Intent intent = new Intent(AppListActivity.this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent, options.toBundle());
+            }
+        }, 5000);
+    }
+
+    private void startXserver() {
+        CmdEntryPoint.main(new String[]{":1", "-legacy-drawing", "-listen", "tcp"});
+    }
+
+    private void bindWindowManager() {
+        Log.d(TAG, "bindWindowManager() called");
+        if(connection == null ){
+            connection = new WMServiceConnection();
+        }
+        Intent intent = new Intent(this, WMService.class);
+        bindService(intent, connection, BIND_AUTO_CREATE);
+        windowManager = new WindowManager( new WeakReference<>(this));
+        windowManager.startWindowManager();
+    }
+
+
+    private final BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_START.equals(intent.getAction()) && !WindowManager.isConnected()) {
+                bindWindowManager();
+            } else if (MainActivity.ACTION_STOP.equals(intent.getAction())) {
+
+            } else if (ACTION_PREFERENCES_CHANGED.equals(intent.getAction())) {
+
+            }
+        }
+    };
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
+    public void onReceiveMsg(EventMessage message){
+        Log.e("EventBus_Subscriber", "onReceiveMsg_MAIN: " + message.toString());
+        if(windowManager == null){
+            return;
+        }
+        switch (message.getType()){
+            case X_START_ACTIVITY_MAIN_WINDOW:
+                windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity1.class);
+                break;
+            default:
+                break;
+        }
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if( connection != null ){
+            unbindService(connection);
+        }
+        if( windowManager != null ){
+            windowManager.stopWindowManager();
+        }
+        if(tipLoadDialog != null){
+            tipLoadDialog = null;
+        }
+        EventBus.getDefault().unregister(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(TAG, "onResume() called");
         if (MOCK_ADDR) {
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -104,7 +211,6 @@ public class AppListActivity extends AppCompatActivity {
                 initAppList();
             }
         }
-        Log.d(TAG, "onConfigurationChanged() screenHeight = [" + screenHeight + "] screenWidth = [" + screenWidth + "]");
     }
 
     @Override
@@ -113,7 +219,12 @@ public class AppListActivity extends AppCompatActivity {
     }
 
     private void initAppList() {
-        spanCount = DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f);
+        isLoading = true;
+        if(globalWidth != 0 && globalHeight != 0){
+            spanCount = globalWidth / (int) DimenUtils.dpToPx(160.0f);
+        } else {
+            spanCount = DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f);
+        }
         spanCount = Math.max(spanCount, 3);
         mRefreshLayout = findViewById(R.id.refresh_layout);
         mRefreshLayout.setOnRefreshListener(mRefreshListener); // 刷新监听。
@@ -133,6 +244,14 @@ public class AppListActivity extends AppCompatActivity {
                 globalHeight = mRefreshLayout.getMeasuredHeight();
             }
         });
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if(hasFocus && !isLoading ){
+            initAppList();
+        }
     }
 
     private SwipeRefreshLayout.OnRefreshListener mRefreshListener = new SwipeRefreshLayout.OnRefreshListener() {
@@ -156,19 +275,19 @@ public class AppListActivity extends AppCompatActivity {
         @Override
         public void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event) {
 //            loadingView.setVisibility(View.VISIBLE);
-            long nowTime = System.currentTimeMillis();
-            if (nowTime - mLastClickTime < TIME_INTERVAL) {
-                // do something
-                Log.d(TAG, "onItemClick() click too quickly");
-                return;
-            }
-            mLastClickTime = nowTime;
-            Log.d(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
-            if (isRight) {
-                showOptionView(itemView, app, event);
-            } else {
-                load2Start(app);
-            }
+//            long nowTime = System.currentTimeMillis();
+//            if (nowTime - mLastClickTime < TIME_INTERVAL) {
+//                // do something
+//                Log.d(TAG, "onItemClick() click too quickly");
+//                return;
+//            }
+//            mLastClickTime = nowTime;
+//            Log.d(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
+//            if (isRight) {
+//                showOptionView(itemView, app, event);
+//            } else {
+//                load2Start(app);
+//            }
         }
     };
 
@@ -318,13 +437,16 @@ public class AppListActivity extends AppCompatActivity {
                 .execute(new JsonCallBack<AppListResult>() {
                     @Override
                     public void onFailure(Call call, Exception e) {
+                        isLoading = false;
                         Log.d(TAG, "onFailure() called with: call = [" + call + "], e = [" + e + "]");
                         mRecyclerView.loadMoreFinish(false, false);
                         mRefreshLayout.setRefreshing(false);
+                        mAppListInit = mDataList.size() != 0;
                     }
 
                     @Override
                     public void onSuccess(Call call, AppListResult response) {
+                        isLoading = false;
                         Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
                         List<AppListResult.DataBeanX.DataBean> data = response.getData().getData();
                         if (fromShortcut) {
@@ -345,6 +467,7 @@ public class AppListActivity extends AppCompatActivity {
                         if(forceRefresh){
                             mRecyclerView.scrollToPosition(0);
                         }
+                        mAppListInit = mDataList.size() != 0;
                     }
                 });
     }

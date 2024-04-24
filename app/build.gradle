@@ -19,6 +19,7 @@ android {
 //        keyPassword 'xrj45yWGLbsO7W0v'
 //    }
 
+
     splits.abi {
         enable true
         reset()
@@ -69,6 +70,8 @@ dependencies {
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.caverock:androidsvg:1.4'
     implementation 'io.github.razerdp:BasePopup:3.2.1'
+    implementation  'org.greenrobot:eventbus:3.2.0'
+
 
     compileOnly project(':shell-loader:stub')
     implementation project(':x_recyclerview')

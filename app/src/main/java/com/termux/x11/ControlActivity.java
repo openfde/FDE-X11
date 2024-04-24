@@ -61,7 +61,6 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         Intent intent = new Intent(this, WMService.class);
         bindService(intent, connection, BIND_AUTO_CREATE);
         windowManager = new WindowManager();
-        windowManager.init();
     }
 
     @Override
@@ -90,7 +89,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         } else if ( v == btStopWindowManager){
             windowManager.stopWindowManager();
         } else if ( v == btstartXserver){
-            CmdEntryPoint.main(new String[]{":0", "-legacy-drawing", "-listen", "tcp"});
+            CmdEntryPoint.main(new String[]{":1", "-legacy-drawing", "-listen", "tcp"});
         }
     }
 
