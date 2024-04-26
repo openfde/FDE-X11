@@ -24,6 +24,8 @@ extern "C" {
 }
 #include <ostream>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 // Represents a 2D size.
 template <typename T>
@@ -112,6 +114,9 @@ template <typename Container, typename Converter>
 // ostream support for.
 template <typename T>
 ::std::string ToString(const T& x);
+
+template <typename T>
+::std::string ToHexString(const T& x);
 
 // Returns a string describing an X event for debugging purposes.
 extern ::std::string ToString(const XEvent& e);
@@ -236,6 +241,13 @@ template <typename T>
 ::std::string ToString(const T& x) {
     ::std::ostringstream out;
     out << x;
+    return out.str();
+}
+
+template <typename T>
+::std::string ToHexString(const T& x) {
+    ::std::ostringstream out;
+    out << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(x);
     return out.str();
 }
 

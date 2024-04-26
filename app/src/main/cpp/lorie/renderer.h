@@ -18,8 +18,9 @@ maybe_unused void renderer_message_func(renderer_message_func_type function);
 maybe_unused int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip);
 maybe_unused void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buffer);
 maybe_unused void renderer_set_window(JNIEnv* env, jobject surface, AHardwareBuffer* buffer);
+maybe_unused void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* buffer);
 maybe_unused void initAnotherSurface(JNIEnv *env, jobject surface, int id, float d, float d1, float d2, float d3,
-                   long i);
+                                     WindowPtr i);
 maybe_unused int renderer_should_redraw(void);
 maybe_unused int renderer_redraw(JNIEnv* env, uint8_t flip);
 maybe_unused int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int indext);
@@ -27,7 +28,7 @@ maybe_unused int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int indext
 maybe_unused void renderer_print_fps(float millis);
 
 maybe_unused void renderer_update_root(int w, int h, void* data, uint8_t flip);
-maybe_unused void renderer_update_root_process1(int x, int y, int w, int h, void* data, uint8_t flip, int index);
+maybe_unused void renderer_update_root_process1(int x, int y, int w, int h, void* data, uint8_t flip, int wid);
 maybe_unused void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data);
 maybe_unused void renderer_set_cursor_coordinates(int x, int y);
 

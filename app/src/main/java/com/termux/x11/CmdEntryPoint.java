@@ -64,10 +64,11 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
 
     private static HashSet<Integer> Ptrs = new HashSet<>();
 
-    public static void startActivityOrUpdateOffsetForWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) {
+    public static void startActivityOrUpdateOffsetForWindow(int offsetX, int offsetY,
+               int width, int height, int index, long windowPtr, long window) {
         Log.d(TAG, "startActivityOrUpdateOffsetForWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], windowPtr = [" + windowPtr + "]");
         EventBus.getDefault().post(new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                " ", new WindowAttribute(offsetX, offsetY, width, height, 1, windowPtr)));
+                " ", new WindowAttribute(offsetX, offsetY, width, height, index, windowPtr, window)));
 //        IReceive receiver = receiverMap.get(0);
 //        if(Ptrs.contains(index)){
 //            receiver = receiverMap.get(index);
@@ -261,7 +262,7 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
 //    public native void windowChanged(Surface surface, long id);
 
     public native void windowChanged(Surface surface, float offsetX, float offsetY,
-                                     float width, float height, int index, long windPtr);
+                                     float width, float height, int index, long windPtr, long window);
 
     public native ParcelFileDescriptor getXConnection();
 

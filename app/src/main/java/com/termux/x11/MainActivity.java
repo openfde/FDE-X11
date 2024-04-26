@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
     private IReceive.Stub listener = new IReceive.Stub() {
         @Override
-        public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr) throws RemoteException {
+        public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr, long window) throws RemoteException {
             Log.d(TAG, "startWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], mIndex = [" + mIndex + "]");
             if(index  == mIndex){
                 mAttribute.setOffsetX(offsetX);
@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 intent.putExtra("index", index);
                 intent.putExtra("KEY_WindowPtr", windowPtr);
                 WindowAttribute mAttribute = new WindowAttribute(offsetX, offsetY, width, height,
-                        index, windowPtr);
+                        index, windowPtr, window);
                 intent.putExtra("NativeWindow_data", mAttribute);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent, options.toBundle());
@@ -138,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 intent.putExtra("index", index);
                 intent.putExtra("KEY_WindowPtr", windowPtr);
                 WindowAttribute coordinate = new WindowAttribute(offsetX, offsetY, width, height,
-                        index, windowPtr);
+                        index, windowPtr, window);
                 Log.d(TAG, "coordinate:" + coordinate);
                 intent.putExtra("NativeWindow_data", coordinate);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -190,6 +190,10 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         return instance;
     }
 
+    protected int getLayoutID(){
+        return R.layout.main_activity_0;
+    }
+
     @Override
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
@@ -216,7 +220,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         getWindow().setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        setContentView(R.layout.main_activity);
+        setContentView(getLayoutID());
 
         frm = findViewById(R.id.frame);
         findViewById(R.id.preferences_button).setOnClickListener((l) -> startActivity(new Intent(this, LoriePreferences.class) {{ setAction(Intent.ACTION_MAIN); }}));
@@ -272,19 +276,19 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
             mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
 
-            Log.d(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
+            Log.d(TAG, this + "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
                     + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
             );
 //            if(getWindowId() == 0){
                 LorieView.sendWindowChange(1920, 989, framerate);
 //            }
-            WindowAttribute coordinate = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
+            WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
             if (service != null ) {
-                if(coordinate == null){
+                if(attribute == null){
                     try {
                         service.windowChanged(sfc, 0, 0,
                                 1920, 989, 0,
-                                1000);
+                                1000, 1000);
                     } catch (RemoteException e) {
                         e.printStackTrace();
                     }
@@ -292,12 +296,12 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     try {
                         if(surfaceWidth == 0 || surfaceHeight == 0){
                             service.windowChanged(sfc, 0, 0,
-                                    0, 0, coordinate.getIndex(),
-                                    coordinate.getWindowPtr());
+                                    0, 0, attribute.getIndex(),
+                                    attribute.getWindowPtr(), attribute.getXID());
                         } else {
-                            service.windowChanged(sfc, coordinate.getOffsetX(), coordinate.getOffsetY(),
-                                    coordinate.getWidth(), coordinate.getHeight(), coordinate.getIndex(),
-                                    coordinate.getWindowPtr());
+                            service.windowChanged(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
+                                    attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
+                                    attribute.getWindowPtr(), attribute.getXID());
                         }
 
 
@@ -880,6 +884,22 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         Log.d(TAG, "onWindowFocusChanged() called with: hasFocus = [" + hasFocus + "]");
         getLorieView().requestFocus();
+
+        if(hasFocus && !goback){
+            goback = true;
+            goback();
+        }
+    }
+
+    boolean goback = false;
+
+    protected void goback(){
+        getWindow().getDecorView().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                finish();
+            }
+        }, 3000);
     }
 
     @Override
@@ -957,6 +977,96 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 //        getLorieView().handleXEvents();
 //        handler.postDelayed(this::checkXEvents, 300);
     }
+
+    public static class MainActivity1 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
+    public static class MainActivity2 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
+    public static class MainActivity3 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
+    public static class MainActivity4 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
+
+    public static class MainActivity5 extends MainActivity {
+        protected void goback() {
+        }
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+
+    }
+
+    public static class MainActivity6 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
+    public static class MainActivity7 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+    public static class MainActivity8 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
+    public static class MainActivity9 extends MainActivity {
+        protected void goback() {
+        }
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
+    public static class MainActivity0 extends MainActivity {
+        protected void goback() {
+        }
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+    }
+
 
 
 }

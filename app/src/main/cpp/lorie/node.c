@@ -1,11 +1,12 @@
 #include "node.h"
+
 #define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_node", __VA_ARGS__)
 
 
-struct Node* createNode(WindowPtr data) {
-    struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
+WindowNode *node_create(WindAttribute data) {
+    WindowNode *newNode = (WindowNode *) malloc(sizeof(WindowNode));
     if (newNode == NULL) {
-        log(ERROR, "内存分配失败\n");
+        log(ERROR, "malloc fail\n");
         exit(1);
     }
     newNode->data = data;
@@ -13,30 +14,40 @@ struct Node* createNode(WindowPtr data) {
     return newNode;
 }
 
-void insertAtBeginning(struct Node** head, WindowPtr data) {
-    struct Node* newNode = createNode(data);
+void node_insert_at_begin(WindowNode **head, WindAttribute data) {
+    WindowNode *newNode = node_create(data);
     newNode->next = *head;
     *head = newNode;
 }
 
-void insertAtEnd(struct Node** head, WindowPtr data) {
-    struct Node* newNode = createNode(data);
+void node_append(WindowNode **head, WindAttribute data) {
+    WindowNode *newNode = node_create(data);
     if (*head == NULL) {
         *head = newNode;
         return;
     }
-    struct Node* temp = *head;
+    WindowNode *temp = *head;
     while (temp->next != NULL) {
         temp = temp->next;
     }
     temp->next = newNode;
 }
 
-struct Node* getNodeAtPosition(struct Node* head, int position) {
+int node_get_length(WindowNode *head) {
+    int length = 0;
+    WindowNode *temp = head;
+    while (temp != NULL) {
+        length++;
+        temp = temp->next;
+    }
+    return length;
+}
+
+WindowNode *node_get_at_position(WindowNode *head, int position) {
     if (position < 1) {
         return NULL;
     }
-    struct Node* temp = head;
+    WindowNode *temp = head;
     int count = 1;
     while (temp != NULL && count < position) {
         temp = temp->next;
@@ -48,40 +59,83 @@ struct Node* getNodeAtPosition(struct Node* head, int position) {
     return temp;
 }
 
-void deleteNode(struct Node** head, WindowPtr key) {
-    struct Node *temp = *head, *prev = NULL;
-    if (temp != NULL && temp->data == key) {
+WindowNode *node_get_at_index(WindowNode *head, int index) {
+//    log(ERROR, "want index:%d\n", index);
+    if (!head) {
+        return NULL;
+    }
+    if (index < 1) {
+        return NULL;
+    }
+    WindowNode *temp = head;
+    while (temp != NULL && temp->data.index != index) {
+        temp = temp->next;
+    }
+    if (temp == NULL) {
+        return NULL;
+    }
+//    log(ERROR, "getNodeByIndex:%d\n", index);
+    return temp;
+}
+
+void node_delete(WindowNode **head, WindAttribute key) {
+    if (!head) {
+        return;
+    }
+    WindowNode *temp = head, *prev = NULL;
+    if (temp != NULL && temp->data.pWin == key.pWin) {
         *head = temp->next;
         free(temp);
         return;
     }
-    while (temp != NULL && temp->data != key) {
+    while (temp != NULL && temp->data.pWin != key.pWin) {
         prev = temp;
         temp = temp->next;
     }
     if (temp == NULL) {
-        log(ERROR, "节点未找到\n");
+        log(ERROR, "Node not found\n");
         return;
     }
     prev->next = temp->next;
     free(temp);
 }
 
-int search(struct Node* head, WindowPtr key) {
-    struct Node* temp = head;
-    XID found = 0;
+WindowNode *node_search(WindowNode *head, WindowPtr ptr) {
+    if (!head) {
+        return NULL;
+    }
+    WindowNode *temp = head;
     XID position = 1;
-    while (temp != NULL) {
-        if (temp->data == key) {
-            log(ERROR, "元素 %d 找到在位置 %d\n", key, position);
-            found = 1;
-            break;
+    while (temp) {
+        if (temp->data.pWin == ptr) {
+            log(ERROR, "WindowPtr %p found at position %d\n", (void *) ptr, position);
+            return temp;
         }
         temp = temp->next;
         position++;
     }
-    if (!found) {
-        log(ERROR, "元素 %d 未找到\n", key);
+    return NULL;
+}
+
+void node_replace_at_position(WindowNode *head, int position, WindAttribute newData) {
+    WindowNode *temp = node_get_at_position(head, position);
+    if (temp == NULL) {
+        return;
     }
-    return found;
+    temp->data = newData;
+}
+
+int node_get_max_index(WindowNode *head) {
+    if (!head) {
+        return 0;
+    }
+    WindowNode *temp = head;
+    int index = 1;
+    while (temp) {
+        if (temp->data.index > index) {
+            index = temp->data.index;
+        }
+        temp = temp->next;
+    }
+    return index;
 }

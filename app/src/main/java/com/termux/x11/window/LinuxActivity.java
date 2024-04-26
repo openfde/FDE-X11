@@ -63,7 +63,7 @@ public class LinuxActivity extends AppCompatActivity {
     private void initCallback() {
         listener = new IReceive.Stub() {
             @Override
-            public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windPtr) throws RemoteException {
+            public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windPtr, long window) throws RemoteException {
 
             }
         };
@@ -108,11 +108,11 @@ public class LinuxActivity extends AppCompatActivity {
                     if (attribute != null) {
                         service.windowChanged(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
                                 attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
-                                attribute.getWindowPtr());
+                                attribute.getWindowPtr(), attribute.getXID());
                     } else {
                         service.windowChanged(sfc, 0, 0,
                                 screenWidth, screenHeight, 0,
-                                0);
+                                0, attribute.getXID());
                     }
                 } catch (RemoteException e) {
                     e.printStackTrace();

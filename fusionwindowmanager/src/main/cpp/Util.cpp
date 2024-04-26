@@ -79,6 +79,8 @@ string ToString(const XEvent& e) {
             properties.emplace_back(
                     "window", ToString(e.xcreatewindow.window));
             properties.emplace_back(
+                    "window", ToHexString(e.xcreatewindow.window));
+            properties.emplace_back(
                     "parent", ToString(e.xcreatewindow.parent));
             properties.emplace_back(
                     "size",
@@ -96,10 +98,14 @@ string ToString(const XEvent& e) {
         case DestroyNotify:
             properties.emplace_back(
                     "window", ToString(e.xdestroywindow.window));
+            properties.emplace_back(
+                    "window", ToHexString(e.xdestroywindow.window));
             break;
         case MapNotify:
             properties.emplace_back(
                     "window", ToString(e.xmap.window));
+            properties.emplace_back(
+                    "window", ToHexString(e.xmap.window));
             properties.emplace_back(
                     "event", ToString(e.xmap.event));
             properties.emplace_back(
@@ -110,6 +116,8 @@ string ToString(const XEvent& e) {
             properties.emplace_back(
                     "window", ToString(e.xunmap.window));
             properties.emplace_back(
+                    "window", ToHexString(e.xunmap.window));
+            properties.emplace_back(
                     "event", ToString(e.xunmap.event));
             properties.emplace_back(
                     "from_configure",
@@ -118,6 +126,8 @@ string ToString(const XEvent& e) {
         case ConfigureNotify:
             properties.emplace_back(
                     "window", ToString(e.xconfigure.window));
+            properties.emplace_back(
+                    "window", ToHexString(e.xconfigure.window));
             properties.emplace_back(
                     "size",
                     Size<int>(e.xconfigure.width, e.xconfigure.height).ToString());
@@ -135,6 +145,8 @@ string ToString(const XEvent& e) {
             properties.emplace_back(
                     "window", ToString(e.xreparent.window));
             properties.emplace_back(
+                    "window", ToHexString(e.xreparent.window));
+            properties.emplace_back(
                     "parent", ToString(e.xreparent.parent));
             properties.emplace_back(
                     "position",
@@ -146,10 +158,14 @@ string ToString(const XEvent& e) {
         case MapRequest:
             properties.emplace_back(
                     "window", ToString(e.xmaprequest.window));
+            properties.emplace_back(
+                    "window", ToHexString(e.xmaprequest.window));
             break;
         case ConfigureRequest:
             properties.emplace_back(
                     "window", ToString(e.xconfigurerequest.window));
+            properties.emplace_back(
+                    "window", ToHexString(e.xconfigurerequest.window));
             properties.emplace_back(
                     "parent", ToString(e.xconfigurerequest.parent));
             properties.emplace_back(
@@ -172,6 +188,8 @@ string ToString(const XEvent& e) {
             properties.emplace_back(
                     "window", ToString(e.xbutton.window));
             properties.emplace_back(
+                    "window", ToHexString(e.xbutton.window));
+            properties.emplace_back(
                     "button", ToString(e.xbutton.button));
             properties.emplace_back(
                     "position_root",
@@ -180,6 +198,8 @@ string ToString(const XEvent& e) {
         case MotionNotify:
             properties.emplace_back(
                     "window", ToString(e.xmotion.window));
+            properties.emplace_back(
+                    "window", ToHexString(e.xmotion.window));
             properties.emplace_back(
                     "position_root",
                     Position<int>(e.xmotion.x_root, e.xmotion.y_root).ToString());
@@ -192,6 +212,8 @@ string ToString(const XEvent& e) {
         case KeyRelease:
             properties.emplace_back(
                     "window", ToString(e.xkey.window));
+            properties.emplace_back(
+                    "window", ToHexString(e.xkey.window));
             properties.emplace_back(
                     "state", ToString(e.xkey.state));
             properties.emplace_back(

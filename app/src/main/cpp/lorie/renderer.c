@@ -15,6 +15,7 @@
 #include <GLES2/gl2ext.h>
 #include <android/native_window_jni.h>
 #include <android/log.h>
+#include "node.h"
 #include <dlfcn.h>
 #include "renderer.h"
 #include "os.h"
@@ -138,9 +139,9 @@ static EGLImageKHR image = NULL;
 static int renderedFrames = 0;
 static jmethodID Surface_release = NULL;
 static jmethodID Surface_destroy = NULL;
+struct WindowNode* NamedWindow_WindowPtr = NULL;
 
-
-extern void TransferBuffer2FDE(WindowPtr wid);
+extern void TransferBuffer2FDE(WindowPtr ptr);
 extern void UpdateBuffer(int index);
 
 
@@ -153,18 +154,8 @@ static struct {
     float x, y, width, height, xhot, yhot;
 } cursor;
 
-typedef struct {
-    GLuint id;
-    float width, height;
-    float offset_x, offset_y;
-    int index;
-    long pWind;
-} DisplayRes;
 
 
-static DisplayRes otherDisplay1 = {1, 807, 592};
-static DisplayRes otherDisplay2 = {2, 1920, 989};
-static float CursorWidth, CursorHeight = 0;
 
 GLuint g_texture_program = 0, gv_pos = 0, gv_coords = 0;
 GLuint g_texture_program_bgra = 0, gv_pos_bgra = 0, gv_coords_bgra = 0;
@@ -448,24 +439,32 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
     log("renderer_set_buffer %p %d %d", buffer, desc.width, desc.height);
 }
 
-void initAnotherSurface(JNIEnv *env, jobject surface, int id, float offsetX, float offsetY,
+void initAnotherSurface(JNIEnv *env, jobject surface, int index, float offsetX, float offsetY,
                         float width, float height,
-                        long windPtr) {
+                        WindowPtr ptr) {
     log("initAnotherSurface surface:%p index:%d offsetx:%f offsety:%f width:%f height:%f winPtr:%ld",
-        surface, id, offsetX, offsetY
-        ,width, height, windPtr);
-    if(id == 1){
-        otherDisplay1.offset_x = offsetX;
-        otherDisplay1.offset_y = offsetY;
-        otherDisplay1.width = width;
-        otherDisplay1.height = height;
-        otherDisplay1.pWind = windPtr;
-    } else if(id == 2) {
-        otherDisplay2.offset_x = offsetX;
-        otherDisplay2.offset_y = offsetY;
-        otherDisplay2.width = width;
-        otherDisplay2.height = height;
-        otherDisplay2.pWind = windPtr;
+        surface, index, offsetX, offsetY
+        ,width, height, ptr);
+
+    WindowNode * window_node = node_search(NamedWindow_WindowPtr, ptr);
+    if(window_node){
+        window_node->data.offset_x = offsetX;
+        window_node->data.offset_y = offsetY;
+        window_node->data.width = width;
+        window_node->data.height = height;
+        window_node->data.pWin = (WindowPtr) ptr;
+        window_node->data.index = index;
+
+    } else {
+        WindAttribute  windAttribute  = {
+                .offset_x = offsetX,
+                .offset_y = offsetY,
+                .width = width,
+                .height = height,
+                .pWin = (WindowPtr) ptr,
+                .index = index
+        };
+        node_append(&NamedWindow_WindowPtr, windAttribute);
     }
 
     EGLNativeWindowType w = ANativeWindow_fromSurface(env, surface);
@@ -476,12 +475,38 @@ void initAnotherSurface(JNIEnv *env, jobject surface, int id, float offsetX, flo
         eglCheckError(__LINE__);
         return;
     } else {
-        if(id == 1){
-            sfc1 = eglSurface;
-        } else if(id == 2) {
-            sfc2 = eglSurface;
-        }
+        WindowNode * index_node = node_get_at_index(NamedWindow_WindowPtr, index);
+        index_node->data.sfc = eglSurface;
     }
+}
+
+void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* new_buffer){
+    if (!g_texture_program) {
+        g_texture_program = create_program(vertex_shader, fragment_shader);
+        if (!g_texture_program) {
+            log("Xlorie: GLESv2: Unable to create shader program.\n");
+            eglCheckError(__LINE__);
+            return;
+        }
+        g_texture_program_bgra = create_program(vertex_shader, fragment_shader_bgra);
+        if (!g_texture_program_bgra) {
+            log("Xlorie: GLESv2: Unable to create bgra shader program.\n");
+            eglCheckError(__LINE__);
+            return;
+        }
+        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position"); checkGlError();
+        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords"); checkGlError();
+        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position"); checkGlError();
+        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords"); checkGlError();
+        glActiveTexture(GL_TEXTURE0); checkGlError();
+        glGenTextures(1, &display.id); checkGlError();
+        glGenTextures(1, &cursor.id); checkGlError();
+    }
+    eglSwapInterval(global_egl_display, 0);
+    if (!new_buffer) {
+        glClearColor(0.f, 0.f, 0.f, 0.0f); checkGlError();
+        glClear(GL_COLOR_BUFFER_BIT); checkGlError();
+    } else renderer_set_buffer(env, new_buffer);
 }
 
 void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_buffer) {
@@ -552,6 +577,7 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
         return;
     }
 
+
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
         if (!g_texture_program) {
@@ -573,39 +599,35 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
         gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position"); checkGlError();
         gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords"); checkGlError();
 
-        glActiveTexture(GL_TEXTURE0); checkGlError();
-        glGenTextures(1, &display.id); checkGlError();
-        glGenTextures(1, &otherDisplay1.id); checkGlError();
-        glGenTextures(1, &otherDisplay2.id); checkGlError();
-        glGenTextures(1, &cursor.id); checkGlError();
+//        glActiveTexture(GL_TEXTURE0); checkGlError();
+//        glGenTextures(1, &display.id); checkGlError();
+//        glGenTextures(1, &cursor.id); checkGlError();
     }
+    return;
 
     eglSwapInterval(global_egl_display, 0);
 
     if (win && global_ctx && ANativeWindow_getWidth(win) > 0 && ANativeWindow_getHeight(win) > 0){
-//            glViewport(0, 0, 1920, 592); checkGlError();
         glViewport(0, 0, ANativeWindow_getWidth(win), ANativeWindow_getHeight(win)); checkGlError();
     }
 
-    log("Xlorie: new surface applied: %p\n", sfc);
-
+//    log("Xlorie: new surface applied: %p\n", sfc);
     if (!new_buffer) {
         glClearColor(0.f, 0.f, 0.f, 0.0f); checkGlError();
         glClear(GL_COLOR_BUFFER_BIT); checkGlError();
-    } else renderer_set_buffer(env, new_buffer);
+    } else {
+        renderer_set_buffer(env, new_buffer);
+    }
 }
 
 void renderer_update_root(int w, int h, void* data, uint8_t flip) {
 
-    log("renderer_update_root %p", display);
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
-    log("renderer_update_root %p", display);
 
-
-    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-        w, h, data, flip, display.width, display.height );
+//    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+//        w, h, data, flip, display.width, display.height );
     if (display.width != (float) w || display.height != (float) h) {
         display.width = (float) w;
         display.height = (float) h;
@@ -618,40 +640,34 @@ void renderer_update_root(int w, int h, void* data, uint8_t flip) {
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data); checkGlError();
     } else {
         glBindTexture(GL_TEXTURE_2D, display.id); checkGlError();
-
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
+//    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+//        w, h, data, flip, display.width, display.height );
+
 }
 
-void renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8_t flip, int index) {
-    if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h)
+void
+renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8_t flip, int index) {
+    if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
-
-    DisplayRes displayRes;
-    if(index == 1 ){
-        displayRes = otherDisplay1;
-        otherDisplay1.offset_x = (float) x;
-        otherDisplay1.offset_y = (float) y;
-    } else if ( index == 2 ){
-        displayRes = otherDisplay2;
-        otherDisplay2.offset_x = (float) x;
-        otherDisplay2.offset_y = (float) y;
     }
-
+    WindAttribute*  windAttributePtr = (WindAttribute *) node_get_at_index(NamedWindow_WindowPtr,
+                                                                        index);
 //    log("renderer_update_root_process1 x:%d y:%d offsetx:%f offsety:%f data:%p flip:%d display.width=%f display.height:%f index:%d id:%d",
-//        x, y, displayRes.offset_x, displayRes.offset_y, data, flip, displayRes.width, displayRes.height, index, displayRes.id );
+//        x, y, windAttributePtr->offset_x, windAttributePtr->offset_y, data, flip, windAttributePtr->width, windAttributePtr->height, index, windAttributePtr->texture_id );
 
-    if (displayRes.width != (float) w || displayRes.height != (float) h) {
-        if(index == 1){
-            otherDisplay1.width = (float) w;
-            otherDisplay1.height = (float) h;
-            glBindTexture(GL_TEXTURE_2D, displayRes.id);
-        } else if( index == 2){
-            otherDisplay2.width = (float) w;
-            otherDisplay2.height = (float) h;
-            glBindTexture(GL_TEXTURE_2D, displayRes.id);
+    windAttributePtr->offset_x = (float) x;
+    windAttributePtr->offset_y = (float) y;
+
+    if (windAttributePtr->width != (float) w || windAttributePtr->height != (float) h) {
+        windAttributePtr->width = (float) w;
+        windAttributePtr->height = (float) h;
+        if(!windAttributePtr->texture_id){
+            glGenTextures(1, &windAttributePtr->texture_id); checkGlError();
         }
+        glBindTexture(GL_TEXTURE_2D, windAttributePtr->texture_id);
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         checkGlError();
@@ -665,7 +681,7 @@ void renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     } else {
-        glBindTexture(GL_TEXTURE_2D, displayRes.id);
+        glBindTexture(GL_TEXTURE_2D, windAttributePtr->texture_id);
         checkGlError();
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
                         GL_UNSIGNED_BYTE, data);
@@ -674,7 +690,7 @@ void renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8
 }
 
 void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
-    log("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
+//    log("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
     cursor.width = (float) w;
     cursor.height = (float) h;
     cursor.xhot = (float) xhot;
@@ -693,7 +709,7 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
-    log("set_cursor x:%d, y :%d", x , y);
+//    log("set_cursor x:%d, y :%d", x , y);
     cursor.x = (float) x;
     cursor.y = (float) y;
 }
@@ -706,23 +722,17 @@ float ia = 0;
 int renderer_should_redraw(void) {
     int egl_good = sfc != EGL_NO_SURFACE && eglGetCurrentContext() != EGL_NO_CONTEXT;
 //    log("renderer_should_redraw egl_good:%d" , egl_good);
-    return egl_good;
+    return 1;
 }
 
 int renderer_redraw(JNIEnv* env, uint8_t flip) {
     int err_traversal = TRUE;
-    err_traversal = renderer_redraw_traversal(env, flip, 0);
-//    if(!err_traversal){
-//        return FALSE;
-//    }
-    err_traversal = renderer_redraw_traversal(env, flip, 1);
-//    if(!err_traversal){
-//        return FALSE;
-//    }
-    err_traversal = renderer_redraw_traversal(env, flip, 2);
-//    if(!err_traversal){
-//        return FALSE;
-//    }
+//    err_traversal = renderer_redraw_traversal(env, flip, 0);
+    WindowNode* node = NamedWindow_WindowPtr;
+    while (node){
+        err_traversal = renderer_redraw_traversal(env, flip, node->data.index);
+        node = node->next;
+    }
     renderedFrames++;
     return TRUE;
 }
@@ -730,31 +740,27 @@ int renderer_redraw(JNIEnv* env, uint8_t flip) {
 
 int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
     int err = EGL_SUCCESS;
-    EGLSurface eglSurface;
+    EGLSurface eglSurface = NULL;
     int id;
     float width, height;
+    WindowNode * windowNode = node_get_at_index(NamedWindow_WindowPtr, index);
     if (index == 0){
         eglSurface = sfc;
         id = display.id;
         width = display.width;
         height = display.height;
-    } else if(index == 1){
-        UpdateBuffer(0);
-        eglSurface = sfc1;
-        id = otherDisplay1.id;
-        width = otherDisplay1.width;
-        height = otherDisplay1.height;
-    } else if(index == 2){
-        UpdateBuffer(1);
-        eglSurface = sfc2;
-        id = otherDisplay2.id;
-        width = otherDisplay2.width;
-        height = otherDisplay2.height;
+    } else if(windowNode){
+        UpdateBuffer(index);
+        eglSurface = windowNode->data.sfc;
+        id = windowNode->data.texture_id;
+        width = windowNode->data.width;
+        height = windowNode->data.height;
     }
-    if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id)
+//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface, index, width, height, id);
+    if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id) {
         return FALSE;
+    }
 
-    log("renderer_redraw_traversal eglSurface:%p id:%d width:%f height:%f", eglSurface, id, width, height);
     glViewport(0, 0, width, height); checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         log("Xlorie: eglMakeCurrent failed.\n");
@@ -874,32 +880,19 @@ maybe_unused static void draw_cursor(int index) {
     float cursor_y = cursor.y;
     float cursor_xhot = cursor.xhot;
     float cursor_yhot = cursor.yhot;
-
-    if (index == 1) {
-        width = otherDisplay1.width;
-        height = otherDisplay1.height;
-        cursor_x -= otherDisplay1.offset_x;
-        cursor_y -= otherDisplay1.offset_y;
-//        cursor_y += 42;
-    } else if( index == 2) {
-        width = otherDisplay2.width;
-        height = otherDisplay2.height;
-        cursor_x -= otherDisplay2.offset_x;
-        cursor_y -= otherDisplay2.offset_y;
-//        cursor_y += 42;
+    if (index != 0) {
+        WindowNode * window_node = node_get_at_index( NamedWindow_WindowPtr, index);
+        if(window_node){
+            width = window_node->data.width;
+            height = window_node->data.height;
+            cursor_x -= window_node->data.offset_x;
+            cursor_y -= window_node->data.offset_y;
+        }
     }
-
     x = 2.f * (cursor_x - cursor_xhot) / width - 1.f;
     y = 2.f * (cursor_y - cursor_yhot) / height - 1.f;
-
     w = 2.f * cursor.width / width;
     h = 2.f * cursor.height / height;
-
-//    log("draw_cursor index:%d x:%f y:%f", index, x, y);
-//    log("draw_cursor index:%d w:%f h:%f", index, w, h);
-//    log("draw_cursor index:%d x:%f y:%f", index, x, y);
-
-
     glEnable(GL_BLEND); checkGlError();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); checkGlError();
     draw(cursor.id, x, y, x + w, y + h, false);

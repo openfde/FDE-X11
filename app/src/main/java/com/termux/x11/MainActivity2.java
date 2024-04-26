@@ -11,6 +11,14 @@ public class MainActivity2 extends MainActivity {
         return 2;
     }
 
+    protected int getLayoutID() {
+        return R.layout.main_activity;
+    }
+
+    protected void goback(){
+    }
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

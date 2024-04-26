@@ -34,22 +34,15 @@ extern ScreenPtr pScreenPtr;
 extern int ucs2keysym(long ucs);
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 void start_android_window(int index, WindowPtr pWindow);
-void create_android_window(WindowPtr windowPtr);
+void create_android_window(WindAttribute attribute);
 
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
 
-extern PixmapPtr tempPixmap1;
-extern PixmapPtr tempPixmap2;
-extern WindowPtr separateWindowPtr1;
-extern WindowPtr separateWindowPtr2;
-
-static jobject CmdEntryPointObject;
 static jclass JavaCmdEntryPointClass;
 static JavaVM *jniVM = NULL;
-static struct Node* NamedWindow_ids = NULL;
-void UpdateBuffer(int index);
-
+extern struct WindowNode * NamedWindow_WindowPtr ;
+void UpdateBuffer(int ptr);
 
 static inline JNIEnv *GetJavaEnv(void)
 {
@@ -61,41 +54,56 @@ static inline JNIEnv *GetJavaEnv(void)
     return ret;
 }
 
-void UpdateBuffer(int index){
-    struct Node* node = getNodeAtPosition(NamedWindow_ids, index);
-    if(node){
-        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(node->data);
+void UpdateBuffer(int ptr) {
+//    log(ERROR, "UpdateBuffer");
+    WindowNode * node = node_get_at_index(NamedWindow_WindowPtr, ptr);
+    if (node) {
+        PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(node->data.pWin);
         renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, 1);
+                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, ptr);
     }
 }
 
 void TransferBuffer2FDE(WindowPtr windowPtr) {
-
     Window wid = windowPtr->drawable.id;
     log(ERROR, "TransferBuffer2FDE %x", wid);
-    if(search(NamedWindow_ids, windowPtr)) {
+    if(node_search(NamedWindow_WindowPtr, windowPtr)) {
+        log(ERROR, "TransferBuffer2FDE found %x", wid);
         return;
     } else {
-        insertAtEnd(&NamedWindow_ids, windowPtr);
+        int max_index = node_get_max_index(NamedWindow_WindowPtr);
         PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
+        WindAttribute  windAttribute  = {
+                .offset_x = pixmap->screen_x,
+                .offset_y = pixmap->screen_y,
+                .width = pixmap->drawable.width,
+                .height = pixmap->drawable.height,
+                .pWin = (WindowPtr) windowPtr,
+                .index = max_index + 1,
+        };
+        node_append(&NamedWindow_WindowPtr, windAttribute);
         renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, 1);
-        create_android_window(windowPtr);
+                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, max_index + 1);
+        create_android_window(windAttribute);
     }
 }
 
-void create_android_window(WindowPtr windowPtr){
+void create_android_window(WindAttribute attribute){
     JNIEnv *JavaEnv = GetJavaEnv();
     if(JavaEnv && JavaCmdEntryPointClass){
-        int offsetX = windowPtr->drawable.x;
-        int offsetY = windowPtr->drawable.y;
-        int width = windowPtr->drawable.width;
-        int height = windowPtr->drawable.height;
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityOrUpdateOffsetForWindow", "(IIIIIJ)V");
+        int offsetX = attribute.pWin->drawable.x;
+        int offsetY = attribute.pWin->drawable.y;
+        int width = attribute.pWin->drawable.width;
+        int height = attribute.pWin->drawable.height;
+        int index = attribute.index;
+        WindowPtr windowPtr = attribute.pWin;
+        Window window = attribute.window;
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                  "startActivityOrUpdateOffsetForWindow", "(IIIIIJJ)V");
         log(ERROR, "start_android_window method:%p", method);
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         offsetX, offsetY, width, height, 1, (long)windowPtr);
+                                         offsetX, offsetY, width, height,
+                                         index, (long)windowPtr, (long)window);
     }
 }
 
@@ -109,7 +117,8 @@ void start_android_window(int index, WindowPtr windowPtr) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityOrUpdateOffsetForWindow", "(IIIIIJ)V");
         log(ERROR, "start_android_window method:%p", method);
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         offsetX, offsetY, width, height, index, (long)windowPtr);
+                                         offsetX, offsetY, width, height,
+                                         index, (long)windowPtr);
     }
 }
 
@@ -297,10 +306,9 @@ JNIEXPORT void JNICALL
 Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
                                                 jobject surface, jfloat offsetX, jfloat offsetY,
                                                 jfloat width, jfloat height, jint index,
-                                                jlong windowPtr) {
-    int id = (int) index;
+                                                jlong windowPtr, jlong window) {
     jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
-    log(ERROR, "windowChanged ID:%d surface:%p", id, sfc);
+    log(ERROR, "windowChanged index:%d surface:%p", index, sfc);
     SurfaceRes *res = (SurfaceRes *) malloc(sizeof(SurfaceRes));
     res->id = (int) index;
     res->surface = sfc;
@@ -310,7 +318,7 @@ Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
     res->height = (int) height;
     ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
     res->psf = psf;
-    CmdEntryPointObject = cls;
+    res->pWin = (WindowPtr) windowPtr;
     QueueWorkProc(lorieChangeWindow, NULL, res);
 }
 

@@ -94,7 +94,7 @@
         </activity>
 
         <activity
-            android:name=".MainActivity1"
+            android:name=".MainActivity$MainActivity1"
             android:process=":abc1"
             android:taskAffinity=".abc1"
             android:supportsPictureInPicture="true"
@@ -104,8 +104,89 @@
             android:exported="true">
         </activity>
         <activity
-            android:name=".MainActivity2"
-            android:taskAffinity=".MainActivity2"
+            android:name=".MainActivity$MainActivity2"
+            android:process=":abc2"
+            android:taskAffinity=".abc2"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity3"
+            android:process=":abc3"
+            android:taskAffinity=".abc3"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity4"
+            android:process=":abc4"
+            android:taskAffinity=".abc4"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity5"
+            android:process=":abc5"
+            android:taskAffinity=".abc5"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity6"
+            android:process=":abc6"
+            android:taskAffinity=".abc6"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity7"
+            android:process=":abc7"
+            android:taskAffinity=".abc7"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity8"
+            android:process=":abc8"
+            android:taskAffinity=".abc8"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity9"
+            android:process=":abc9"
+            android:taskAffinity=".abc9"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+        </activity>
+        <activity
+            android:name=".MainActivity$MainActivity0"
+            android:process=":abc0"
+            android:taskAffinity=".abc0"
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:resizeableActivity="true"

@@ -61,7 +61,7 @@ WindowManager::~WindowManager() {
 
 
 void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
-    log("Frame() %x", w);
+    log("may Frame %x", w);
     // Visual properties of the frame to create.
     const unsigned int BORDER_WIDTH = 3;
     const unsigned long BORDER_COLOR = 0xff0000;
@@ -71,7 +71,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
 
     // 1. Retrieve attributes of window to frame.
     XWindowAttributes x_window_attrs;
-    CHECK(XGetWindowAttributes(display_, w, &x_window_attrs));
+    CHECK(!XGetWindowAttributes(display_, w, &x_window_attrs));
 
     // 2. If window was created before window manager started, we should frame
     // it only if it is visible and doesn't set override_redirect.
@@ -158,7 +158,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     top_level_debug = w;
     window_under_frames.insert(w);
     frames.insert(frame);
-    log("Framed window %x frame %x" ,w , frame);
+    log("Framed window %x reparent to frame %x" ,w , frame);
 }
 
 
@@ -171,7 +171,15 @@ void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {
 
 void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 
-void WindowManager::OnMapNotify(const XMapEvent& e) {}
+void WindowManager::OnMapNotify(const XMapEvent& e) {
+    auto it = frames.find(e.window);
+    if (it != frames.end()) {
+        log("Name window %x", e.window);
+        XCompositeNameWindowPixmap(display_, e.window);
+        named_windows.insert(e.window);
+    }
+    XSync(display_, False);
+}
 
 void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
     // If the window is a client window we manage, unframe it upon UnmapNotify. We
@@ -223,12 +231,12 @@ void WindowManager::Unframe(Window w) {
 }
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent& e) {
-    auto it = frames.find(e.window);
-    if (it != frames.end()) {
-        XCompositeNameWindowPixmap(display_, e.window);
-        named_windows.insert(e.window);
-    }
-    XSync(display_, False);
+//    auto it = frames.find(e.window);
+//    if (it != frames.end()) {
+//        XCompositeNameWindowPixmap(display_, e.window);
+//        named_windows.insert(e.window);
+//    }
+//    XSync(display_, False);
 }
 
 void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
@@ -250,11 +258,11 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
         XConfigureWindow(display_, frame, e.value_mask, &changes);
-        log("Resize %lu  to %s ", frame, Size<int>(e.width, e.height).ToString().c_str());
+        log("Resize %x  to %s ", frame, Size<int>(e.width, e.height).ToString().c_str());
+    } else {
+        XConfigureWindow(display_, e.window, e.value_mask, &changes);
+        log("Resize %x to %s" , e.window , Size<int>(e.width, e.height).ToString().c_str());
     }
-    XConfigureWindow(display_, e.window, e.value_mask, &changes);
-    log("Resize %lu to %s" , e.window , Size<int>(e.width, e.height).ToString().c_str());
-
 //    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
 //    XCompositeNameWindowPixmap(display_, frame_window);
     XSync(display_, False);
@@ -448,7 +456,7 @@ void WindowManager::Run() {
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
-        log("-------------------Received event: %s",ToString(e).c_str());
+        log("------Received event: %s",ToString(e).c_str());
 
         // 2. Dispatch event.
         switch (e.type) {

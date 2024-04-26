@@ -118,13 +118,14 @@ public class AppListActivity extends AppCompatActivity {
         getWindow().getDecorView().postDelayed(new Runnable() {
             @Override
             public void run() {
-                ActivityOptions options = ActivityOptions.makeBasic();
-                options.setLaunchBounds(new Rect(0,0,1,1));
+//                ActivityOptions options = ActivityOptions.makeBasic();
+//                options.setLaunchBounds(new Rect(0,0,1,1));
                 Intent intent = new Intent(AppListActivity.this, MainActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent, options.toBundle());
+                startActivity(intent);
+//                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//                startActivity(intent, options.toBundle());
             }
-        }, 5000);
+        }, 2000);
     }
 
     private void startXserver() {
@@ -165,7 +166,27 @@ public class AppListActivity extends AppCompatActivity {
         }
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
-                windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity1.class);
+                if(message.getWindowAttribute().getIndex() == 1){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity1.class);
+                } else if (message.getWindowAttribute().getIndex() == 2){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity2.class);
+                } else if (message.getWindowAttribute().getIndex() == 3){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity3.class);
+                } else if (message.getWindowAttribute().getIndex() == 4){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity4.class);
+                } else if (message.getWindowAttribute().getIndex() == 5){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity5.class);
+                } else if (message.getWindowAttribute().getIndex() == 6){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity6.class);
+                } else if (message.getWindowAttribute().getIndex() == 7){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity7.class);
+                } else if (message.getWindowAttribute().getIndex() == 8){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity8.class);
+                } else if (message.getWindowAttribute().getIndex() == 9){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity9.class);
+                } else if (message.getWindowAttribute().getIndex() == 10){
+                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity0.class);
+                }
                 break;
             default:
                 break;

@@ -14,6 +14,15 @@ public class WindowAttribute implements Parcelable {
     int index;
     long windowPtr;
 
+    long XID;
+
+    public long getXID() {
+        return XID;
+    }
+
+    public void setXID(long XID) {
+        this.XID = XID;
+    }
 
     public float getOffsetX() {
         return offsetX;
@@ -63,13 +72,14 @@ public class WindowAttribute implements Parcelable {
         this.windowPtr = windowPtr;
     }
 
-    public WindowAttribute(int offsetX, int offsetY, int width, int height, int index, long windowPtr){
+    public WindowAttribute(int offsetX, int offsetY, int width, int height, int index, long windowPtr, long window){
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.width = width;
         this.height = height;
         this.index = index;
         this.windowPtr = windowPtr;
+        this.XID = window;
     }
 
 
@@ -80,6 +90,7 @@ public class WindowAttribute implements Parcelable {
         height = in.readFloat();
         index = in.readInt();
         windowPtr = in.readLong();
+        XID = in.readLong();
     }
 
     @Override
@@ -95,6 +106,7 @@ public class WindowAttribute implements Parcelable {
             dest.writeFloat(height);
             dest.writeInt(index);
             dest.writeLong(windowPtr);
+            dest.writeLong(XID);
     }
 
     public static final Creator<WindowAttribute> CREATOR = new Creator<WindowAttribute>() {
@@ -118,6 +130,7 @@ public class WindowAttribute implements Parcelable {
                 ", height=" + height +
                 ", index=" + index +
                 ", windowPtr=" + Long.toHexString(windowPtr) +
+                ", XID=" + Long.toHexString(XID) +
                 '}';
     }
 }

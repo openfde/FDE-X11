@@ -16,7 +16,7 @@ typedef struct {
     ANativeWindow *psf;
     float width, height;
     float offset_x, offset_y;
-    long pWin;
+    WindowPtr pWin;
 } SurfaceRes;
 
 

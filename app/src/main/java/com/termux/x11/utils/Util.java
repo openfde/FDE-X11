@@ -8,7 +8,7 @@ import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.termux.x11.MainActivity1;
+import com.termux.x11.MainActivity;
 
 import java.io.Closeable;
 import java.io.File;
@@ -46,7 +46,7 @@ public class Util {
 
     public static void startActivityForWindow(long windowPtr) {
         Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
-        Intent intent = new Intent(baseContext, MainActivity1.class);
+        Intent intent = new Intent(baseContext, MainActivity.MainActivity1.class);
         intent.putExtra("KEY_WindowPtr", windowPtr);
         intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
         baseContext.startActivity(intent);

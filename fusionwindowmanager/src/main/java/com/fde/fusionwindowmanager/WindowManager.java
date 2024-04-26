@@ -48,9 +48,6 @@ public class WindowManager implements AWindowManagerInterface {
     }
 
     public WindowManager(WeakReference<Context> activityWeakReference) {
-        Log.d(TAG, "WindowManager: activityWeakReference:" + activityWeakReference + "");
-
-        Log.d(TAG, "WindowManager : activityWeakReference:" + activityWeakReference + "");
         this.contextReference = activityWeakReference;
         mThread = new HandlerThread("WM");
         mThread.start();
@@ -59,7 +56,6 @@ public class WindowManager implements AWindowManagerInterface {
 
 
     public void startWindowManager() {
-        Log.d(TAG, "startWindowManager() called");
         Message msg = Message.obtain();
         msg.what = MSG_START_WM;
         mHandler.sendMessage(msg);

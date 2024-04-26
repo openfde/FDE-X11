@@ -94,7 +94,7 @@ public final class InputEventSender {
             x += offsetX;
             y += offsetY;
 //            y -= DECORCATIONVIEW_HEIGHT;
-            Log.d(TAG, "sendCursorMove() called with: x = [" + x + "], y = [" + y + "], attribute = [" + attribute + "]");
+//            Log.d(TAG, "sendCursorMove() called with: x = [" + x + "], y = [" + y + "], attribute = [" + attribute + "]");
         }
         mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());

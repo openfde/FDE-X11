@@ -4,20 +4,41 @@
 #include <jni.h>
 #include <android/log.h>
 #include <window.h>
+#include <GLES2/gl2.h>
+#include <EGL/egl.h>
 
-struct Node {
-    WindowPtr data;
-    struct Node* next;
-};
+typedef struct {
+    GLuint texture_id;
+    float width, height;
+    float offset_x, offset_y;
+    int index;
+    Window window;
+    WindowPtr pWin;
+    EGLSurface sfc;
+} WindAttribute;
 
-struct Node* createNode(WindowPtr data);
+typedef struct WindowNode {
+    WindAttribute data;
+    struct WindowNode* next;
+} WindowNode;
 
-void insertAtBeginning(struct Node** head, WindowPtr data);
 
-void insertAtEnd(struct Node** head, WindowPtr data);
+WindowNode* node_create(WindAttribute data);
 
-void deleteNode(struct Node** head, WindowPtr key);
+void node_insert_at_begin(WindowNode** head, WindAttribute data);
 
-int search(struct Node* head, WindowPtr key);
+void node_append(WindowNode** head, WindAttribute data);
 
-struct Node* getNodeAtPosition(struct Node* head, int position);
+void node_delete(WindowNode** head, WindAttribute key);
+
+WindowNode* node_search(WindowNode* head, WindowPtr key);
+
+WindowNode* node_get_at_position(WindowNode* head, int position);
+
+int node_get_length(WindowNode* head);
+
+void node_replace_at_position(WindowNode* head, int position, WindAttribute newData);
+
+WindowNode* node_get_at_index(WindowNode* head, int index);
+
+int node_get_max_index(WindowNode* head);
