@@ -54,38 +54,44 @@ static inline JNIEnv *GetJavaEnv(void)
     return ret;
 }
 
-void UpdateBuffer(int ptr) {
+void UpdateBuffer(int index) {
 //    log(ERROR, "UpdateBuffer");
-    WindowNode * node = node_get_at_index(NamedWindow_WindowPtr, ptr);
+    WindowNode * node = node_get_at_index(NamedWindow_WindowPtr, index);
     if (node) {
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(node->data.pWin);
         renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, ptr);
+                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, index);
     }
 }
 
 void TransferBuffer2FDE(WindowPtr windowPtr) {
-    Window wid = windowPtr->drawable.id;
-    log(ERROR, "TransferBuffer2FDE %x", wid);
-    if(node_search(NamedWindow_WindowPtr, windowPtr)) {
-        log(ERROR, "TransferBuffer2FDE found %x", wid);
-        return;
-    } else {
-        int max_index = node_get_max_index(NamedWindow_WindowPtr);
-        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
-        WindAttribute  windAttribute  = {
-                .offset_x = pixmap->screen_x,
-                .offset_y = pixmap->screen_y,
-                .width = pixmap->drawable.width,
-                .height = pixmap->drawable.height,
-                .pWin = (WindowPtr) windowPtr,
-                .index = max_index + 1,
-        };
-        node_append(&NamedWindow_WindowPtr, windAttribute);
-        renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, max_index + 1);
-        create_android_window(windAttribute);
-    }
+//    Window wid = windowPtr->drawable.id;
+//    log(ERROR, "TransferBuffer2FDE wid:%x", wid);
+//    if(node_search(NamedWindow_WindowPtr, windowPtr)) {
+//        log(ERROR, "TransferBuffer2FDE found %x", wid);
+//        return;
+//    } else {
+//        int max_index = node_get_max_index(NamedWindow_WindowPtr);
+//        log(ERROR, "TransferBuffer2FDE max_index:%d", max_index);
+//        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
+//        WindAttribute  windAttribute  = {
+//                .offset_x = pixmap->screen_x,
+//                .offset_y = pixmap->screen_y,
+//                .width = pixmap->drawable.width,
+//                .height = pixmap->drawable.height,
+//                .pWin = (WindowPtr) windowPtr,
+//                .index = max_index + 1,
+//                .window = wid
+//
+//        };
+//        log(ERROR, "TransferBuffer2FDE %d", max_index);
+//        node_append(&NamedWindow_WindowPtr, windAttribute);
+//        log(ERROR, "TransferBuffer2FDE %d", max_index);
+//        renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
+//                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, max_index + 1);
+//        log(ERROR, "TransferBuffer2FDE %d", max_index);
+//        create_android_window(windAttribute);
+//    }
 }
 
 void create_android_window(WindAttribute attribute){
@@ -99,8 +105,7 @@ void create_android_window(WindAttribute attribute){
         WindowPtr windowPtr = attribute.pWin;
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                  "startActivityOrUpdateOffsetForWindow", "(IIIIIJJ)V");
-        log(ERROR, "start_android_window method:%p", method);
+                  "startOrUpdateActivity", "(IIIIIJJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          offsetX, offsetY, width, height,
                                          index, (long)windowPtr, (long)window);
@@ -114,7 +119,7 @@ void start_android_window(int index, WindowPtr windowPtr) {
         int offsetY = windowPtr->drawable.y;
         int width = windowPtr->drawable.width;
         int height = windowPtr->drawable.height;
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startActivityOrUpdateOffsetForWindow", "(IIIIIJ)V");
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "startOrUpdateActivity", "(IIIIIJ)V");
         log(ERROR, "start_android_window method:%p", method);
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          offsetX, offsetY, width, height,
@@ -302,6 +307,139 @@ Java_com_termux_x11_CmdEntryPoint_start(JNIEnv *env, unused jobject thiz, jobjec
     return JNI_TRUE;
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray args) {
+    pthread_t t;
+    JavaVM * vm = NULL;
+    // execv's argv array is a bit incompatible with Java's String[], so we do some converting here...
+    argc = (*env)->GetArrayLength(env, args) + 1; // Leading executable path
+    argv = (char**) calloc(argc, sizeof(char*));
+
+
+    JNIEnv *JavaEnv = env;
+    JavaCmdEntryPointClass = (*JavaEnv)->NewGlobalRef( JavaEnv, thiz);
+    setenv("XKB_CONFIG_ROOT", "/data/data/com.termux.x11/files/xkb/", 1);
+
+
+    argv[0] = (char*) "Xlorie";
+    for(int i=1; i<argc; i++) {
+        jstring js = (jstring)((*env)->GetObjectArrayElement(env, args, i - 1));
+        const char *pjc = (*env)->GetStringUTFChars(env, js, JNI_FALSE);
+        argv[i] = (char *) calloc(strlen(pjc) + 1, sizeof(char)); //Extra char for the terminating NULL
+        strcpy((char *) argv[i], pjc);
+        (*env)->ReleaseStringUTFChars(env, js, pjc);
+    }
+
+    {
+        cpu_set_t mask;
+        long num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+
+        for (int i = num_cpus/2; i < num_cpus; i++)
+            CPU_SET(i, &mask);
+
+        if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1)
+            log(ERROR, "Failed to set process affinity: %s", strerror(errno));
+    }
+
+    if (getenv("TERMUX_X11_DEBUG") && !fork()) {
+        // Printing logs of local logcat.
+        char pid[32] = {0};
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+        sprintf(pid, "%d", getppid());
+        execlp("logcat", "logcat", "--pid", pid, NULL);
+    }
+
+    // adb sets TMPDIR to /data/local/tmp which is pretty useless.
+    if (!strcmp("/data/local/tmp", getenv("TMPDIR") ?: ""))
+        unsetenv("TMPDIR");
+
+    if (!getenv("TMPDIR")) {
+        if (access("/tmp", F_OK) == 0)
+            setenv("TMPDIR", "/tmp", 1);
+        else if (access("/data/data/com.termux/files/usr/tmp", F_OK) == 0)
+            setenv("TMPDIR", "/data/data/com.termux/files/usr/tmp", 1);
+    }
+
+    if (!getenv("TMPDIR")) {
+        char* error = (char*) "$TMPDIR is not set. Normally it is pointing to /tmp of a container.";
+        log(ERROR, "%s", error);
+        dprintf(2, "%s\n", error);
+        return JNI_FALSE;
+    }
+
+    {
+        char* tmp = getenv("TMPDIR");
+        char cwd[1024] = {0};
+
+        if (!getcwd(cwd, sizeof(cwd)) || access(cwd, F_OK) != 0)
+            chdir(tmp);
+        asprintf(&xtrans_unix_path_x11, "%s/.X11-unix/X", tmp);
+        asprintf(&xtrans_unix_dir_x11, "%s/.X11-unix/", tmp);
+    }
+
+    log(VERBOSE, "Using TMPDIR=\"%s\"", getenv("TMPDIR"));
+
+    {
+        const char *root_dir = dirname(getenv("TMPDIR"));
+        const char* pathes[] = {
+                "/etc/X11/fonts", "/usr/share/fonts/X11", "/share/fonts", NULL
+        };
+        for (int i=0; pathes[i]; i++) {
+            char current_path[1024] = {0};
+            snprintf(current_path, sizeof(current_path), "%s%s", root_dir, pathes[i]);
+            if (access(current_path, F_OK) == 0) {
+                char default_font_path[4096] = {0};
+                snprintf(default_font_path, sizeof(default_font_path),
+                         "%s/misc,%s/TTF,%s/OTF,%s/Type1,%s/100dpi,%s/75dpi",
+                         current_path, current_path, current_path, current_path, current_path, current_path);
+                defaultFontPath = strdup(default_font_path);
+                break;
+            }
+        }
+    }
+
+    if (!getenv("XKB_CONFIG_ROOT")) {
+        // chroot case
+        const char *root_dir = dirname(getenv("TMPDIR"));
+        char current_path[1024] = {0};
+        snprintf(current_path, sizeof(current_path), "%s/usr/share/X11/xkb", root_dir);
+        if (access(current_path, F_OK) == 0)
+            setenv("XKB_CONFIG_ROOT", current_path, 1);
+    }
+    if (!getenv("XKB_CONFIG_ROOT")) {
+        // proot case
+        if (access("/usr/share/X11/xkb", F_OK) == 0)
+            setenv("XKB_CONFIG_ROOT", "/usr/share/X11/xkb", 1);
+            // Termux case
+        else if (access("/data/data/com.termux/files/usr/share/X11/xkb", F_OK) == 0)
+            setenv("XKB_CONFIG_ROOT", "/data/data/com.termux/files/usr/share/X11/xkb", 1);
+    }
+
+    if (!getenv("XKB_CONFIG_ROOT")) {
+        char* error = (char*) "$XKB_CONFIG_ROOT is not set. Normally it is pointing to /usr/share/X11/xkb of a container.";
+        log(ERROR, "%s", error);
+        dprintf(2, "%s\n", error);
+        return JNI_FALSE;
+    }
+
+    XkbBaseDirectory = getenv("XKB_CONFIG_ROOT");
+    if (access(XkbBaseDirectory, F_OK) != 0) {
+        log(ERROR, "%s is unaccessible: %s\n", XkbBaseDirectory, strerror(errno));
+        printf("%s is unaccessible: %s\n", XkbBaseDirectory, strerror(errno));
+        return JNI_FALSE;
+    }
+
+    char* xkb_root  = getenv("XKB_CONFIG_ROOT");
+    log(ERROR, "XKB_CONFIG_ROOT :%s", xkb_root);
+
+    (*env)->GetJavaVM(env, &vm);
+
+    pthread_create(&t, NULL, startServer, vm);
+    return JNI_TRUE;
+}
+
+
+
 JNIEXPORT void JNICALL
 Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
                                                 jobject surface, jfloat offsetX, jfloat offsetY,
@@ -319,6 +457,27 @@ Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
     ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
     res->psf = psf;
     res->pWin = (WindowPtr) windowPtr;
+    QueueWorkProc(lorieChangeWindow, NULL, res);
+}
+
+JNIEXPORT void JNICALL
+Java_com_termux_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls,
+                                                jobject surface, jfloat offsetX, jfloat offsetY,
+                                                jfloat width, jfloat height, jint index,
+                                                jlong windowPtr, jlong window) {
+    jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
+    log(ERROR, "windowChanged index:%d surface:%p", index, sfc);
+    SurfaceRes *res = (SurfaceRes *) malloc(sizeof(SurfaceRes));
+    res->id = (int) index;
+    res->surface = sfc;
+    res->offset_x = (int) offsetX;
+    res->offset_y = (int) offsetY;
+    res->width = (int) width;
+    res->height = (int) height;
+    ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
+    res->psf = psf;
+    res->pWin = (WindowPtr) windowPtr;
+    res->window = window;
     QueueWorkProc(lorieChangeWindow, NULL, res);
 }
 
@@ -448,6 +607,18 @@ Java_com_termux_x11_CmdEntryPoint_getXConnection(JNIEnv *env, unused jobject cls
     return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
 }
 
+JNIEXPORT jobject JNICALL
+Java_com_termux_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
+    int client[2];
+    jclass ParcelFileDescriptorClass = (*env)->FindClass(env, "android/os/ParcelFileDescriptor");
+    jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd", "(I)Landroid/os/ParcelFileDescriptor;");
+    socketpair(AF_UNIX, SOCK_STREAM, 0, client);
+    fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
+    QueueWorkProc(addFd, NULL, (void*) (int64_t) client[1]);
+
+    return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
+}
+
 void* logcatThread(void *arg) {
     char buffer[4096];
     size_t len;
@@ -473,8 +644,30 @@ Java_com_termux_x11_CmdEntryPoint_getLogcatOutput(JNIEnv *env, unused jobject cl
     return NULL;
 }
 
+JNIEXPORT jobject JNICALL
+Java_com_termux_x11_Xserver_getLogcatOutput(JNIEnv *env, unused jobject cls) {
+    jclass ParcelFileDescriptorClass = (*env)->FindClass(env, "android/os/ParcelFileDescriptor");
+    jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd", "(I)Landroid/os/ParcelFileDescriptor;");
+    const char *debug = getenv("TERMUX_X11_DEBUG");
+    if (debug && !strcmp(debug, "1")) {
+        pthread_t t;
+        int p[2];
+        pipe(p);
+        fchmod(p[1], 0777);
+        pthread_create(&t, NULL, logcatThread, (void*) (uint64_t) p[0]);
+        return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, p[1]);
+    }
+    return NULL;
+}
+
+
 JNIEXPORT jboolean JNICALL
 Java_com_termux_x11_CmdEntryPoint_connected(__unused JNIEnv *env, __unused jclass clazz) {
+    return conn_fd != -1;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_termux_x11_Xserver_connected(__unused JNIEnv *env, __unused jclass clazz) {
     return conn_fd != -1;
 }
 

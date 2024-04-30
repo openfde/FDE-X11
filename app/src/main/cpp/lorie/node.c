@@ -64,9 +64,6 @@ WindowNode *node_get_at_index(WindowNode *head, int index) {
     if (!head) {
         return NULL;
     }
-    if (index < 1) {
-        return NULL;
-    }
     WindowNode *temp = head;
     while (temp != NULL && temp->data.index != index) {
         temp = temp->next;

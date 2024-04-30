@@ -3,6 +3,33 @@
 #include <android/hardware_buffer.h>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
+#include "screenint.h"
+
+typedef struct SurfaceRes {
+    int id;
+    jobject surface;
+    ANativeWindow *psf;
+    float width, height;
+    float offset_x, offset_y;
+    WindowPtr pWin;
+    Window window;
+} SurfaceRes ;
+
+typedef struct SurfaceResNode {
+    SurfaceRes data;
+    struct SurfaceRes* next;
+} SurfaceResNode;
+
+//SurfaceResNode* surface_create(SurfaceRes data);
+//
+//void surface_append(SurfaceResNode** head, SurfaceRes data);
+//
+//SurfaceResNode* surface_search(SurfaceResNode* head, WindowPtr key);
+//
+//SurfaceResNode* surface_get_at_position(SurfaceResNode* head, int position);
+//
+//SurfaceResNode* surface_get_at_index(SurfaceResNode* head, int index);
+
 
 #ifndef maybe_unused
 #define maybe_unused __attribute__((__unused__))
@@ -18,6 +45,7 @@ maybe_unused void renderer_message_func(renderer_message_func_type function);
 maybe_unused int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip);
 maybe_unused void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buffer);
 maybe_unused void renderer_set_window(JNIEnv* env, jobject surface, AHardwareBuffer* buffer);
+maybe_unused void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* buffer);
 maybe_unused void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* buffer);
 maybe_unused void initAnotherSurface(JNIEnv *env, jobject surface, int id, float d, float d1, float d2, float d3,
                                      WindowPtr i);

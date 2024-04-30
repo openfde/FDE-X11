@@ -5,7 +5,6 @@
 #include "include/window_manager.h"
 #include "include/X11/keysymdef.h"
 #include "include/X11/extensions/Xcomposite.h"
-#include <set>
 
 
 using ::std::max;
@@ -18,9 +17,6 @@ bool WindowManager::support_composite;
 mutex WindowManager::wm_detected_mutex_;
 Window frame_window;
 Window top_level_debug;
-std::set<Window> window_under_frames;
-std::set<Window> frames;
-std::set<Window> named_windows;
 
 ::WindowManager *WindowManager::create() {
     Display* display = XOpenDisplay(":1");
@@ -38,7 +34,7 @@ WindowManager::WindowManager(Display* display)
           root_(DefaultRootWindow(display_)),
           WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
           WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
-                           stoped(False) {
+          stoped(False) {
 }
 
 
@@ -61,10 +57,10 @@ WindowManager::~WindowManager() {
 
 
 void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
-    log("may Frame %x", w);
+    log("Frame_ %x", w);
     // Visual properties of the frame to create.
-    const unsigned int BORDER_WIDTH = 3;
-    const unsigned long BORDER_COLOR = 0xff0000;
+    const unsigned int BORDER_WIDTH = 1;
+    const unsigned long BORDER_COLOR = 0xffffff;
     const unsigned long BG_COLOR = 0x0000ff;
     // We shouldn't be framing windows we've already framed.
     CHECK(!clients_.count(w))
@@ -158,7 +154,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     top_level_debug = w;
     window_under_frames.insert(w);
     frames.insert(frame);
-    log("Framed window %x reparent to frame %x" ,w , frame);
+    log("Framed_ window %x reparent to frame %x" ,w , frame);
 }
 
 
@@ -174,7 +170,7 @@ void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 void WindowManager::OnMapNotify(const XMapEvent& e) {
     auto it = frames.find(e.window);
     if (it != frames.end()) {
-        log("Name window %x", e.window);
+        log("Name_ window %x", e.window);
         XCompositeNameWindowPixmap(display_, e.window);
         named_windows.insert(e.window);
     }
@@ -249,19 +245,26 @@ void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     XWindowChanges changes;
     changes.x = e.x;
-    changes.y = e.y;
+    changes.y = e.y < DECORCATIONVIEW_HEIGHT ? DECORCATIONVIEW_HEIGHT : e.y;
     changes.width = e.width;
     changes.height = e.height;
     changes.border_width = e.border_width;
     changes.sibling = e.above;
     changes.stack_mode = e.detail;
+    unsigned long value_mask = e.value_mask;
+    log("value_mask : %lu", value_mask);
+    if(e.y < DECORCATIONVIEW_HEIGHT) {
+        value_mask  = e.value_mask | (1 << 1);
+    }
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
-        XConfigureWindow(display_, frame, e.value_mask, &changes);
-        log("Resize %x  to %s ", frame, Size<int>(e.width, e.height).ToString().c_str());
+        XConfigureWindow(display_, frame, value_mask, &changes);
+        log("Resize_ frame %x  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
+        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     } else {
-        XConfigureWindow(display_, e.window, e.value_mask, &changes);
-        log("Resize %x to %s" , e.window , Size<int>(e.width, e.height).ToString().c_str());
+        XConfigureWindow(display_, e.window, value_mask, &changes);
+        log("Resize_ %x to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
+        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     }
 //    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
 //    XCompositeNameWindowPixmap(display_, frame_window);
@@ -420,7 +423,7 @@ void WindowManager::Run() {
         }
         if (wm_detected_) {
             log("Detected another window manager on display %s "
-                       ,XDisplayString(display_));
+            ,XDisplayString(display_));
             return;
         }
     }
@@ -508,74 +511,29 @@ void WindowManager::Run() {
     }
 }
 
-int WindowManager::moveWindow(long ptr, int x, int y) {
-    ptr = frame_window;
-    Window returned_root, returned_parent;
-    Window* top_level_windows;
-    unsigned int num_top_level_windows;
-    XQueryTree(
-            display_,
-            root_,
-            &returned_root,
-            &returned_parent,
-            &top_level_windows,
-            &num_top_level_windows);
-    log("moveWindow %x %lu", ptr, ptr);
-    int ret;
-//    for (unsigned int i = 0; i < num_top_level_windows; ++i) {
-//        ret = XMoveWindow(display_, top_level_windows[i], x, y);
-//    }
-    ret = XMoveWindow(display_, ptr, x, y);
+int WindowManager::moveWindow(long window, int x, int y) {
+    log("moveWindow %x %lu", window, window);
+    int ret = XMoveWindow(display_, window, x, y);
     XSync(display_, False);
     return ret;
 }
 
-int WindowManager::resizeWindow(long ptr, int x, int y) {
-    ptr = frame_window;
-    Window returned_root, returned_parent;
-    Window* top_level_windows;
-    unsigned int num_top_level_windows;
-    XQueryTree(
-            display_,
-            root_,
-            &returned_root,
-            &returned_parent,
-            &top_level_windows,
-            &num_top_level_windows);
-    log("resizeWindow %x %lu", ptr, ptr);
-    int ret;
-//    for (unsigned int i = 0; i < num_top_level_windows; ++i) {
-//     ret = XResizeWindow(display_, top_level_windows[i], x, y);
-//    }
-    ret = XResizeWindow(display_, ptr, x, y);
-    ret = XResizeWindow(display_, top_level_debug, x, y);
+int WindowManager::resizeWindow(long window, int w, int h) {
+    log("resizeWindow %x %lu", window, window);
+    int  ret = XResizeWindow(display_, window, w, h);
     XSync(display_, False);
     return ret;
 }
 
-int WindowManager::closeWindow(long ptr) {
-    Window returned_root, returned_parent;
-    Window* top_level_windows;
-    unsigned int num_top_level_windows;
-    XQueryTree(
-            display_,
-            root_,
-            &returned_root,
-            &returned_parent,
-            &top_level_windows,
-            &num_top_level_windows);
-    ptr = top_level_debug;
-//    for (unsigned int i = 0; i < num_top_level_windows; ++i) {
-//    }
-    log("closeWindow %x %lu", ptr, ptr);
-    int ret = XKillClient(display_, ptr);
+int WindowManager::closeWindow(long window) {
+    log("closeWindow %x %lu", window, window);
+    int ret = XKillClient(display_, window);
     XSync(display_, False);
     return ret;
 }
 
-int WindowManager::raiseWindow(long ptr) {
-    ptr = frame_window;
-    log("raiseWindow %x %lu", ptr, ptr);
+int WindowManager::raiseWindow(long window) {
+    log("raiseWindow %x %lu", window, window);
     int ret = XRaiseWindow(display_, frame_window);
     XSync(display_, False);
     return ret;

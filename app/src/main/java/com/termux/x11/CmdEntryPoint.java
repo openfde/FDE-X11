@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 @Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
-public class CmdEntryPoint extends ICmdEntryInterface.Stub {
+public class CmdEntryPoint {
     public static final String ACTION_START = "com.termux.x11.CmdEntryPoint.ACTION_START";
     public static final String ACTION_STOP = "com.termux.x11.ACTION_STOP";
 
@@ -111,74 +111,74 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
     @SuppressLint({"WrongConstant", "PrivateApi"})
     void sendBroadcast() {
 
-        String targetPackage = getenv("TERMUX_X11_OVERRIDE_PACKAGE");
-        if (targetPackage == null)
-            targetPackage = "com.termux.x11";
-        // We should not care about multiple instances, it should be called only by `Termux:X11` app
-        // which is single instance...
-        Bundle bundle = new Bundle();
-        bundle.putBinder("", this);
-
-        Intent intent = new Intent(ACTION_START);
-        intent.putExtra("", bundle);
-        intent.setPackage(targetPackage);
-
-        if (getuid() == 0 || getuid() == 2000)
-            intent.setFlags(0x00400000 /* FLAG_RECEIVER_FROM_SHELL */);
-
-
-        try {
-            ctx.sendBroadcast(intent);
-        } catch (Exception e) {
-            if (e instanceof NullPointerException && ctx == null)
-                Log.e("CmdEntryPoint", "Context is null, falling back to manual broadcasting");
-            else
-                Log.e("CmdEntryPoint", "Falling back to manual broadcasting, failed to broadcast intent through Context:", e);
-
-
-
-            String packageName;
-            try {
-                packageName = android.app.ActivityThread.getPackageManager().getPackagesForUid(getuid())[0];
-            } catch (RemoteException ex) {
-                throw new RuntimeException(ex);
-            }
-            IActivityManager am;
-            try {
-                //noinspection JavaReflectionMemberAccess
-                am = (IActivityManager) android.app.ActivityManager.class
-                        .getMethod("getService")
-                        .invoke(null);
-
-
-            } catch (Exception e2) {
-
-
-                try {
-                    am = (IActivityManager) Class.forName("android.app.ActivityManagerNative")
-                            .getMethod("getDefault")
-                            .invoke(null);
-                } catch (Exception e3) {
-                    throw new RuntimeException(e3);
-                }
-            }
-
-            assert am != null;
-            IIntentSender sender = am.getIntentSender(1, packageName, null, null, 0, new Intent[] { intent },
-                    null, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT, null, 0);
-            try {
-                //noinspection JavaReflectionMemberAccess
-                IIntentSender.class
-                        .getMethod("send", int.class, Intent.class, String.class, IBinder.class, IIntentReceiver.class, String.class, Bundle.class)
-                        .invoke(sender, 0, intent, null, null, new IIntentReceiver.Stub() {
-                            @Override public void performReceive(Intent i, int r, String d, Bundle e, boolean o, boolean s, int a) {}
-                        }, null, null);
-
-                Log.d("CmdEntryPoint", "sendBroadcast() send");
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }
+//        String targetPackage = getenv("TERMUX_X11_OVERRIDE_PACKAGE");
+//        if (targetPackage == null)
+//            targetPackage = "com.termux.x11";
+//        // We should not care about multiple instances, it should be called only by `Termux:X11` app
+//        // which is single instance...
+//        Bundle bundle = new Bundle();
+//        bundle.putBinder("", this);
+//
+//        Intent intent = new Intent(ACTION_START);
+//        intent.putExtra("", bundle);
+//        intent.setPackage(targetPackage);
+//
+//        if (getuid() == 0 || getuid() == 2000)
+//            intent.setFlags(0x00400000 /* FLAG_RECEIVER_FROM_SHELL */);
+//
+//
+//        try {
+//            ctx.sendBroadcast(intent);
+//        } catch (Exception e) {
+//            if (e instanceof NullPointerException && ctx == null)
+//                Log.e("CmdEntryPoint", "Context is null, falling back to manual broadcasting");
+//            else
+//                Log.e("CmdEntryPoint", "Falling back to manual broadcasting, failed to broadcast intent through Context:", e);
+//
+//
+//
+//            String packageName;
+//            try {
+//                packageName = android.app.ActivityThread.getPackageManager().getPackagesForUid(getuid())[0];
+//            } catch (RemoteException ex) {
+//                throw new RuntimeException(ex);
+//            }
+//            IActivityManager am;
+//            try {
+//                //noinspection JavaReflectionMemberAccess
+//                am = (IActivityManager) android.app.ActivityManager.class
+//                        .getMethod("getService")
+//                        .invoke(null);
+//
+//
+//            } catch (Exception e2) {
+//
+//
+//                try {
+//                    am = (IActivityManager) Class.forName("android.app.ActivityManagerNative")
+//                            .getMethod("getDefault")
+//                            .invoke(null);
+//                } catch (Exception e3) {
+//                    throw new RuntimeException(e3);
+//                }
+//            }
+//
+//            assert am != null;
+//            IIntentSender sender = am.getIntentSender(1, packageName, null, null, 0, new Intent[] { intent },
+//                    null, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_ONE_SHOT, null, 0);
+//            try {
+//                //noinspection JavaReflectionMemberAccess
+//                IIntentSender.class
+//                        .getMethod("send", int.class, Intent.class, String.class, IBinder.class, IIntentReceiver.class, String.class, Bundle.class)
+//                        .invoke(sender, 0, intent, null, null, new IIntentReceiver.Stub() {
+//                            @Override public void performReceive(Intent i, int r, String d, Bundle e, boolean o, boolean s, int a) {}
+//                        }, null, null);
+//
+//                Log.d("CmdEntryPoint", "sendBroadcast() send");
+//            } catch (Exception ex) {
+//                throw new RuntimeException(ex);
+//            }
+//        }
     }
 
     // In some cases Android Activity part can not connect opened port.
@@ -266,15 +266,20 @@ public class CmdEntryPoint extends ICmdEntryInterface.Stub {
 
     public native ParcelFileDescriptor getXConnection();
 
-    @Override
-    public void registerListener(int index, IReceive receiver) throws RemoteException {
-        receiverMap.put(index, receiver);
-    }
-
-    @Override
-    public void unregisterListener(int index, IReceive receiver) throws RemoteException {
-        receiverMap.remove(index);
-    }
+//    @Override
+//    public void registerListener(int index, IReceive receiver) throws RemoteException {
+//        receiverMap.put(index, receiver);
+//    }
+//
+//    @Override
+//    public void unregisterListener(int index, IReceive receiver) throws RemoteException {
+//        receiverMap.remove(index);
+//    }
+//
+//    @Override
+//    public void closeWindow(int index, long p, long window) throws RemoteException {
+//
+//    }
 
     public native ParcelFileDescriptor getLogcatOutput();
     public static native boolean connected();

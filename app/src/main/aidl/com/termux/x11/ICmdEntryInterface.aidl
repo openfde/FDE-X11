@@ -8,5 +8,13 @@ interface ICmdEntryInterface {
     ParcelFileDescriptor getXConnection();
     void registerListener(int index, IReceive receiver);
     void unregisterListener(int index, IReceive receiver);
+
+    void closeWindow(int index, long p, long window);
 //    ParcelFileDescriptor getLogcatOutput();
+
+    void moveWindow(long winPtr, long window, int x, int y);
+
+    void resizeWindow(long window, int w, int h);
+
+    void raiseWindow(long window);
 }

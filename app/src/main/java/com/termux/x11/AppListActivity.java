@@ -10,9 +10,11 @@ import android.app.ActivityOptions;
 import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
@@ -20,6 +22,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
@@ -107,23 +110,29 @@ public class AppListActivity extends AppCompatActivity {
         initAppList();
         Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
         registerReceiver(receiver, new IntentFilter(ACTION_START));
-        getWindow().getDecorView().postDelayed(new Runnable() {
+        Intent intent = new Intent(this, XWindowService.class);
+        bindService(intent, new ServiceConnection() {
             @Override
-            public void run() {
-                startXserver();
-                Log.d(TAG, "run() called");
+            public void onServiceConnected(ComponentName name, IBinder service) {
+
             }
-        }, 50);
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+
+            }
+        }, BIND_AUTO_CREATE);
 
         getWindow().getDecorView().postDelayed(new Runnable() {
             @Override
             public void run() {
-//                ActivityOptions options = ActivityOptions.makeBasic();
-//                options.setLaunchBounds(new Rect(0,0,1,1));
+                ActivityOptions options = ActivityOptions.makeBasic();
+                options.setLaunchBounds(new Rect(0,0,1,1));
                 Intent intent = new Intent(AppListActivity.this, MainActivity.class);
-                startActivity(intent);
-//                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//                startActivity(intent, options.toBundle());
+//                startActivity(intent);
+
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent, options.toBundle());
             }
         }, 2000);
     }

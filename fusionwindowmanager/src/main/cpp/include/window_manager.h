@@ -12,6 +12,10 @@
 #include <unordered_map>
 #include "util.hpp"
 #include <android/log.h>
+#include <set>
+
+#define DECORCATIONVIEW_HEIGHT 42
+
 #define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__)
 #define CHECK(condition)  \
       if(condition){     \
@@ -91,6 +95,11 @@ private:
     Position<int> drag_start_frame_pos_;
     // The size of the affected window at the start of a window move/resize.
     Size<int> drag_start_frame_size_;
+
+    std::set<Window> window_under_frames;
+    std::set<Window> frames;
+    std::set<Window> named_windows;
+
 
     // Atom constants.
     const Atom WM_PROTOCOLS;

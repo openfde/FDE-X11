@@ -1,6 +1,5 @@
 package com.termux.x11;
 
-import static android.Manifest.permission.POST_NOTIFICATIONS;
 import static android.Manifest.permission.WRITE_SECURE_SETTINGS;
 import static android.content.pm.PackageManager.PERMISSION_DENIED;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
@@ -99,7 +98,7 @@ public class LoriePreferences extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         IntentFilter filter = new IntentFilter(ACTION_PREFERENCES_CHANGED);
-        registerReceiver(receiver, filter, SDK_INT >= Build.VERSION_CODES.TIRAMISU ? RECEIVER_NOT_EXPORTED : 0);
+        registerReceiver(receiver, filter, SDK_INT >= 33 ? 0x4 : 0);
     }
 
     @Override
@@ -187,8 +186,8 @@ public class LoriePreferences extends AppCompatActivity {
             findPreference("showMouseHelper").setEnabled("1".equals(p.getString("touchMode", "1")));
 
             boolean requestNotificationPermissionVisible =
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                    && ContextCompat.checkSelfPermission(requireContext(), POST_NOTIFICATIONS) == PERMISSION_DENIED;
+                    Build.VERSION.SDK_INT >= 33
+                    && ContextCompat.checkSelfPermission(requireContext(), "android.permission.POST_NOTIFICATIONS") == PERMISSION_DENIED;
             findPreference("requestNotificationPermission").setVisible(requestNotificationPermissionVisible);
         }
 
@@ -254,8 +253,8 @@ public class LoriePreferences extends AppCompatActivity {
                         .show();
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && "requestNotificationPermission".contentEquals(preference.getKey()))
-                ActivityCompat.requestPermissions(requireActivity(), new String[]{ POST_NOTIFICATIONS }, 101);
+            if (Build.VERSION.SDK_INT >= 33 && "requestNotificationPermission".contentEquals(preference.getKey()))
+                ActivityCompat.requestPermissions(requireActivity(), new String[]{ "android.permission.POST_NOTIFICATIONS" }, 101);
 
             updatePreferencesLayout();
             return false;

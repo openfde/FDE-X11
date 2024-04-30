@@ -42,3 +42,25 @@ void node_replace_at_position(WindowNode* head, int position, WindAttribute newD
 WindowNode* node_get_at_index(WindowNode* head, int index);
 
 int node_get_max_index(WindowNode* head);
+
+
+
+#define MAX_KEYS 100
+
+typedef struct {
+    int key;
+    void* value;
+} KeyValuePair;
+
+typedef struct {
+    KeyValuePair pairs[MAX_KEYS];
+    int size;
+} SurfaceMap;
+
+
+void putVoid(SurfaceMap* map, int key, void* value);
+
+
+void* get(SurfaceMap* map, int key);
+
+void freeMap(SurfaceMap* map);

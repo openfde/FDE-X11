@@ -79,12 +79,12 @@ JNIEXPORT jint JNICALL resizeWindow(JNIEnv * env, jobject obj, jlong ptr, jint x
     return window_manager->resizeWindow(ptr, x, y);
 }
 
-JNIEXPORT jint JNICALL closeWindow(JNIEnv * env, jobject obj, jlong ptr){
+JNIEXPORT jint JNICALL closeWindow(JNIEnv * env, jobject obj, jlong xid){
     if(!window_manager){
         log("Failed to initialize window manager.");
         return False;
     }
-    return window_manager->closeWindow(ptr);
+    return window_manager->closeWindow(xid);
 }
 
 JNIEXPORT jint JNICALL raiseWindow(JNIEnv * env, jobject obj, jlong ptr){

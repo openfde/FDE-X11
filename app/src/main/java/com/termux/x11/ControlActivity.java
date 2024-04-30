@@ -1,9 +1,12 @@
 package com.termux.x11;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.util.Log;
 import android.view.View;
 import android.app.ActivityOptions;
@@ -54,13 +57,27 @@ public class ControlActivity extends Activity implements View.OnClickListener {
 
         Util.copyAssetsToFiles(this, "xkb", "xkb");
 
-        if(connection == null ){
-            connection = new WMServiceConnection();
-        }
+//        if(connection == null ){
+//            connection = new WMServiceConnection();
+//        }
+        Intent intent = new Intent(this, XWindowService.class);
+        bindService(intent, new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
 
-        Intent intent = new Intent(this, WMService.class);
-        bindService(intent, connection, BIND_AUTO_CREATE);
-        windowManager = new WindowManager();
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+
+            }
+        }, BIND_AUTO_CREATE);
+
+
+//        windowManager = new WindowManager();
+
+
+
     }
 
     @Override

@@ -57,7 +57,24 @@ android {
     }
 }
 
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile) {
+        Set<File> fileSet = options.bootstrapClasspath.getFiles()
+        List<File> newFileList =  new ArrayList<>();
+        newFileList.add(new File("libs/framework.jar"))
+        newFileList.addAll(fileSet)
+        options.bootstrapClasspath = files(
+                newFileList.toArray()
+        )
+    }
+}
+
 dependencies {
+//    compileOnly files('libs/framework.jar')
+    compileOnly fileTree(include: ['*.jar'], dir: 'libs/compile')
+    implementation fileTree(include: ['*.jar'], dir: 'libs/impl')
+    compileOnly files('libs/framework.jar')
+
     //noinspection DifferentStdlibGradleVersion
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.0'
     implementation 'androidx.preference:preference:1.2.1'
