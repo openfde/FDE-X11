@@ -697,44 +697,44 @@ CursorForDevice(DeviceIntPtr pDev) {
 Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
     SurfaceRes *res = (SurfaceRes *) closure;
     jobject surface = res->surface;
-//    if(res->id == 0){
-//        res->pWin = pScreenPtr->root;
-//    }
-//    logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
-//         pvfb->root.buffer, res->id, surface);
-//    renderer_set_window_each(pvfb->env, res, pvfb->root.buffer);
-////    renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
-//    lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
-//    if (pvfb->root.legacyDrawing) {
-//        renderer_update_root(pScreenPtr->width, pScreenPtr->height,
-//                             ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
-//                             pvfb->root.flip);
-//        renderer_redraw(pvfb->env, pvfb->root.flip);
-//    }
-
-    //todo
-    if (res->id != 0) {
-//            renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
-            lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1,
-                           -1);
-            initAnotherSurface(pvfb->env, surface, res->id, res->offset_x, res->offset_y,
-                               res->width, res->height, res->pWin);
-            if (pvfb->root.legacyDrawing) {
-                renderer_update_root(pScreenPtr->width, pScreenPtr->height,
-                                     ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
-                                     pvfb->root.flip);
-                renderer_redraw(pvfb->env, pvfb->root.flip);
-            }
-    } else {
-        renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
-        lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
-        if (pvfb->root.legacyDrawing) {
-            renderer_update_root(pScreenPtr->width, pScreenPtr->height,
-                                 ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
-                                 pvfb->root.flip);
-            renderer_redraw(pvfb->env, pvfb->root.flip);
-        }
+    if(res->id == 0){
+        res->pWin = pScreenPtr->root;
     }
+    logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
+         pvfb->root.buffer, res->id, surface);
+    renderer_set_window_each(pvfb->env, res, pvfb->root.buffer);
+//    renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
+    lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
+    if (pvfb->root.legacyDrawing) {
+        renderer_update_root(pScreenPtr->width, pScreenPtr->height,
+                             ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
+                             pvfb->root.flip);
+        renderer_redraw(pvfb->env, pvfb->root.flip);
+    }
+
+//    //todo
+//    if (res->id != 0) {
+////            renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
+//            lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1,
+//                           -1);
+//            initAnotherSurface(pvfb->env, surface, res->id, res->offset_x, res->offset_y,
+//                               res->width, res->height, res->pWin);
+//            if (pvfb->root.legacyDrawing) {
+//                renderer_update_root(pScreenPtr->width, pScreenPtr->height,
+//                                     ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
+//                                     pvfb->root.flip);
+//                renderer_redraw(pvfb->env, pvfb->root.flip);
+//            }
+//    } else {
+//        renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
+//        lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
+//        if (pvfb->root.legacyDrawing) {
+//            renderer_update_root(pScreenPtr->width, pScreenPtr->height,
+//                                 ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
+//                                 pvfb->root.flip);
+//            renderer_redraw(pvfb->env, pvfb->root.flip);
+//        }
+//    }
     return TRUE;
 }
 

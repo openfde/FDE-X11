@@ -7,6 +7,7 @@ import android.content.ServiceConnection;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.app.ActivityOptions;
@@ -28,7 +29,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
             btStopWindowManager;
     private WMServiceConnection connection;
     private WindowManager windowManager;
-
+    public ICmdEntryInterface service;
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,8 +64,8 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         Intent intent = new Intent(this, XWindowService.class);
         bindService(intent, new ServiceConnection() {
             @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-
+            public void onServiceConnected(ComponentName name, IBinder s) {
+                service = ICmdEntryInterface.Stub.asInterface(s);
             }
 
             @Override
@@ -98,8 +99,11 @@ public class ControlActivity extends Activity implements View.OnClickListener {
             int ret = windowManager.resizeWindow(1000, 800, 600);
             Log.d("TAG", "resizeWindow: ret = [" + ret + "]");
         } else if ( v == btCloseWindowNative){
-            int ret = windowManager.closeWindow(1000);
-            Log.d("TAG", "closeWindow: ret = [" + ret + "]");
+            try {
+                service.closeWindow(1000, 100, 100);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
         } else if ( v == btRaiseNative){
             int ret = windowManager.raiseWindow(1000);
             Log.d("TAG", "raiseWindow: ret = [" + ret + "]");

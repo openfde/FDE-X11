@@ -53,11 +53,7 @@ public class XWindowService extends Service {
         @Override
         public void closeWindow(int index, long p, long window) throws RemoteException {
             if(wm != null){
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+                Log.d(TAG, "closeWindow: index:" + index + ", p:" + p + ", window:" + window + "");
                 int ret = wm.closeWindow(window);
                 Log.d(TAG, "closeWindow: ret:" + ret);
             }

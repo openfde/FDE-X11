@@ -526,8 +526,19 @@ int WindowManager::resizeWindow(long window, int w, int h) {
 }
 
 int WindowManager::closeWindow(long window) {
-    log("closeWindow %x %lu", window, window);
-    int ret = XKillClient(display_, window);
+//    window = top_level_debug;
+    Window returned_root, returned_parent;
+    Window* children;
+    unsigned int nchildren;
+    XQueryTree(
+            display_,
+            window,
+            &returned_root,
+            &returned_parent,
+            &children,
+            &nchildren);
+    log("closeWindow %x", children[0]);
+    int ret = XKillClient(display_, children[0]);
     XSync(display_, False);
     return ret;
 }

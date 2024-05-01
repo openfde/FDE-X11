@@ -437,6 +437,7 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
     log("renderer_set_buffer %p %d %d", buffer, desc.width, desc.height);
 }
 
+
 void initAnotherSurface(JNIEnv *env, jobject surface, int index, float offsetX, float offsetY,
                         float width, float height,
                         WindowPtr ptr) {
@@ -444,7 +445,7 @@ void initAnotherSurface(JNIEnv *env, jobject surface, int index, float offsetX, 
         surface, index, offsetX, offsetY
         ,width, height, ptr);
 
-    WindowNode * window_node = node_search(NamedWindow_WindowPtr, ptr);
+    WindowNode * window_node = node_search(NamedWindow_WindowPtr, 1000);
     if(window_node){
         window_node->data.offset_x = offsetX;
         window_node->data.offset_y = offsetY;
@@ -509,6 +510,8 @@ void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* new_buffer){
 
 void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_buffer) {
     EGLNativeWindowType window;
+    log("renderer_set_window begin0 %p", window);
+
     if (new_surface && surface && new_surface != surface && (*env)->IsSameObject(env, new_surface, surface)) {
         (*env)->DeleteGlobalRef(env, new_surface);
         new_surface = NULL;
@@ -577,7 +580,7 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
         eglCheckError(__LINE__);
         return;
     }
-    log("renderer_set_window begin4 %p %d %d", window, width, height);
+    log("renderer_set_window begin4 %p %d %d  sfc:%p", window, width, height, sfc);
 
 
     if (!g_texture_program) {
@@ -625,7 +628,7 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
 }
 
 void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new_buffer) {
-    WindowNode * window_node = node_search(NamedWindow_WindowPtr, res->pWin);
+    WindowNode * window_node = node_search(NamedWindow_WindowPtr, res->window);
     if(window_node){
         window_node->data.offset_x = res->offset_y;
         window_node->data.offset_y = res->offset_y;
@@ -633,6 +636,13 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
         window_node->data.height = res->height;
         window_node->data.pWin = (WindowPtr) res->pWin;
         window_node->data.index = res->id;
+        window_node->data.window = res->window;
+        log("renderer_set_window_each surface:%p id:%d",  res->surface , res->id);
+        if(!res->surface && res->id != 0){
+            node_delete(&NamedWindow_WindowPtr, window_node->data);
+            log("renderer_set_window_each surface:%p id:%d",  res->surface , res->id);
+            return;
+        }
     } else {
         WindAttribute  windAttribute  = {
                 .offset_x = res->offset_y,
@@ -648,7 +658,8 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
     EGLNativeWindowType  window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
-    log("renderer_set_window_each %p %d %d %d %x %x", window, width, height, res->id, res->window, res->pWin);
+//    log("renderer_set_window_each window:%p width:%d heigght:%d index:%d %x %x new_buffer:%p",
+//        window, width, height, res->id, res->window, res->pWin, new_buffer);
     WindowNode * index_node = node_get_at_index(NamedWindow_WindowPtr, res->id);
     EGLSurface sfc = index_node->data.sfc;
     if (sfc != EGL_NO_SURFACE) {
@@ -677,7 +688,7 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
     }
     if (!window)
         return;
-    sfc = eglCreateWindowSurface(global_egl_display, global_config, win, NULL);
+    sfc = eglCreateWindowSurface(global_egl_display, global_config, window, NULL);
     if (sfc == EGL_NO_SURFACE) {
         log("Xlorie: eglCreateWindowSurface failed.\n");
         eglCheckError(__LINE__);
@@ -690,6 +701,9 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
         return;
     }
     index_node->data.sfc = sfc;
+
+//    log("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
+
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
         if (!g_texture_program) {
@@ -707,12 +721,14 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
         gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords"); checkGlError();
         gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position"); checkGlError();
         gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords"); checkGlError();
+    }
 
-        glActiveTexture(GL_TEXTURE0); checkGlError();
-//        glGenTextures(1, &display.id); checkGlError();
-        if(!cursor.id){
-            glGenTextures(1, &cursor.id); checkGlError();
-        }
+    glActiveTexture(GL_TEXTURE0); checkGlError();
+    if(!index_node->data.texture_id){
+        glGenTextures(1, &index_node->data.texture_id); checkGlError();
+    }
+    if(!cursor.id){
+        glGenTextures(1, &cursor.id); checkGlError();
     }
 }
 
@@ -748,8 +764,8 @@ renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8_t fl
         return;
     }
     WindAttribute*  windAttributePtr = (WindAttribute *) node_get_at_index(NamedWindow_WindowPtr, index);
-//    log("renderer_update_root_process1 x:%d y:%d offsetx:%f offsety:%f data:%p flip:%d display.width=%f display.height:%f index:%d id:%d",
-//        x, y, windAttributePtr->offset_x, windAttributePtr->offset_y, data, flip, windAttributePtr->width, windAttributePtr->height, index, windAttributePtr->texture_id );
+    log("renderer_update_root_process1 x:%d y:%d offsetx:%f offsety:%f data:%p flip:%d display.width=%f display.height:%f index:%d id:%d",
+        x, y, windAttributePtr->offset_x, windAttributePtr->offset_y, data, flip, windAttributePtr->width, windAttributePtr->height, index, windAttributePtr->texture_id );
 
     windAttributePtr->offset_x = (float) x;
     windAttributePtr->offset_y = (float) y;
@@ -820,7 +836,7 @@ int renderer_should_redraw(void) {
 
 int renderer_redraw(JNIEnv* env, uint8_t flip) {
     int err_traversal = TRUE;
-    err_traversal = renderer_redraw_traversal(env, flip, 0);
+//    err_traversal = renderer_redraw_traversal(env, flip, 0);
     WindowNode* node = NamedWindow_WindowPtr;
     while (node){
         err_traversal = renderer_redraw_traversal(env, flip, node->data.index);
@@ -837,12 +853,12 @@ int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
     int id;
     float width, height;
     WindowNode * windowNode = node_get_at_index(NamedWindow_WindowPtr, index);
-    if (index == 0){
-        eglSurface = sfc;
-        id = display.id;
-        width = display.width;
-        height = display.height;
-    } else
+//    if (index == 0){
+//        eglSurface = sfc;
+//        id = display.id;
+//        width = display.width;
+//        height = display.height;
+//    } else
         if(windowNode){
         UpdateBuffer(index);
         eglSurface = windowNode->data.sfc;
@@ -850,7 +866,7 @@ int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
         width = windowNode->data.width;
         height = windowNode->data.height;
     }
-    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface, index, width, height, id);
+//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface, index, width, height, id);
     if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id) {
         return FALSE;
     }
@@ -869,6 +885,7 @@ int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
             log("We've got %s so window is to be destroyed. "
                 "Native window disconnected/abandoned, probably activity is destroyed or in background",
                 eglErrorLabel(err));
+//            renderer_clear_window(env, index);
 //            renderer_set_window(env, NULL, NULL);
             return FALSE;
         }

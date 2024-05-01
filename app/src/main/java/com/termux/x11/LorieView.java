@@ -57,14 +57,14 @@ public class LorieView extends SurfaceView implements InputStub {
     private final SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback() {
         @Override public void surfaceCreated(@NonNull SurfaceHolder holder) {
             holder.setFormat(PixelFormat.BGRA_8888);
-//            Log.d(TAG, "surfaceCreated: holder:" + holder + "");
+            Log.d(TAG, "surfaceCreated: holder:" + holder + "");
         }
 
         @Override public void surfaceChanged(@NonNull SurfaceHolder holder, int f, int width, int height) {
             width = getMeasuredWidth();
             height = getMeasuredHeight();
 
-//            Log.d(TAG, "surfaceChanged: holder:" + holder + ", f:" + f + ", width:" + width + ", height:" + height + "");
+            Log.d(TAG, "surfaceChanged: holder:" + holder + ", f:" + f + ", width:" + width + ", height:" + height + "");
 
             if (mCallback == null)
                 return;
@@ -74,7 +74,7 @@ public class LorieView extends SurfaceView implements InputStub {
         }
 
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-//            Log.d(TAG, "surfaceDestroyed: holder:" + holder + "");
+            Log.d(TAG, "surfaceDestroyed: holder:" + holder + "");
             if (mCallback != null){
 //                mCallback.changed(holder.getSurface(), 0, 0, 0, 0);
             }

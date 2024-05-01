@@ -79,7 +79,7 @@ void node_delete(WindowNode **head, WindAttribute key) {
     if (!head) {
         return;
     }
-    WindowNode *temp = head, *prev = NULL;
+    WindowNode *temp = *head, *prev = NULL;
     if (temp != NULL && temp->data.pWin == key.pWin) {
         *head = temp->next;
         free(temp);
@@ -90,22 +90,24 @@ void node_delete(WindowNode **head, WindAttribute key) {
         temp = temp->next;
     }
     if (temp == NULL) {
-        log(ERROR, "Node not found\n");
+        log(ERROR,"Node not found\n");
         return;
     }
-    prev->next = temp->next;
+    if (prev != NULL) {
+        prev->next = temp->next;
+    }
     free(temp);
 }
 
-WindowNode *node_search(WindowNode *head, WindowPtr ptr) {
+WindowNode *node_search(WindowNode *head, Window window) {
     if (!head) {
         return NULL;
     }
     WindowNode *temp = head;
     XID position = 1;
     while (temp) {
-        if (temp->data.pWin == ptr) {
-            log(ERROR, "WindowPtr %p found at position %d\n", (void *) ptr, position);
+        if (temp->data.window == window) {
+            log(ERROR, "WindowPtr %x found at position %d\n", window, position);
             return temp;
         }
         temp = temp->next;

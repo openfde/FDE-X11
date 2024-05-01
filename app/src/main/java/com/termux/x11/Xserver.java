@@ -145,22 +145,6 @@ public class Xserver {
 
     public native ParcelFileDescriptor getXConnection();
 
-//    @Override
-//    public void registerListener(int index, IReceive receiver) throws RemoteException {
-//    }
-//
-//    @Override
-//    public void unregisterListener(int index, IReceive receiver) throws RemoteException {
-//    }
-//
-//    @Override
-//    public void closeWindow(int index, long p, long window) throws RemoteException {
-//
-//    }
-//
-//    @Override
-//    public void moveWindow(long winPtr, long xid, int x, int y) throws RemoteException {
-//    }
 
     public native ParcelFileDescriptor getLogcatOutput();
     public static native boolean connected();

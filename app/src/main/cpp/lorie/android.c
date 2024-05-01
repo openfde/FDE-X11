@@ -55,7 +55,7 @@ static inline JNIEnv *GetJavaEnv(void)
 }
 
 void UpdateBuffer(int index) {
-//    log(ERROR, "UpdateBuffer");
+    log(ERROR, "UpdateBuffer index:%d", index);
     WindowNode * node = node_get_at_index(NamedWindow_WindowPtr, index);
     if (node) {
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(node->data.pWin);
@@ -65,33 +65,33 @@ void UpdateBuffer(int index) {
 }
 
 void TransferBuffer2FDE(WindowPtr windowPtr) {
-//    Window wid = windowPtr->drawable.id;
-//    log(ERROR, "TransferBuffer2FDE wid:%x", wid);
-//    if(node_search(NamedWindow_WindowPtr, windowPtr)) {
-//        log(ERROR, "TransferBuffer2FDE found %x", wid);
-//        return;
-//    } else {
-//        int max_index = node_get_max_index(NamedWindow_WindowPtr);
-//        log(ERROR, "TransferBuffer2FDE max_index:%d", max_index);
-//        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
-//        WindAttribute  windAttribute  = {
-//                .offset_x = pixmap->screen_x,
-//                .offset_y = pixmap->screen_y,
-//                .width = pixmap->drawable.width,
-//                .height = pixmap->drawable.height,
-//                .pWin = (WindowPtr) windowPtr,
-//                .index = max_index + 1,
-//                .window = wid
-//
-//        };
-//        log(ERROR, "TransferBuffer2FDE %d", max_index);
-//        node_append(&NamedWindow_WindowPtr, windAttribute);
-//        log(ERROR, "TransferBuffer2FDE %d", max_index);
-//        renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-//                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, max_index + 1);
-//        log(ERROR, "TransferBuffer2FDE %d", max_index);
-//        create_android_window(windAttribute);
-//    }
+    Window wid = windowPtr->drawable.id;
+    log(ERROR, "TransferBuffer2FDE wid:%x", wid);
+    if(node_search(NamedWindow_WindowPtr, wid)) {
+        log(ERROR, "TransferBuffer2FDE found %x", wid);
+        return;
+    } else {
+        int max_index = node_get_max_index(NamedWindow_WindowPtr);
+        log(ERROR, "TransferBuffer2FDE max_index:%d", max_index);
+        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
+        WindAttribute  windAttribute  = {
+                .offset_x = windowPtr->drawable.x,
+                .offset_y = windowPtr->drawable.y,
+                .width = pixmap->drawable.width,
+                .height = pixmap->drawable.height,
+                .pWin = (WindowPtr) windowPtr,
+                .index = max_index + 1,
+                .window = wid
+
+        };
+        log(ERROR, "TransferBuffer2FDE %d", max_index);
+        node_append(&NamedWindow_WindowPtr, windAttribute);
+        log(ERROR, "TransferBuffer2FDE %d", max_index);
+        renderer_update_root_process1(windowPtr->drawable.x, windowPtr->drawable.y, pixmap->drawable.width,
+                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0, max_index + 1);
+        log(ERROR, "TransferBuffer2FDE %d", max_index);
+        create_android_window(windAttribute);
+    }
 }
 
 void create_android_window(WindAttribute attribute){
@@ -454,8 +454,8 @@ Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
     res->offset_y = (int) offsetY;
     res->width = (int) width;
     res->height = (int) height;
-    ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
-    res->psf = psf;
+//    ANativeWindow *psf = surface ? ANativeWindow_fromSurface(env, res->surface) : NULL;
+//    res->psf = psf;
     res->pWin = (WindowPtr) windowPtr;
     QueueWorkProc(lorieChangeWindow, NULL, res);
 }
@@ -474,8 +474,8 @@ Java_com_termux_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls,
     res->offset_y = (int) offsetY;
     res->width = (int) width;
     res->height = (int) height;
-    ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
-    res->psf = psf;
+//    ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
+//    res->psf = psf;
     res->pWin = (WindowPtr) windowPtr;
     res->window = window;
     QueueWorkProc(lorieChangeWindow, NULL, res);

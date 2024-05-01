@@ -31,7 +31,7 @@ void node_append(WindowNode** head, WindAttribute data);
 
 void node_delete(WindowNode** head, WindAttribute key);
 
-WindowNode* node_search(WindowNode* head, WindowPtr key);
+WindowNode* node_search(WindowNode* head, Window key);
 
 WindowNode* node_get_at_position(WindowNode* head, int position);
 

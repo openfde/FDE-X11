@@ -87,6 +87,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -100,7 +101,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     public static Handler handler = new Handler();
     FrameLayout frm;
     private TouchInputHandler mInputHandler;
-    public ICmdEntryInterface service = null;
+    public ICmdEntryInterface service;
+
     public TermuxX11ExtraKeys mExtraKeys;
     private Notification mNotification;
     private final int mNotificationId = 7892;
@@ -160,9 +162,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ACTION_START.equals(intent.getAction()) && service != null && !mClientConnected) {
+            if (ACTION_START.equals(intent.getAction()) && service != null &&!mClientConnected) {
                 try {
-//                    Log.v(MainActivity.this.toString(), "Got new ACTION_START intent:" + service + "  " + this);
                     Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
                         service = null;
                         CmdEntryPoint.requestConnection();
@@ -290,7 +291,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                         service.windowChanged(sfc, 0, 0,
                                 1920, 989, 0,
                                 1000, 1000);
-                    } catch (RemoteException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 } else {
@@ -306,7 +307,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                         }
 
 
-                    } catch (RemoteException e) {
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
@@ -619,7 +620,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 getLorieView().triggerCallback();
                 clientConnectedStateChanged(true);
                 LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", false));
-                handler.postDelayed(this::goback, 2000);
+//                handler.postDelayed(this::goback, 2000);
             } else
                 handler.postDelayed(this::tryConnect, 500);
         } catch (Exception e) {
@@ -981,14 +982,19 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
-        Log.d(TAG, "onWindowDismissed: ");
+        Log.d(TAG, "onWindowDismissed: before");
         if(service != null && mAttribute != null){
             try {
-                service.closeWindow(mAttribute.getIndex(), mAttribute.getWindowPtr(), mAttribute.getXID());
+                WindowAttribute a = mAttribute;
+                service.windowChanged(null, a.getOffsetX(),
+                        a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
+                        a.getWindowPtr(), a.getXID());
+                service.closeWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+        Log.d(TAG, "onWindowDismissed: after");
     }
 
 
