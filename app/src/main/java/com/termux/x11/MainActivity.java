@@ -51,6 +51,7 @@ import android.view.DragEvent;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
@@ -118,45 +119,13 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected int mIndex = 0;
     protected WindowAttribute mAttribute;
     protected Rect mWindowRect = new Rect();
+    ActivityManager am;
+
 
     protected long getWindowId() {
         return WindowCode;
     }
 
-    private IReceive.Stub listener = new IReceive.Stub() {
-        @Override
-        public void startWindow(int offsetX, int offsetY, int width, int height, int index, long windowPtr, long window) throws RemoteException {
-            Log.v(TAG, "startWindow() called with: offsetX = [" + offsetX + "], offsetY = [" + offsetY + "], width = [" + width + "], height = [" + height + "], index = [" + index + "], mIndex = [" + mIndex + "]");
-            if(index  == mIndex){
-                mAttribute.setOffsetX(offsetX);
-                mAttribute.setOffsetY(offsetY);
-            } else if(index == 1){
-                offsetY += DECORCATIONVIEW_HEIGHT;
-                ActivityOptions options = ActivityOptions.makeBasic();
-                options.setLaunchBounds(new Rect(offsetX, (int)(offsetY - DECORCATIONVIEW_HEIGHT), width + offsetX, height + offsetY));
-                Intent intent = new Intent(MainActivity.this, MainActivity1.class);
-                intent.putExtra("index", index);
-                intent.putExtra("KEY_WindowPtr", windowPtr);
-                WindowAttribute mAttribute = new WindowAttribute(offsetX, offsetY, width, height,
-                        index, windowPtr, window);
-                intent.putExtra("NativeWindow_data", mAttribute);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent, options.toBundle());
-            } else if(index == 2 ){
-                ActivityOptions options = ActivityOptions.makeBasic();
-                options.setLaunchBounds(new Rect(offsetX, (int)(offsetY - DECORCATIONVIEW_HEIGHT), width + offsetX, height + offsetY));
-                Intent intent = new Intent(MainActivity.this, MainActivity2.class);
-                intent.putExtra("index", index);
-                intent.putExtra("KEY_WindowPtr", windowPtr);
-                WindowAttribute coordinate = new WindowAttribute(offsetX, offsetY, width, height,
-                        index, windowPtr, window);
-                Log.v(TAG, "coordinate:" + coordinate);
-                intent.putExtra("NativeWindow_data", coordinate);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent, options.toBundle());
-            }
-        }
-    };
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -166,11 +135,10 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 try {
                     Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
                         service = null;
-                        CmdEntryPoint.requestConnection();
+                        Xserver.requestConnection();
                         Log.v(TAG, "Disconnected");
                         runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
                     }, 0);
-
                     onReceiveConnection();
                 } catch (Exception e) {
                     Log.e(TAG, "Something went wrong while we extracted connection details from binder.", e);
@@ -204,13 +172,14 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(LINUX_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
             mIndex = mAttribute.getIndex();
             WindowCode = mAttribute.getWindowPtr();
+            mWindowRect.set(mAttribute.getRect());
         }
-        Log.v(TAG, "onCreate() " +  this  +  " mCoordinate = [" + mAttribute + "]" +
+        Log.v(TAG, "mWindowRect " +  mWindowRect  +  " mCoordinate = [" + mAttribute + "]" +
                 " , WindowCode = " + Long.toHexString(WindowCode) + ", index = " + mIndex);
         Util.setBaseContext(this);
         CmdEntryPoint.ctx = this;
@@ -221,17 +190,13 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             e.putString("touchMode", "1");
             e.apply();
         }
-        
         preferences.registerOnSharedPreferenceChangeListener((sharedPreferences, key) -> onPreferencesChanged(key));
-
         getWindow().setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(getLayoutID());
-
         frm = findViewById(R.id.frame);
         findViewById(R.id.preferences_button).setOnClickListener((l) -> startActivity(new Intent(this, LoriePreferences.class) {{ setAction(Intent.ACTION_MAIN); }}));
         findViewById(R.id.help_button).setOnClickListener((l) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/termux/termux-x11/blob/master/README.md#running-graphical-applications"))));
-
         LorieView lorieView = findViewById(R.id.lorieView);
         lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
@@ -248,7 +213,6 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     toggleExtraKeys();
                 return true;
             }
-
             if (k == KEYCODE_BACK) {
                 if (e.isFromSource(InputDevice.SOURCE_MOUSE) || e.isFromSource(InputDevice.SOURCE_MOUSE_RELATIVE)) {
                     if (e.getRepeatCount() != 0) // ignore auto-repeat
@@ -265,7 +229,6 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     return true;
                 }
             }
-
             return mInputHandler.sendKeyEvent(v, e);
         };
 
@@ -316,19 +279,13 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
             }
         });
-
-//        if(getWindowId() == 0){
-            registerReceiver(receiver, new IntentFilter(ACTION_START) {{
-                addAction(ACTION_PREFERENCES_CHANGED);
-                addAction(ACTION_STOP);
-            }},  0);
-//        }
+        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+        registerReceiver(receiver, new IntentFilter(ACTION_START) {{
+            addAction(ACTION_PREFERENCES_CHANGED);
+            addAction(ACTION_STOP);
+        }},  0);
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);
-//        mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-//        mNotification = buildNotification();
-//        mNotificationManager.notify(mNotificationId, mNotification);
-
         CmdEntryPoint.requestConnection();
         onPreferencesChanged("");
 
@@ -337,14 +294,16 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         initStylusAuxButtons();
         initMouseAuxButtons();
-
-//        if (SDK_INT >= 33
-//                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PERMISSION_GRANTED
-//                && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
-//            requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 0);
-//        }
         bindXserver();
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                firstTime = false;
+            }
+        }, 5000);
     }
+
+    private boolean firstTime = true;
 
     private void bindXserver() {
         try {
@@ -539,20 +498,20 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
         Map.of(left, InputStub.BUTTON_LEFT, middle, InputStub.BUTTON_MIDDLE, right, InputStub.BUTTON_RIGHT)
                 .forEach((v, b) -> v.setOnTouchListener((__, e) -> {
-            switch(e.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    getLorieView().sendMouseEvent(0, 0, b, true, true, mIndex);
-                    v.setPressed(true);
-                    break;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_POINTER_UP:
-                    getLorieView().sendMouseEvent(0, 0, b, false, true, mIndex);
-                    v.setPressed(false);
-                    break;
-            }
-            return true;
-        }));
+                    switch(e.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                        case MotionEvent.ACTION_POINTER_DOWN:
+                            getLorieView().sendMouseEvent(0, 0, b, true, true, mIndex);
+                            v.setPressed(true);
+                            break;
+                        case MotionEvent.ACTION_UP:
+                        case MotionEvent.ACTION_POINTER_UP:
+                            getLorieView().sendMouseEvent(0, 0, b, false, true, mIndex);
+                            v.setPressed(false);
+                            break;
+                    }
+                    return true;
+                }));
 
         pos.setOnTouchListener(new View.OnTouchListener() {
             final int touchSlop = (int) Math.pow(ViewConfiguration.get(MainActivity.this).getScaledTouchSlop(), 2);
@@ -865,9 +824,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         View decorView = window.getDecorView();
         boolean fullscreen = p.getBoolean("fullscreen", false);
         boolean reseed = p.getBoolean("Reseed", true);
-
         fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
-
         int requestedOrientation = p.getBoolean("forceLandscape", false) ?
                 ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
         if (getRequestedOrientation() != requestedOrientation)
@@ -886,7 +843,6 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             window.setStatusBarColor(Color.BLACK);
             window.setNavigationBarColor(Color.BLACK);
         }
-
         window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         if (hasFocus) {
             if (fullscreen) {
@@ -903,70 +859,65 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 decorView.setSystemUiVisibility(0);
             }
         }
-
         if (p.getBoolean("keepScreenOn", true))
             window.addFlags(FLAG_KEEP_SCREEN_ON);
         else
             window.clearFlags(FLAG_KEEP_SCREEN_ON);
-
         window.setSoftInputMode((reseed ? SOFT_INPUT_ADJUST_RESIZE : SOFT_INPUT_ADJUST_PAN) | SOFT_INPUT_STATE_HIDDEN);
-
         ((FrameLayout) findViewById(android.R.id.content)).getChildAt(0).setFitsSystemWindows(!fullscreen);
         SamsungDexUtils.dexMetaKeyCapture(this, hasFocus && p.getBoolean("dexMetaKeyCapture", false));
-
         if (hasFocus){
             getLorieView().regenerate();
             try {
-                updateCoordinate();
-//                raiseXWindow();
+                execAtWindowManager();
             } catch (RemoteException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
         }
-
         getLorieView().requestFocus();
-
     }
 
-    private void raiseXWindow() throws RemoteException {
-        if(service == null || mAttribute == null){
-            return;
-        }
-        service.raiseWindow(mAttribute.getXID());
-    }
-
-    protected void updateCoordinate() throws RemoteException {
-        ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+    protected void execAtWindowManager() throws RemoteException {
         List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
         for (ActivityManager.RunningTaskInfo info: runningTasks){
             if(!TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
                 return;
             }
-            if(service == null || mAttribute == null){
+            if(service == null || mAttribute == null || firstTime){
                 return;
             }
             Configuration configuration = info.configuration;
-            Log.d(TAG, "onWindowFocusChanged configuration: " + configuration);
+            Log.d(TAG, "updateCoordinate configuration:" + configuration + " mWindowRect:" + mWindowRect);
             Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
             Matcher matcher = pattern.matcher(configuration.toString());
             if(matcher.find()){
-                int left = Integer.parseInt(matcher.group(1));
-                int top = Integer.parseInt(matcher.group(2));
-                int right = Integer.parseInt(matcher.group(3));
-                int bottom = Integer.parseInt(matcher.group(4));
-                Rect rect = new Rect(left, top, right, bottom);
-                if (!atSameSize(rect)) {
-//                    mWindowRect.set(rect);
-//                    service.resizeWindow(mAttribute.getXID(),
-//                            (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY());
-                } else if (!atSamePosition(rect)) {
-                    mWindowRect.set(rect);
+                int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
+                int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
+                int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
+                int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
+                Rect rect = new Rect(left, (int) (top + DECORCATIONVIEW_HEIGHT), right, bottom);
+                if (!atSamePosition(rect)) {
+                    Log.d(TAG, "updateCoordinate: not theSamePosition");
+                    updateAttribueOnly(rect);
                     service.moveWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                             (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY());
+                } else if (!atSameSize(rect)) {
+                    Log.d(TAG, "updateCoordinate: not theSameSize");
+                    updateAttribueOnly(rect);
+                    service.resizeWindow(mAttribute.getXID(),
+                            rect.right - rect.left, rect.bottom - rect.top);
                 }
-                Log.d(TAG, "onWindowFocusChanged rect: " + rect);
             }
+            service.raiseWindow(mAttribute.getXID());
+            return;
         }
+    }
+
+    private void updateAttribueOnly(Rect rect) {
+        Log.d(TAG, "updateAttribue: rect:" + rect);
+        mWindowRect.set(rect);
+        mAttribute.setRect(rect);
+        getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
     }
 
     private boolean atSameSize(Rect rect) {
@@ -977,7 +928,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
     private boolean atSamePosition(Rect rect) {
         Rect r = mWindowRect;
-        return r.left == rect.left && r.right == rect.right && r.top == rect.top && r.bottom == rect.bottom ;
+        return r.left == rect.left && r.top == rect.top ;
     }
 
 
@@ -1072,7 +1023,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 tryConnect();
 
             if (connected && mIndex != 0){
-//                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
             }
         });
     }

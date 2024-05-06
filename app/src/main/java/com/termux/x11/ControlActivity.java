@@ -96,8 +96,11 @@ public class ControlActivity extends Activity implements View.OnClickListener {
             int ret = windowManager.moveWindow(1000, 50, 50);
             Log.d("TAG", "moveWindow: ret = [" + ret + "]");
         } else if ( v == btResizeNative){
-            int ret = windowManager.resizeWindow(1000, 800, 600);
-            Log.d("TAG", "resizeWindow: ret = [" + ret + "]");
+            try {
+                service.resizeWindow(1000, 800, 600);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
         } else if ( v == btCloseWindowNative){
             try {
                 service.closeWindow(1000, 100, 100);
@@ -105,8 +108,11 @@ public class ControlActivity extends Activity implements View.OnClickListener {
                 throw new RuntimeException(e);
             }
         } else if ( v == btRaiseNative){
-            int ret = windowManager.raiseWindow(1000);
-            Log.d("TAG", "raiseWindow: ret = [" + ret + "]");
+            try {
+                service.raiseWindow(2097153);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
         } else if ( v == btStopWindowManager){
             windowManager.stopWindowManager();
         } else if ( v == btstartXserver){

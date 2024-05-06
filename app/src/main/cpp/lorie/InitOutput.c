@@ -446,14 +446,14 @@ static void lorieTimerCallback(int fd, unused int r, void *arg) {
     char dummy[8];
     read(fd, dummy, 8);
     if (renderer_should_redraw() && RegionNotEmpty(DamageRegion(pvfb->damage))) {
-//        logh("RegionNotEmpty");
+        logh("RegionNotEmpty");
         int redrawn = FALSE;
         ScreenPtr pScreen = (ScreenPtr) arg;
 
         loriePixmapUnlock(pScreen->GetScreenPixmap(pScreen));
         redrawn = renderer_redraw(pvfb->env, pvfb->root.flip);
         if (loriePixmapLock(pScreen->GetScreenPixmap(pScreen)) && redrawn){
-//            logh("DamageEmpty");
+            logh("DamageEmpty");
             DamageEmpty(pvfb->damage);
         }
     } else if (pvfb->cursorMoved)

@@ -20,18 +20,20 @@
 #include "renderer.h"
 #include "os.h"
 #include <globals.h>
+#include "c_interface.h"
 
 #define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__)
 #define loge(...) __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__)
 
-static GLuint create_program(const char* p_vertex_source, const char* p_fragment_source);
+static GLuint create_program(const char *p_vertex_source, const char *p_fragment_source);
 
 static int eglCheckError(int line) {
-    char* desc;
+    char *desc;
     int err = eglGetError();
-    switch(err) {
+    switch (err) {
 #define E(code, text) case code: desc = (char*) text; break
-        case EGL_SUCCESS: desc = NULL; // "No error"
+        case EGL_SUCCESS:
+            desc = NULL; // "No error"
         E(EGL_NOT_INITIALIZED, "EGL not initialized or failed to initialize");
         E(EGL_BAD_ACCESS, "Resource inaccessible");
         E(EGL_BAD_ALLOC, "Cannot allocate resources");
@@ -47,7 +49,8 @@ static int eglCheckError(int line) {
         E(EGL_BAD_NATIVE_WINDOW, "Invalid native window");
         E(EGL_CONTEXT_LOST, "Context lost");
 #undef E
-        default: desc = (char*) "Unknown error";
+        default:
+            desc = (char *) "Unknown error";
     }
 
     if (desc)
@@ -56,9 +59,10 @@ static int eglCheckError(int line) {
     return err;
 }
 
-static const char* eglErrorLabel(int code) {
-    switch(code) {
-        case EGL_SUCCESS: return NULL; // "No error"
+static const char *eglErrorLabel(int code) {
+    switch (code) {
+        case EGL_SUCCESS:
+            return NULL; // "No error"
 #define E(code) case code: return #code; break
         E(EGL_NOT_INITIALIZED);
         E(EGL_BAD_ACCESS);
@@ -75,7 +79,8 @@ static const char* eglErrorLabel(int code) {
         E(EGL_BAD_NATIVE_WINDOW);
         E(EGL_CONTEXT_LOST);
 #undef E
-        default: return "EGL_UNKNOWN_ERROR";
+        default:
+            return "EGL_UNKNOWN_ERROR";
     }
 
 }
@@ -107,13 +112,13 @@ static void checkGlError(int line) {
 
 
 static const char vertex_shader[] =
-    "attribute vec4 position;\n"
-    "attribute vec2 texCoords;"
-    "varying vec2 outTexCoords;\n"
-    "void main(void) {\n"
-    "   outTexCoords = texCoords;\n"
-    "   gl_Position = position;\n"
-    "}\n";
+        "attribute vec4 position;\n"
+        "attribute vec2 texCoords;"
+        "varying vec2 outTexCoords;\n"
+        "void main(void) {\n"
+        "   outTexCoords = texCoords;\n"
+        "   gl_Position = position;\n"
+        "}\n";
 
 #define FRAGMENT_SHADER(texture) \
     "precision mediump float;\n" \
@@ -139,8 +144,11 @@ static EGLImageKHR image = NULL;
 static int renderedFrames = 0;
 static jmethodID Surface_release = NULL;
 static jmethodID Surface_destroy = NULL;
-struct WindowNode* NamedWindow_WindowPtr = NULL;
+struct SurfaceManagerWrapper *surfaceManagerWrapper = NULL;
+struct WindowNode *NamedWindow_WindowPtr = NULL;
+
 extern void TransferBuffer2FDE(WindowPtr ptr);
+
 extern void UpdateBuffer(int index);
 
 
@@ -154,12 +162,10 @@ static struct {
 } cursor;
 
 
-
-
 GLuint g_texture_program = 0, gv_pos = 0, gv_coords = 0;
 GLuint g_texture_program_bgra = 0, gv_pos_bgra = 0, gv_coords_bgra = 0;
 
-int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
+int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
     EGLint major, minor;
     EGLint numConfigs;
     const EGLint configAttribs[] = {
@@ -181,7 +187,7 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
             EGL_NONE
     };
     const EGLint ctxattribs[] = {
-            EGL_CONTEXT_CLIENT_VERSION,2, EGL_NONE
+            EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE
     };
 
     if (global_ctx)
@@ -214,8 +220,10 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
     log("Xlorie: Initialized EGL version %d.%d\n", major, minor);
     eglBindAPI(EGL_OPENGL_ES_API);
 
-    if (eglChooseConfig(global_egl_display, configAttribs, &global_config, 1, &numConfigs) != EGL_TRUE &&
-        eglChooseConfig(global_egl_display, configAttribs2, &global_config, 1, &numConfigs) != EGL_TRUE) {
+    if (eglChooseConfig(global_egl_display, configAttribs, &global_config, 1, &numConfigs) !=
+        EGL_TRUE &&
+        eglChooseConfig(global_egl_display, configAttribs2, &global_config, 1, &numConfigs) !=
+        EGL_TRUE) {
         log("Xlorie: eglChooseConfig failed.\n");
         eglCheckError(__LINE__);
         return 0;
@@ -227,7 +235,8 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
         eglCheckError(__LINE__);
         return 0;
     }
-    if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) != EGL_TRUE) {
+    if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
+        EGL_TRUE) {
         log("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
         return 0;
@@ -244,7 +253,8 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
                 .width = 64,
                 .height = 64,
                 .layers = 1,
-                .usage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
+                .usage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN |
+                         AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
                 .format = AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM
         };
 
@@ -276,7 +286,8 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
             return 1;
         }
 
-        if (!(img = eglCreateImageKHR(global_egl_display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, imageAttributes))) {
+        if (!(img = eglCreateImageKHR(global_egl_display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID,
+                                      clientBuffer, imageAttributes))) {
             if (eglGetError() == EGL_BAD_PARAMETER) {
                 loge("Sampling from HAL_PIXEL_FORMAT_BGRA_8888 is not supported, forcing AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM");
                 *flip = 1;
@@ -303,7 +314,8 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
             };
             EGLConfig checkcfg = 0;
             GLuint fbo = 0, texture = 0;
-            if (eglChooseConfig(global_egl_display, configAttributes, &checkcfg, 1, &numConfigs) != EGL_TRUE) {
+            if (eglChooseConfig(global_egl_display, configAttributes, &checkcfg, 1, &numConfigs) !=
+                EGL_TRUE) {
                 log("Xlorie: check eglChooseConfig failed.\n");
                 eglCheckError(__LINE__);
                 return 0;
@@ -321,7 +333,8 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
                     EGL_HEIGHT, 64,
                     EGL_NONE,
             };
-            EGLSurface checksfc = eglCreatePbufferSurface(global_egl_display, checkcfg, pbufferAttributes);
+            EGLSurface checksfc = eglCreatePbufferSurface(global_egl_display, checkcfg,
+                                                          pbufferAttributes);
 
             if (eglMakeCurrent(global_egl_display, checksfc, checksfc, testctx) != EGL_TRUE) {
                 log("Xlorie: check eglMakeCurrent failed.\n");
@@ -329,30 +342,42 @@ int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip) {
                 return 0;
             }
 
-            glActiveTexture(GL_TEXTURE0); checkGlError();
-            glGenTextures(1, &texture); checkGlError();
-            glBindTexture(GL_TEXTURE_2D, texture); checkGlError();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); checkGlError();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); checkGlError();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); checkGlError();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); checkGlError();
-            glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, img); checkGlError();
-            glGenFramebuffers(1, &fbo); checkGlError();
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo); checkGlError();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0); checkGlError();
-            uint32_t pixel[64*64];
-            glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &pixel); checkGlError();
+            glActiveTexture(GL_TEXTURE0);
+            checkGlError();
+            glGenTextures(1, &texture);
+            checkGlError();
+            glBindTexture(GL_TEXTURE_2D, texture);
+            checkGlError();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            checkGlError();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            checkGlError();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            checkGlError();
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            checkGlError();
+            glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, img);
+            checkGlError();
+            glGenFramebuffers(1, &fbo);
+            checkGlError();
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            checkGlError();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+            checkGlError();
+            uint32_t pixel[64 * 64];
+            glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &pixel);
+            checkGlError();
             if (pixel[0] == 0xAABBCCDD) {
                 log("Xlorie: GLES draws pixels unchanged, probably system does not support AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM. Forcing bgra.\n");
                 *flip = 1;
             } else if (pixel[0] != 0xAADDCCBB) {
-                log("Xlorie: GLES receives broken pixels. Forcing legacy drawing. 0x%X\n", pixel[0]);
+                log("Xlorie: GLES receives broken pixels. Forcing legacy drawing. 0x%X\n",
+                    pixel[0]);
                 *legacy_drawing = 1;
             }
             eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
         }
     }
-
     return 1;
 }
 
@@ -371,7 +396,7 @@ static void renderer_unset_buffer(void) {
     buffer = NULL;
 }
 
-void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
+void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
     log("renderer_set_buffer");
     const EGLint imageAttributes[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
     EGLClientBuffer clientBuffer;
@@ -387,11 +412,16 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
 
     buffer = buf;
 
-    glBindTexture(GL_TEXTURE_2D, display.id); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); checkGlError();
+    glBindTexture(GL_TEXTURE_2D, display.id);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    checkGlError();
     log("renderer_set_buffer 1");
 
     if (buffer) {
@@ -406,7 +436,9 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
             eglCheckError(__LINE__);
             loge("Failed to obtain EGLClientBuffer from AHardwareBuffer");
         }
-        image = clientBuffer ? eglCreateImageKHR(global_egl_display, EGL_NO_CONTEXT, EGL_NATIVE_BUFFER_ANDROID, clientBuffer, imageAttributes) : NULL;
+        image = clientBuffer ? eglCreateImageKHR(global_egl_display, EGL_NO_CONTEXT,
+                                                 EGL_NATIVE_BUFFER_ANDROID, clientBuffer,
+                                                 imageAttributes) : NULL;
         if (image != NULL) {
             glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image);
             flip = desc.format != AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM;
@@ -428,7 +460,8 @@ void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buf) {
         display.height = 1;
         uint32_t data = {0};
         loge("There is no AHardwareBuffer, nothing to be bound.");
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data); checkGlError();
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data);
+        checkGlError();
     }
     log("renderer_set_buffer 2");
 
@@ -442,11 +475,10 @@ void initAnotherSurface(JNIEnv *env, jobject surface, int index, float offsetX, 
                         float width, float height,
                         WindowPtr ptr) {
     log("initAnotherSurface surface:%p index:%d offsetx:%f offsety:%f width:%f height:%f winPtr:%ld",
-        surface, index, offsetX, offsetY
-        ,width, height, ptr);
+        surface, index, offsetX, offsetY, width, height, ptr);
 
-    WindowNode * window_node = node_search(NamedWindow_WindowPtr, 1000);
-    if(window_node){
+    WindowNode *window_node = node_search(NamedWindow_WindowPtr, 1000);
+    if (window_node) {
         window_node->data.offset_x = offsetX;
         window_node->data.offset_y = offsetY;
         window_node->data.width = width;
@@ -455,7 +487,7 @@ void initAnotherSurface(JNIEnv *env, jobject surface, int index, float offsetX, 
         window_node->data.index = index;
 
     } else {
-        WindAttribute  windAttribute  = {
+        WindAttribute windAttribute = {
                 .offset_x = offsetX,
                 .offset_y = offsetY,
                 .width = width,
@@ -474,12 +506,12 @@ void initAnotherSurface(JNIEnv *env, jobject surface, int index, float offsetX, 
         eglCheckError(__LINE__);
         return;
     } else {
-        WindowNode * index_node = node_get_at_index(NamedWindow_WindowPtr, index);
+        WindowNode *index_node = node_get_at_index(NamedWindow_WindowPtr, index);
         index_node->data.sfc = eglSurface;
     }
 }
 
-void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* new_buffer){
+void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
         if (!g_texture_program) {
@@ -493,26 +525,36 @@ void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* new_buffer){
             eglCheckError(__LINE__);
             return;
         }
-        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position"); checkGlError();
-        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords"); checkGlError();
-        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position"); checkGlError();
-        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords"); checkGlError();
-        glActiveTexture(GL_TEXTURE0); checkGlError();
-        glGenTextures(1, &display.id); checkGlError();
-        glGenTextures(1, &cursor.id); checkGlError();
+        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position");
+        checkGlError();
+        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords");
+        checkGlError();
+        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position");
+        checkGlError();
+        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords");
+        checkGlError();
+        glActiveTexture(GL_TEXTURE0);
+        checkGlError();
+        glGenTextures(1, &display.id);
+        checkGlError();
+        glGenTextures(1, &cursor.id);
+        checkGlError();
     }
     eglSwapInterval(global_egl_display, 0);
     if (!new_buffer) {
-        glClearColor(0.f, 0.f, 0.f, 0.0f); checkGlError();
-        glClear(GL_COLOR_BUFFER_BIT); checkGlError();
+        glClearColor(0.f, 0.f, 0.f, 0.0f);
+        checkGlError();
+        glClear(GL_COLOR_BUFFER_BIT);
+        checkGlError();
     } else renderer_set_buffer(env, new_buffer);
 }
 
-void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_buffer) {
+void renderer_set_window(JNIEnv *env, jobject new_surface, AHardwareBuffer *new_buffer) {
     EGLNativeWindowType window;
     log("renderer_set_window begin0 %p", window);
 
-    if (new_surface && surface && new_surface != surface && (*env)->IsSameObject(env, new_surface, surface)) {
+    if (new_surface && surface && new_surface != surface &&
+        (*env)->IsSameObject(env, new_surface, surface)) {
         (*env)->DeleteGlobalRef(env, new_surface);
         new_surface = NULL;
         return;
@@ -526,7 +568,8 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
         return;
 
     if (sfc != EGL_NO_SURFACE) {
-        if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) != EGL_TRUE) {
+        if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
+            EGL_TRUE) {
             log("Xlorie: eglMakeCurrent (EGL_NO_SURFACE) failed.\n");
             eglCheckError(__LINE__);
             return;
@@ -598,38 +641,48 @@ void renderer_set_window(JNIEnv* env, jobject new_surface, AHardwareBuffer* new_
             return;
         }
 
-        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position"); checkGlError();
-        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords"); checkGlError();
+        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position");
+        checkGlError();
+        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords");
+        checkGlError();
 
-        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position"); checkGlError();
-        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords"); checkGlError();
+        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position");
+        checkGlError();
+        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords");
+        checkGlError();
 
-        glActiveTexture(GL_TEXTURE0); checkGlError();
-        glGenTextures(1, &display.id); checkGlError();
-        glGenTextures(1, &cursor.id); checkGlError();
+        glActiveTexture(GL_TEXTURE0);
+        checkGlError();
+        glGenTextures(1, &display.id);
+        checkGlError();
+        glGenTextures(1, &cursor.id);
+        checkGlError();
     }
     log("renderer_set_window begin5 %p %d %d", window, width, height);
 
     return;
     eglSwapInterval(global_egl_display, 0);
 
-    if (win && global_ctx && ANativeWindow_getWidth(win) > 0 && ANativeWindow_getHeight(win) > 0){
-        glViewport(0, 0, ANativeWindow_getWidth(win), ANativeWindow_getHeight(win)); checkGlError();
+    if (win && global_ctx && ANativeWindow_getWidth(win) > 0 && ANativeWindow_getHeight(win) > 0) {
+        glViewport(0, 0, ANativeWindow_getWidth(win), ANativeWindow_getHeight(win));
+        checkGlError();
     }
 
 //    log("Xlorie: new surface applied: %p\n", sfc);
     if (!new_buffer) {
-        glClearColor(0.f, 0.f, 0.f, 0.0f); checkGlError();
-        glClear(GL_COLOR_BUFFER_BIT); checkGlError();
+        glClearColor(0.f, 0.f, 0.f, 0.0f);
+        checkGlError();
+        glClear(GL_COLOR_BUFFER_BIT);
+        checkGlError();
     } else {
         renderer_set_buffer(env, new_buffer);
     }
     log("renderer_set_window after %p %d %d", window, width, height);
 }
 
-void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new_buffer) {
-    WindowNode * window_node = node_search(NamedWindow_WindowPtr, res->window);
-    if(window_node){
+void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
+    WindowNode *window_node = node_search(NamedWindow_WindowPtr, res->window);
+    if (window_node) {
         window_node->data.offset_x = res->offset_y;
         window_node->data.offset_y = res->offset_y;
         window_node->data.width = res->width;
@@ -637,14 +690,14 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
         window_node->data.pWin = (WindowPtr) res->pWin;
         window_node->data.index = res->id;
         window_node->data.window = res->window;
-        log("renderer_set_window_each surface:%p id:%d",  res->surface , res->id);
-        if(!res->surface && res->id != 0){
+        log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
+        if (!res->surface && res->id != 0) {
             node_delete(&NamedWindow_WindowPtr, window_node->data);
-            log("renderer_set_window_each surface:%p id:%d",  res->surface , res->id);
+            log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
             return;
         }
     } else {
-        WindAttribute  windAttribute  = {
+        WindAttribute windAttribute = {
                 .offset_x = res->offset_y,
                 .offset_y = res->offset_y,
                 .width =  res->width,
@@ -655,15 +708,16 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
         node_append(&NamedWindow_WindowPtr, windAttribute);
     }
     jobject new_surface = res->surface;
-    EGLNativeWindowType  window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
+    EGLNativeWindowType window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
 //    log("renderer_set_window_each window:%p width:%d heigght:%d index:%d %x %x new_buffer:%p",
 //        window, width, height, res->id, res->window, res->pWin, new_buffer);
-    WindowNode * index_node = node_get_at_index(NamedWindow_WindowPtr, res->id);
+    WindowNode *index_node = node_get_at_index(NamedWindow_WindowPtr, res->id);
     EGLSurface sfc = index_node->data.sfc;
     if (sfc != EGL_NO_SURFACE) {
-        if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) != EGL_TRUE) {
+        if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
+            EGL_TRUE) {
             log("Xlorie: eglMakeCurrent (EGL_NO_SURFACE) failed.\n");
             eglCheckError(__LINE__);
             return;
@@ -717,22 +771,29 @@ void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* new
             eglCheckError(__LINE__);
             return;
         }
-        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position"); checkGlError();
-        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords"); checkGlError();
-        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position"); checkGlError();
-        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords"); checkGlError();
+        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position");
+        checkGlError();
+        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords");
+        checkGlError();
+        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position");
+        checkGlError();
+        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords");
+        checkGlError();
     }
 
-    glActiveTexture(GL_TEXTURE0); checkGlError();
-    if(!index_node->data.texture_id){
-        glGenTextures(1, &index_node->data.texture_id); checkGlError();
+    glActiveTexture(GL_TEXTURE0);
+    checkGlError();
+    if (!index_node->data.texture_id) {
+        glGenTextures(1, &index_node->data.texture_id);
+        checkGlError();
     }
-    if(!cursor.id){
-        glGenTextures(1, &cursor.id); checkGlError();
+    if (!cursor.id) {
+        glGenTextures(1, &cursor.id);
+        checkGlError();
     }
 }
 
-void renderer_update_root(int w, int h, void* data, uint8_t flip) {
+void renderer_update_root(int w, int h, void *data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
@@ -742,19 +803,28 @@ void renderer_update_root(int w, int h, void* data, uint8_t flip) {
         display.width = (float) w;
         display.height = (float) h;
 
-        glBindTexture(GL_TEXTURE_2D, display.id); checkGlError();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); checkGlError();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); checkGlError();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); checkGlError();
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); checkGlError();
-        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data); checkGlError();
+        glBindTexture(GL_TEXTURE_2D, display.id);
+        checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        checkGlError();
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        checkGlError();
+        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                     flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        checkGlError();
     } else {
-        glBindTexture(GL_TEXTURE_2D, display.id); checkGlError();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        glBindTexture(GL_TEXTURE_2D, display.id);
+        checkGlError();
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+                        GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
     log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-        w, h, data, flip, display.width, display.height );
+        w, h, data, flip, display.width, display.height);
 
 }
 
@@ -763,18 +833,29 @@ renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8_t fl
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
-    WindAttribute*  windAttributePtr = (WindAttribute *) node_get_at_index(NamedWindow_WindowPtr, index);
-    log("renderer_update_root_process1 x:%d y:%d offsetx:%f offsety:%f data:%p flip:%d display.width=%f display.height:%f index:%d id:%d",
-        x, y, windAttributePtr->offset_x, windAttributePtr->offset_y, data, flip, windAttributePtr->width, windAttributePtr->height, index, windAttributePtr->texture_id );
+    WindAttribute *windAttributePtr = (WindAttribute *) node_get_at_index(NamedWindow_WindowPtr,
+                                                                          index);
+    log("renderer_update_root_process1 x:%d y:%d offsetx:%.0f offsety:%.0f data:%p flip:%d display.width=%.0f display.height:%.0f index:%d id:%d",
+        x, y, windAttributePtr->offset_x, windAttributePtr->offset_y, data, flip,
+        windAttributePtr->width, windAttributePtr->height, index, windAttributePtr->texture_id);
 
     windAttributePtr->offset_x = (float) x;
     windAttributePtr->offset_y = (float) y;
 
+//    WindAttribute* attr = _surface_find_window_by_index(surfaceManagerWrapper, index);
+//    attr->offset_x = (float) x;
+//    attr->offset_y = (float) y;
+
     if (windAttributePtr->width != (float) w || windAttributePtr->height != (float) h) {
         windAttributePtr->width = (float) w;
         windAttributePtr->height = (float) h;
-        if(!windAttributePtr->texture_id){
-            glGenTextures(1, &windAttributePtr->texture_id); checkGlError();
+
+//        attr->width = (float) w;
+//        attr->height = (float) h;
+
+        if (!windAttributePtr->texture_id) {
+            glGenTextures(1, &windAttributePtr->texture_id);
+            checkGlError();
         }
         glBindTexture(GL_TEXTURE_2D, windAttributePtr->texture_id);
         checkGlError();
@@ -796,9 +877,16 @@ renderer_update_root_process1(int x, int y, int w, int h, void *data, uint8_t fl
                         GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
+    if (!windAttributePtr->texture_id) {
+        glGenTextures(1, &windAttributePtr->texture_id);
+        checkGlError();
+    }
+
+//    attr->texture_id = windAttributePtr->texture_id;
+    _surface_log_traversal_window(surfaceManagerWrapper);
 }
 
-void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
+void renderer_update_cursor(int w, int h, int xhot, int yhot, void *data) {
 //    log("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
     cursor.width = (float) w;
     cursor.height = (float) h;
@@ -808,13 +896,19 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !cursor.width || !cursor.height)
         return;
 
-    glBindTexture(GL_TEXTURE_2D, cursor.id); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); checkGlError();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); checkGlError();
+    glBindTexture(GL_TEXTURE_2D, cursor.id);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    checkGlError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    checkGlError();
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data); checkGlError();
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    checkGlError();
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
@@ -824,6 +918,7 @@ void renderer_set_cursor_coordinates(int x, int y) {
 }
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip);
+
 static void draw_cursor(int index);
 
 float ia = 0;
@@ -834,11 +929,11 @@ int renderer_should_redraw(void) {
     return 1;
 }
 
-int renderer_redraw(JNIEnv* env, uint8_t flip) {
+int renderer_redraw(JNIEnv *env, uint8_t flip) {
     int err_traversal = TRUE;
 //    err_traversal = renderer_redraw_traversal(env, flip, 0);
-    WindowNode* node = NamedWindow_WindowPtr;
-    while (node){
+    WindowNode *node = NamedWindow_WindowPtr;
+    while (node) {
         err_traversal = renderer_redraw_traversal(env, flip, node->data.index);
         node = node->next;
     }
@@ -847,36 +942,33 @@ int renderer_redraw(JNIEnv* env, uint8_t flip) {
 }
 
 
-int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
+int renderer_redraw_traversal(JNIEnv *env, uint8_t flip, int index) {
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
     int id;
     float width, height;
-    WindowNode * windowNode = node_get_at_index(NamedWindow_WindowPtr, index);
-//    if (index == 0){
-//        eglSurface = sfc;
-//        id = display.id;
-//        width = display.width;
-//        height = display.height;
-//    } else
-        if(windowNode){
+    _surface_log_traversal_window(surfaceManagerWrapper);
+    WindowNode *windowNode = node_get_at_index(NamedWindow_WindowPtr, index);
+    if (windowNode) {
         UpdateBuffer(index);
         eglSurface = windowNode->data.sfc;
         id = windowNode->data.texture_id;
         width = windowNode->data.width;
         height = windowNode->data.height;
     }
-//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface, index, width, height, id);
+    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
+        index, width, height, id);
     if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id) {
         return FALSE;
     }
 
-    glViewport(0, 0, width, height); checkGlError();
+    glViewport(0, 0, width, height);
+    checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         log("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-    draw(id,  -1.f, -1.f, 1.f, 1.f, flip);
+    draw(id, -1.f, -1.f, 1.f, 1.f, flip);
     draw_cursor(index);
     if (eglSwapBuffers(global_egl_display, eglSurface) != EGL_TRUE) {
         err = eglGetError();
@@ -896,28 +988,35 @@ int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index) {
 void renderer_print_fps(float millis) {
     if (renderedFrames)
         log("%d frames in %.1f seconds = %.1f FPS",
-                                renderedFrames, millis / 1000, (float) renderedFrames *  1000 / millis);
+            renderedFrames, millis / 1000, (float) renderedFrames * 1000 / millis);
     renderedFrames = 0;
 }
 
-static GLuint load_shader(GLenum shaderType, const char* pSource) {
+static GLuint load_shader(GLenum shaderType, const char *pSource) {
     GLint compiled = 0;
-    GLuint shader = glCreateShader(shaderType); checkGlError();
+    GLuint shader = glCreateShader(shaderType);
+    checkGlError();
     if (shader) {
-        glShaderSource(shader, 1, &pSource, NULL); checkGlError();
-        glCompileShader(shader); checkGlError();
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled); checkGlError();
+        glShaderSource(shader, 1, &pSource, NULL);
+        checkGlError();
+        glCompileShader(shader);
+        checkGlError();
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+        checkGlError();
         if (!compiled) {
             GLint infoLen = 0;
-            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen); checkGlError();
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
+            checkGlError();
             if (infoLen) {
-                char* buf = (char*) malloc(infoLen);
+                char *buf = (char *) malloc(infoLen);
                 if (buf) {
-                    glGetShaderInfoLog(shader, infoLen, NULL, buf); checkGlError();
+                    glGetShaderInfoLog(shader, infoLen, NULL, buf);
+                    checkGlError();
                     log("Xlorie: Could not compile shader %d:\n%s\n", shaderType, buf);
                     free(buf);
                 }
-                glDeleteShader(shader); checkGlError();
+                glDeleteShader(shader);
+                checkGlError();
                 shader = 0;
             }
         }
@@ -925,7 +1024,7 @@ static GLuint load_shader(GLenum shaderType, const char* pSource) {
     return shader;
 }
 
-static GLuint create_program(const char* p_vertex_source, const char* p_fragment_source) {
+static GLuint create_program(const char *p_vertex_source, const char *p_fragment_source) {
     GLuint program, vertexShader, pixelShader;
     GLint linkStatus = GL_FALSE;
     vertexShader = load_shader(GL_VERTEX_SHADER, p_vertex_source);
@@ -934,24 +1033,32 @@ static GLuint create_program(const char* p_vertex_source, const char* p_fragment
         return 0;
     }
 
-    program = glCreateProgram(); checkGlError();
+    program = glCreateProgram();
+    checkGlError();
     if (program) {
-        glAttachShader(program, vertexShader); checkGlError();
-        glAttachShader(program, pixelShader); checkGlError();
-        glLinkProgram(program); checkGlError();
-        glGetProgramiv(program, GL_LINK_STATUS, &linkStatus); checkGlError();
+        glAttachShader(program, vertexShader);
+        checkGlError();
+        glAttachShader(program, pixelShader);
+        checkGlError();
+        glLinkProgram(program);
+        checkGlError();
+        glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+        checkGlError();
         if (linkStatus != GL_TRUE) {
             GLint bufLength = 0;
-            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &bufLength); checkGlError();
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &bufLength);
+            checkGlError();
             if (bufLength) {
-                char* buf = (char*) malloc(bufLength);
+                char *buf = (char *) malloc(bufLength);
                 if (buf) {
-                    glGetProgramInfoLog(program, bufLength, NULL, buf); checkGlError();
+                    glGetProgramInfoLog(program, bufLength, NULL, buf);
+                    checkGlError();
                     log("Xlorie: Could not link program:\n%s\n", buf);
                     free(buf);
                 }
             }
-            glDeleteProgram(program); checkGlError();
+            glDeleteProgram(program);
+            checkGlError();
             program = 0;
         }
     }
@@ -960,23 +1067,31 @@ static GLuint create_program(const char* p_vertex_source, const char* p_fragment
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip) {
     float coords[20] = {
-        x0, -y0, 0.f, 0.f, 0.f,
-        x1, -y0, 0.f, 1.f, 0.f,
-        x0, -y1, 0.f, 0.f, 1.f,
-        x1, -y1, 0.f, 1.f, 1.f,
+            x0, -y0, 0.f, 0.f, 0.f,
+            x1, -y0, 0.f, 1.f, 0.f,
+            x0, -y1, 0.f, 0.f, 1.f,
+            x1, -y1, 0.f, 1.f, 1.f,
     };
 
     GLuint p = flip ? gv_pos_bgra : gv_pos, c = flip ? gv_coords_bgra : gv_coords;
 
-    glActiveTexture(GL_TEXTURE0); checkGlError();
-    glUseProgram(flip ? g_texture_program_bgra : g_texture_program); checkGlError();
-    glBindTexture(GL_TEXTURE_2D, id); checkGlError();
+    glActiveTexture(GL_TEXTURE0);
+    checkGlError();
+    glUseProgram(flip ? g_texture_program_bgra : g_texture_program);
+    checkGlError();
+    glBindTexture(GL_TEXTURE_2D, id);
+    checkGlError();
 
-    glVertexAttribPointer(p, 3, GL_FLOAT, GL_FALSE, 20, coords); checkGlError();
-    glVertexAttribPointer(c, 2, GL_FLOAT, GL_FALSE, 20, &coords[3]); checkGlError();
-    glEnableVertexAttribArray(p); checkGlError();
-    glEnableVertexAttribArray(c); checkGlError();
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4); checkGlError();
+    glVertexAttribPointer(p, 3, GL_FLOAT, GL_FALSE, 20, coords);
+    checkGlError();
+    glVertexAttribPointer(c, 2, GL_FLOAT, GL_FALSE, 20, &coords[3]);
+    checkGlError();
+    glEnableVertexAttribArray(p);
+    checkGlError();
+    glEnableVertexAttribArray(c);
+    checkGlError();
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    checkGlError();
 }
 
 maybe_unused static void draw_cursor(int index) {
@@ -992,8 +1107,8 @@ maybe_unused static void draw_cursor(int index) {
     float cursor_xhot = cursor.xhot;
     float cursor_yhot = cursor.yhot;
     if (index != 0) {
-        WindowNode * window_node = node_get_at_index( NamedWindow_WindowPtr, index);
-        if(window_node){
+        WindowNode *window_node = node_get_at_index(NamedWindow_WindowPtr, index);
+        if (window_node) {
             width = window_node->data.width;
             height = window_node->data.height;
             cursor_x -= window_node->data.offset_x;
@@ -1004,9 +1119,12 @@ maybe_unused static void draw_cursor(int index) {
     y = 2.f * (cursor_y - cursor_yhot) / height - 1.f;
     w = 2.f * cursor.width / width;
     h = 2.f * cursor.height / height;
-    glEnable(GL_BLEND); checkGlError();
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); checkGlError();
+    glEnable(GL_BLEND);
+    checkGlError();
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    checkGlError();
     draw(cursor.id, x, y, x + w, y + h, false);
-    glDisable(GL_BLEND); checkGlError();
+    glDisable(GL_BLEND);
+    checkGlError();
 }
 

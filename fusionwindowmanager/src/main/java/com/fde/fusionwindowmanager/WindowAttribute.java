@@ -1,5 +1,6 @@
 package com.fde.fusionwindowmanager;
 
+import android.graphics.Rect;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -132,5 +133,16 @@ public class WindowAttribute implements Parcelable {
                 ", windowPtr=" + Long.toHexString(windowPtr) +
                 ", XID=" + Long.toHexString(XID) +
                 '}';
+    }
+
+    public Rect getRect() {
+        return new Rect((int) offsetX, (int) offsetY, (int) (offsetX + width), (int) (offsetY + height));
+    }
+
+    public void setRect(Rect rect) {
+        this.offsetX = rect.left;
+        this.offsetY = rect.top;
+        this.width = rect.right - rect.left;
+        this.height = rect.bottom - rect.top;
     }
 }

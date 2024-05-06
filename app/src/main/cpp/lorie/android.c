@@ -22,6 +22,7 @@
 #include "renderer.h"
 #include "lorie.h"
 #include "node.h"
+#include "c_interface.h"
 
 #define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__)
 
@@ -43,6 +44,8 @@ static jclass JavaCmdEntryPointClass;
 static JavaVM *jniVM = NULL;
 extern struct WindowNode * NamedWindow_WindowPtr ;
 void UpdateBuffer(int ptr);
+extern struct SurfaceManagerWrapper* surfaceManagerWrapper;
+
 
 static inline JNIEnv *GetJavaEnv(void)
 {
@@ -84,12 +87,13 @@ void TransferBuffer2FDE(WindowPtr windowPtr) {
                 .window = wid
 
         };
-        log(ERROR, "TransferBuffer2FDE %d", max_index);
+//        _surface_redirect_window(surfaceManagerWrapper, wid, windAttribute);
         node_append(&NamedWindow_WindowPtr, windAttribute);
-        log(ERROR, "TransferBuffer2FDE %d", max_index);
         renderer_update_root_process1(windowPtr->drawable.x, windowPtr->drawable.y, pixmap->drawable.width,
                                       pixmap->drawable.height, pixmap->devPrivate.ptr, 0, max_index + 1);
         log(ERROR, "TransferBuffer2FDE %d", max_index);
+        log(ERROR, "surfaceManagerWrapper :%p", surfaceManagerWrapper);
+        _surface_log_traversal_window(surfaceManagerWrapper);
         create_android_window(windAttribute);
     }
 }
@@ -160,6 +164,8 @@ typedef union {
     } clipboardSync;
 } lorieEvent;
 
+
+
 static void* startServer(unused void* cookie) {
     lorieSetVM((JavaVM*) cookie);
     char* envp[] = { NULL };
@@ -173,6 +179,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
         return JNI_ERR;
     }
     jniVM = vm;
+    surfaceManagerWrapper = _surface_create_manager(10);
     return JNI_VERSION_1_6;
 }
 

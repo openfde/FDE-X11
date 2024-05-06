@@ -1,4 +1,7 @@
 
+#ifndef NODE_H
+#define NODE_H
+
 #include <stdlib.h>
 #include <X11/X.h>
 #include <jni.h>
@@ -64,3 +67,5 @@ void putVoid(SurfaceMap* map, int key, void* value);
 void* get(SurfaceMap* map, int key);
 
 void freeMap(SurfaceMap* map);
+
+#endif // NODE_H

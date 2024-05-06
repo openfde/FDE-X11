@@ -512,18 +512,51 @@ void WindowManager::Run() {
 }
 
 int WindowManager::moveWindow(long window, int x, int y) {
-    log("moveWindow %x %lu", window, window);
+    log("moveWindow %x: x:%d y:%d", window, x, y);
     int ret = XMoveWindow(display_, window, x, y);
     XSync(display_, False);
     return ret;
 }
 
 int WindowManager::resizeWindow(long window, int w, int h) {
-    log("resizeWindow %x %lu", window, window);
+    window = frame_window;
+//    log("resizeWindow %x", window);
+    Window returned_root, returned_parent;
+    Window* children;
+    unsigned int nchildren;
+    XQueryTree(
+            display_,
+            window,
+            &returned_root,
+            &returned_parent,
+            &children,
+            &nchildren);
+    log("resizeWindow %x w:%d h:%d", window, w, h);
     int  ret = XResizeWindow(display_, window, w, h);
+    ret += XResizeWindow(display_, children[0], w, h);
     XSync(display_, False);
-    return ret;
+    return ret - 1;
 }
+
+//int WindowManager::resizeWindow(long window, int x, int y) {
+//    window = frame_window;
+//    Window returned_root, returned_parent;
+//    Window* top_level_windows;
+//    unsigned int num_top_level_windows;
+//    XQueryTree(
+//            display_,
+//            root_,
+//            &returned_root,
+//            &returned_parent,
+//            &top_level_windows,
+//            &num_top_level_windows);
+//    log("resizeWindow %x %lu", window, window);
+//    int ret;
+//    ret = XResizeWindow(display_, window, x, y);
+//    ret = XResizeWindow(display_, top_level_debug, x, y);
+//    XSync(display_, False);
+//    return ret;
+//}
 
 int WindowManager::closeWindow(long window) {
 //    window = top_level_debug;
@@ -544,8 +577,8 @@ int WindowManager::closeWindow(long window) {
 }
 
 int WindowManager::raiseWindow(long window) {
-    log("raiseWindow %x %lu", window, window);
-    int ret = XRaiseWindow(display_, frame_window);
+    log("raiseWindow %x", window);
+    int ret = XRaiseWindow(display_, window);
     XSync(display_, False);
     return ret;
 }
