@@ -866,10 +866,10 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         window.setSoftInputMode((reseed ? SOFT_INPUT_ADJUST_RESIZE : SOFT_INPUT_ADJUST_PAN) | SOFT_INPUT_STATE_HIDDEN);
         ((FrameLayout) findViewById(android.R.id.content)).getChildAt(0).setFitsSystemWindows(!fullscreen);
         SamsungDexUtils.dexMetaKeyCapture(this, hasFocus && p.getBoolean("dexMetaKeyCapture", false));
-        if (hasFocus){
+        if (hasFocus && mIndex != 0){
             getLorieView().regenerate();
             try {
-                execAtWindowManager();
+                execInWindowManager();
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
@@ -877,7 +877,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         getLorieView().requestFocus();
     }
 
-    protected void execAtWindowManager() throws RemoteException {
+    protected void execInWindowManager() throws RemoteException {
         List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
         for (ActivityManager.RunningTaskInfo info: runningTasks){
             if(!TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){

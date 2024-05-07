@@ -67,15 +67,15 @@ void UpdateBuffer(int index) {
     }
 }
 
-void TransferBuffer2FDE(WindowPtr windowPtr) {
+void RedirectWindow2Surface(WindowPtr windowPtr) {
     Window wid = windowPtr->drawable.id;
-    log(ERROR, "TransferBuffer2FDE wid:%x", wid);
+    log(ERROR, "RedirectWindow2Surface wid:%x", wid);
     if(node_search(NamedWindow_WindowPtr, wid)) {
         log(ERROR, "TransferBuffer2FDE found %x", wid);
         return;
     } else {
         int max_index = node_get_max_index(NamedWindow_WindowPtr);
-        log(ERROR, "TransferBuffer2FDE max_index:%d", max_index);
+        log(ERROR, "RedirectWindow2Surface max_index:%d", max_index);
         PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
         WindAttribute  windAttribute  = {
                 .offset_x = windowPtr->drawable.x,
