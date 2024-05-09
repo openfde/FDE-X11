@@ -1,11 +1,13 @@
 package com.termux.x11;
 
+import static com.termux.x11.MainActivity.ACTION_STOP;
 import static com.termux.x11.MainActivity.DECORCATIONVIEW_HEIGHT;
 
 import android.app.ActivityOptions;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.Rect;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
@@ -21,17 +23,31 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 public class XWindowService extends Service {
 
     private static final String TAG = "XWindowService";
+
+    public static final String ACTION_X_WINDOW_ATTRIBUTE = "action_x_window_attribute";
+
+    public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
+
+    public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     private WindowManager wm;
+
+    private Handler handler = new Handler();
+    private HashSet<Long> pendingDiscardWindow = new HashSet<>();
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
         public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long window, long id) throws RemoteException {
             Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", window:" + window + ", id:" + id + "");
-            Xserver.getInstance().windowChanged(surface, x, y, w, h, index, window, id);
+            if(!pendingDiscardWindow.contains(id)){
+                Log.d(TAG, "windowChanged: pendingDiscardWindow" + id);
+                Xserver.getInstance().windowChanged(surface, x, y, w, h, index, window, id);
+            }
         }
 
         @Override
@@ -53,6 +69,7 @@ public class XWindowService extends Service {
         @Override
         public void closeWindow(int index, long winPtr, long window) throws RemoteException {
             if(wm != null && wm.closeWindow(window) > 0){
+                pendingDiscardWindow.remove(window);
                 Log.d(TAG, "closeWindow: index:" + index + ", p:" + winPtr + ", window:" + window + "");
             }
         }
@@ -93,7 +110,7 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
-        Log.e("EventBus_Subscriber", "onReceiveMsg_MAIN: " + message.toString());
+        Log.e(TAG, message.toString());
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
                 if(message.getWindowAttribute().getIndex() == 1){
@@ -118,9 +135,28 @@ public class XWindowService extends Service {
                     startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity0.class);
                 }
                 break;
+            case X_DESTROY_ACTIVITY:
+                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
+                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
+                destroyActivitySafety(5, message.getWindowAttribute());
+                break;
             default:
                 break;
         }
+    }
+
+    private void destroyActivitySafety(int retry, WindowAttribute attr) {
+        if(retry == 0){
+            return;
+        }
+        String targetPackage = "com.termux.x11";
+        Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
+        intent.setPackage(targetPackage);
+        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+        sendBroadcast(intent);
+        handler.postDelayed(()->{
+            destroyActivitySafety(retry - 1, attr);
+        }, 2000);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {
@@ -133,7 +169,7 @@ public class XWindowService extends Service {
                     (int)(attr.getWidth() + attr.getOffsetX()),
                     (int)(attr.getHeight() + DECORCATIONVIEW_HEIGHT + attr.getOffsetY())));
             Intent intent = new Intent(this, cls);
-            intent.putExtra("linux_window_attribute", attr);
+            intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent, options.toBundle());
         }

@@ -7,6 +7,9 @@ import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
 import static com.fde.fusionwindowmanager.Util.LINUX_WINDOW_ATTRIBUTE;
+import static com.termux.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
+import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.Xserver.ACTION_START;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 
@@ -127,6 +130,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     }
 
 
+    private boolean killSelf;
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
@@ -149,9 +153,17 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 Log.v(TAG, "preference: " + intent.getStringExtra("key"));
                 if (!"additionalKbdVisible".equals(intent.getStringExtra("key")))
                     onPreferencesChanged("");
+            } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(mAttribute != null && mAttribute.getXID() == attr.getXID()){
+                    Log.d(TAG, "onReceive: " + attr);
+                    killSelf = true;
+                    finish();
+                }
             }
         }
     };
+
 
     @SuppressLint("StaticFieldLeak")
     private static MainActivity instance;
@@ -173,13 +185,13 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        mAttribute = getIntent().getParcelableExtra(LINUX_WINDOW_ATTRIBUTE);
+        mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
             mIndex = mAttribute.getIndex();
             WindowCode = mAttribute.getWindowPtr();
             mWindowRect.set(mAttribute.getRect());
         }
-        Log.v(TAG, "mWindowRect " +  mWindowRect  +  " mCoordinate = [" + mAttribute + "]" +
+        Log.v(TAG, "create mWindowRect " +  mWindowRect  +  " mCoordinate = [" + mAttribute + "]" +
                 " , WindowCode = " + Long.toHexString(WindowCode) + ", index = " + mIndex);
         Util.setBaseContext(this);
         CmdEntryPoint.ctx = this;
@@ -248,7 +260,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 //            );
             LorieView.sendWindowChange(1920, 989, framerate);
             WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
-            if (service != null ) {
+            if (service != null && !killSelf) {
                 if(attribute == null){
                     try {
                         service.windowChanged(sfc, 0, 0,
@@ -283,6 +295,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         registerReceiver(receiver, new IntentFilter(ACTION_START) {{
             addAction(ACTION_PREFERENCES_CHANGED);
             addAction(ACTION_STOP);
+            addAction(DESTROY_ACTIVITY_FROM_X);
         }},  0);
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);
@@ -295,15 +308,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         initStylusAuxButtons();
         initMouseAuxButtons();
         bindXserver();
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                firstTime = false;
-            }
-        }, 5000);
     }
 
-    private boolean firstTime = true;
 
     private void bindXserver() {
         try {
@@ -324,7 +330,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             cmdEntryInterface = ICmdEntryInterface.Stub.asInterface(service);
-            MainActivity.this.service = cmdEntryInterface;
+            if(!killSelf){
+                MainActivity.this.service = cmdEntryInterface;
+            }
             Log.v(TAG, "onServiceConnected: " + MainActivity.this.service);
         }
 
@@ -358,8 +366,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
     @Override
     protected void onDestroy() {
-        unregisterReceiver(receiver);
         super.onDestroy();
+        unregisterReceiver(receiver);
         unbindService(connection);
         service = null;
         Log.v(TAG, "onDestroy: " + mAttribute);
@@ -883,7 +891,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             if(!TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
                 return;
             }
-            if(service == null || mAttribute == null || firstTime){
+            if(service == null || mAttribute == null ){
                 return;
             }
             Configuration configuration = info.configuration;

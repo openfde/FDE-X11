@@ -4,81 +4,73 @@
 #include "c_interface.h"
 #include "surface_manager.h"
 
-#define CHECKWRAPER(wrap)  \
-      if(!wrap){     \
-          return;                \
-      }
-
-#define CHECKWRAPER_R(wrap)  \
-      if(!wrap){     \
-          return -1;                \
-      }
-#define CHECKWRAPER_N(wrap)  \
-      if(!wrap){     \
-          return NULL;                \
-      }
-
 struct SurfaceManagerWrapper{
     SurfaceManager* surfaceManager;
 };
 
-
-
 SurfaceManagerWrapper* _surface_create_manager(int size){
-    SurfaceManagerWrapper* wrapper = new SurfaceManagerWrapper();
+    ARGE_PWRAP = new SurfaceManagerWrapper();
     wrapper->surfaceManager = new SurfaceManager(size);
     return wrapper;
 }
 
-void _surface_destroy_wrapper(SurfaceManagerWrapper* wrapper){
+void _surface_destroy_wrapper(ARGE_PWRAP){
     delete wrapper->surfaceManager;
     delete wrapper;
 }
 
-int _surface_redirect_window(SurfaceManagerWrapper* wrapper, Window window, WindAttribute attr){
+int _surface_redirect_window(ARGE_PWRAP, Window window, WindAttribute * attr){
     CHECKWRAPER_R(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
+    GET_PWRAP;
     return surfaceManager->redirect_window_2_surface(window, attr);
 }
 
-void _surface_delete_window(SurfaceManagerWrapper* wrapper, Window window){
+void _surface_delete_window(ARGE_PWRAP, Window window){
     CHECKWRAPER(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
+    GET_PWRAP;
     surfaceManager->delete_window(window);
 }
 
-void _surface_update_window(SurfaceManagerWrapper* wrapper, Window window, WindAttribute attr){
+void _surface_update_window(ARGE_PWRAP, Window window, WindAttribute attr){
     CHECKWRAPER(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
+    GET_PWRAP;
     surfaceManager->update_window(window, attr);
 }
 
-int _surface_count_window(SurfaceManagerWrapper* wrapper, int index){
-    CHECKWRAPER_R(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
-    return surfaceManager->count_window_by_index(index);
+WindAttribute* _surface_all_window(ARGE_PWRAP, int * size){
+    CHECKWRAPER_N(wrapper);
+    GET_PWRAP;
+    return surfaceManager->all_window(size);
 }
 
-void _surface_traversal_window(SurfaceManagerWrapper* wrapper,void (* func)(WindAttribute)){
+int _surface_count_window(ARGE_PWRAP, Window window){
+    CHECKWRAPER_R(wrapper);
+    GET_PWRAP;
+    return surfaceManager->count_window(window);
+}
+
+
+void _surface_traversal_window(ARGE_PWRAP,void (* func)(WindAttribute)){
     CHECKWRAPER(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
+    GET_PWRAP;
     surfaceManager->traversal_window_func((* func));
 }
 
-WindAttribute * _surface_get_array_window(SurfaceManagerWrapper* wrapper){
+
+WindAttribute* _surface_find_window(ARGE_PWRAP, Window window){
     CHECKWRAPER_N(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
-    return surfaceManager->get_surface_array();
+    GET_PWRAP;
+    return surfaceManager->find_window(window);
 }
 
-WindAttribute* _surface_find_window_by_index(SurfaceManagerWrapper* wrapper, int index){
-    CHECKWRAPER_N(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
-    return surfaceManager->find_window_by_index(index);
+int _surface_size(ARGE_PWRAP){
+    CHECKWRAPER_R(wrapper);
+    GET_PWRAP;
+    return surfaceManager->size();
 }
 
-void _surface_log_traversal_window(SurfaceManagerWrapper* wrapper){
+void _surface_log_traversal_window(ARGE_PWRAP){
     CHECKWRAPER(wrapper);
-    SurfaceManager* surfaceManager = wrapper->surfaceManager;
+    GET_PWRAP;
     surfaceManager->traversal_log_window();
 }

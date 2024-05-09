@@ -35,13 +35,13 @@ static int conn_fd = -1;
 extern char *__progname; // NOLINT(bugprone-reserved-identifier)
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
-
+extern void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, Widget * widget);
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
 static jclass JavaCmdEntryPointClass;
 static JavaVM *jniVM = NULL;
 extern struct WindowNode *NamedWindow_WindowPtr;
-extern struct SurfaceManagerWrapper *surfaceManagerWrapper;
+extern struct SurfaceManagerWrapper *sfWraper;
 extern GLuint tempid;
 extern WindowPtr tempptr;
 Window focusWindow;
@@ -50,14 +50,21 @@ extern int ucs2keysym(long ucs);
 
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 
-void create_android_window(WindAttribute attribute);
+void android_create_window(WindAttribute attribute);
 
-void UpdateBuffer(int ptr);
+void android_destroy_window(Window window);
 
-void RedirectWindow2SurfaceWidget(WindowPtr pWindow, Window window);
+void android_destroy_activity(int index, WindowPtr windowPtr, Window window);
+
+void android_update_texture(int index);
+
+void android_redirect_widget(WindowPtr pWindow, Window window);
 
 bool IfRealizedWindow(WindowPtr widget);
 
+
+//void renderer_update_widget_texture(short x, short y, unsigned short width, unsigned short height,
+//                                    void *pVoid, int i, WindowPtr pWindow);
 
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
@@ -68,64 +75,117 @@ static inline JNIEnv *GetJavaEnv(void) {
     return ret;
 }
 
-void UpdateBuffer(int index) {
-    log(ERROR, "UpdateBuffer index:%d", index);
+void android_update_texture(int index) {
+//    log(ERROR, "updatetexture index:%d", index);
     WindowNode *node = node_get_at_index(NamedWindow_WindowPtr, index);
     if (node) {
-        log(ERROR, "UpdateBuffer index:%d", index);
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(node->data.pWin);
-        log(ERROR, "UpdateBuffer index:%d", index);
-        renderer_update_root_process1(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
+        renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                       pixmap->drawable.height, pixmap->devPrivate.ptr, 0, index);
     }
 }
 
-void DestroyCompWindow(Window window) {
-    log(ERROR, "DestroyCompWindow %lx", window);
-//    node_search(NamedWindow_WindowPtr, window);
-//    node_delete_by_window(&NamedWindow_WindowPtr, window);
+void android_update_texture_1(Window window) {
+    log(ERROR, "android_update_texture_1 window:%x", window);
+    if (_surface_count_window(sfWraper, window)) {
+        log(ERROR, "android_update_texture_2 window:%x", window);
+        WindAttribute* attr = _surface_find_window(sfWraper, window);
+        PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
+        renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
+                                pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window);
+    }
 }
 
-void RedirectWindow2Surface(WindowPtr windowPtr) {
-    Window wid = windowPtr->drawable.id;
-    log(ERROR, "RedirectWindow2Surface wid:%x", wid);
-    if (windowPtr->overrideRedirect) {
-        RedirectWindow2SurfaceWidget(windowPtr, focusWindow);
+void android_update_widget_texture(Widget widget) {
+    PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget.pWin);
+    renderer_update_widget_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
+                                pixmap->drawable.height, pixmap->devPrivate.ptr, 0, &widget);
+}
+
+
+void android_destroy_window(Window window) {
+    log(ERROR, "android_destroy_window %x", window);
+    if(!_surface_count_window(sfWraper, window)){
         return;
     }
-    if (node_search(NamedWindow_WindowPtr, wid)) {
-        log(ERROR, "TransferBuffer2FDE found %x", wid);
+    WindAttribute  *attr = _surface_find_window(sfWraper, window);
+    android_destroy_activity(attr->index, attr->pWin, attr->window);
+    _surface_delete_window(sfWraper, window);
+    _surface_log_traversal_window(sfWraper);
+}
+
+//void android_redirect_window(WindowPtr windowPtr) {
+//    Window wid = windowPtr->drawable.id;
+//    log(ERROR, "android_redirect_window wid:%x", wid);
+//    if (windowPtr->overrideRedirect) {
+//        android_redirect_widget(windowPtr, focusWindow);
+//        return;
+//    }
+//    if (node_search(NamedWindow_WindowPtr, wid)) {
+//        log(ERROR, "android_redirect_window found %x", wid);
+//        return;
+//    } else {
+//        int max_index = node_get_max_index(NamedWindow_WindowPtr);
+//        log(ERROR, "android_redirect_window max_index:%d", max_index);
+//        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
+//        WindAttribute windAttribute = {
+//                .offset_x = windowPtr->drawable.x,
+//                .offset_y = windowPtr->drawable.y,
+//                .width = pixmap->drawable.width,
+//                .height = pixmap->drawable.height,
+//                .pWin = (WindowPtr) windowPtr,
+//                .index = max_index + 1,
+//                .window = wid
+//        };
+////        _surface_redirect_window(sfWraper, wid, windAttribute);
+//        node_append(&NamedWindow_WindowPtr, windAttribute);
+//        renderer_update_root_process1(windowPtr->drawable.x, windowPtr->drawable.y,
+//                                      pixmap->drawable.width,
+//                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0,
+//                                      max_index + 1);
+//        log(ERROR, "TransferBuffer2FDE %d", max_index);
+//        log(ERROR, "sfWraper :%p", sfWraper);
+////        _surface_log_traversal_window(sfWraper);
+//        android_create_window(windAttribute);
+//    }
+//}
+
+
+void android_redirect_window(WindowPtr pWin) {
+    Window window = pWin->drawable.id;
+    log(ERROR, "redirect_window window:%x", window);
+    if( pWin->overrideRedirect) {
+        android_redirect_widget(pWin, focusWindow);
+        log(ERROR, "redirect overrideRedirect window");
+        return;
+    } else if (_surface_count_window(sfWraper, window)) {
+        log(ERROR, "already redirect_window");
         return;
     } else {
-        int max_index = node_get_max_index(NamedWindow_WindowPtr);
-        log(ERROR, "RedirectWindow2Surface max_index:%d", max_index);
-        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
+        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
+        int x = pWin->drawable.x;
+        int y = pWin->drawable.y;
+        int w = pixmap->drawable.width;
+        int h = pixmap->drawable.height;
+        GLuint tid = renderer_gen_bind_texture(x, y, w, h, pixmap->devPrivate.ptr, 0);
         WindAttribute windAttribute = {
-                .offset_x = windowPtr->drawable.x,
-                .offset_y = windowPtr->drawable.y,
-                .width = pixmap->drawable.width,
-                .height = pixmap->drawable.height,
-                .pWin = (WindowPtr) windowPtr,
-                .index = max_index + 1,
-                .window = wid
+                .offset_x = x,
+                .offset_y = y,
+                .width = w,
+                .height = h,
+                .pWin = pWin,
+                .window = window,
+                .texture_id = tid
         };
-//        _surface_redirect_window(surfaceManagerWrapper, wid, windAttribute);
-        node_append(&NamedWindow_WindowPtr, windAttribute);
-        renderer_update_root_process1(windowPtr->drawable.x, windowPtr->drawable.y,
-                                      pixmap->drawable.width,
-                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0,
-                                      max_index + 1);
-        log(ERROR, "TransferBuffer2FDE %d", max_index);
-        log(ERROR, "surfaceManagerWrapper :%p", surfaceManagerWrapper);
-        _surface_log_traversal_window(surfaceManagerWrapper);
-        create_android_window(windAttribute);
+        _surface_redirect_window(sfWraper, window, &windAttribute);
+        android_create_window(windAttribute);
     }
 }
 
-void RedirectWindow2SurfaceWidget(WindowPtr windowPtr, Window window) {
+void android_redirect_widget(WindowPtr windowPtr, Window window) {
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
-    WindowNode *node = node_search(NamedWindow_WindowPtr, window);
-    if (node) {
+    WindAttribute *attr = _surface_find_window(sfWraper, window);
+    if (attr) {
         GLuint id = renderer_gen_bind_texture(windowPtr->drawable.x, windowPtr->drawable.y,
                                               pixmap->drawable.width,
                                               pixmap->drawable.height, pixmap->devPrivate.ptr, 0);
@@ -138,15 +198,13 @@ void RedirectWindow2SurfaceWidget(WindowPtr windowPtr, Window window) {
                 .window = windowPtr->drawable.id,
                 .pWin = windowPtr
         };
-        windowPtr->realized;
-        node->data.widget = widget;
-        tempid = id;
-        tempptr = windowPtr;
-        log(ERROR, "RedirectWindow2SurfaceWidget tempid:%d", tempid);
+        int realized = windowPtr->realized;
+        attr->widget = widget;
+        log(ERROR, "android_redirect_widget texture:%d", id);
     }
 }
 
-void create_android_window(WindAttribute attribute) {
+void android_create_window(WindAttribute attribute) {
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         int offsetX = attribute.pWin->drawable.x;
@@ -161,6 +219,15 @@ void create_android_window(WindAttribute attribute) {
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          offsetX, offsetY, width, height,
                                          index, (long) windowPtr, (long) window);
+    }
+}
+
+void android_destroy_activity(int index, WindowPtr windowPtr, Window window) {
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if (JavaEnv && JavaCmdEntryPointClass) {
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                         "closeOrDestroyActivity", "(IJJ)V");
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index, (long) windowPtr, (long) window);
     }
 }
 
@@ -211,7 +278,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     }
     jniVM = vm;
-    surfaceManagerWrapper = _surface_create_manager(10);
+    sfWraper = _surface_create_manager(10);
     return JNI_VERSION_1_6;
 }
 
@@ -579,8 +646,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             }
             case EVENT_MOUSE: {
                 int flags;
-                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
-                    e.mouse.y);
+//                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
+//                    e.mouse.y);
                 switch (e.mouse.detail) {
                     case 0: // BUTTON_UNDEFINED
                         if (e.mouse.relative) {

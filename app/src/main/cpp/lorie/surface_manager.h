@@ -37,19 +37,20 @@ public:
     ~SurfaceManager();
     SurfaceManager(int size);
     SurfaceManager();
-    int redirect_window_2_surface(Window window, WindAttribute attr); //add
+    int redirect_window_2_surface(Window window, WindAttribute *attr); //add
     void delete_window(Window window);                                //delete
     void update_window(Window window, WindAttribute attr);            //update
-    WindAttribute* find_window_by_index(int index);                              //query
+    WindAttribute* find_window(Window window);                              //query
+    WindAttribute* all_window(int * size);
     void traversal_window_func(void (* func)(WindAttribute));         //traversal
-    WindAttribute* get_surface_array();
-    int count_window_by_index(int index);
+    int count_window(Window index);
     void traversal_log_window();
+    int size();
 
 private:
-    int find_window_by_xid(Window window);
     int max_size_;
-    std::map<int, WindAttribute> window_attrs;
+    std::map<Window, WindAttribute> window_attrs;
+    int get_avilable_index();
 };
 
 

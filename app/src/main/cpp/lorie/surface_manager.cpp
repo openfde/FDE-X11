@@ -13,66 +13,42 @@ SurfaceManager::SurfaceManager(int size) :
         max_size_(size) {
 }
 
-int SurfaceManager::redirect_window_2_surface(Window window, WindAttribute attr) {
-    if (find_window_by_xid(window) >= 0) {
+int SurfaceManager::redirect_window_2_surface(Window window, WindAttribute *attr) {
+    if (count_window(window)) {
         return -1;
     }
-    int index = 0;
-    while (index < CAPACITY) {
-        if (window_attrs.find(index) == window_attrs.end()) {
-            break;
-        } else {
-            index++;
-        }
-    }
-    attr.index = index;
-    window_attrs[index] = attr;
-    log("redirect window:%x index:%d", window, index);
+    int index = attr->index = get_avilable_index();
+    window_attrs[window] = *attr;
+    log("redirect_window index:%d", index);
     return index;
 }
 
 void SurfaceManager::update_window(Window window, WindAttribute attr) {
-    int index = find_window_by_xid(window);
-    if (index) {
-        window_attrs[index] = attr;
-    } else {
-        redirect_window_2_surface(window, attr);
+    window_attrs[window] = attr;
+}
+
+WindAttribute* SurfaceManager::find_window(Window window) {
+    return &window_attrs[window];
+}
+
+WindAttribute* SurfaceManager::all_window(int * size){
+    *size = window_attrs.size();
+    WindAttribute* array = new WindAttribute[window_attrs.size()];
+    int i = 0 ;
+    for (const auto& pair : window_attrs) {
+       array[i] =  pair.second;
+       i++;
     }
+    return array;
 }
 
-WindAttribute* SurfaceManager::find_window_by_index(int index) {
-    return &window_attrs[index];
+int SurfaceManager::count_window(Window window) {
+    return window_attrs.count(window);
 }
 
-int SurfaceManager::count_window_by_index(int index) {
-    return window_attrs.count(index);
-}
-
-
-int SurfaceManager::find_window_by_xid(Window window) {
-    for (const auto &pair: window_attrs) {
-        WindAttribute attr = pair.second;
-        if (attr.window == window) {
-            log("find window:%x", window);
-            return pair.first;
-        }
-    }
-    log("not find window:%x", window);
-    return -1;
-}
 
 void SurfaceManager::delete_window(Window window) {
-    int index = -1;
-    for (const auto &pair: window_attrs) {
-        WindAttribute attr = pair.second;
-        if (attr.window == window) {
-            index = pair.first;
-            break;
-        }
-    }
-    if (index != -1) {
-        window_attrs.erase(index);
-    }
+    window_attrs.erase(window);
 }
 
 void SurfaceManager::traversal_window_func(void (* func)(WindAttribute)){
@@ -81,13 +57,8 @@ void SurfaceManager::traversal_window_func(void (* func)(WindAttribute)){
     }
 }
 
-WindAttribute* SurfaceManager::get_surface_array(){
-    int index =  window_attrs.size();
-    WindAttribute* array = new WindAttribute[index];
-    for (const auto& pair : window_attrs) {
-        array[index] = pair.second;
-    }
-    return array;
+int SurfaceManager::size(){
+    return window_attrs.size();
 }
 
 void SurfaceManager::traversal_log_window(){
@@ -95,9 +66,9 @@ void SurfaceManager::traversal_log_window(){
         log("no window for android");
         return;
     }
-    log("traversal window_attrs--------------->>>>");
+    log("traversal_window_attrs--------------->>>>");
     for (const auto& pair : window_attrs) {
-        log("window index:%d,  window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t t:%d win:%p s:%p ", pair.first,
+        log("\t window key:%x,  window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d win:%p s:%p ", pair.first,
             pair.second.window,
             pair.second.index,
             pair.second.width,
@@ -114,4 +85,20 @@ void SurfaceManager::traversal_log_window(){
 
 SurfaceManager::SurfaceManager() {
     SurfaceManager(CAPACITY);
+}
+
+int SurfaceManager::get_avilable_index() {
+    int pInt[10];
+    auto it = window_attrs.begin();
+    while(it != window_attrs.end()) {
+        pInt[it->second.index] = 1;
+        it ++;
+    }
+    for ( int i = 1; i <= CAPACITY ; i ++ ){
+        if(pInt[i] == 0){
+            return i;
+        }
+    }
+    log("index out of CAPACITY");
+    return CAPACITY;
 }

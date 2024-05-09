@@ -75,7 +75,13 @@ public class Xserver {
     public static void startOrUpdateActivity(int x, int y, int w, int h, int index, long p, long window) {
         Log.d(TAG, "startOrUpdateActivity: x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p + ", window:" + window + "");
         EventBus.getDefault().post(new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                " ", new WindowAttribute(x, y, w, h, index, p, window)));
+                "xserver 打开activity", new WindowAttribute(x, y, w, h, index, p, window)));
+    }
+
+    public static void closeOrDestroyActivity(int index, long p, long window) {
+        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + p + ", window:" + window + "");
+        EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
+                "xserver 关闭activity", new WindowAttribute(index, p, window)));
     }
 
 
