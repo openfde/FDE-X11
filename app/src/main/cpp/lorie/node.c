@@ -99,6 +99,37 @@ void node_delete(WindowNode **head, WindAttribute key) {
     free(temp);
 }
 
+void node_delete_by_window(WindowNode **head, Window key) {
+    if (!head) {
+        return;
+    }
+    if(!(*head)){
+        return;
+    }
+    WindowNode *temp = *head, *prev = NULL;
+    Window w = (*head)->data.window;
+    log(ERROR, "Node head %lx ", w);
+    if (temp != NULL && temp->data.window == key) {
+        *head = temp->next;
+        log(ERROR,"Node found %lx\n", key);
+        free(temp);
+        return;
+    }
+    while (temp != NULL && temp->data.window != key) {
+        log(ERROR,"Node %lx\n", temp->data.window);
+        prev = temp;
+        temp = temp->next;
+    }
+    if (temp == NULL) {
+        log(ERROR,"Node not found %lx\n", key);
+        return;
+    }
+    if (prev != NULL) {
+        prev->next = temp->next;
+    }
+    free(temp);
+}
+
 WindowNode *node_search(WindowNode *head, Window window) {
     if (!head) {
         return NULL;

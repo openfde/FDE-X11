@@ -15,6 +15,17 @@
 #include <set>
 
 #define DECORCATIONVIEW_HEIGHT 42
+#define BASE_EVENT_MASK \
+    SubstructureNotifyMask|\
+    StructureNotifyMask|\
+    SubstructureRedirectMask|\
+    ButtonPressMask|\
+    ButtonReleaseMask|\
+    KeyPressMask|\
+    KeyReleaseMask|\
+    FocusChangeMask|\
+    PropertyChangeMask|\
+    ColormapChangeMask
 
 #define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__)
 #define CHECK(condition)  \
@@ -99,6 +110,8 @@ private:
     std::set<Window> window_under_frames;
     std::set<Window> frames;
     std::set<Window> named_windows;
+
+    ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
 
 
     // Atom constants.

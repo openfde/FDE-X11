@@ -93,7 +93,7 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     XSelectInput(
             display_,
             frame,
-            SubstructureRedirectMask | SubstructureNotifyMask);
+            BASE_EVENT_MASK);
     // 5. Add client to save set, so that it will be restored and kept alive if we
     // crash.
     XAddToSaveSet(display_, w);
@@ -168,13 +168,24 @@ void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {
 void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 
 void WindowManager::OnMapNotify(const XMapEvent& e) {
-    auto it = frames.find(e.window);
-    if (it != frames.end()) {
-        log("Name_ window %x", e.window);
+    if(e.override_redirect){
+//        if(configedTopWindow.count(e.window)){
+//            XConfigureEvent event = configedTopWindow[e.window];
+//            log("OnMapNotify %lx", event.window);
+//            log("OnMapNotify %lx w:%d h:%d x:%d y:%d ", event.above, event.width, event.height, event.above,
+//                event.x, event.y);
+//        }
         XCompositeNameWindowPixmap(display_, e.window);
-        named_windows.insert(e.window);
+        XSync(display_, False);
+    } else {
+        auto it = frames.find(e.window);
+        if (it != frames.end()) {
+            log("Name_ window %x", e.window);
+            XCompositeNameWindowPixmap(display_, e.window);
+            named_windows.insert(e.window);
+        }
+        XSync(display_, False);
     }
-    XSync(display_, False);
 }
 
 void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
@@ -227,12 +238,11 @@ void WindowManager::Unframe(Window w) {
 }
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent& e) {
-//    auto it = frames.find(e.window);
-//    if (it != frames.end()) {
-//        XCompositeNameWindowPixmap(display_, e.window);
-//        named_windows.insert(e.window);
-//    }
-//    XSync(display_, False);
+    log("OnConfigureNotify window:%lx above:%lx", e.window, e.above);
+    if(clients_.count(e.above)){
+//        log("OnConfigureNotify %lx", e.window);
+        configedTopWindow[e.window] = e;
+    }
 }
 
 void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
@@ -412,7 +422,7 @@ void WindowManager::Run() {
         XSelectInput(
                 display_,
                 root_,
-                SubstructureRedirectMask | SubstructureNotifyMask);
+                BASE_EVENT_MASK);
         XSync(display_, false);
         int composite_major = 0, composite_minor = 0;
         XCompositeQueryVersion(display_, &composite_major, &composite_minor);
@@ -461,6 +471,7 @@ void WindowManager::Run() {
         XNextEvent(display_, &e);
         log("------Received event: %s",ToString(e).c_str());
 
+//        log("type:%d", e.type);
         // 2. Dispatch event.
         switch (e.type) {
             case CreateNotify:
@@ -506,7 +517,8 @@ void WindowManager::Run() {
                 OnKeyRelease(e.xkey);
                 break;
             default:
-                log("Ignored event");
+                break;
+//                log("Ignored event");
         }
     }
 }
@@ -578,7 +590,20 @@ int WindowManager::closeWindow(long window) {
 
 int WindowManager::raiseWindow(long window) {
     log("raiseWindow %x", window);
+
+    Window returned_root, returned_parent;
+    Window* children;
+    unsigned int nchildren;
+    XQueryTree(
+            display_,
+            window,
+            &returned_root,
+            &returned_parent,
+            &children,
+            &nchildren);
+    log("raiseWindow %x", children[0]);
     int ret = XRaiseWindow(display_, window);
+    XSetInputFocus(display_, children[0], RevertToPointerRoot, CurrentTime);
     XSync(display_, False);
     return ret;
 }

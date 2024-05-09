@@ -4,6 +4,8 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include "screenint.h"
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
 
 typedef struct SurfaceRes {
     int id;
@@ -57,6 +59,7 @@ maybe_unused void renderer_print_fps(float millis);
 
 maybe_unused void renderer_update_root(int w, int h, void* data, uint8_t flip);
 maybe_unused void renderer_update_root_process1(int x, int y, int w, int h, void* data, uint8_t flip, int wid);
+maybe_unused GLuint renderer_gen_bind_texture(int x, int y, int w, int h, void* data, uint8_t flip);
 maybe_unused void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data);
 maybe_unused void renderer_set_cursor_coordinates(int x, int y);
 

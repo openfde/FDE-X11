@@ -61,6 +61,8 @@ public class Xserver {
         this.contextRef = contextRef;
     }
 
+    public native void tellFocusWindow(long window);
+
     private static class SingletonHolder {
         private static final Xserver INSTANCE = new Xserver();
     }

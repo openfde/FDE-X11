@@ -51,35 +51,31 @@ public class XWindowService extends Service {
         }
 
         @Override
-        public void closeWindow(int index, long p, long window) throws RemoteException {
-            if(wm != null){
-                Log.d(TAG, "closeWindow: index:" + index + ", p:" + p + ", window:" + window + "");
-                int ret = wm.closeWindow(window);
-                Log.d(TAG, "closeWindow: ret:" + ret);
+        public void closeWindow(int index, long winPtr, long window) throws RemoteException {
+            if(wm != null && wm.closeWindow(window) > 0){
+                Log.d(TAG, "closeWindow: index:" + index + ", p:" + winPtr + ", window:" + window + "");
             }
         }
 
         @Override
         public void moveWindow(long winPtr, long window, int x, int y) throws RemoteException {
-            if(wm != null){
-                int ret = wm.moveWindow(window, x, y);
-                Log.d(TAG, "moveWindow: ret:" + ret);
+            if(wm != null && wm.moveWindow(window, x, y) > 0){
+                Log.d(TAG, "moveWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + "");
             }
         }
 
         @Override
         public void resizeWindow(long window, int w, int h) throws RemoteException {
-            if(wm != null){
-                int ret = wm.resizeWindow(window, w, h);
-                Log.d(TAG, "resizeWindow: ret:" + ret);
+            if(wm != null && wm.resizeWindow(window, w, h) > 0){
+                Log.d(TAG, "resizeWindow: window:" + window + ", w:" + w + ", h:" + h + "");
             }
         }
 
         @Override
         public void raiseWindow(long window) throws RemoteException {
-            if(wm != null){
-                int ret = wm.raiseWindow(window);
-                Log.d(TAG, "raiseWindow: ret:" + ret);
+            if(wm != null && wm.raiseWindow(window) > 0){
+                Log.d(TAG, "raiseWindow: window:" + window + "");
+                Xserver.getInstance().tellFocusWindow(window);
             }
         }
     };

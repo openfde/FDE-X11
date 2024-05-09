@@ -1,7 +1,6 @@
 
 #ifndef NODE_H
 #define NODE_H
-
 #include <stdlib.h>
 #include <X11/X.h>
 #include <jni.h>
@@ -9,6 +8,15 @@
 #include <window.h>
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
+
+
+typedef struct {
+    GLuint texture_id;
+    float width, height;
+    float offset_x, offset_y;
+    Window window;
+    WindowPtr pWin;
+} Widget;
 
 typedef struct {
     GLuint texture_id;
@@ -18,6 +26,7 @@ typedef struct {
     Window window;
     WindowPtr pWin;
     EGLSurface sfc;
+    Widget widget;
 } WindAttribute;
 
 typedef struct WindowNode {
@@ -33,6 +42,8 @@ void node_insert_at_begin(WindowNode** head, WindAttribute data);
 void node_append(WindowNode** head, WindAttribute data);
 
 void node_delete(WindowNode** head, WindAttribute key);
+
+void node_delete_by_window(WindowNode **head, Window key);
 
 WindowNode* node_search(WindowNode* head, Window key);
 
