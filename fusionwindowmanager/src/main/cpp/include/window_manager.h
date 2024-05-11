@@ -13,6 +13,8 @@
 #include "util.hpp"
 #include <android/log.h>
 #include <set>
+//#include "ewmh_icccm.h"
+#include <X11/Xatom.h>
 
 #define DECORCATIONVIEW_HEIGHT 42
 #define BASE_EVENT_MASK \
@@ -30,7 +32,7 @@
 #define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__)
 #define CHECK(condition)  \
       if(condition){     \
-          log("#condition fatal");                \
+          log("#condition fatal"); \
       }
 #define CHECK_EQ(val1, val2)  \
       if(val1 != val2){     \
@@ -38,7 +40,16 @@
       }
 #define HAVE_COMPOSITOR 1
 
-
+const Atom _NET_WM_WINDOW_TYPE = 267;
+const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
+const Atom _NET_WM_WINDOW_TYPE_DIALOG = 269;
+const Atom _NET_WM_WINDOW_TYPE_DND = 270;
+const Atom _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
+const Atom _NET_WM_WINDOW_TYPE_MENU = 272;
+const Atom _NET_WM_WINDOW_TYPE_NORMAL = 273;
+const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
+const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
+const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
 class WindowManager  {
 public:
@@ -46,10 +57,12 @@ public:
     ~WindowManager();
     WindowManager(Display *display);
     void Run();
-    int moveWindow(long ptr, int x, int y);
-    int resizeWindow(long ptr, int x, int y);
-    int closeWindow(long ptr);
-    int raiseWindow(long ptr);
+    int moveWindow(long window, int x, int y);
+    int resizeWindow(long window, int x, int y);
+    int closeWindow(long window);
+    int raiseWindow(long window);
+    bool isNormalWindow(long window);
+    bool isInFrameMap(long window);
     void initCompositor();
     int stoped = False;
 

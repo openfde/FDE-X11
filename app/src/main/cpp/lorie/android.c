@@ -31,66 +31,16 @@
 #include <X11/Xatom.h>
 
 
-#define WM_COMMAND = 34
-#define WM_HINTS = 35
-#define WM_CLIENT_MACHINE = 36
-#define WM_ICON_NAME = 37
-#define WM_ICON_SIZE = 38
-#define WM_NAME = 39
-#define WM_NORMAL_HINTS = 40
-#define WM_SIZE_HINTS = 41
-#define WM_ZOOM_HINTS = 42
-#define WM_CLASS = 67
-#define WM_TRANSIENT_FOR = 68
-#define WM_PROTOCOLS = 237
-#define WM_DELETE_WINDOW = 238
-#define WM_CLIENT_LEADER = 239
-#define WM_LOCALE_NAME = 240
-#define WM_TAKE_FOCUS = 241
-#define WM_WINDOW_ROLE = 242
-#define _NET_ACTIVE_WINDOW = 243
-#define _NET_CURRENT_DESKTOP = 244
-#define _NET_FRAME_EXTENTS = 245
-#define _NET_STARTUP_ID = 246
-#define _NET_WM_CM_S0 = 247
-#define _NET_WM_DESKTOP = 248
-#define _NET_WM_ICON = 249
-#define _NET_WM_ICON_NAME = 250
-#define _NET_WM_NAME = 251
-#define _NET_WM_PID = 252
-#define _NET_WM_PING = 253
-#define _NET_WM_STATE = 254
-#define _NET_WM_STATE_ABOVE = 255
-#define _NET_WM_STATE_BELOW = 256
-#define _NET_WM_STATE_FULLSCREEN = 257
-#define _NET_WM_STATE_HIDDEN = 258
-#define _NET_WM_STATE_MODAL = 259
-#define _NET_WM_STATE_MAXIMIZED_VERT = 260
-#define _NET_WM_STATE_MAXIMIZED_HORZ = 261
-#define _NET_WM_STATE_SKIP_TASKBAR = 262
-#define _NET_WM_STATE_SKIP_PAGER = 263
-#define _NET_WM_STATE_STICKY = 264
-#define _NET_WM_SYNC_REQUEST = 265
-#define _NET_WM_SYNC_REQUEST_COUNTER = 266
-#define _NET_WM_WINDOW_TYPE = 267
-#define _NET_WM_WINDOW_TYPE_COMBO = 268
-#define _NET_WM_WINDOW_TYPE_DIALOG = 269
-#define _NET_WM_WINDOW_TYPE_DND = 270
-#define _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271
-#define _NET_WM_WINDOW_TYPE_MENU = 272
-#define _NET_WM_WINDOW_TYPE_NORMAL = 273
-#define _NET_WM_WINDOW_TYPE_POPUP_MENU = 274
-#define _NET_WM_WINDOW_TYPE_TOOLTIP = 275
-#define _NET_WM_WINDOW_TYPE_UTILITY = 276
-#define _NET_WM_USER_TIME = 277
-#define _NET_WM_USER_TIME_WINDOW = 278
-#define _NET_VIRTUAL_ROOTS = 279
-#define _NET_WM_STATE_FOCUSED = 281
-#define WM_STATE = 289
-#define _NET_WORKAREA = 294
-#define _NET_SUPPORTING_WM_CHECK = 295
-#define _NET_WM_OPAQUE_REGION = 296                                                                                                                        ATOM WM_TAKE_FOCUS = 241
-
+const Atom _NET_WM_WINDOW_TYPE = 267;
+const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
+const Atom _NET_WM_WINDOW_TYPE_DIALOG = 269;
+const Atom _NET_WM_WINDOW_TYPE_DND = 270;
+const Atom _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
+const Atom _NET_WM_WINDOW_TYPE_MENU = 272;
+const Atom _NET_WM_WINDOW_TYPE_NORMAL = 273;
+const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
+const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
+const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
 
 #define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__)
@@ -128,51 +78,63 @@ void android_redirect_widget(WindowPtr pWindow, Window window);
 
 bool IfRealizedWindow(WindowPtr widget);
 
-maybe_unused void xserver_log_window_property(WindowPtr pWin);
 
-void xserver_log_window_property(WindowPtr pWin){
-    pWin = pWin->firstChild;
-    if(!pWin){
-        log(ERROR, "LOG_PROPERTIES pWin null");
-        return;
-    }
-    if(!pWin->optional){
-        log(ERROR, "LOG_PROPERTIES optional null");
-        return;
-    }
-    if(!pWin->optional->userProps){
-        log(ERROR, "LOG_PROPERTIES userProps null");
-        return;
-    }
+#define CHECK_WITH_PROP      if(!pWin){\
+        log(ERROR, "LOG_PROPERTIES pWin null");\
+        return;\
+    }\
+    if(!pWin->optional){\
+        log(ERROR, "LOG_PROPERTIES optional null");\
+        return;\
+    }\
+    if(!pWin->optional->userProps){\
+        log(ERROR, "LOG_PROPERTIES userProps null");\
+        return;\
+    }                                  \
+
+#define CHECK_CHILD     pWin = pWin->firstChild; \
+                        CHECK_WITH_PROP
+
+maybe_unused void xserver_log_window_property(WindowPtr pWin, int *redirect, Atom *normalOrOther);
+
+maybe_unused void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther);
+
+void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther) {
     PropertyPtr pProper = pWin->optional->userProps;
     unsigned char *propData = NULL;
     log(ERROR, "---------LOG_PROPERTIES window:%x", pWin->drawable.id);
-    while(pProper){
+    while (pProper) {
         ATOM name = pProper->propertyName;
-        ATOM actualType = pProper->type;
         propData = pProper->data;
-        const char *name_str = NameForAtom(name);
-        const char *type_str = NameForAtom(actualType);
-        log(ERROR, "\t\t\t\t LOG_PROPERTIES name:%s type:%s name:%d actualType:%d", name_str, type_str, name, actualType);
-
-        if (actualType == XA_STRING || actualType == 71 || actualType == 35 || actualType == 300) {
-            log(ERROR,"\t\t\t\t\t\t\t  value:%s\n", (char *)propData); // 字符串类型
-        } else if (actualType == XA_INTEGER) {
-            log(ERROR,"\t\t\t\t\t\t\t  value:%ld\n", *((long *)propData)); // 整数类型
-        } else if (actualType == XA_ATOM) {
-            Atom *atoms = (Atom *)propData;
+        if (name == _NET_WM_WINDOW_TYPE) {
+            Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
-                char *atomName = NameForAtom(atoms[i]);
-                log(ERROR,"\t\t\t\t\t\t\t  value:%s\n", atomName); // 原子类型
+                *normalOrOther = atoms[i];
+                if (atoms[i] == _NET_WM_WINDOW_TYPE_NORMAL
+                    || atoms[i] == _NET_WM_WINDOW_TYPE_MENU
+                    || atoms[i] == _NET_WM_WINDOW_TYPE_DIALOG
+                    || atoms[i] == _NET_WM_WINDOW_TYPE_POPUP_MENU
+                        ) {
+                    const char *atomValue = NameForAtom(atoms[i]);
+                    log(ERROR, "%s not normal window %lx \n", atomValue, pWin->drawable.id);
+                    break;
+                }
             }
-        } else if (actualType == XA_CARDINAL) {
-            log(ERROR,"\t\t\t\t\t\t\t  value:%lu\n", *((unsigned long *)propData)); // 无符号长整型类型
-        } else if (actualType == XA_WINDOW) {
-            log(ERROR,"\t\t\t\t\t\t\t  value:0x%x\n", *((Window *)propData)); // 窗口类型
         }
         pProper = pProper->next;
     }
 }
+void xserver_log_window_property(WindowPtr pWin, int *redirect, Atom *normalOrOther) {
+    *redirect = pWin->overrideRedirect;
+    CHECK_WITH_PROP
+    xserver_log_window_type(pWin, normalOrOther);
+    if(*normalOrOther == _NET_WM_WINDOW_TYPE_NORMAL){
+        CHECK_CHILD
+    }
+    xserver_log_window_type(pWin, normalOrOther);
+}
+
+
 
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
@@ -221,10 +183,14 @@ void android_destroy_window(Window window) {
 }
 
 void android_redirect_window(WindowPtr pWin) {
-    xserver_log_window_property(pWin);
+    int redirect;
+    Atom atom = _NET_WM_WINDOW_TYPE_NORMAL;
+    xserver_log_window_property(pWin, &redirect, &atom);
+    log(ERROR, "android_redirect_window redirect:%d atom:%s ", redirect, NameForAtom(atom));
     Window window = pWin->drawable.id;
     log(ERROR, "redirect_window window:%x", window);
-    if( pWin->overrideRedirect) {
+    WindAttribute *nouse_attr = NULL;
+    if( atom != _NET_WM_WINDOW_TYPE_NORMAL) {
         android_redirect_widget(pWin, focusWindow);
         log(ERROR, "redirect overrideRedirect window");
         return;

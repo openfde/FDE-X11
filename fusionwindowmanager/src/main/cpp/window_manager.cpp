@@ -61,13 +61,17 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     // Visual properties of the frame to create.
     const unsigned int BORDER_WIDTH = 1;
     const unsigned long BORDER_COLOR = 0xffffff;
-    const unsigned long BG_COLOR = 0x0000ff;
+    const unsigned long BG_COLOR = 0xffffff;
     // We shouldn't be framing windows we've already framed.
     CHECK(!clients_.count(w))
 
     // 1. Retrieve attributes of window to frame.
     XWindowAttributes x_window_attrs;
     CHECK(!XGetWindowAttributes(display_, w, &x_window_attrs));
+
+    if(!isNormalWindow(w)){
+        return;
+    }
 
     // 2. If window was created before window manager started, we should frame
     // it only if it is visible and doesn't set override_redirect.
@@ -157,6 +161,49 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     log("Framed_ window %x reparent to frame %x" ,w , frame);
 }
 
+bool WindowManager::isNormalWindow(long window) {
+    Atom actualType;
+    int actualFormat;
+    unsigned long nItems, bytesAfter;
+    unsigned char *propData = NULL;
+    char *atomName = XGetAtomName(display_, _NET_WM_WINDOW_TYPE);
+    log("isNormalWindow %lx %s", window, atomName);
+    if (XGetWindowProperty(display_, window, _NET_WM_WINDOW_TYPE, 0, 1024, False, AnyPropertyType,
+                           &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
+        Success) {
+        printf(" actualType = %ld \n", actualType);
+        if (actualType == XA_ATOM) {
+            Atom *atoms = (Atom *) propData;
+            for (int i = 0; i < nItems; i++) {
+                if (atoms[i] == _NET_WM_WINDOW_TYPE_NORMAL) {
+                    continue;
+                } else if (atoms[i] == _NET_WM_WINDOW_TYPE_NORMAL
+                           || atoms[i] == _NET_WM_WINDOW_TYPE_MENU
+                           || atoms[i] == _NET_WM_WINDOW_TYPE_DIALOG
+                           || atoms[i] == _NET_WM_WINDOW_TYPE_POPUP_MENU
+                        ) {
+                    char *atomValue = XGetAtomName(display_, atoms[i]);
+                    log("%s not normal window %lx \n", atomValue, window);
+                    XFree(atomName);
+                    return False;
+                }
+            }
+        }
+    }
+    XFree(propData);
+    return True;
+}
+
+bool WindowManager::isInFrameMap(long window ){
+    auto it = frames.find(window);
+    if (it != frames.end()) {
+        log("isInFrameMap %x", window);
+        return True;
+    }
+    return False;
+}
+
+
 
 void WindowManager::OnCreateNotify(const XCreateWindowEvent& e) {}
 
@@ -167,23 +214,10 @@ void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {
 
 void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 
-void WindowManager::OnMapNotify(const XMapEvent& e) {
-    if(e.override_redirect){
-//        if(configedTopWindow.count(e.window)){
-//            XConfigureEvent event = configedTopWindow[e.window];
-//            log("OnMapNotify %lx", event.window);
-//            log("OnMapNotify %lx w:%d h:%d x:%d y:%d ", event.above, event.width, event.height, event.above,
-//                event.x, event.y);
-//        }
+void WindowManager::OnMapNotify(const XMapEvent &e) {
+    if(e.event == root_){
         XCompositeNameWindowPixmap(display_, e.window);
-        XSync(display_, False);
-    } else {
-        auto it = frames.find(e.window);
-        if (it != frames.end()) {
-            log("Name_ window %x", e.window);
-            XCompositeNameWindowPixmap(display_, e.window);
-            named_windows.insert(e.window);
-        }
+        named_windows.insert(e.window);
         XSync(display_, False);
     }
 }
