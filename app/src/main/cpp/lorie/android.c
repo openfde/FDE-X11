@@ -26,6 +26,72 @@
 #include "lorie.h"
 #include "node.h"
 #include "c_interface.h"
+#include <propertyst.h>
+#include <string.h>
+#include <X11/Xatom.h>
+
+
+#define WM_COMMAND = 34
+#define WM_HINTS = 35
+#define WM_CLIENT_MACHINE = 36
+#define WM_ICON_NAME = 37
+#define WM_ICON_SIZE = 38
+#define WM_NAME = 39
+#define WM_NORMAL_HINTS = 40
+#define WM_SIZE_HINTS = 41
+#define WM_ZOOM_HINTS = 42
+#define WM_CLASS = 67
+#define WM_TRANSIENT_FOR = 68
+#define WM_PROTOCOLS = 237
+#define WM_DELETE_WINDOW = 238
+#define WM_CLIENT_LEADER = 239
+#define WM_LOCALE_NAME = 240
+#define WM_TAKE_FOCUS = 241
+#define WM_WINDOW_ROLE = 242
+#define _NET_ACTIVE_WINDOW = 243
+#define _NET_CURRENT_DESKTOP = 244
+#define _NET_FRAME_EXTENTS = 245
+#define _NET_STARTUP_ID = 246
+#define _NET_WM_CM_S0 = 247
+#define _NET_WM_DESKTOP = 248
+#define _NET_WM_ICON = 249
+#define _NET_WM_ICON_NAME = 250
+#define _NET_WM_NAME = 251
+#define _NET_WM_PID = 252
+#define _NET_WM_PING = 253
+#define _NET_WM_STATE = 254
+#define _NET_WM_STATE_ABOVE = 255
+#define _NET_WM_STATE_BELOW = 256
+#define _NET_WM_STATE_FULLSCREEN = 257
+#define _NET_WM_STATE_HIDDEN = 258
+#define _NET_WM_STATE_MODAL = 259
+#define _NET_WM_STATE_MAXIMIZED_VERT = 260
+#define _NET_WM_STATE_MAXIMIZED_HORZ = 261
+#define _NET_WM_STATE_SKIP_TASKBAR = 262
+#define _NET_WM_STATE_SKIP_PAGER = 263
+#define _NET_WM_STATE_STICKY = 264
+#define _NET_WM_SYNC_REQUEST = 265
+#define _NET_WM_SYNC_REQUEST_COUNTER = 266
+#define _NET_WM_WINDOW_TYPE = 267
+#define _NET_WM_WINDOW_TYPE_COMBO = 268
+#define _NET_WM_WINDOW_TYPE_DIALOG = 269
+#define _NET_WM_WINDOW_TYPE_DND = 270
+#define _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271
+#define _NET_WM_WINDOW_TYPE_MENU = 272
+#define _NET_WM_WINDOW_TYPE_NORMAL = 273
+#define _NET_WM_WINDOW_TYPE_POPUP_MENU = 274
+#define _NET_WM_WINDOW_TYPE_TOOLTIP = 275
+#define _NET_WM_WINDOW_TYPE_UTILITY = 276
+#define _NET_WM_USER_TIME = 277
+#define _NET_WM_USER_TIME_WINDOW = 278
+#define _NET_VIRTUAL_ROOTS = 279
+#define _NET_WM_STATE_FOCUSED = 281
+#define WM_STATE = 289
+#define _NET_WORKAREA = 294
+#define _NET_SUPPORTING_WM_CHECK = 295
+#define _NET_WM_OPAQUE_REGION = 296                                                                                                                        ATOM WM_TAKE_FOCUS = 241
+
+
 
 #define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__)
 
@@ -62,9 +128,51 @@ void android_redirect_widget(WindowPtr pWindow, Window window);
 
 bool IfRealizedWindow(WindowPtr widget);
 
+maybe_unused void xserver_log_window_property(WindowPtr pWin);
 
-//void renderer_update_widget_texture(short x, short y, unsigned short width, unsigned short height,
-//                                    void *pVoid, int i, WindowPtr pWindow);
+void xserver_log_window_property(WindowPtr pWin){
+    pWin = pWin->firstChild;
+    if(!pWin){
+        log(ERROR, "LOG_PROPERTIES pWin null");
+        return;
+    }
+    if(!pWin->optional){
+        log(ERROR, "LOG_PROPERTIES optional null");
+        return;
+    }
+    if(!pWin->optional->userProps){
+        log(ERROR, "LOG_PROPERTIES userProps null");
+        return;
+    }
+    PropertyPtr pProper = pWin->optional->userProps;
+    unsigned char *propData = NULL;
+    log(ERROR, "---------LOG_PROPERTIES window:%x", pWin->drawable.id);
+    while(pProper){
+        ATOM name = pProper->propertyName;
+        ATOM actualType = pProper->type;
+        propData = pProper->data;
+        const char *name_str = NameForAtom(name);
+        const char *type_str = NameForAtom(actualType);
+        log(ERROR, "\t\t\t\t LOG_PROPERTIES name:%s type:%s name:%d actualType:%d", name_str, type_str, name, actualType);
+
+        if (actualType == XA_STRING || actualType == 71 || actualType == 35 || actualType == 300) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:%s\n", (char *)propData); // 字符串类型
+        } else if (actualType == XA_INTEGER) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:%ld\n", *((long *)propData)); // 整数类型
+        } else if (actualType == XA_ATOM) {
+            Atom *atoms = (Atom *)propData;
+            for (int i = 0; i < pProper->size; i++) {
+                char *atomName = NameForAtom(atoms[i]);
+                log(ERROR,"\t\t\t\t\t\t\t  value:%s\n", atomName); // 原子类型
+            }
+        } else if (actualType == XA_CARDINAL) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:%lu\n", *((unsigned long *)propData)); // 无符号长整型类型
+        } else if (actualType == XA_WINDOW) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:0x%x\n", *((Window *)propData)); // 窗口类型
+        }
+        pProper = pProper->next;
+    }
+}
 
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
@@ -76,7 +184,6 @@ static inline JNIEnv *GetJavaEnv(void) {
 }
 
 void android_update_texture(int index) {
-//    log(ERROR, "updatetexture index:%d", index);
     WindowNode *node = node_get_at_index(NamedWindow_WindowPtr, index);
     if (node) {
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(node->data.pWin);
@@ -88,7 +195,6 @@ void android_update_texture(int index) {
 void android_update_texture_1(Window window) {
     log(ERROR, "android_update_texture_1 window:%x", window);
     if (_surface_count_window(sfWraper, window)) {
-        log(ERROR, "android_update_texture_2 window:%x", window);
         WindAttribute* attr = _surface_find_window(sfWraper, window);
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
@@ -114,44 +220,8 @@ void android_destroy_window(Window window) {
     _surface_log_traversal_window(sfWraper);
 }
 
-//void android_redirect_window(WindowPtr windowPtr) {
-//    Window wid = windowPtr->drawable.id;
-//    log(ERROR, "android_redirect_window wid:%x", wid);
-//    if (windowPtr->overrideRedirect) {
-//        android_redirect_widget(windowPtr, focusWindow);
-//        return;
-//    }
-//    if (node_search(NamedWindow_WindowPtr, wid)) {
-//        log(ERROR, "android_redirect_window found %x", wid);
-//        return;
-//    } else {
-//        int max_index = node_get_max_index(NamedWindow_WindowPtr);
-//        log(ERROR, "android_redirect_window max_index:%d", max_index);
-//        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(windowPtr);
-//        WindAttribute windAttribute = {
-//                .offset_x = windowPtr->drawable.x,
-//                .offset_y = windowPtr->drawable.y,
-//                .width = pixmap->drawable.width,
-//                .height = pixmap->drawable.height,
-//                .pWin = (WindowPtr) windowPtr,
-//                .index = max_index + 1,
-//                .window = wid
-//        };
-////        _surface_redirect_window(sfWraper, wid, windAttribute);
-//        node_append(&NamedWindow_WindowPtr, windAttribute);
-//        renderer_update_root_process1(windowPtr->drawable.x, windowPtr->drawable.y,
-//                                      pixmap->drawable.width,
-//                                      pixmap->drawable.height, pixmap->devPrivate.ptr, 0,
-//                                      max_index + 1);
-//        log(ERROR, "TransferBuffer2FDE %d", max_index);
-//        log(ERROR, "sfWraper :%p", sfWraper);
-////        _surface_log_traversal_window(sfWraper);
-//        android_create_window(windAttribute);
-//    }
-//}
-
-
 void android_redirect_window(WindowPtr pWin) {
+    xserver_log_window_property(pWin);
     Window window = pWin->drawable.id;
     log(ERROR, "redirect_window window:%x", window);
     if( pWin->overrideRedirect) {
@@ -270,7 +340,6 @@ static void *startServer(unused void *cookie) {
     char *envp[] = {NULL};
     exit(dix_main(argc, (char **) argv, envp));
 }
-
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     JNIEnv *env;
@@ -548,7 +617,6 @@ Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray
     return JNI_TRUE;
 }
 
-
 JNIEXPORT void JNICALL
 Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
                                                 jobject surface, jfloat offsetX, jfloat offsetY,
@@ -563,8 +631,6 @@ Java_com_termux_x11_CmdEntryPoint_windowChanged(JNIEnv *env, unused jobject cls,
     res->offset_y = (int) offsetY;
     res->width = (int) width;
     res->height = (int) height;
-//    ANativeWindow *psf = surface ? ANativeWindow_fromSurface(env, res->surface) : NULL;
-//    res->psf = psf;
     res->pWin = (WindowPtr) windowPtr;
     QueueWorkProc(lorieChangeWindow, NULL, res);
 }
@@ -583,8 +649,6 @@ Java_com_termux_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls,
     res->offset_y = (int) offsetY;
     res->width = (int) width;
     res->height = (int) height;
-//    ANativeWindow *psf = ANativeWindow_fromSurface(env, res->surface);
-//    res->psf = psf;
     res->pWin = (WindowPtr) windowPtr;
     res->window = window;
     QueueWorkProc(lorieChangeWindow, NULL, res);
@@ -784,7 +848,6 @@ Java_com_termux_x11_Xserver_getLogcatOutput(JNIEnv *env, unused jobject cls) {
     }
     return NULL;
 }
-
 
 JNIEXPORT jboolean JNICALL
 Java_com_termux_x11_CmdEntryPoint_connected(__unused JNIEnv *env, __unused jclass clazz) {
@@ -1035,7 +1098,6 @@ Java_com_termux_x11_XwindowView_sendWindowChange(unused JNIEnv *env, unused jobj
     }
 }
 
-
 JNIEXPORT void JNICALL
 Java_com_termux_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls, jfloat x,
                                              jfloat y, jint which_button, jboolean button_down,
@@ -1088,7 +1150,6 @@ Java_com_termux_x11_LorieView_sendKeyEvent(unused JNIEnv *env, unused jobject cl
         write(conn_fd, &e, sizeof(e));
         checkConnection(env);
     }
-
     return true;
 }
 
@@ -1237,7 +1298,6 @@ __attribute__((constructor)) static void init(void) {
 bool IfRealizedWindow(WindowPtr widget) {
     return widget->realized;
 }
-
 
 JNIEXPORT void JNICALL
 Java_com_termux_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window) {
