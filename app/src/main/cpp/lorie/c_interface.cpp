@@ -19,10 +19,11 @@ void _surface_destroy_wrapper(ARGE_PWRAP){
     delete wrapper;
 }
 
-int _surface_redirect_window(ARGE_PWRAP, Window window, WindAttribute * attr){
+int _surface_redirect_window(SurfaceManagerWrapper *wrapper, Window window, WindAttribute *attr,
+                             Atom atom) {
     CHECKWRAPER_R(wrapper);
     GET_PWRAP;
-    return surfaceManager->redirect_window_2_surface(window, attr);
+    return surfaceManager->redirect_window_2_surface(window, attr, atom);
 }
 
 void _surface_delete_window(ARGE_PWRAP, Window window){
@@ -62,6 +63,13 @@ WindAttribute* _surface_find_window(ARGE_PWRAP, Window window){
     GET_PWRAP;
     return surfaceManager->find_window(window);
 }
+
+WindAttribute* _surface_find_main_window(ARGE_PWRAP, Window window){
+    CHECKWRAPER_N(wrapper);
+    GET_PWRAP;
+    return surfaceManager->find_main_window(window);
+}
+
 
 int _surface_size(ARGE_PWRAP){
     CHECKWRAPER_R(wrapper);

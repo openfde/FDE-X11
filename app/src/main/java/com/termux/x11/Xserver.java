@@ -47,6 +47,17 @@ public class Xserver {
     private static final String TAG = "Xserver";
     private static final String[] ARGS_DEFAULT = {":1", "-legacy-drawing", "-listen", "tcp"};
 
+     private  static final int _NET_WM_WINDOW_TYPE = 267;
+     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
+     private  static final int _NET_WM_WINDOW_TYPE_DIALOG = 269;
+     private  static final int _NET_WM_WINDOW_TYPE_DND = 270;
+     private  static final int _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
+     private  static final int _NET_WM_WINDOW_TYPE_MENU = 272;
+     private  static final int _NET_WM_WINDOW_TYPE_NORMAL = 273;
+     private  static final int _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
+     private  static final int _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
+     private  static final int _NET_WM_WINDOW_TYPE_UTILITY = 276;
+
     private WeakReference<XWindowService> contextRef;
 
     public void startXserver() {
@@ -72,11 +83,27 @@ public class Xserver {
         return SingletonHolder.INSTANCE;
     }
 
-    public static void startOrUpdateActivity(int x, int y, int w, int h, int index, long p, long window) {
-        Log.d(TAG, "startOrUpdateActivity: x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p + ", window:" + window + "");
-        EventBus.getDefault().post(new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                "xserver 打开activity", new WindowAttribute(x, y, w, h, index, p, window)));
+    public static void startOrUpdateActivity(int type, int x, int y, int w, int h, int index, long p, long window, long taskTo) {
+        Log.d(TAG, "startOrUpdateActivity: type:" + type + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index +
+                ", p:" + p + ", window:" + window + ", taskTo:" + taskTo + "");
+        EventMessage message = null;
+        switch (type) {
+            case _NET_WM_WINDOW_TYPE_NORMAL:
+                message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
+                        "xserver 打开activity", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
+                break;
+            case _NET_WM_WINDOW_TYPE_DIALOG:
+                message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
+                        "xserver 打开activity 作为对话框", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
+                break;
+            default:
+                break;
+        }
+        if (message != null) {
+            EventBus.getDefault().post(message);
+        }
     }
+
 
     public static void closeOrDestroyActivity(int index, long p, long window) {
         Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + p + ", window:" + window + "");

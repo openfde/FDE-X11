@@ -25,7 +25,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
     private static final int DECORCATIONVIEW_HEIGHT = 42;
     private Button btCreateWindow, btstartXserver,
             btStartScreen, btBindWindowManager,
-            btCreateFromWM, btMoveNative, btResizeNative, btCloseWindowNative, btRaiseNative,
+            btCreateFromWM, btMoveNative, btResizeNative, btCloseWindowNative, btRaiseNative, btConfigureNative,
             btStopWindowManager;
     private WMServiceConnection connection;
     private WindowManager windowManager;
@@ -42,6 +42,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btResizeNative = findViewById(R.id.button_resize);
         btCloseWindowNative = findViewById(R.id.button_closewindow);
         btRaiseNative = findViewById(R.id.button_raisewindow);
+        btConfigureNative = findViewById(R.id.button_configure);
         btStopWindowManager = findViewById(R.id.button_stopwm);
         btstartXserver = findViewById(R.id.button_startServer);
 
@@ -55,6 +56,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btRaiseNative.setOnClickListener(this);
         btStopWindowManager.setOnClickListener(this);
         btstartXserver.setOnClickListener(this);
+        btConfigureNative.setOnClickListener(this);
 
         Util.copyAssetsToFiles(this, "xkb", "xkb");
 
@@ -110,6 +112,12 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         } else if ( v == btRaiseNative){
             try {
                 service.raiseWindow(2097153);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+        } else if ( v == btConfigureNative){
+            try {
+                service.configureWindow(0x000001, 0x200001, 200, 200, 300, 300);
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }

@@ -32,13 +32,16 @@ typedef struct SurfaceManagerWrapper SurfaceManagerWrapper;
 
 WindAttribute* _surface_find_window(ARGE_PWRAP, Window window);
 
+WindAttribute* _surface_find_main_window(ARGE_PWRAP, Window window);
+
 WindAttribute* _surface_all_window(ARGE_PWRAP, int * size);
 
 SurfaceManagerWrapper* _surface_create_manager(int size);
 
 void _surface_destroy_wrapper(ARGE_PWRAP);
 
-int _surface_redirect_window(ARGE_PWRAP, Window window, WindAttribute *attr);
+int _surface_redirect_window(SurfaceManagerWrapper *wrapper, Window window, WindAttribute *attr,
+                             Atom i);
 
 void _surface_delete_window(ARGE_PWRAP, Window window);
 

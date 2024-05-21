@@ -1,7 +1,6 @@
 package com.termux.x11;
 
 import static com.termux.x11.MainActivity.ACTION_STOP;
-import static com.termux.x11.MainActivity.DECORCATIONVIEW_HEIGHT;
 
 import android.app.ActivityOptions;
 import android.app.Service;
@@ -33,6 +32,7 @@ public class XWindowService extends Service {
     public static final String ACTION_X_WINDOW_ATTRIBUTE = "action_x_window_attribute";
 
     public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
+    public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_start";
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     private WindowManager wm;
@@ -69,8 +69,16 @@ public class XWindowService extends Service {
         @Override
         public void closeWindow(int index, long winPtr, long window) throws RemoteException {
             if(wm != null && wm.closeWindow(window) > 0){
-                pendingDiscardWindow.remove(window);
                 Log.d(TAG, "closeWindow: index:" + index + ", p:" + winPtr + ", window:" + window + "");
+            }
+            pendingDiscardWindow.remove(window);
+            wm.WINDOW_XIDS.remove(window);
+        }
+
+        @Override
+        public void configureWindow(long winPtr, long window, int x, int y, int w, int h) throws RemoteException {
+            if(wm != null && wm.configureWindow(window, x, y, w, h) > 0){
+                Log.d(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
             }
         }
 
@@ -114,25 +122,48 @@ public class XWindowService extends Service {
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
                 if(message.getWindowAttribute().getIndex() == 1){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity1.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 2){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity2.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity2.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 3){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity3.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity3.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 4){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity4.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity4.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 5){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity5.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity5.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 6){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity6.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity6.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 7){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity7.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity7.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 8){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity8.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity8.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 9){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity9.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity9.class, 42f);
                 } else if (message.getWindowAttribute().getIndex() == 10){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity0.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity0.class, 42f);
+                }
+                break;
+            case X_START_ACTIVITY_WINDOW:
+                if(message.getWindowAttribute().getIndex() == 11){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity11.class);
+                } else if (message.getWindowAttribute().getIndex() == 12){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity12.class);
+                } else if (message.getWindowAttribute().getIndex() == 13){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity13.class);
+                } else if (message.getWindowAttribute().getIndex() == 14){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity14.class);
+                } else if (message.getWindowAttribute().getIndex() == 15){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity15.class);
+                } else if (message.getWindowAttribute().getIndex() == 16){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity16.class);
+                } else if (message.getWindowAttribute().getIndex() == 17){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity17.class);
+                } else if (message.getWindowAttribute().getIndex() == 18){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity18.class);
+                } else if (message.getWindowAttribute().getIndex() == 19){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity19.class);
+                }  else if (message.getWindowAttribute().getIndex() == 20){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity10.class);
                 }
                 break;
             case X_DESTROY_ACTIVITY:
@@ -160,14 +191,27 @@ public class XWindowService extends Service {
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {
-        Log.d(TAG, "startActLikeWindow: attr:" + attr + ", cls:" + cls + "");
-        if (!wm.WINDOW_XIDS.contains(attr.getWindowPtr())) {
-            wm.WINDOW_XIDS.add(attr.getWindowPtr());
+        startActLikeWindowWithDecorHeight(attr, cls, 0);
+    }
+
+    public void startActLikeWindowWithDecorHeight(WindowAttribute attr, Class cls, float decorHeight) {
+        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        if (wm.WINDOW_XIDS.contains(attr.getXID())) {
+            return;
+        }
+        wm.WINDOW_XIDS.add(attr.getXID());
+        if(attr.getTaskTo() != 0){
+            String targetPackage = "com.termux.x11";
+            Intent intent = new Intent(START_ACTIVITY_FROM_X);
+            intent.setPackage(targetPackage);
+            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+            sendBroadcast(intent);
+        } else {
             ActivityOptions options = ActivityOptions.makeBasic();
             options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
                     (int)(attr.getOffsetY()),
                     (int)(attr.getWidth() + attr.getOffsetX()),
-                    (int)(attr.getHeight() + DECORCATIONVIEW_HEIGHT + attr.getOffsetY())));
+                    (int)(attr.getHeight() + decorHeight + attr.getOffsetY())));
             Intent intent = new Intent(this, cls);
             intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

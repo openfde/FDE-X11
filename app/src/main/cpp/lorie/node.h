@@ -23,7 +23,7 @@ typedef struct {
     float width, height;
     float offset_x, offset_y;
     int index;
-    Window window;
+    Window window, child;
     WindowPtr pWin;
     EGLSurface sfc;
     Widget widget;

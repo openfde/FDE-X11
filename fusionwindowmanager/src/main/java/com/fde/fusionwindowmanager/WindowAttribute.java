@@ -17,6 +17,8 @@ public class WindowAttribute implements Parcelable {
 
     long XID;
 
+    long taskTo = 0;
+
     public WindowAttribute(int index, long p, long window) {
         this.offsetX = 0;
         this.offsetY = 0;
@@ -25,6 +27,17 @@ public class WindowAttribute implements Parcelable {
         this.index = index;
         this.windowPtr = p;
         this.XID = window;
+    }
+
+    public WindowAttribute(int x, int y, int w, int h, int index, long p, long window, long taskTo) {
+        this.offsetX = x;
+        this.offsetY = y;
+        this.width = w;
+        this.height = h;
+        this.index = index;
+        this.windowPtr = p;
+        this.XID = window;
+        this.taskTo = taskTo;
     }
 
     public long getXID() {
@@ -102,6 +115,15 @@ public class WindowAttribute implements Parcelable {
         index = in.readInt();
         windowPtr = in.readLong();
         XID = in.readLong();
+        taskTo = in.readLong();
+    }
+
+    public long getTaskTo() {
+        return taskTo;
+    }
+
+    public void setTaskTo(long taskTo) {
+        this.taskTo = taskTo;
     }
 
     @Override
@@ -118,6 +140,7 @@ public class WindowAttribute implements Parcelable {
             dest.writeInt(index);
             dest.writeLong(windowPtr);
             dest.writeLong(XID);
+            dest.writeLong(taskTo);
     }
 
     public static final Creator<WindowAttribute> CREATOR = new Creator<WindowAttribute>() {
@@ -134,14 +157,15 @@ public class WindowAttribute implements Parcelable {
 
     @Override
     public String toString() {
-        return "Coordinate{" +
+        return "WindowAttribute{" +
                 "offsetX=" + offsetX +
                 ", offsetY=" + offsetY +
                 ", width=" + width +
                 ", height=" + height +
                 ", index=" + index +
-                ", windowPtr=" + Long.toHexString(windowPtr) +
-                ", XID=" + Long.toHexString(XID) +
+                ", windowPtr=" + windowPtr +
+                ", XID=" + XID +
+                ", taskTo=" + taskTo +
                 '}';
     }
 

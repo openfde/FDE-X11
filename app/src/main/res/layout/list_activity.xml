@@ -100,4 +100,14 @@
         app:layout_constraintBottom_toBottomOf="@+id/button_startscreen"
         app:layout_constraintStart_toEndOf="@+id/button_startscreen"
         app:layout_constraintTop_toTopOf="@+id/button_startscreen" />
+
+    <Button
+        android:id="@+id/button_configure"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="30dp"
+        android:text="native: configure"
+        app:layout_constraintBottom_toBottomOf="@+id/button_raisewindow"
+        app:layout_constraintStart_toEndOf="@+id/button_raisewindow"
+        app:layout_constraintTop_toTopOf="@+id/button_raisewindow" />
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -77,6 +77,8 @@ public class WindowManager implements AWindowManagerInterface {
 
     public static native int connect2Server();
 
+    public native int configureWindow(long window, int x, int y, int width, int height);
+
     public native int moveWindow(long window, int x, int y);
 
     public native int resizeWindow(long window, int width, int height);

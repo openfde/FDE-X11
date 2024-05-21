@@ -66,7 +66,7 @@ extern int ucs2keysym(long ucs);
 
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 
-void android_create_window(WindAttribute attribute);
+void android_create_window(WindAttribute attribute, Atom type, Window main_win);
 
 void android_destroy_window(Window window);
 
@@ -95,17 +95,64 @@ bool IfRealizedWindow(WindowPtr widget);
 #define CHECK_CHILD     pWin = pWin->firstChild; \
                         CHECK_WITH_PROP
 
-maybe_unused void xserver_log_window_property(WindowPtr pWin, int *redirect, Atom *normalOrOther);
+//maybe_unused void xserver_log_window_property(WindowPtr pWin, int *redirect, Atom *normalOrOther);
 
-maybe_unused void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther);
+maybe_unused void xserver_log_window_property(WindowPtr pWin);
 
-void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther) {
+void xserver_log_window_property(WindowPtr pWin){
+    if(!pWin){
+        log(ERROR, "LOG_PROPERTIES pWin null");
+        return;
+    }
+    if(!pWin->optional){
+        log(ERROR, "LOG_PROPERTIES optional null");
+        return;
+    }
+    if(!pWin->optional->userProps){
+        log(ERROR, "LOG_PROPERTIES userProps null");
+        return;
+    }
     PropertyPtr pProper = pWin->optional->userProps;
     unsigned char *propData = NULL;
     log(ERROR, "---------LOG_PROPERTIES window:%x", pWin->drawable.id);
+    while(pProper){
+        ATOM name = pProper->propertyName;
+        ATOM actualType = pProper->type;
+        propData = pProper->data;
+        const char *name_str = NameForAtom(name);
+        const char *type_str = NameForAtom(actualType);
+        log(ERROR, "\t\t\t\t LOG_PROPERTIES name:%s type:%s name:%d actualType:%d", name_str, type_str, name, actualType);
+
+        if (actualType == XA_STRING || actualType == 71 || actualType == 35 || actualType == 300) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:%s\n", (char *)propData); // 字符串类型
+        } else if (actualType == XA_INTEGER) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:%ld\n", *((long *)propData)); // 整数类型
+        } else if (actualType == XA_ATOM) {
+            Atom *atoms = (Atom *)propData;
+            for (int i = 0; i < pProper->size; i++) {
+                char *atomName = NameForAtom(atoms[i]);
+                log(ERROR,"\t\t\t\t\t\t\t  value:%s\n", atomName); // 原子类型
+            }
+        } else if (actualType == XA_CARDINAL) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:%lu\n", *((unsigned long *)propData)); // 无符号长整型类型
+        } else if (actualType == XA_WINDOW) {
+            log(ERROR,"\t\t\t\t\t\t\t  value:0x%x\n", *((Window *)propData)); // 窗口类型
+        }
+        pProper = pProper->next;
+    }
+}
+
+
+maybe_unused void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther, Window *transient);
+
+void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther, Window *transient) {
+    PropertyPtr pProper = pWin->optional->userProps;
+    unsigned char *propData = NULL;
+//    log(ERROR, "---------LOG_PROPERTIES window:%x", pWin->drawable.id);
     while (pProper) {
         ATOM name = pProper->propertyName;
         propData = pProper->data;
+//        log(DEBUG, "logproperties name %s", NameForAtom(name));
         if (name == _NET_WM_WINDOW_TYPE) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
@@ -116,25 +163,26 @@ void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther) {
                     || atoms[i] == _NET_WM_WINDOW_TYPE_POPUP_MENU
                         ) {
                     const char *atomValue = NameForAtom(atoms[i]);
-                    log(ERROR, "%s not normal window %lx \n", atomValue, pWin->drawable.id);
-                    break;
+//                    log(ERROR, "%s not normal window %lx \n", atomValue, pWin->drawable.id);
                 }
             }
+        } else if(!strcmp(NameForAtom(name),"WM_TRANSIENT_FOR")) {
+//            log(DEBUG, "logproperties transient %x", ((Atom *) propData)[0]);
+            *transient = ((Window *)propData)[0];
         }
         pProper = pProper->next;
     }
 }
-void xserver_log_window_property(WindowPtr pWin, int *redirect, Atom *normalOrOther) {
-    *redirect = pWin->overrideRedirect;
-    CHECK_WITH_PROP
-    xserver_log_window_type(pWin, normalOrOther);
-    if(*normalOrOther == _NET_WM_WINDOW_TYPE_NORMAL){
+
+void
+xserver_fill_window_property(WindowPtr pWin, Atom *normalOrOther, Window *transient) {
+    if(pWin->overrideRedirect){
+        CHECK_WITH_PROP
+    } else {
         CHECK_CHILD
     }
-    xserver_log_window_type(pWin, normalOrOther);
+    xserver_log_window_type(pWin, normalOrOther, transient);
 }
-
-
 
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
@@ -155,9 +203,12 @@ void android_update_texture(int index) {
 }
 
 void android_update_texture_1(Window window) {
-    log(ERROR, "android_update_texture_1 window:%x", window);
+//    log(ERROR, "android_update_texture_1 window:%x", window);
     if (_surface_count_window(sfWraper, window)) {
         WindAttribute* attr = _surface_find_window(sfWraper, window);
+        Atom atom = _NET_WM_WINDOW_TYPE_NORMAL;
+        Window transient;
+//        xserver_fill_window_property(attr->pWin, &atom, &transient);
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                 pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window);
@@ -165,6 +216,7 @@ void android_update_texture_1(Window window) {
 }
 
 void android_update_widget_texture(Widget widget) {
+//    log(ERROR, "android_update_widget_texture window:%x", widget.window);
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget.pWin);
     renderer_update_widget_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                 pixmap->drawable.height, pixmap->devPrivate.ptr, 0, &widget);
@@ -183,21 +235,26 @@ void android_destroy_window(Window window) {
 }
 
 void android_redirect_window(WindowPtr pWin) {
-    int redirect;
-    Atom atom = _NET_WM_WINDOW_TYPE_NORMAL;
-    xserver_log_window_property(pWin, &redirect, &atom);
-    log(ERROR, "android_redirect_window redirect:%d atom:%s ", redirect, NameForAtom(atom));
-    Window window = pWin->drawable.id;
-    log(ERROR, "redirect_window window:%x", window);
-    WindAttribute *nouse_attr = NULL;
-    if( atom != _NET_WM_WINDOW_TYPE_NORMAL) {
+    //fill some properties
+    int redirect = pWin->overrideRedirect;
+    Atom win_type = _NET_WM_WINDOW_TYPE_NORMAL;
+    Window transient;
+    xserver_fill_window_property(pWin, &win_type, &transient);
+    log(DEBUG, "android_redirect_window redirect:%d atom:%d transient:%x", redirect, win_type, transient);
+    if(redirect) {
+        WindAttribute *attr  = _surface_find_main_window(sfWraper, transient);
+        if(attr && attr->child){
+            focusWindow = attr->window;
+            log(DEBUG, "redirect find main_window:%x", focusWindow);
+        }
+        log(DEBUG, "redirect overrideRedirect window:%x", focusWindow);
         android_redirect_widget(pWin, focusWindow);
-        log(ERROR, "redirect overrideRedirect window");
         return;
-    } else if (_surface_count_window(sfWraper, window)) {
-        log(ERROR, "already redirect_window");
+    } else if (_surface_count_window(sfWraper, pWin->drawable.id)) {
+        log(DEBUG, "already redirect_window");
         return;
-    } else {
+//    } else if (atom == _NET_WM_WINDOW_TYPE_DIALOG || atom == _NET_WM_WINDOW_TYPE_NORMAL ){
+    }else {
         PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
         int x = pWin->drawable.x;
         int y = pWin->drawable.y;
@@ -210,11 +267,13 @@ void android_redirect_window(WindowPtr pWin) {
                 .width = w,
                 .height = h,
                 .pWin = pWin,
-                .window = window,
-                .texture_id = tid
+                .window = pWin->drawable.id,
+                .texture_id = tid,
+                .child = pWin->firstChild ?  pWin->firstChild->drawable.id : 0
         };
-        _surface_redirect_window(sfWraper, window, &windAttribute);
-        android_create_window(windAttribute);
+        _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
+        android_create_window(windAttribute, win_type, transient);
+        return;
     }
 }
 
@@ -240,7 +299,14 @@ void android_redirect_widget(WindowPtr windowPtr, Window window) {
     }
 }
 
-void android_create_window(WindAttribute attribute) {
+void android_create_window(WindAttribute attribute, Atom type, Window main_win) {
+    WindAttribute *attr = _surface_find_main_window(sfWraper, main_win);
+    Window task_to = focusWindow;
+    if(attr && attr->child){
+        task_to = attr->window;
+    } else if(!attr){
+        task_to = 0;
+    }
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         int offsetX = attribute.pWin->drawable.x;
@@ -251,10 +317,10 @@ void android_create_window(WindAttribute attribute) {
         WindowPtr windowPtr = attribute.pWin;
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "startOrUpdateActivity", "(IIIIIJJ)V");
+                                                         "startOrUpdateActivity", "(IIIIIIJJJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         offsetX, offsetY, width, height,
-                                         index, (long) windowPtr, (long) window);
+                                         type, offsetX, offsetY, width, height,
+                                         index, (long) windowPtr, (long) window, (long)task_to);
     }
 }
 

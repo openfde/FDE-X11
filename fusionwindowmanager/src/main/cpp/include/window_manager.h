@@ -39,6 +39,10 @@
           log("not equal");                \
       }
 #define HAVE_COMPOSITOR 1
+#define CONFIGURE_WINDOW_VALUE_MASK 0x000F
+#define EXCE_FAIL 0
+#define EXCE_SUCCESS 1
+
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -57,9 +61,11 @@ public:
     ~WindowManager();
     WindowManager(Display *display);
     void Run();
+    int configureWindow(long window, int x, int y, int w, int h);
     int moveWindow(long window, int x, int y);
     int resizeWindow(long window, int x, int y);
     int closeWindow(long window);
+    Window getFirstChild(Window window);
     int raiseWindow(long window);
     bool isNormalWindow(long window);
     bool isInFrameMap(long window);

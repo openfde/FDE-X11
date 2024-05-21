@@ -7,7 +7,6 @@ package com.termux.x11.input;
 import static android.view.KeyEvent.*;
 import static android.view.MotionEvent.*;
 import static androidx.core.math.MathUtils.clamp;
-import static com.termux.x11.MainActivity.DECORCATIONVIEW_HEIGHT;
 import static com.termux.x11.input.InputStub.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -22,6 +21,7 @@ import com.termux.x11.LorieView;
 import com.termux.x11.R;
 import com.termux.x11.XwindowView;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -93,8 +93,6 @@ public final class InputEventSender {
             float offsetY = attribute.getOffsetY();
             x += offsetX;
             y += offsetY;
-//            y -= DECORCATIONVIEW_HEIGHT;
-//            Log.d(TAG, "sendCursorMove() called with: x = [" + x + "], y = [" + y + "], attribute = [" + attribute + "]");
         }
         mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
@@ -151,7 +149,15 @@ public final class InputEventSender {
             mInjector.sendTouchEvent(a, id, x, y);
         }
     }
+    String testartist = "被美国拿来当枪使" +
+            "三星曾经是全球第一大智能手机供应商，其半导体业务也十分蓬勃发展，然而，在近几年中美芯片大战中，三星却成为美国针对中国的“炮灰”。" +
+            "因此，三星不得不缩手退出中国市场，从而将战场转向美国，然而，在美国建厂也遭遇技术掠夺，饱受美国“利用”之苦。" +
+            "2020年，美国禁止向华为出口芯片后，三星也紧随其后，停止向华为供货，作为世界顶级存储芯片生产商，三星芯片对华为禁运带来了直接影响。" +
+            "这一决定也让三星自己付出了代价，2022年第三季度，三星存储芯片销售额同比下降超过30%，中心放在建厂后的三星也导致在中国的手机市场份额也持续下滑。" +
+            "而此时，美国也向三星抛出了“招商引资”的圈套，为争取美国政府提供的芯片厂补贴，三星计划在美国投资170亿美元建设工厂。" +
+            "但这笔钱最后并没有如愿拿到，补贴资金全部被美国企业像英特尔吃掉，此外，美国还向三星施压，要求其交出核心技术，被三星拒绝。";
 
+    int i = 0;
     /**
      * Converts the {@link KeyEvent} into low-level events and sends them to the host as either
      * key-events or text-events. This contains some logic for handling some special keys, and
@@ -169,10 +175,17 @@ public final class InputEventSender {
         // correspond to what user sees on the screen, while physical keyboard
         // acts as if it is connected to the remote host.
         if (e.getAction() == ACTION_MULTIPLE) {
-            if (e.getCharacters() != null)
+            if (e.getCharacters() != null){
+                Log.d(TAG, "sendKeyEvent1: unicode:" + Arrays.toString(e.getCharacters().getBytes(UTF_8)) + ", e:" + e + "");
                 mInjector.sendTextEvent(e.getCharacters().getBytes(UTF_8));
-            else if (e.getUnicodeChar() != 0)
+            }
+            else if (e.getUnicodeChar() != 0){
+                i++;
+                char c = testartist.charAt(i);
+                Log.d(TAG, "sendKeyEvent2: unicode:" + c + ", e:" + e + "");
                 mInjector.sendTextEvent(String.valueOf((char)e.getUnicodeChar()).getBytes(UTF_8));
+//                mInjector.sendTextEvent(String.valueOf((c)).getBytes(UTF_8));
+            }
             return true;
         }
 
@@ -188,8 +201,11 @@ public final class InputEventSender {
                 mPressedTextKeys.add(keyCode);
                 if ((e.getMetaState() & META_ALT_RIGHT_ON) != 0)
                     mInjector.sendKeyEvent(0, KEYCODE_ALT_RIGHT, false); // For layouts with AltGr
-
-                mInjector.sendTextEvent(String.valueOf(unicode).getBytes(UTF_8));
+                i++;
+                char c = testartist.charAt(i%(testartist.length()-1));
+                Log.d(TAG, "sendKeyEvent3: c:" + c + ", e:" + e + "");
+//                mInjector.sendTextEvent(String.valueOf(unicode).getBytes(UTF_8));
+                mInjector.sendTextEvent(String.valueOf(c).getBytes(UTF_8));
 
                 if ((e.getMetaState() & META_ALT_RIGHT_ON) != 0)
                     mInjector.sendKeyEvent(0, KEYCODE_ALT_RIGHT, true); // For layouts with AltGr

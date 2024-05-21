@@ -69,9 +69,9 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     XWindowAttributes x_window_attrs;
     CHECK(!XGetWindowAttributes(display_, w, &x_window_attrs));
 
-    if(!isNormalWindow(w)){
-        return;
-    }
+//    if(!isNormalWindow(w)){
+//        return;
+//    }
 
     // 2. If window was created before window manager started, we should frame
     // it only if it is visible and doesn't set override_redirect.
@@ -288,8 +288,9 @@ void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
 
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     XWindowChanges changes;
+    bool normal = isNormalWindow(e.window);
     changes.x = e.x;
-    changes.y = e.y < DECORCATIONVIEW_HEIGHT ? DECORCATIONVIEW_HEIGHT : e.y;
+    changes.y = e.y < DECORCATIONVIEW_HEIGHT && normal ? DECORCATIONVIEW_HEIGHT : e.y;
     changes.width = e.width;
     changes.height = e.height;
     changes.border_width = e.border_width;
@@ -303,15 +304,13 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
         XConfigureWindow(display_, frame, value_mask, &changes);
-        log("Resize_ frame %x  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
+        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
         ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     } else {
         XConfigureWindow(display_, e.window, value_mask, &changes);
-        log("Resize_ %x to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
+        log("Resize_ %lx to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
         ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     }
-//    XCompositeRedirectSubwindows (display_, root_, CompositeRedirectAutomatic);
-//    XCompositeNameWindowPixmap(display_, frame_window);
     XSync(display_, False);
 
 }
@@ -564,8 +563,37 @@ int WindowManager::moveWindow(long window, int x, int y) {
     return ret;
 }
 
+int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
+//    window = frame_window;
+    log("configureWindow %x: x:%d y:%d w:%d h:%d", window, x, y, w, h);
+    XWindowChanges changes;
+    changes.x = x;
+    changes.y = y;
+    changes.width = w;
+    changes.height = h;
+    unsigned long value_mask = CWX | CWY | CWWidth | CWHeight ;
+//    unsigned long value_mask = CWX | CWWidth ;
+    int ret = 0 ;
+    if (isInFrameMap(window)) {
+        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
+            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+            value_mask);
+        XConfigureWindow(display_, window, value_mask, &changes);
+        XSync(display_, False);
+        Window child = getFirstChild(window);
+        ret = configureWindow(child, 0, 0, w, h);
+    } else {
+        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
+            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+            value_mask);
+        ret = XConfigureWindow(display_, window, value_mask, &changes);
+        XSync(display_, False);
+    }
+    return ret;
+}
+
 int WindowManager::resizeWindow(long window, int w, int h) {
-    window = frame_window;
+//    window = frame_window;
 //    log("resizeWindow %x", window);
     Window returned_root, returned_parent;
     Window* children;
@@ -584,28 +612,7 @@ int WindowManager::resizeWindow(long window, int w, int h) {
     return ret - 1;
 }
 
-//int WindowManager::resizeWindow(long window, int x, int y) {
-//    window = frame_window;
-//    Window returned_root, returned_parent;
-//    Window* top_level_windows;
-//    unsigned int num_top_level_windows;
-//    XQueryTree(
-//            display_,
-//            root_,
-//            &returned_root,
-//            &returned_parent,
-//            &top_level_windows,
-//            &num_top_level_windows);
-//    log("resizeWindow %x %lu", window, window);
-//    int ret;
-//    ret = XResizeWindow(display_, window, x, y);
-//    ret = XResizeWindow(display_, top_level_debug, x, y);
-//    XSync(display_, False);
-//    return ret;
-//}
-
-int WindowManager::closeWindow(long window) {
-//    window = top_level_debug;
+Window WindowManager::getFirstChild(Window window){
     Window returned_root, returned_parent;
     Window* children;
     unsigned int nchildren;
@@ -617,7 +624,52 @@ int WindowManager::closeWindow(long window) {
             &children,
             &nchildren);
     log("closeWindow %x", children[0]);
-    int ret = XKillClient(display_, children[0]);
+    XSync(display_, False);
+    return children[0];
+}
+
+//int WindowManager::closeWindow(long window) {
+////    window = top_level_debug;
+//    Window returned_root, returned_parent;
+//    Window* children;
+//    unsigned int nchildren;
+//    XQueryTree(
+//            display_,
+//            window,
+//            &returned_root,
+//            &returned_parent,
+//            &children,
+//            &nchildren);
+//    log("closeWindow %x", children[0]);
+//    int ret = XKillClient(display_, children[0]);
+//    XSync(display_, False);
+//    return ret;
+//}
+
+int WindowManager::closeWindow(long window) {
+    Window returned_root, returned_parent;
+    Window* children;
+    unsigned int nchildren;
+    XQueryTree(
+            display_,
+            window,
+            &returned_root,
+            &returned_parent,
+            &children,
+            &nchildren);
+
+    Atom* supported;
+    int num_supported;
+    XGetWMProtocols(display_, children[0], &supported, &num_supported);
+    XEvent msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.xclient.type = ClientMessage;
+    msg.xclient.message_type = WM_PROTOCOLS;
+    msg.xclient.window = children[0];
+    msg.xclient.format = 32;
+    msg.xclient.data.l[0] = WM_DELETE_WINDOW;
+    int ret = XSendEvent(display_, children[0], false, 0, &msg);
+    log("closeWindow %x", children[0]);
     XSync(display_, False);
     return ret;
 }
