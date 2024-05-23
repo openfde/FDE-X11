@@ -180,11 +180,11 @@ public final class InputEventSender {
                 mInjector.sendTextEvent(e.getCharacters().getBytes(UTF_8));
             }
             else if (e.getUnicodeChar() != 0){
-                i++;
-                char c = testartist.charAt(i);
-                Log.d(TAG, "sendKeyEvent2: unicode:" + c + ", e:" + e + "");
-                mInjector.sendTextEvent(String.valueOf((char)e.getUnicodeChar()).getBytes(UTF_8));
+//                i++;
+//                char c = testartist.charAt(i);
+//                Log.d(TAG, "sendKeyEvent2: unicode:" + c + ", e:" + e + "");
 //                mInjector.sendTextEvent(String.valueOf((c)).getBytes(UTF_8));
+                mInjector.sendTextEvent(String.valueOf((char)e.getUnicodeChar()).getBytes(UTF_8));
             }
             return true;
         }
@@ -201,12 +201,11 @@ public final class InputEventSender {
                 mPressedTextKeys.add(keyCode);
                 if ((e.getMetaState() & META_ALT_RIGHT_ON) != 0)
                     mInjector.sendKeyEvent(0, KEYCODE_ALT_RIGHT, false); // For layouts with AltGr
-                i++;
-                char c = testartist.charAt(i%(testartist.length()-1));
-                Log.d(TAG, "sendKeyEvent3: c:" + c + ", e:" + e + "");
-//                mInjector.sendTextEvent(String.valueOf(unicode).getBytes(UTF_8));
-                mInjector.sendTextEvent(String.valueOf(c).getBytes(UTF_8));
-
+//                i++;
+//                char c = testartist.charAt(i%(testartist.length()-1));
+//                Log.d(TAG, "sendKeyEvent3: c:" + c + ", e:" + e + "");
+//                mInjector.sendTextEvent(String.valueOf(c).getBytes(UTF_8));
+                mInjector.sendTextEvent(String.valueOf(unicode).getBytes(UTF_8));
                 if ((e.getMetaState() & META_ALT_RIGHT_ON) != 0)
                     mInjector.sendKeyEvent(0, KEYCODE_ALT_RIGHT, true); // For layouts with AltGr
                 return true;

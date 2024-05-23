@@ -249,11 +249,7 @@ void android_destroy_window(Window window) {
         _surface_delete_window(sfWraper, window);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "destroy widget");
-//        WindAttribute *attr = _surface_find_widget(sfWraper, window);
         int ret = _surface_remove_widget(sfWraper, window);
-//        glDeleteTextures(1, &tid);
-//        _surface_log_traversal_window(sfWraper);
-//        attr->widget.window = 0;
     }
 }
 
@@ -268,9 +264,7 @@ void android_unmap_window(Window window){
 //        _surface_delete_window(sfWraper, window);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget");
-//        WindAttribute *attr = _surface_find_widget(sfWraper, window);
-//        glDeleteTextures(1, &attr->widget.texture_id);
-//        attr->widget.window = 0;
+        int ret = _surface_remove_widget(sfWraper, window);
     }
 }
 
@@ -292,7 +286,7 @@ void android_redirect_window(WindowPtr pWin) {
     log(DEBUG, "android_redirect_window %x redirect:%d atom:%d transient:%x, taskTo:%x inbounds:%d",
         pWin->drawable.id, redirect, win_type, transient, taskTo, intransient_bounds);
 
-    if (redirect || intransient_bounds) {
+    if (redirect ) {
         if(taskTo == 0){
             taskTo = focusWindow;
         }
@@ -324,8 +318,7 @@ void android_redirect_window(WindowPtr pWin) {
         log(DEBUG, "android_redirect_window start activity1");
         _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
         log(DEBUG, "android_redirect_window start activity2");
-        android_create_window(windAttribute, win_type,
-                              0);
+        android_create_window(windAttribute, win_type, intransient_bounds ? transient : 0);
         return;
     }
 }
