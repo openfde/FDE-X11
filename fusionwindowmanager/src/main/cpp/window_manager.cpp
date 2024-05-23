@@ -167,20 +167,25 @@ bool WindowManager::isNormalWindow(long window) {
     unsigned long nItems, bytesAfter;
     unsigned char *propData = NULL;
     char *atomName = XGetAtomName(display_, _NET_WM_WINDOW_TYPE);
-    log("isNormalWindow %lx %s", window, atomName);
-    if (XGetWindowProperty(display_, window, _NET_WM_WINDOW_TYPE, 0, 1024, False, AnyPropertyType,
+    Atom type = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
+    Atom type_nomarl = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+    Atom type_menu = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_MENU", False);
+    Atom type_dialog = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+    Atom type_popup = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
+
+    log("isNormalWindow ? %lx", window);
+    if (XGetWindowProperty(display_, window, type, 0, 1024, False, AnyPropertyType,
                            &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
         Success) {
-        printf(" actualType = %ld \n", actualType);
+        log(" actualType = %ld \n", actualType);
         if (actualType == XA_ATOM) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < nItems; i++) {
-                if (atoms[i] == _NET_WM_WINDOW_TYPE_NORMAL) {
+                if (atoms[i] == type_nomarl) {
                     continue;
-                } else if (atoms[i] == _NET_WM_WINDOW_TYPE_NORMAL
-                           || atoms[i] == _NET_WM_WINDOW_TYPE_MENU
-                           || atoms[i] == _NET_WM_WINDOW_TYPE_DIALOG
-                           || atoms[i] == _NET_WM_WINDOW_TYPE_POPUP_MENU
+                } else if (atoms[i] == type_menu
+                           || atoms[i] == type_dialog
+                           || atoms[i] == type_popup
                         ) {
                     char *atomValue = XGetAtomName(display_, atoms[i]);
                     log("%s not normal window %lx \n", atomValue, window);
@@ -245,7 +250,7 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
         return;
     }
 
-    Unframe(e.window);
+//    Unframe(e.window);
 }
 
 void WindowManager::Unframe(Window w) {
@@ -253,22 +258,31 @@ void WindowManager::Unframe(Window w) {
     log("Unframe %x", w);
     // We reverse the steps taken in Frame().
     const Window frame = clients_[w];
+    unsigned long serial = NextRequest(display_);
+    log(" serial1:%ld", serial);
     // 1. Unmap frame.
     XUnmapWindow(display_, frame);
+    serial = NextRequest(display_);
+    log(" serial2:%ld", serial);
     // 2. Reparent client window.
     XReparentWindow(
             display_,
             w,
             root_,
             0, 0);  // Offset of client window within root.
+    serial = NextRequest(display_);
+    log(" serial3:%ld", serial);
     // 3. Remove client window from save set, as it is now unrelated to us.
     XRemoveFromSaveSet(display_, w);
+    serial = NextRequest(display_);
+    log(" serial4:%ld", serial);
     // 4. Destroy frame.
     XDestroyWindow(display_, frame);
+    serial = NextRequest(display_);
+    log(" serial5:%ld", serial);
     // 5. Drop reference to frame handle.
     clients_.erase(w);
-
-    log("Unframed window %lu frame %lu" , w , frame);
+    log("Unframed window %lu frame %x" , w , frame);
 }
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent& e) {
@@ -281,7 +295,7 @@ void WindowManager::OnConfigureNotify(const XConfigureEvent& e) {
 
 void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
     // 1. Frame or re-frame window.
-    Frame(e.window, false);
+//    Frame(e.window, false);
     // 2. Actually map window.
     XMapWindow(display_, e.window);
 }
@@ -290,7 +304,7 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     XWindowChanges changes;
     bool normal = isNormalWindow(e.window);
     changes.x = e.x;
-    changes.y = e.y < DECORCATIONVIEW_HEIGHT && normal ? DECORCATIONVIEW_HEIGHT : e.y;
+    changes.y = (e.y < DECORCATIONVIEW_HEIGHT && normal) ? DECORCATIONVIEW_HEIGHT : e.y;
     changes.width = e.width;
     changes.height = e.height;
     changes.border_width = e.border_width;
@@ -301,6 +315,31 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     if(e.y < DECORCATIONVIEW_HEIGHT) {
         value_mask  = e.value_mask | (1 << 1);
     }
+
+    /**
+     *
+     * check if in transient_for_window bound
+     *
+     */
+
+//    if(!normal){
+//        Atom actual_type;
+//        int actual_format;
+//        unsigned long nitems, bytes_after;
+//        unsigned char *prop = NULL;
+//        Window transient_for_window;
+//        Atom atom_wm_transient_for = XInternAtom(display_, "WM_TRANSIENT_FOR", False);
+//        int status = XGetWindowProperty(display_, e.window, atom_wm_transient_for, 0, 1, False,
+//                                        AnyPropertyType, &actual_type, &actual_format,
+//                                        &nitems, &bytes_after, &prop);
+//        if (status == Success && prop != NULL) {
+//            if (nitems > 0) {
+//                transient_for_window = *(Window *)prop;
+//            }
+//            XFree(prop);
+//        }
+//    }
+
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
         XConfigureWindow(display_, frame, value_mask, &changes);
@@ -437,7 +476,8 @@ int WindowManager::OnXError(Display* display, XErrorEvent* e) {
     log(" - %s \n", XRequestCodeToString(e->request_code).c_str());
     log("    Error code %d: " , int(e->error_code));
     log(" - %s \n", error_text );
-    log("    Resource ID: %d",e->resourceid);
+    log("    Resource ID: %x",e->resourceid);
+    log("    serial ID: %ld",e->serial);
     return 0;
 
 }
@@ -490,7 +530,7 @@ void WindowManager::Run() {
     //     ii. Frame each top-level window.
     for (unsigned int i = 0; i < num_top_level_windows; ++i) {
         log("top_level_window %x to frame", top_level_windows[i]);
-        Frame(top_level_windows[i], true);
+//        Frame(top_level_windows[i], true);
     }
     //     iii. Free top-level window array.
     XFree(top_level_windows);
@@ -578,10 +618,10 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
         log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
             Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
             value_mask);
-        XConfigureWindow(display_, window, value_mask, &changes);
+        ret = XConfigureWindow(display_, window, value_mask, &changes);
         XSync(display_, False);
-        Window child = getFirstChild(window);
-        ret = configureWindow(child, 0, 0, w, h);
+//        Window child = getFirstChild(window);
+//        ret = configureWindow(child, 0, 0, w, h);
     } else {
         log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
             Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
@@ -595,19 +635,19 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
 int WindowManager::resizeWindow(long window, int w, int h) {
 //    window = frame_window;
 //    log("resizeWindow %x", window);
-    Window returned_root, returned_parent;
-    Window* children;
-    unsigned int nchildren;
-    XQueryTree(
-            display_,
-            window,
-            &returned_root,
-            &returned_parent,
-            &children,
-            &nchildren);
+//    Window returned_root, returned_parent;
+//    Window* children;
+//    unsigned int nchildren;
+//    XQueryTree(
+//            display_,
+//            window,
+//            &returned_root,
+//            &returned_parent,
+//            &children,
+//            &nchildren);
     log("resizeWindow %x w:%d h:%d", window, w, h);
     int  ret = XResizeWindow(display_, window, w, h);
-    ret += XResizeWindow(display_, children[0], w, h);
+//    ret += XResizeWindow(display_, children[0], w, h);
     XSync(display_, False);
     return ret - 1;
 }
@@ -647,29 +687,29 @@ Window WindowManager::getFirstChild(Window window){
 //}
 
 int WindowManager::closeWindow(long window) {
-    Window returned_root, returned_parent;
-    Window* children;
-    unsigned int nchildren;
-    XQueryTree(
-            display_,
-            window,
-            &returned_root,
-            &returned_parent,
-            &children,
-            &nchildren);
+//    Window returned_root, returned_parent;
+//    Window* children;
+//    unsigned int nchildren;
+//    XQueryTree(
+//            display_,
+//            window,
+//            &returned_root,
+//            &returned_parent,
+//            &children,
+//            &nchildren);
 
     Atom* supported;
     int num_supported;
-    XGetWMProtocols(display_, children[0], &supported, &num_supported);
+    XGetWMProtocols(display_, window, &supported, &num_supported);
     XEvent msg;
     memset(&msg, 0, sizeof(msg));
     msg.xclient.type = ClientMessage;
     msg.xclient.message_type = WM_PROTOCOLS;
-    msg.xclient.window = children[0];
+    msg.xclient.window = window;
     msg.xclient.format = 32;
     msg.xclient.data.l[0] = WM_DELETE_WINDOW;
-    int ret = XSendEvent(display_, children[0], false, 0, &msg);
-    log("closeWindow %x", children[0]);
+    int ret = XSendEvent(display_, window, false, 0, &msg);
+    log("closeWindow %x", window);
     XSync(display_, False);
     return ret;
 }
@@ -677,19 +717,19 @@ int WindowManager::closeWindow(long window) {
 int WindowManager::raiseWindow(long window) {
     log("raiseWindow %x", window);
 
-    Window returned_root, returned_parent;
-    Window* children;
-    unsigned int nchildren;
-    XQueryTree(
-            display_,
-            window,
-            &returned_root,
-            &returned_parent,
-            &children,
-            &nchildren);
-    log("raiseWindow %x", children[0]);
+//    Window returned_root, returned_parent;
+//    Window* children;
+//    unsigned int nchildren;
+//    XQueryTree(
+//            display_,
+//            window,
+//            &returned_root,
+//            &returned_parent,
+//            &children,
+//            &nchildren);
+//    log("raiseWindow %x", children[0]);
     int ret = XRaiseWindow(display_, window);
-    XSetInputFocus(display_, children[0], RevertToPointerRoot, CurrentTime);
+    XSetInputFocus(display_, window, RevertToPointerRoot, CurrentTime);
     XSync(display_, False);
     return ret;
 }

@@ -32,6 +32,8 @@ public class XWindowService extends Service {
     public static final String ACTION_X_WINDOW_ATTRIBUTE = "action_x_window_attribute";
 
     public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
+    public static final String STOP_ANR_FROM_X = "com.termux.x11.Xserver.ACTION_STOP";
+
     public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_start";
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
@@ -171,9 +173,23 @@ public class XWindowService extends Service {
                 pendingDiscardWindow.add(message.getWindowAttribute().getXID());
                 destroyActivitySafety(5, message.getWindowAttribute());
                 break;
+            case X_UNMAP_WINDOW:
+                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
+                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
+                stopActivity(message.getWindowAttribute());
+                break;
             default:
                 break;
         }
+    }
+
+    private void stopActivity(WindowAttribute attr) {
+        String targetPackage = "com.termux.x11";
+        Intent intent = new Intent(STOP_ANR_FROM_X);
+        intent.setPackage(targetPackage);
+        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+        sendBroadcast(intent);
+        Log.d(TAG, "stopActivity: attr:" + attr + "");
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
@@ -195,10 +211,10 @@ public class XWindowService extends Service {
     }
 
     public void startActLikeWindowWithDecorHeight(WindowAttribute attr, Class cls, float decorHeight) {
-        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         if (wm.WINDOW_XIDS.contains(attr.getXID())) {
             return;
         }
+        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         wm.WINDOW_XIDS.add(attr.getXID());
         if(attr.getTaskTo() != 0){
             String targetPackage = "com.termux.x11";
@@ -216,6 +232,7 @@ public class XWindowService extends Service {
             intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent, options.toBundle());
+            Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         }
     }
 

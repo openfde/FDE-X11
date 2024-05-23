@@ -58,6 +58,10 @@ public class Xserver {
      private  static final int _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
      private  static final int _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
+     private static final int ACTION_UNMAP = 1;
+    private static final int ACTION_DESTORY = 2;
+
+
     private WeakReference<XWindowService> contextRef;
 
     public void startXserver() {
@@ -90,11 +94,11 @@ public class Xserver {
         switch (type) {
             case _NET_WM_WINDOW_TYPE_NORMAL:
                 message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                        "xserver 打开activity", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
+                        "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
                 break;
             case _NET_WM_WINDOW_TYPE_DIALOG:
                 message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
-                        "xserver 打开activity 作为对话框", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
+                        "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
                 break;
             default:
                 break;
@@ -104,13 +108,21 @@ public class Xserver {
         }
     }
 
-
-    public static void closeOrDestroyActivity(int index, long p, long window) {
-        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + p + ", window:" + window + "");
-        EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
-                "xserver 关闭activity", new WindowAttribute(index, p, window)));
+    public static void closeOrDestroyActivity(int index, long pWin, long window, int action) {
+        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
+        switch (action){
+            case ACTION_DESTORY:
+                EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
+                        "xserver finish activity", new WindowAttribute(index, pWin, window)));
+                break;
+            case ACTION_UNMAP:
+                EventBus.getDefault().post(new EventMessage(EventType.X_UNMAP_WINDOW,
+                        "xserver hide any window", new WindowAttribute(index, pWin, window)));
+                break;
+            default:
+                break;
+        }
     }
-
 
     private void sendBroadcastDelayed() {
 //        if (!connected()){

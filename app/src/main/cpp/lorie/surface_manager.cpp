@@ -18,8 +18,8 @@ int SurfaceManager::redirect_window_2_surface(Window window, WindAttribute *attr
         return -1;
     }
     int index = attr->index = get_avilable_index(type);
-    window_attrs[window] = *attr;
     log("redirect_window index:%d", index);
+    window_attrs[window] = *attr;
     return index;
 }
 
@@ -27,15 +27,67 @@ void SurfaceManager::update_window(Window window, WindAttribute attr) {
     window_attrs[window] = attr;
 }
 
+int SurfaceManager::remove_widget(Window window) {
+    for (auto &pair: window_attrs) {
+        if (pair.second.widget_size == 0 ) {
+            continue;
+        } else {
+            for (int i = 0; i < pair.second.widget_size; ++i) {
+                Widget* widget = &pair.second.widgets[i];
+                if (widget->window == window) {
+                    memset(widget, 0, sizeof(Widget));
+                    widget->window = 0;
+                    widget->texture_id = 0;
+                    widget->width = 0;
+                    widget->height = 0;
+                    widget->offset_x = 0;
+                    widget->offset_y = 0;
+                    widget->task_to = 0;
+                    widget->pWin = NULL;
+                    pair.second.widget_size --;
+                }
+            }
+            if(pair.second.widget_size >0){
+                Widget *filtered_widgets = (Widget *)malloc(pair.second.widget_size * sizeof(Widget));
+                size_t index = 0;
+                for (size_t i = 0; i < pair.second.widget_size; i++) {
+                    Widget* widgets = &pair.second.widgets[i];
+                    if (widgets[i].window != 0) {
+                        filtered_widgets[index] = widgets[i];
+                        index++;
+                    }
+                }
+            }
+            LogWindAttribute(pair.second);
+        }
+    }
+    return TRUE;
+}
+
 WindAttribute* SurfaceManager::find_window(Window window) {
     WindAttribute* attr = &window_attrs[window];
     if(attr){
-        log("found attr window:%x", window);
-        LogWindAttribute(*attr);
+//        log("found attr window:%x", window);
+//        LogWindAttribute(*attr);
     } else {
-        log("not found window:%x", window);
+//        log("not found window:%x", window);
     }
     return attr;
+}
+
+WindAttribute* SurfaceManager::find_widget(Window window) {
+    for (auto& pair : window_attrs) {
+        if(pair.second.widget_size == 0) {
+            continue;
+        } else {
+            for (int i = 0; i < pair.second.widget_size; ++i) {
+                if(pair.second.widgets[i].window == window){
+                    return &pair.second;
+                }
+            }
+        }
+    }
+    return NULL;
 }
 
 WindAttribute* SurfaceManager::find_main_window(Window window) {
@@ -62,6 +114,18 @@ int SurfaceManager::count_window(Window window) {
     return window_attrs.count(window);
 }
 
+int SurfaceManager::count_widget(Window window) {
+    log("count_widget %x", window);
+    for (auto& pair : window_attrs) {
+        for (int i = 0; i < pair.second.widget_size; ++i) {
+            if(pair.second.widgets[i].window == window){
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
 
 void SurfaceManager::delete_window(Window window) {
     window_attrs.erase(window);
@@ -85,22 +149,13 @@ void SurfaceManager::traversal_log_window(){
     log("traversal_window_attrs--------------->>>>");
     for (const auto& pair : window_attrs) {
         LogWindAttribute(pair.second);
-//            log("\t window key:%x,  window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d win:%p s:%p ", pair.first,
-//            pair.second.window,
-//            pair.second.index,
-//            pair.second.width,
-//            pair.second.height,
-//            pair.second.offset_x,
-//            pair.second.offset_y,
-//            pair.second.texture_id,
-//            pair.second.pWin,
-//            pair.second.sfc
-//        );
     }
+    log("traversal_window_attrs<<<<<<<---------------");
+
 }
 
-void SurfaceManager::LogWindAttribute(WindAttribute attr){
-    log("\t window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d win:%p s:%p ",
+void SurfaceManager::LogWindAttribute(WindAttribute attr) {
+    log("\t traversal_window_attrs window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d win:%p s:%p ",
         attr.window,
         attr.index,
         attr.width,
@@ -110,6 +165,20 @@ void SurfaceManager::LogWindAttribute(WindAttribute attr){
         attr.texture_id,
         attr.pWin,
         attr.sfc);
+    if (attr.widget_size != 0) {
+        for (int i = 0; i < attr.widget_size; i++) {
+            Widget widget = attr.widgets[i];
+            log("\t traversal_window_attrs widget window:%x w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d  s:%p ",
+                widget.window,
+                widget.width,
+                widget.height,
+                widget.offset_x,
+                widget.offset_y,
+                widget.texture_id,
+                widget.pWin
+            );
+        }
+    }
 }
 
 SurfaceManager::SurfaceManager() {
@@ -126,17 +195,19 @@ int SurfaceManager::get_avilable_index(Atom type) {
         }
         for ( int i = 1; i <= CAPACITY ; i ++ ){
             if(pInt[i] == 0){
+                log("get_avilable_index normal_type %d", i);
                 return i;
             }
         }
     } else if(type == _NET_WM_WINDOW_TYPE_DIALOG){
         auto it = window_attrs.begin();
         while(it != window_attrs.end()) {
-            pInt[it->second.index] = 1;
+            pInt[it->second.index - 10] = 1;
             it ++;
         }
         for ( int i = 1; i <= CAPACITY ; i ++ ){
             if(pInt[i] == 0){
+                log("get_avilable_index dialog_type %d", i+10);
                 return i + 10;
             }
         }

@@ -14,7 +14,7 @@ typedef struct {
     GLuint texture_id;
     float width, height;
     float offset_x, offset_y;
-    Window window;
+    Window task_to, window;
     WindowPtr pWin;
 } Widget;
 
@@ -26,7 +26,8 @@ typedef struct {
     Window window, child;
     WindowPtr pWin;
     EGLSurface sfc;
-    Widget widget;
+    Widget widget , *widgets;
+    int widget_size ;
 } WindAttribute;
 
 typedef struct WindowNode {

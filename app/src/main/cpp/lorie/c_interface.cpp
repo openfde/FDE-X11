@@ -50,6 +50,12 @@ int _surface_count_window(ARGE_PWRAP, Window window){
     return surfaceManager->count_window(window);
 }
 
+int _surface_count_widget(ARGE_PWRAP, Window window){
+    CHECKWRAPER_R(wrapper);
+    GET_PWRAP;
+    return surfaceManager->count_widget(window);
+}
+
 
 void _surface_traversal_window(ARGE_PWRAP,void (* func)(WindAttribute)){
     CHECKWRAPER(wrapper);
@@ -62,6 +68,18 @@ WindAttribute* _surface_find_window(ARGE_PWRAP, Window window){
     CHECKWRAPER_N(wrapper);
     GET_PWRAP;
     return surfaceManager->find_window(window);
+}
+
+int _surface_remove_widget(ARGE_PWRAP, Window window){
+    CHECKWRAPER_R(wrapper);
+    GET_PWRAP;
+    return surfaceManager->remove_widget(window);
+}
+
+WindAttribute* _surface_find_widget(ARGE_PWRAP, Window window){
+    CHECKWRAPER_N(wrapper);
+    GET_PWRAP;
+    return surfaceManager->find_widget(window);
 }
 
 WindAttribute* _surface_find_main_window(ARGE_PWRAP, Window window){

@@ -7,6 +7,17 @@
 #ifndef TERMUX_X11_C_INTERFACE_H
 #define TERMUX_X11_C_INTERFACE_H
 
+#define WINDOW_TYPE "_NET_WM_WINDOW_TYPE"
+#define WINDOW_TYPE_NORMAL "_NET_WM_WINDOW_TYPE_NORMAL"
+#define WINDOW_TYPE_MENU "_NET_WM_WINDOW_TYPE_MENU"
+#define WINDOW_TYPE_DIALOG "_NET_WM_WINDOW_TYPE_DIALOG"
+#define WINDOW_TYPE_POPUP "_NET_WM_WINDOW_TYPE_POPUP_MENU"
+#define WINDWO_TRANSIENT_FOR "WM_TRANSIENT_FOR"
+
+#define ACTION_UNMAP 1
+#define ACTION_DESTORY 2
+
+
 #define ARGE_PWRAP SurfaceManagerWrapper* wrapper
 #define GET_PWRAP  SurfaceManager* surfaceManager = wrapper->surfaceManager;
 #define CHECKWRAPER(wrap)  \
@@ -32,6 +43,10 @@ typedef struct SurfaceManagerWrapper SurfaceManagerWrapper;
 
 WindAttribute* _surface_find_window(ARGE_PWRAP, Window window);
 
+int _surface_remove_widget(ARGE_PWRAP, Window window);
+
+WindAttribute* _surface_find_widget(ARGE_PWRAP, Window window);
+
 WindAttribute* _surface_find_main_window(ARGE_PWRAP, Window window);
 
 WindAttribute* _surface_all_window(ARGE_PWRAP, int * size);
@@ -48,6 +63,8 @@ void _surface_delete_window(ARGE_PWRAP, Window window);
 void _surface_update_window(ARGE_PWRAP, Window window, WindAttribute attr);
 
 int _surface_count_window(ARGE_PWRAP, Window index);
+
+int _surface_count_widget(ARGE_PWRAP, Window index);
 
 void _surface_traversal_window(ARGE_PWRAP, void (* func)(WindAttribute));
 

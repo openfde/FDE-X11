@@ -930,8 +930,8 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
                         GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
-    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-        w, h, data, flip, display.width, display.height);
+//    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+//        w, h, data, flip, display.width, display.height);
 
 }
 
@@ -984,7 +984,7 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
     WindAttribute *attr = (WindAttribute *) _surface_find_window(sfWraper, window);
     attr->offset_x = (float) x;
     attr->offset_y = (float) y;
-    if (attr->width != (float) w || attr->height != (float) h) {
+//    if (attr->width != (float) w || attr->height != (float) h) {
         attr->width = (float) w;
         attr->height = (float) h;
         if (!attr->texture_id) {
@@ -1004,13 +1004,13 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
-    } else {
-        glBindTexture(GL_TEXTURE_2D, attr->texture_id);
-        checkGlError();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-                        GL_UNSIGNED_BYTE, data);
-        checkGlError();
-    }
+//    } else {
+//        glBindTexture(GL_TEXTURE_2D, attr->texture_id);
+//        checkGlError();
+//        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+//                        GL_UNSIGNED_BYTE, data);
+//        checkGlError();
+//    }
     if (!attr->texture_id) {
         glGenTextures(1, &attr->texture_id);
         checkGlError();
@@ -1127,10 +1127,10 @@ int renderer_should_redraw(void) {
 
 int renderer_redraw(JNIEnv *env, uint8_t flip) {
     int err_traversal = TRUE;
-    _surface_log_traversal_window(sfWraper);
+//    _surface_log_traversal_window(sfWraper);
     int size;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
-    log("renderer_redraw size = %d", size);
+//    log("renderer_redraw size = %d", size);
     int i = 0 ;
     while (i<size) {
         err_traversal = renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window);
@@ -1207,26 +1207,24 @@ int renderer_redraw_traversal(JNIEnv *env, uint8_t flip, int index) {
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window) {
-    log("renderer_redraw_traversal_1 index:%d window:%x", index, window);
+//    log("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
     int id;
     float width, height;
     WindAttribute *attr = _surface_find_window(sfWraper, window);
-    if (attr) {
+    if (attr && window != 0) {
         android_update_texture_1(window);
         eglSurface = attr->sfc;
         id = attr->texture_id;
         width = attr->width;
         height = attr->height;
     }
-
-    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
-        index, width, height, id);
+//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
+//        index, width, height, id);
     if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id) {
         return FALSE;
     }
-
     glViewport(0, 0, width, height);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
@@ -1234,26 +1232,27 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         eglCheckError(__LINE__);
     }
 
-    if((int)attr->widget.texture_id > 0){
-        log("widget window:%x w:%d h:%d tid:%d", attr->widget.window, attr->widget.width , attr->widget.height, attr->widget.texture_id);
-        draw(id, -1.f, -1.f, 1.f, 1.f, flip);
-        if(IfRealizedWindow(attr->widget.pWin)){
-            android_update_widget_texture(attr->widget);
-            Widget widget = attr->widget;
+    draw(id, -1.f, -1.f, 1.f, 1.f, flip);
+    if(attr->widget_size > 0){
+        for(int i = 0 ; i < attr->widget_size ; i ++){
+            Widget widget = attr->widgets[i];
+            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+                widget.texture_id);
+            if((int)widget.texture_id <= 0 || !widget.window || !IfRealizedWindow(widget.pWin)){
+                continue;
+            }
+            android_update_widget_texture(widget);
             float x = widget.offset_x;
             float y = widget.offset_y;
             float w = widget.width;
             float h = widget.height;
-            log("widget window x:%.0f y:%.0f w:%.0f h:%.0f", x, y , w, h);
             float x0 = (x - attr->offset_x) * 2.0f / width - 1.0f;
             float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
             float x1 = x0 + w / width * 2.0f;
             float y1 = y0 + h / height * 2.0f;
-            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
             draw(widget.texture_id, x0, y0, x1, y1, flip);
+            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
         }
-    } else {
-        draw(id, -1.f, -1.f, 1.f, 1.f, flip);
     }
     draw_cursor_1(index, window);
     if (eglSwapBuffers(global_egl_display, eglSurface) != EGL_TRUE) {

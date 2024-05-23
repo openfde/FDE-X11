@@ -9,6 +9,7 @@ import static android.view.WindowManager.LayoutParams.*;
 import static com.termux.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.STOP_ANR_FROM_X;
 import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.Xserver.ACTION_START;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
@@ -151,7 +152,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     onPreferencesChanged("");
             } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(mAttribute != null && mAttribute.getXID() == attr.getXID()){
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
                     Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
                     killSelf = true;
                     finish();
@@ -170,10 +171,15 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     options.setLaunchBounds(new Rect(100, 100, 200 , 200));
                     startActivity(startAct, options.toBundle());
                 }
+            } else if(STOP_ANR_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
+                    Log.d(TAG, "onReceive: " + STOP_ANR_FROM_X + ", attr:" + attr + "");
+                    finish();
+                }
             }
         }
     };
-
 
     @SuppressLint("StaticFieldLeak")
     private static MainActivity instance;
@@ -198,6 +204,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         }
+
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
@@ -308,6 +315,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             addAction(ACTION_STOP);
             addAction(DESTROY_ACTIVITY_FROM_X);
             addAction(START_ACTIVITY_FROM_X);
+            addAction(STOP_ANR_FROM_X);
         }},  0);
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);
@@ -704,6 +712,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     @Override
     protected void onStop() {
         super.onStop();
+//        closeXwindow();
         Log.d(TAG, "onStop: ");
     }
 
@@ -989,19 +998,22 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
         Log.d(TAG, "onWindowDismissed: before");
         if(checkServiceExits()){
-            try {
-                WindowAttribute a = mAttribute;
-                service.windowChanged(null, a.getOffsetX(),
-                        a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
-                        a.getWindowPtr(), a.getXID());
-                service.closeWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            closeXwindow();
         }
         Log.d(TAG, "onWindowDismissed: after");
     }
 
+    private void closeXwindow() {
+        try {
+            WindowAttribute a = mAttribute;
+            service.windowChanged(null, a.getOffsetX(),
+                    a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
+                    a.getWindowPtr(), a.getXID());
+            service.closeWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 
     boolean goback = false;
