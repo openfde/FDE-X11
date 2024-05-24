@@ -19,6 +19,8 @@ public class WindowAttribute implements Parcelable {
 
     long taskTo = 0;
 
+    Property property;
+
     public WindowAttribute(int index, long p, long window) {
         this.offsetX = 0;
         this.offsetY = 0;
@@ -38,6 +40,26 @@ public class WindowAttribute implements Parcelable {
         this.windowPtr = p;
         this.XID = window;
         this.taskTo = taskTo;
+    }
+
+    public WindowAttribute(int x, int y, int w, int h, int index, long p, long window, long taskTo, Property property) {
+        this.offsetX = x;
+        this.offsetY = y;
+        this.width = w;
+        this.height = h;
+        this.index = index;
+        this.windowPtr = p;
+        this.XID = window;
+        this.taskTo = taskTo;
+        this.property = property;
+    }
+
+    public Property getProperty() {
+        return property;
+    }
+
+    public void setProperty(Property property) {
+        this.property = property;
     }
 
     public long getXID() {

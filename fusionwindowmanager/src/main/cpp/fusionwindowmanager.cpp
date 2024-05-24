@@ -52,9 +52,11 @@ JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
     }
 }
 
-JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj){
-    setenv("DISPLAY", ":0", 1);
-    window_manager = WindowManager::create();
+JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display){
+    jboolean isCopy = false;
+    const char* export_display = env->GetStringUTFChars(display, &isCopy);
+    setenv("DISPLAY", export_display, 1);
+    window_manager = WindowManager::create(export_display);
     if(!window_manager){
         log("Failed to initialize window manager.");
         return False;
@@ -115,7 +117,7 @@ JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
 
 static JNINativeMethod method_table[] = {
         {"createXWindow","()V", (void *) createXWindow},
-        {"connect2Server","()I", (void *) connect2Server},
+        {"connect2Server", "(Ljava/lang/String;)I", (void *) connect2Server},
         {"moveWindow","(JII)I", (void *) moveWindow},
         {"configureWindow","(JIIII)I", (void *) configureWindow},
         {"resizeWindow","(JII)I", (void *) resizeWindow},

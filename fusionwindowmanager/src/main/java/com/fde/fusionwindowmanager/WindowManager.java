@@ -41,6 +41,8 @@ public class WindowManager implements AWindowManagerInterface {
     public static final int MSG_STOP_WM = 2;
     public static List<WindowAttribute> PERFORM_WINDOW_LIST = new ArrayList<>();
     public Set<Long> WINDOW_XIDS = new HashSet<>();
+    private String display;
+
     public WindowManager() {
         mThread = new HandlerThread("WM");
         mThread.start();
@@ -55,7 +57,8 @@ public class WindowManager implements AWindowManagerInterface {
     }
 
 
-    public void startWindowManager() {
+    public void startWindowManager(String displayGlobalParam) {
+        this.display = displayGlobalParam;
         Message msg = Message.obtain();
         msg.what = MSG_START_WM;
         mHandler.sendMessage(msg);
@@ -75,7 +78,7 @@ public class WindowManager implements AWindowManagerInterface {
      */
     public native void createXWindow();
 
-    public static native int connect2Server();
+    public static native int connect2Server(String display);
 
     public native int configureWindow(long window, int x, int y, int width, int height);
 
@@ -153,7 +156,7 @@ public class WindowManager implements AWindowManagerInterface {
             super.handleMessage(msg);
             switch (msg.what) {
                 case MSG_START_WM:
-                    isConnected = connect2Server() > 0;
+                    isConnected = connect2Server(display) > 0;
                     Log.d(TAG, "MSG_START_WM isConnected:" + isConnected);
                     break;
                 default:

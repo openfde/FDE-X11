@@ -1,5 +1,7 @@
 package com.termux.x11;
 
+import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -14,9 +16,7 @@ import android.app.ActivityOptions;
 import android.widget.Button;
 import androidx.annotation.Nullable;
 
-import com.fde.fusionwindowmanager.fusionview.FusionActivity;
 import com.fde.fusionwindowmanager.WindowManager;
-import com.fde.fusionwindowmanager.service.WMService;
 import com.fde.fusionwindowmanager.service.WMServiceConnection;
 import com.termux.x11.utils.Util;
 
@@ -91,7 +91,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
             startActivityForXserver(0, 0 , 1920, 989, 0 , 0);
 //            startActivityForXserver(0, 0 , 960, 720, 0 , 0);
         } else if( v == btBindWindowManager){
-            windowManager.startWindowManager();
+            windowManager.startWindowManager(DISPLAY_GLOBAL_PARAM);
         } else if ( v == btCreateFromWM){
             connection.startActivityForXserver(0, 0 , 300, 600, 0 , 0);
         } else if ( v == btMoveNative){

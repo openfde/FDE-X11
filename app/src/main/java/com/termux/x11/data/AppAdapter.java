@@ -108,7 +108,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
 //                                Toast.makeText(context, String.format("%s 启动中", app.Name), Toast.LENGTH_SHORT).show();
                             }
                         });
-                        tryLunchApp(app, response.Data.Port);
+//                        tryLunchApp(app, response.Data.Port);
                     }
                 });
     }

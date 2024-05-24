@@ -18,8 +18,8 @@ mutex WindowManager::wm_detected_mutex_;
 Window frame_window;
 Window top_level_debug;
 
-::WindowManager *WindowManager::create() {
-    Display* display = XOpenDisplay(":1");
+::WindowManager *WindowManager::create(const char *export_display) {
+    Display* display = XOpenDisplay(export_display);
     if (display == nullptr) {
         log("Failed to open X display");
         return nullptr;
@@ -701,15 +701,20 @@ int WindowManager::closeWindow(long window) {
     Atom* supported;
     int num_supported;
     XGetWMProtocols(display_, window, &supported, &num_supported);
-    XEvent msg;
-    memset(&msg, 0, sizeof(msg));
-    msg.xclient.type = ClientMessage;
-    msg.xclient.message_type = WM_PROTOCOLS;
-    msg.xclient.window = window;
-    msg.xclient.format = 32;
-    msg.xclient.data.l[0] = WM_DELETE_WINDOW;
-    int ret = XSendEvent(display_, window, false, 0, &msg);
-    log("closeWindow %x", window);
+    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
+    int ret = 0;
+    if(supported) {
+        XEvent msg;
+        memset(&msg, 0, sizeof(msg));
+        msg.xclient.type = ClientMessage;
+        msg.xclient.message_type = WM_PROTOCOLS;
+        msg.xclient.window = window;
+        msg.xclient.format = 32;
+        msg.xclient.data.l[0] = WM_DELETE_WINDOW;
+        ret = XSendEvent(display_, window, false, 0, &msg);
+    } else {
+        ret = XKillClient(display_, window);
+    }
     XSync(display_, False);
     return ret;
 }

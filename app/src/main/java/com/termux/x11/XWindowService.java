@@ -1,6 +1,7 @@
 package com.termux.x11;
 
 import static com.termux.x11.MainActivity.ACTION_STOP;
+import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 
 import android.app.ActivityOptions;
 import android.app.Service;
@@ -37,6 +38,7 @@ public class XWindowService extends Service {
     public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_start";
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
+    public static final String X_WINDOW_PROPERTY = "x_window_property";
     private WindowManager wm;
 
     private Handler handler = new Handler();
@@ -115,7 +117,7 @@ public class XWindowService extends Service {
         Xserver.getInstance().startXserver();
         Log.d(TAG, "onCreate: ");
         wm = new WindowManager( new WeakReference<>(this));
-        wm.startWindowManager();
+        wm.startWindowManager(DISPLAY_GLOBAL_PARAM);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
@@ -229,6 +231,9 @@ public class XWindowService extends Service {
                     (int)(attr.getWidth() + attr.getOffsetX()),
                     (int)(attr.getHeight() + decorHeight + attr.getOffsetY())));
             Intent intent = new Intent(this, cls);
+            if(attr.getProperty() != null){
+                intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
+            }
             intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent, options.toBundle());

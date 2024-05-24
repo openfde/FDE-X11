@@ -1,24 +1,17 @@
 package com.termux.x11;
 
-import static com.termux.x11.CmdEntryPoint.ACTION_START;
-import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.termux.x11.data.Constants.BASEURL;
+import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 import static com.termux.x11.data.Constants.URL_GETALLAPP;
-import static com.termux.x11.data.Constants.URL_STOPAPP;
+import static com.termux.x11.data.Constants.URL_STARTAPP_X;
 
-import android.app.ActivityOptions;
-import android.app.Dialog;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
-import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.Handler;
@@ -30,6 +23,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.TranslateAnimation;
@@ -39,28 +33,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.fde.fusionwindowmanager.WindowManager;
-import com.fde.fusionwindowmanager.eventbus.EventType;
-import com.fde.fusionwindowmanager.service.WMService;
-import com.fde.fusionwindowmanager.service.WMServiceConnection;
 import com.fde.fusionwindowmanager.Util;
 import com.fde.recyclerview.SwipeRecyclerView;
 import com.termux.x11.data.AppAdapter;
 import com.termux.x11.data.AppListResult;
 import com.termux.x11.data.VncResult;
-import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.termux.x11.utils.AppUtils;
 import com.termux.x11.utils.DimenUtils;
 import com.termux.x11.view.PopupSlideSmall;
 import com.xiaokun.dialogtiplib.dialog_tip.TipLoadDialog;
 import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.callback.JsonCallBack;
-
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-import org.greenrobot.eventbus.ThreadMode;
-
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,10 +74,8 @@ public class AppListActivity extends AppCompatActivity {
     private int screenHeight;
     private int spanCount;
     private boolean mAppListInit = false;
-    private boolean mWindowManagerInit = false;
     public TipLoadDialog tipLoadDialog;
-    private WindowManager windowManager;
-    private WMServiceConnection connection;
+    private ServiceConnection connection;
     private boolean isLoading;
 
     public interface ItemClickListener {
@@ -105,103 +86,30 @@ public class AppListActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.applist_activity);
+        com.xiaokun.dialogtiplib.util.AppUtils.init(this);
         loadingView = (ProgressBar) findViewById(R.id.loadingView);
-        EventBus.getDefault().register(this);
+        tipLoadDialog = new TipLoadDialog(this);
         initAppList();
         Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
-        registerReceiver(receiver, new IntentFilter(ACTION_START));
-        Intent intent = new Intent(this, XWindowService.class);
-        bindService(intent, new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName name, IBinder service) {
-
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName name) {
-
-            }
-        }, BIND_AUTO_CREATE);
-
-        getWindow().getDecorView().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                ActivityOptions options = ActivityOptions.makeBasic();
-                options.setLaunchBounds(new Rect(0,0,1,1));
-                Intent intent = new Intent(AppListActivity.this, MainActivity.class);
-//                startActivity(intent);
-
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent, options.toBundle());
-            }
-        }, 2000);
+        startXWindowService();
     }
 
-    private void startXserver() {
-        CmdEntryPoint.main(new String[]{":1", "-legacy-drawing", "-listen", "tcp"});
-    }
+    private void startXWindowService() {
+        if(connection == null){
+            connection = new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName name, IBinder service) {
 
-    private void bindWindowManager() {
-        Log.d(TAG, "bindWindowManager() called");
-        if(connection == null ){
-            connection = new WMServiceConnection();
-        }
-        Intent intent = new Intent(this, WMService.class);
-        bindService(intent, connection, BIND_AUTO_CREATE);
-        windowManager = new WindowManager( new WeakReference<>(this));
-        windowManager.startWindowManager();
-    }
-
-
-    private final BroadcastReceiver receiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (ACTION_START.equals(intent.getAction()) && !WindowManager.isConnected()) {
-                bindWindowManager();
-            } else if (MainActivity.ACTION_STOP.equals(intent.getAction())) {
-
-            } else if (ACTION_PREFERENCES_CHANGED.equals(intent.getAction())) {
-
-            }
-        }
-    };
-
-
-    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
-    public void onReceiveMsg(EventMessage message){
-        Log.e("EventBus_Subscriber", "onReceiveMsg_MAIN: " + message.toString());
-        if(windowManager == null){
-            return;
-        }
-        switch (message.getType()){
-            case X_START_ACTIVITY_MAIN_WINDOW:
-                if(message.getWindowAttribute().getIndex() == 1){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity1.class);
-                } else if (message.getWindowAttribute().getIndex() == 2){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity2.class);
-                } else if (message.getWindowAttribute().getIndex() == 3){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity3.class);
-                } else if (message.getWindowAttribute().getIndex() == 4){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity4.class);
-                } else if (message.getWindowAttribute().getIndex() == 5){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity5.class);
-                } else if (message.getWindowAttribute().getIndex() == 6){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity6.class);
-                } else if (message.getWindowAttribute().getIndex() == 7){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity7.class);
-                } else if (message.getWindowAttribute().getIndex() == 8){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity8.class);
-                } else if (message.getWindowAttribute().getIndex() == 9){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity9.class);
-                } else if (message.getWindowAttribute().getIndex() == 10){
-                    windowManager.startActivityForXMainWindow(message.getWindowAttribute(), MainActivity.MainActivity0.class);
                 }
-                break;
-            default:
-                break;
-        }
-    }
 
+                @Override
+                public void onServiceDisconnected(ComponentName name) {
+
+                }
+            };
+        }
+        bindService(new Intent(this, XWindowService.class), connection, BIND_AUTO_CREATE);
+    }
 
     @Override
     protected void onDestroy() {
@@ -209,14 +117,11 @@ public class AppListActivity extends AppCompatActivity {
         if( connection != null ){
             unbindService(connection);
         }
-        if( windowManager != null ){
-            windowManager.stopWindowManager();
-        }
         if(tipLoadDialog != null){
             tipLoadDialog = null;
         }
-        EventBus.getDefault().unregister(this);
     }
+
 
     @Override
     protected void onResume() {
@@ -229,16 +134,21 @@ public class AppListActivity extends AppCompatActivity {
                 }
             }, 3000);
         }
+        mayGetApps();
+    }
+
+    private void mayGetApps() {
         if(screenHeight == 0 | screenWidth == 0){
             screenWidth = DimenUtils.getScreenWidth();
             screenHeight = DimenUtils.getScreenHeight();
         } else if( screenHeight != DimenUtils.getScreenHeight()){
             screenWidth = DimenUtils.getScreenWidth();
             screenHeight = DimenUtils.getScreenHeight();
-            spanCount = DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f);
-            int count = Math.max(spanCount, 3);
+            int count = Math.max(DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f), 3);
+            Log.d(TAG, "mayGetApps count:" + count + " spanCount:" + spanCount);
             if(spanCount != count){
                 initAppList();
+                spanCount = count;
             }
         }
     }
@@ -257,15 +167,14 @@ public class AppListActivity extends AppCompatActivity {
         }
         spanCount = Math.max(spanCount, 3);
         mRefreshLayout = findViewById(R.id.refresh_layout);
-        mRefreshLayout.setOnRefreshListener(mRefreshListener); // 刷新监听。
+        mRefreshLayout.setOnRefreshListener(mRefreshListener); //
         mRecyclerView = findViewById(R.id.recycler_view);
         mRecyclerView.setLayoutManager(new GridLayoutManager(this, spanCount));
-        mRecyclerView.useDefaultLoadMore(); // 使用默认的加载更多的View。
-        mRecyclerView.setLoadMoreListener(mLoadMoreListener); // 加载更多的监听。
+        mRecyclerView.useDefaultLoadMore(); //
+        mRecyclerView.setLoadMoreListener(mLoadMoreListener); //
         mRecyclerView.setAutoLoadMore(true);
         mAdapter = new AppAdapter(this, mDataList, mItemClickListener);
         mRecyclerView.setAdapter(mAdapter);
-        // 请求服务器加载数据。
         getAllLinuxApp(true, 1);
         mRefreshLayout.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -279,8 +188,9 @@ public class AppListActivity extends AppCompatActivity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if(hasFocus && !isLoading ){
-            initAppList();
+        AppUtils.set("fde.click_as_touch", "false");
+        if(hasFocus){
+            mayGetApps();
         }
     }
 
@@ -312,11 +222,11 @@ public class AppListActivity extends AppCompatActivity {
 //                return;
 //            }
 //            mLastClickTime = nowTime;
-//            Log.d(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
+            Log.d(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
 //            if (isRight) {
 //                showOptionView(itemView, app, event);
 //            } else {
-//                load2Start(app);
+                load2Start(app);
 //            }
         }
     };
@@ -476,6 +386,9 @@ public class AppListActivity extends AppCompatActivity {
 
                     @Override
                     public void onSuccess(Call call, AppListResult response) {
+                        if(tipLoadDialog != null){
+                            tipLoadDialog.dismiss();
+                        }
                         isLoading = false;
                         Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
                         List<AppListResult.DataBeanX.DataBean> data = response.getData().getData();
@@ -548,11 +461,11 @@ public class AppListActivity extends AppCompatActivity {
 
     private void tryStartVncApp(AppListResult.DataBeanX.DataBean app) {
         // todo mock
-        QuietOkHttp.post(BASEURL + URL_STOPAPP)
+        QuietOkHttp.post(BASEURL + URL_STARTAPP_X)
                 .setCallbackToMainUIThread(true)
                 .addParams("App", app.Name)
                 .addParams("Path", app.Path)
-                .addParams("SysOnly", "false")
+                .addParams("Display", DISPLAY_GLOBAL_PARAM)
                 .execute(new JsonCallBack<VncResult.GetPortResult>() {
                     @Override
                     public void onFailure(Call call, Exception e) {
@@ -562,8 +475,9 @@ public class AppListActivity extends AppCompatActivity {
 
                     @Override
                     public void onSuccess(Call call, VncResult.GetPortResult response) {
+                        tipLoadDialog.dismiss();
                         Log.i(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
-                        tryLunchApp(app);
+//                        tryLunchApp(app);
                     }
                 });
     }

@@ -10,6 +10,19 @@
 #include <EGL/egl.h>
 
 
+
+/**
+ * struct window/attribute/property for x window to android window
+ */
+typedef struct {
+    Window window;
+    Window transient;           //WM_TRANSIENT_FOR          WINDOW
+    Window leader;              //WM_CLIENT_LEADER          WINDOW
+    Atom window_type;           //_NET_WM_WINDOW_TYPE       ATOM
+    const char * net_wm_name;   //_NET_WM_NAME              UTF8_STRING
+    const char * wm_name;       //WM_CLASS                  STRING
+} WindProperty;
+
 typedef struct {
     GLuint texture_id;
     float width, height;

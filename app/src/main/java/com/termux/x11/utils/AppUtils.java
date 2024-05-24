@@ -65,6 +65,18 @@ public class AppUtils {
         mUiThread = Thread.currentThread();
     }
 
+    public static void set(String key, String defaultValue) {
+        try {
+            final Class<?> systemProperties = Class.forName("android.os.SystemProperties");
+            final Method set = systemProperties.getMethod("set", String.class, String.class);
+            set.invoke(null, key, defaultValue);
+            Log.d(TAG,"set " + key + " " + defaultValue);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception while setting system property: ", e);
+        }
+    }
+
+
     public static Context getAppContext()
     {
         return mContext;

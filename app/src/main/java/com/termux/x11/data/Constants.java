@@ -31,6 +31,13 @@ public class Constants {
     public static final String URL_STARTAPP = "/api/v1/vnc";
     public static final String URL_STOPAPP = "/api/v1/vnc";
 
+    public static final String URL_STARTAPP_X = "/api/v1/xserver";
+
+    public static final int DISPLAY_GLOBAL =  1000;
+    public static final String DISPLAY_GLOBAL_PARAM = ":" + DISPLAY_GLOBAL;
+
+
+
     public static final String URL_KILLAPP = "/api/v1/stop_vnc";
 
     public static String app = null;
@@ -38,4 +45,6 @@ public class Constants {
     public static final String SURFFIX_SVG = ".svg";
     public static final String SURFFIX_SVGZ = ".svgz";
     public static final String SURFFIX_PNG = ".png";
+
+    public static final String APP_TITLE_PREFIX = "Fusion Linux Application";
 }

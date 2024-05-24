@@ -60,7 +60,7 @@ public class VncResult implements Serializable {
         public PortResult Data;
 
         public static class PortResult {
-            public int Port;
+            public String Port;
         }
 
     }

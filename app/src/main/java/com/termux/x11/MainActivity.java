@@ -11,8 +11,10 @@ import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.STOP_ANR_FROM_X;
 import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
+import static com.termux.x11.XWindowService.X_WINDOW_PROPERTY;
 import static com.termux.x11.Xserver.ACTION_START;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
+import static com.termux.x11.data.Constants.APP_TITLE_PREFIX;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -73,6 +75,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
+import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.termux.x11.input.InputEventSender;
 import com.termux.x11.input.InputStub;
@@ -118,6 +121,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected long WindowCode = 0;
     protected int mIndex = 0;
     protected WindowAttribute mAttribute;
+    protected Property mProperty;
     protected Rect mWindowRect = new Rect();
     ActivityManager am;
 
@@ -204,7 +208,6 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         }
-
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
@@ -212,8 +215,16 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             WindowCode = mAttribute.getXID();
             mWindowRect.set(mAttribute.getRect());
         }
-        Log.v(TAG, "create mWindowRect " +  mWindowRect  +  " mCoordinate = [" + mAttribute + "]" +
-                " , WindowCode = " + Long.toHexString(WindowCode) + ", index = " + mIndex);
+        mProperty = getIntent().getParcelableExtra(X_WINDOW_PROPERTY);
+        if(mProperty != null){
+            String wmClass = mProperty.getWm_class();
+            String netName = mProperty.getNet_name();
+            String title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
+            Log.d(TAG, "onCreate: title:" + title + "");
+            setTitle(title);
+//            ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , null, 0);
+//            this.setTaskDescription(description);
+        }
         Util.setBaseContext(this);
         CmdEntryPoint.ctx = this;
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -875,7 +886,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         }
 
 //        if (hasFocus) {
-            set("fde.click_as_touch", "false");
+        set("fde.click_as_touch", "false");
 //        }else{
 //            set("fde.click_as_touch", "true");
 //        }
@@ -896,14 +907,14 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         if (hasFocus) {
 //            if (fullscreen) {
-                window.addFlags(FLAG_FULLSCREEN);
-                decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                                | View.SYSTEM_UI_FLAG_FULLSCREEN
-                                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            window.addFlags(FLAG_FULLSCREEN);
+            decorView.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 //            } else {
 //                window.clearFlags(FLAG_FULLSCREEN);
 //                decorView.setSystemUiVisibility(0);

@@ -56,13 +56,12 @@
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
             android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
-            android:taskAffinity=".AppListActivity"
-            android:windowSoftInputMode="stateHidden">
-<!--            <intent-filter>-->
-<!--                <action android:name="android.intent.action.MAIN" />-->
-<!--                <category android:name="android.intent.category.LAUNCHER" />-->
-<!--            </intent-filter>-->
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="stateHidden|adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
             <intent-filter>
                 <category android:name="android.intent.category.SECONDARY_HOME" />
             </intent-filter>
@@ -96,10 +95,10 @@
             android:taskAffinity=".ControlActivity"
             android:windowSoftInputMode="stateHidden">
 
-             <intent-filter>
-             <action android:name="android.intent.action.MAIN" />
-             <category android:name="android.intent.category.LAUNCHER" />
-             </intent-filter>
+<!--             <intent-filter>-->
+<!--             <action android:name="android.intent.action.MAIN" />-->
+<!--             <category android:name="android.intent.category.LAUNCHER" />-->
+<!--             </intent-filter>-->
             <intent-filter>
                 <category android:name="android.intent.category.SECONDARY_HOME" />
             </intent-filter>
@@ -202,6 +201,8 @@
             android:name=".MainActivity$MainActivity11"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc11"
+            android:taskAffinity=".abc11"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -209,6 +210,8 @@
             android:name=".MainActivity$MainActivity12"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc12"
+            android:taskAffinity=".abc12"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -216,6 +219,8 @@
             android:name=".MainActivity$MainActivity13"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc13"
+            android:taskAffinity=".abc13"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -223,6 +228,8 @@
             android:name=".MainActivity$MainActivity14"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc14"
+            android:taskAffinity=".abc14"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -230,6 +237,8 @@
             android:name=".MainActivity$MainActivity15"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc15"
+            android:taskAffinity=".abc15"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -237,6 +246,8 @@
             android:name=".MainActivity$MainActivity16"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc16"
+            android:taskAffinity=".abc16"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -244,6 +255,8 @@
             android:name=".MainActivity$MainActivity17"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc17"
+            android:taskAffinity=".abc17"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -251,6 +264,8 @@
             android:name=".MainActivity$MainActivity18"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc18"
+            android:taskAffinity=".abc18"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -258,6 +273,8 @@
             android:name=".MainActivity$MainActivity19"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc19"
+            android:taskAffinity=".abc19"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>
@@ -265,6 +282,8 @@
             android:name=".MainActivity$MainActivity10"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
+            android:process=":abc10"
+            android:taskAffinity=".abc10"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden"></activity>

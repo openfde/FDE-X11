@@ -3,6 +3,8 @@ package com.termux.x11;
 import static android.system.Os.getuid;
 import static android.system.Os.getenv;
 
+import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+
 import android.annotation.SuppressLint;
 import android.app.IActivityManager;
 import android.app.PendingIntent;
@@ -22,6 +24,7 @@ import android.view.Surface;
 
 import androidx.annotation.Keep;
 
+import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
@@ -45,7 +48,7 @@ public class Xserver {
     public static final int PORT = 7892;
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
-    private static final String[] ARGS_DEFAULT = {":1", "-legacy-drawing", "-listen", "tcp"};
+    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-legacy-drawing", "-listen", "tcp"};
 
      private  static final int _NET_WM_WINDOW_TYPE = 267;
      private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -87,14 +90,14 @@ public class Xserver {
         return SingletonHolder.INSTANCE;
     }
 
-    public static void startOrUpdateActivity(int type, int x, int y, int w, int h, int index, long p, long window, long taskTo) {
-        Log.d(TAG, "startOrUpdateActivity: type:" + type + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index +
-                ", p:" + p + ", window:" + window + ", taskTo:" + taskTo + "");
+    public static void startOrUpdateActivity(long aid, long transientfor, long leader, int type, String net_name, String wm_class,
+                                             int x, int y, int w, int h, int index, long p, long window, long taskTo) {
+        Log.d(TAG, "startOrUpdateActivity: aid:" + aid + ", transientfor:" + transientfor + ", leader:" + leader + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p + ", window:" + window + ", taskTo:" + taskTo + "");
         EventMessage message = null;
         switch (type) {
             case _NET_WM_WINDOW_TYPE_NORMAL:
                 message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                        "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
+                        "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, net_name, wm_class)));
                 break;
             case _NET_WM_WINDOW_TYPE_DIALOG:
                 message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,

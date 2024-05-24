@@ -69,7 +69,7 @@ extern int ucs2keysym(long ucs);
 
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 
-void android_create_window(WindAttribute attribute, Atom type, Window main_win);
+void android_create_window(WindAttribute attribute, WindProperty  aProperty, Window main_win);
 
 void android_destroy_window(Window window);
 
@@ -155,6 +155,8 @@ bool andorid_check_bounds(WindowPtr pWindow, WindAttribute *attr);
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1);
 
+void xserver_get_window_property(WindowPtr pWindow, WindProperty *aProperty);
+
 void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther, Window *transient) {
     PropertyPtr pProper = pWin->optional->userProps;
     unsigned char *propData = NULL;
@@ -187,11 +189,7 @@ void xserver_log_window_type(WindowPtr pWin, Atom *normalOrOther, Window *transi
 
 void
 xserver_fill_window_property(WindowPtr pWin, Atom *normalOrOther, Window *transient) {
-//    if(pWin->overrideRedirect){
     CHECK_WITH_PROP
-//    } else {
-//        CHECK_CHILD
-//    }
     xserver_log_window_type(pWin, normalOrOther, transient);
 }
 
@@ -214,7 +212,7 @@ void android_update_texture(int index) {
 }
 
 void android_update_texture_1(Window window) {
-    log(ERROR, "android_update_texture_1 window:%x", window);
+//    log(ERROR, "android_update_texture_1 window:%x", window);
     if (_surface_count_window(sfWraper, window)) {
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         if(!attr){
@@ -278,6 +276,11 @@ void android_redirect_window(WindowPtr pWin) {
         redirect, win_type, transient);
     bool intransient_bounds = false;
     Window taskTo = 0;
+
+    //get real property (name leader transient)
+    WindProperty aProperty;
+    xserver_get_window_property(pWin, &aProperty);
+
     if (transient != 0) {
         WindAttribute *attr = _surface_find_window(sfWraper, transient);
         taskTo = attr->window;
@@ -286,7 +289,7 @@ void android_redirect_window(WindowPtr pWin) {
     log(DEBUG, "android_redirect_window %x redirect:%d atom:%d transient:%x, taskTo:%x inbounds:%d",
         pWin->drawable.id, redirect, win_type, transient, taskTo, intransient_bounds);
 
-    if (redirect ) {
+    if ( redirect ) {
         if(taskTo == 0){
             taskTo = focusWindow;
         }
@@ -297,7 +300,6 @@ void android_redirect_window(WindowPtr pWin) {
         return;
 //    } else if (atom == _NET_WM_WINDOW_TYPE_DIALOG || atom == _NET_WM_WINDOW_TYPE_NORMAL ){
     } else {
-        log(DEBUG, "android_redirect_window start activity");
         PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
         int x = pWin->drawable.x;
         int y = pWin->drawable.y;
@@ -315,11 +317,48 @@ void android_redirect_window(WindowPtr pWin) {
                 .widget_size = 0
 //                .child = pWin->firstChild ?  pWin->firstChild->drawable.id : 0
         };
-        log(DEBUG, "android_redirect_window start activity1");
         _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
-        log(DEBUG, "android_redirect_window start activity2");
-        android_create_window(windAttribute, win_type, intransient_bounds ? transient : 0);
+//        android_create_window(windAttribute, aProperty, intransient_bounds ? transient : 0);
+        android_create_window(windAttribute, aProperty,  0);
+
         return;
+    }
+}
+
+void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
+    CHECK_WITH_PROP;
+    PropertyPtr pProper = pWin->optional->userProps;
+    unsigned char *propData = NULL;
+    pProperty->window = pWin->drawable.id;
+    while (pProper) {
+        ATOM name = pProper->propertyName;
+        propData = pProper->data;
+        if (!strcmp(NameForAtom(name), WINDOW_TYPE)) {
+            Atom *atoms = (Atom *) propData;
+            for (int i = 0; i < pProper->size; i++) {
+                if (!strcmp(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
+                    pProperty->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+                } else if (!strcmp(NameForAtom(atoms[i]), WINDOW_TYPE_MENU) ||
+                           !strcmp(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG) ||
+                           !strcmp(NameForAtom(atoms[i]), WINDOW_TYPE_POPUP)) {
+                    pProperty->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
+                }
+                const char *atomValue = NameForAtom(atoms[i]);
+            }
+        } else if (!strcmp(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
+            pProperty->transient = ((Window *) propData)[0];
+        } else if (!strcmp(NameForAtom(name), WINDOW_CLIENT_LEADER)) {
+            pProperty->leader = ((Window *) propData)[0];
+        } else if (!strcmp(NameForAtom(name), NET_WINDOW_NAME)) {
+            const char * atom_value =  (const unsigned char *)propData;
+            pProperty->net_wm_name = atom_value;
+            log(DEBUG, "NET_WINDOW_NAME %s", atom_value);
+        } else if (!strcmp(NameForAtom(name), WINDOW_CLASS)){
+            const char * atom_value =  (const unsigned char *)propData;
+            pProperty->wm_name = atom_value;
+            log(DEBUG, "WINDOW_CLASS %s", atom_value);
+        }
+        pProper = pProper->next;
     }
 }
 
@@ -372,9 +411,16 @@ void android_redirect_widget(WindowPtr pWin, Window window) {
     }
 }
 
-void android_create_window(WindAttribute attribute, Atom type, Window taskTo) {
+void android_create_window(WindAttribute attribute, WindProperty aProperty, Window taskTo) {
+    log(DEBUG, " android_create_window window:%x wm_name:%s net_wm_name:%s ", attribute.window,aProperty.wm_name, aProperty.net_wm_name );
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
+        Window aWindow = aProperty.window;
+        Window aTransient = aProperty.transient;
+        Window aLeader = aProperty.leader;
+        int aType = aProperty.window_type;
+        jstring wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.wm_name);
+//        jstring net_wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.net_wm_name);
         int offsetX = attribute.pWin->drawable.x;
         int offsetY = attribute.pWin->drawable.y;
         int width = attribute.pWin->drawable.width;
@@ -383,10 +429,13 @@ void android_create_window(WindAttribute attribute, Atom type, Window taskTo) {
         WindowPtr windowPtr = attribute.pWin;
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "startOrUpdateActivity", "(IIIIIIJJJ)V");
+                        "startOrUpdateActivity", "(JJJILjava/lang/String;Ljava/lang/String;"
+                                  "IIIII"
+                                  "JJJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         type, offsetX, offsetY, width, height,
-                                         index, (long) windowPtr, (long) window, (long) taskTo);
+                                         aWindow, aTransient, aLeader, aType, NULL, wm_name,
+                                         offsetX, offsetY, width, height, index,
+                                         (long) windowPtr, (long) window, (long) taskTo);
     }
 }
 

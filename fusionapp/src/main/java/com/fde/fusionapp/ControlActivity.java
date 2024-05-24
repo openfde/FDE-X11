@@ -15,10 +15,6 @@ import com.fde.fusionwindowmanager.Util;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.service.WMService;
 import com.fde.fusionwindowmanager.service.WMServiceConnection;
-import com.fde.recyclerview.AdapterWrapper;
-
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 
 public class ControlActivity extends Activity implements View.OnClickListener {
 
@@ -76,7 +72,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
             startActivityForXserver(0, 0 , 1920, 989, 0 , 0);
 //            startActivityForXserver(0, 0 , 960, 720, 0 , 0);
         } else if( v == btBindWindowManager){
-            windowManager.startWindowManager();
+            windowManager.startWindowManager(":1000");
         } else if ( v == btCreateFromWM){
             connection.startActivityForXserver(0, 0 , 300, 600, 0 , 0);
         } else if ( v == btMoveNative){
