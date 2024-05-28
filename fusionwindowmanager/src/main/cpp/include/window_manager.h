@@ -6,6 +6,10 @@
 #define TERMUX_X11_WINDOW_MANAGER_H
 #include "X11/Xlib.h"
 #include "X11/X.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include "X11/Xutil.h"
 #include <memory>
 #include <mutex>
 #include <string>
@@ -13,8 +17,14 @@
 #include "util.hpp"
 #include <android/log.h>
 #include <set>
+#include <jni.h>
+#include <android/bitmap.h>
 //#include "ewmh_icccm.h"
 #include <X11/Xatom.h>
+static JavaVM *jniVM = NULL;
+static JNIEnv *GlobalEnv = NULL;
+static jobject bitmap = NULL;
+static jclass staticClass = NULL;
 
 #define DECORCATIONVIEW_HEIGHT 42
 #define BASE_EVENT_MASK \
@@ -57,7 +67,7 @@ const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
 class WindowManager  {
 public:
-    static ::WindowManager *create(const char *string);
+    static ::WindowManager *create(const char *string, JNIEnv *env, jclass cls);
     ~WindowManager();
     WindowManager(Display *display);
     void Run();
@@ -136,6 +146,8 @@ private:
     // Atom constants.
     const Atom WM_PROTOCOLS;
     const Atom WM_DELETE_WINDOW;
+
+    jobject printProperty(Display *display, Window window);
 };
 
 

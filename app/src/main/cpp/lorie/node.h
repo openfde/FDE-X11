@@ -20,7 +20,9 @@ typedef struct {
     Window leader;              //WM_CLIENT_LEADER          WINDOW
     Atom window_type;           //_NET_WM_WINDOW_TYPE       ATOM
     const char * net_wm_name;   //_NET_WM_NAME              UTF8_STRING
-    const char * wm_name;       //WM_CLASS                  STRING
+    const char * wm_name;       //WM_NAME                  STRING
+    const char * wm_class;       //WM_CLASS                  STRING
+
 } WindProperty;
 
 typedef struct {

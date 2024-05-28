@@ -256,4 +256,11 @@
         android:layout_height="1dp"
         android:background="@android:color/transparent"
         android:layout_gravity="bottom|center" />
+
+
+    <ImageView
+        android:id="@+id/bitmap_iv"
+        android:layout_width="50dp"
+        android:visibility="gone"
+        android:layout_height="50dp"/>
 </FrameLayout>

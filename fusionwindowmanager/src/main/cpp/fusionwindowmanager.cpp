@@ -6,6 +6,11 @@
 #include "include/window_manager.h"
 #define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_native", __VA_ARGS__)
 WindowManager *window_manager;
+extern JavaVM *jniVM;
+extern JNIEnv *GlobalEnv;
+extern jobject bitmap;
+extern jclass staticClass;
+
 
 JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
 {
@@ -55,8 +60,9 @@ JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
 JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display){
     jboolean isCopy = false;
     const char* export_display = env->GetStringUTFChars(display, &isCopy);
+    jclass js  = static_cast<jclass>(env->NewGlobalRef(obj));
     setenv("DISPLAY", export_display, 1);
-    window_manager = WindowManager::create(export_display);
+    window_manager = WindowManager::create(export_display, env, js);
     if(!window_manager){
         log("Failed to initialize window manager.");
         return False;
@@ -129,6 +135,7 @@ static JNINativeMethod method_table[] = {
 
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void *reserved){
+    jniVM = vm;
     JNIEnv *env = NULL;
     if (vm->AttachCurrentThread(&env,NULL) == JNI_OK){
         jclass clazz = env->FindClass("com/fde/fusionwindowmanager/WindowManager");

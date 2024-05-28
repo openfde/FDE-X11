@@ -1,6 +1,7 @@
 package com.fde.fusionwindowmanager;
 
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -19,7 +20,17 @@ public class WindowAttribute implements Parcelable {
 
     long taskTo = 0;
 
+    boolean focusable = true;
     Property property;
+
+
+    public boolean isFocusable() {
+        return focusable;
+    }
+
+    public void setFocusable(boolean focusable) {
+        this.focusable = focusable;
+    }
 
     public WindowAttribute(int index, long p, long window) {
         this.offsetX = 0;
@@ -138,6 +149,9 @@ public class WindowAttribute implements Parcelable {
         windowPtr = in.readLong();
         XID = in.readLong();
         taskTo = in.readLong();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            focusable = in.readBoolean();
+        }
     }
 
     public long getTaskTo() {
@@ -163,6 +177,9 @@ public class WindowAttribute implements Parcelable {
             dest.writeLong(windowPtr);
             dest.writeLong(XID);
             dest.writeLong(taskTo);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            dest.writeBoolean(focusable);
+        }
     }
 
     public static final Creator<WindowAttribute> CREATOR = new Creator<WindowAttribute>() {
@@ -177,6 +194,8 @@ public class WindowAttribute implements Parcelable {
         }
     };
 
+
+    @NonNull
     @Override
     public String toString() {
         return "WindowAttribute{" +
@@ -188,6 +207,8 @@ public class WindowAttribute implements Parcelable {
                 ", windowPtr=" + windowPtr +
                 ", XID=" + XID +
                 ", taskTo=" + taskTo +
+                ", focusable=" + focusable +
+                ", property=" + property +
                 '}';
     }
 

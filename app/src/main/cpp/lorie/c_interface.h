@@ -16,10 +16,12 @@
 #define NET_WINDOW_NAME                 "_NET_WM_NAME"
 #define WINDOW_CLIENT_LEADER            "WM_CLIENT_LEADER"
 #define WINDOW_CLASS                    "WM_CLASS"
+#define WINDOW_NAME                     "WM_NAME"
+#define WINDOW_ICON                     "_NET_WM_ICON"
+
 
 #define ACTION_UNMAP 1
 #define ACTION_DESTORY 2
-
 
 #define ARGE_PWRAP SurfaceManagerWrapper* wrapper
 #define GET_PWRAP  SurfaceManager* surfaceManager = wrapper->surfaceManager;

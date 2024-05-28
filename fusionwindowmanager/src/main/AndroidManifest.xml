@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.fde.fusionwindowmanager">
 
+    <uses-permission android:name="android.permission.BROADCAST_STICKY" />
     <application>
         <activity
             android:name=".fusionview.FusionActivity"

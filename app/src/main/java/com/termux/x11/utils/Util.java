@@ -4,6 +4,7 @@ import android.app.ActivityOptions;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 
 public class Util {
     private static final String TAG = "Util";
+    private static final int BITMAP_SIZE_LIMIT = 360;
     private static Context baseContext;
 
     public static void setBaseContext(Context context){
@@ -137,5 +139,12 @@ public class Util {
             e.printStackTrace();
         }
         return xwindowActivityClass;
+    }
+
+    public static Bitmap scaleBitmapIfneed(Bitmap bitmap) {
+        if(bitmap == null || bitmap.getWidth() < BITMAP_SIZE_LIMIT || bitmap.getHeight() < BITMAP_SIZE_LIMIT) {
+            return bitmap;
+        }
+        return Bitmap.createScaledBitmap(bitmap, BITMAP_SIZE_LIMIT, BITMAP_SIZE_LIMIT, true);
     }
 }

@@ -80,6 +80,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         Xau
         Xdmcp
         X11
+        jnigraphics
         Xcomposite
         android
         log)

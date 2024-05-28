@@ -8,10 +8,12 @@ import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 import android.annotation.SuppressLint;
 import android.app.IActivityManager;
 import android.app.PendingIntent;
+import android.app.Service;
 import android.content.Context;
 import android.content.IIntentReceiver;
 import android.content.IIntentSender;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -29,10 +31,14 @@ import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.termux.x11.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
 
 import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.ConnectException;
 import java.net.InetAddress;
@@ -50,22 +56,22 @@ public class Xserver {
     private static final String TAG = "Xserver";
     private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-legacy-drawing", "-listen", "tcp"};
 
-     private  static final int _NET_WM_WINDOW_TYPE = 267;
-     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
-     private  static final int _NET_WM_WINDOW_TYPE_DIALOG = 269;
-     private  static final int _NET_WM_WINDOW_TYPE_DND = 270;
-     private  static final int _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
-     private  static final int _NET_WM_WINDOW_TYPE_MENU = 272;
-     private  static final int _NET_WM_WINDOW_TYPE_NORMAL = 273;
-     private  static final int _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
-     private  static final int _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
-     private  static final int _NET_WM_WINDOW_TYPE_UTILITY = 276;
+    private  static final int _NET_WM_WINDOW_TYPE = 267;
+    private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
+    private  static final int _NET_WM_WINDOW_TYPE_DIALOG = 269;
+    private  static final int _NET_WM_WINDOW_TYPE_DND = 270;
+    private  static final int _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
+    private  static final int _NET_WM_WINDOW_TYPE_MENU = 272;
+    private  static final int _NET_WM_WINDOW_TYPE_NORMAL = 273;
+    private  static final int _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
+    private  static final int _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
+    private  static final int _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-     private static final int ACTION_UNMAP = 1;
+    private static final int ACTION_UNMAP = 1;
     private static final int ACTION_DESTORY = 2;
 
 
-    private WeakReference<XWindowService> contextRef;
+    private static WeakReference<Service> contextRef;
 
     public void startXserver() {
         if (!start(ARGS_DEFAULT)) {
@@ -75,8 +81,8 @@ public class Xserver {
         sendBroadcastDelayed();
     }
 
-    public void registerContext(WeakReference<XWindowService> contextRef) {
-        this.contextRef = contextRef;
+    public void registerContext(WeakReference<Service> context) {
+        contextRef = context;
     }
 
     public native void tellFocusWindow(long window);
@@ -101,7 +107,7 @@ public class Xserver {
                 break;
             case _NET_WM_WINDOW_TYPE_DIALOG:
                 message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
-                        "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, window, taskTo));
+                        "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, net_name, wm_class)));
                 break;
             default:
                 break;
@@ -127,10 +133,25 @@ public class Xserver {
         }
     }
 
+    public static void  getWindowIconFromManager(Bitmap bitmap, long window){
+        Log.d(TAG, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
+        Context context = contextRef.get();
+        if(context == null){
+            Log.d(TAG, "context  == null ");
+            return;
+        }
+        Log.d(TAG, "post getWindowIconFromManager: bitmap:" + bitmap.getWidth() + "x" + bitmap.getHeight() + ", window:" + window + "");
+        Bitmap newBitmap = Util.scaleBitmapIfneed(bitmap);
+        String targetPackage = "com.termux.x11";
+        Intent intent = new Intent("UPDATE_ICON");
+        intent.setPackage(targetPackage);
+        intent.putExtra("window_id", window);
+        intent.putExtra("window_icon", newBitmap);
+        context.sendStickyBroadcast(intent);
+    }
+
     private void sendBroadcastDelayed() {
-//        if (!connected()){
-            sendBroadcast();
-//        }
+        sendBroadcast();
         handler.postDelayed(this::sendBroadcastDelayed, 1000);
     }
 
@@ -163,7 +184,6 @@ public class Xserver {
     private void sendBroadcast() {
         String   targetPackage = "com.termux.x11";
         Bundle bundle = new Bundle();
-//        bundle.putBinder("", this);
         Intent intent = new Intent(ACTION_START);
         intent.putExtra("", bundle);
         intent.setPackage(targetPackage);

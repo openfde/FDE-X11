@@ -8,8 +8,10 @@ import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
 import static com.termux.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.STOP_ANR_FROM_X;
+import static com.termux.x11.XWindowService.UNMODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.XWindowService.X_WINDOW_PROPERTY;
 import static com.termux.x11.Xserver.ACTION_START;
@@ -35,6 +37,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Rect;
@@ -66,6 +69,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
@@ -124,6 +128,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     protected Property mProperty;
     protected Rect mWindowRect = new Rect();
     ActivityManager am;
+    private String title;
 
 
     protected long getWindowId() {
@@ -181,6 +186,28 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     Log.d(TAG, "onReceive: " + STOP_ANR_FROM_X + ", attr:" + attr + "");
                     finish();
                 }
+            } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(attr != null ){
+                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
+                            FLAG_NOT_TOUCHABLE);
+                }
+            } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(attr != null ){
+                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
+                            FLAG_NOT_TOUCHABLE);
+                }
+            } else if("UPDATE_ICON".equals(intent.getAction())){
+                long windowId = intent.getLongExtra("window_id", 0);
+                if(mAttribute !=  null && windowId == mAttribute.getXID()){
+                    Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " mAttribute:" + mAttribute) ;
+                    Bitmap windowIcon = (Bitmap) intent.getParcelableExtra("window_icon");
+                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
+                    MainActivity.this.setTaskDescription(description);
+                }
             }
         }
     };
@@ -219,11 +246,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         if(mProperty != null){
             String wmClass = mProperty.getWm_class();
             String netName = mProperty.getNet_name();
-            String title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
+             this.title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
             Log.d(TAG, "onCreate: title:" + title + "");
             setTitle(title);
-//            ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , null, 0);
-//            this.setTaskDescription(description);
         }
         Util.setBaseContext(this);
         CmdEntryPoint.ctx = this;
@@ -327,6 +352,9 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             addAction(DESTROY_ACTIVITY_FROM_X);
             addAction(START_ACTIVITY_FROM_X);
             addAction(STOP_ANR_FROM_X);
+            addAction(MODALED_ACTION_ACTIVITY_FROM_X);
+            addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
+            addAction("UPDATE_ICON");
         }},  0);
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);

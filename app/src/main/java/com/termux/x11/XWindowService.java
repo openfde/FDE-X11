@@ -14,6 +14,7 @@ import android.os.RemoteException;
 import android.util.Log;
 import android.view.Surface;
 
+import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
@@ -24,6 +25,7 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 
 public class XWindowService extends Service {
@@ -31,11 +33,15 @@ public class XWindowService extends Service {
     private static final String TAG = "XWindowService";
 
     public static final String ACTION_X_WINDOW_ATTRIBUTE = "action_x_window_attribute";
+    public static final String ACTION_X_WINDOW_PROPERTY = "action_x_window_property";
 
     public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
     public static final String STOP_ANR_FROM_X = "com.termux.x11.Xserver.ACTION_STOP";
 
     public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_start";
+
+    public static final String MODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_modaled";
+    public static final String UNMODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_unmodaled";
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
@@ -146,6 +152,7 @@ public class XWindowService extends Service {
                 } else if (message.getWindowAttribute().getIndex() == 10){
                     startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity0.class, 42f);
                 }
+                sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_START_ACTIVITY_WINDOW:
                 if(message.getWindowAttribute().getIndex() == 11){
@@ -169,19 +176,55 @@ public class XWindowService extends Service {
                 }  else if (message.getWindowAttribute().getIndex() == 20){
                     startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity10.class);
                 }
+                sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_DESTROY_ACTIVITY:
                 Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
                 pendingDiscardWindow.add(message.getWindowAttribute().getXID());
                 destroyActivitySafety(5, message.getWindowAttribute());
+                sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
             case X_UNMAP_WINDOW:
                 Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
                 pendingDiscardWindow.add(message.getWindowAttribute().getXID());
                 stopActivity(message.getWindowAttribute());
+                sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
             default:
                 break;
+        }
+    }
+
+    private HashMap<Long, Property> propertyHashMap = new HashMap<>();
+
+
+    private void sendBroadcastFocusableIfNeed(WindowAttribute attr, boolean isFocusable) {
+        if(!isFocusable){
+            Property property = attr.getProperty();
+            if(property == null || property.getTransientfor() == 0 ){
+                return;
+            }
+            attr.setFocusable(isFocusable);
+            String targetPackage = "com.termux.x11";
+            Intent intent = new Intent( MODALED_ACTION_ACTIVITY_FROM_X);
+            intent.setPackage(targetPackage);
+            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+            intent.putExtra(ACTION_X_WINDOW_PROPERTY, attr.getProperty());
+            propertyHashMap.put(attr.getXID(), attr.getProperty());
+            sendBroadcast(intent);
+        } else {
+            Property property = propertyHashMap.get(attr.getXID());
+            if(property == null || property.getTransientfor() == 0 ){
+                return;
+            }
+            attr.setFocusable(isFocusable);
+            String targetPackage = "com.termux.x11";
+            Intent intent = new Intent( UNMODALED_ACTION_ACTIVITY_FROM_X);
+            intent.setPackage(targetPackage);
+            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+            intent.putExtra(ACTION_X_WINDOW_PROPERTY, attr.getProperty());
+            propertyHashMap.remove(attr.getXID(), attr.getProperty());
+            sendBroadcast(intent);
         }
     }
 

@@ -18,7 +18,10 @@ mutex WindowManager::wm_detected_mutex_;
 Window frame_window;
 Window top_level_debug;
 
-::WindowManager *WindowManager::create(const char *export_display) {
+
+::WindowManager *WindowManager::create(const char *export_display, JNIEnv * env, jclass cls) {
+    staticClass = cls;
+    GlobalEnv = env;
     Display* display = XOpenDisplay(export_display);
     if (display == nullptr) {
         log("Failed to open X display");
@@ -195,6 +198,7 @@ bool WindowManager::isNormalWindow(long window) {
             }
         }
     }
+//    printProperty(display_, window);
     XFree(propData);
     return True;
 }
@@ -225,6 +229,77 @@ void WindowManager::OnMapNotify(const XMapEvent &e) {
         named_windows.insert(e.window);
         XSync(display_, False);
     }
+}
+
+jobject WindowManager::printProperty(Display *display, Window window) {
+    Atom prop = XInternAtom(display, "_NET_WM_ICON", False);
+    Atom actualType;
+    int actualFormat;
+    unsigned long nItems, bytesAfter;
+    unsigned char *propData = NULL;
+    if (XGetWindowProperty(display, window, prop, 0, (~0L), False, AnyPropertyType,
+                           &actualType, &actualFormat, &nItems, &bytesAfter, &propData) == Success) {
+        if (actualType == XA_CARDINAL && actualFormat == 32) {
+//            unsigned long *icon_data = (unsigned long *)propData;
+            unsigned long length = nItems;
+            if (length >= 2) {
+                int *icon_data = (int *)propData;
+                int width = *icon_data;
+                int height = *(icon_data+1);
+                int * imageData = ( int*) (icon_data + 2);
+                log("printicon window:%x nItems:%ld  width:%ld  height:%ld", window, nItems,  width, height);
+                log("sizeof int:%d char:%d long:%d unsignedlong:%d", sizeof(int), sizeof(char), sizeof(long), sizeof(unsigned long));
+                for(int i = 0 ; i  < 10; i ++ ){
+                    log( "get icon  value:%ld i:%d", *(icon_data + i), i);
+                }
+                for(int i = 255 ; i  < 275; i ++ ){
+                    log( "get icon  value:%ld i:%d", *(icon_data + i), i);
+                }
+                for(int i = 1280 ; i  < 1290; i ++ ){
+                    log( "get icon  value:%ld i:%d", *(icon_data + i), i);
+                }
+//                unsigned char* imageData = (unsigned char*) (icon_data + 2);
+                jclass bitmapClass = GlobalEnv->FindClass("android/graphics/Bitmap");
+                jmethodID createBitmapMethod = GlobalEnv->GetStaticMethodID(bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+                jstring configName = GlobalEnv->NewStringUTF("RGBA_8888");
+                jclass bitmapConfigClass = GlobalEnv->FindClass("android/graphics/Bitmap$Config");
+                jmethodID valueOfMethod = GlobalEnv->GetStaticMethodID(bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
+                jobject bitmapConfig = GlobalEnv->CallStaticObjectMethod(bitmapConfigClass, valueOfMethod, configName);
+                jobject bitmap = GlobalEnv->CallStaticObjectMethod(bitmapClass, createBitmapMethod, (int)width, (int)height, bitmapConfig);
+                void* bitmapPixels;
+                if (AndroidBitmap_lockPixels(GlobalEnv, bitmap, &bitmapPixels) < 0) {
+                    log("Failed to lock bitmap pixels\n");
+                    XFree(propData);
+                    return NULL;
+                }
+                uint32_t* src = (uint32_t*)imageData;
+                uint32_t* dst = (uint32_t*)bitmapPixels;
+                for (unsigned long y = 0; y < height; ++y) {
+                    for (unsigned long x = 0; x < width; ++x) {
+                        dst[y * width + x] = src[y * width + x];
+                    }
+                }
+                AndroidBitmap_unlockPixels(GlobalEnv, bitmap);
+                GlobalEnv->DeleteLocalRef(configName);
+                GlobalEnv->DeleteLocalRef(bitmapConfigClass);
+                XFree(propData);
+
+                jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                "getWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
+                GlobalEnv->CallStaticVoidMethod(staticClass, method, bitmap, window);
+                return bitmap;
+            } else {
+                log("Property data too short, length: %lu\n", length);
+            }
+        } else {
+            log("Property format/type mismatch: type %lu, format %d\n", actualType, actualFormat);
+        }
+        XFree(propData);
+    } else {
+        log("Failed to get property value\n");
+    }
+
+    return NULL;
 }
 
 void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
@@ -298,6 +373,7 @@ void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
 //    Frame(e.window, false);
     // 2. Actually map window.
     XMapWindow(display_, e.window);
+
 }
 
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
