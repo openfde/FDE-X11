@@ -4,6 +4,8 @@
 
 package com.termux.x11.input;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.PointF;
@@ -30,6 +32,10 @@ public class TouchInputHandler {
     private static final float EPSILON = 0.001f;
 
     public static int STYLUS_INPUT_HELPER_MODE = 1; //1 = Left Click, 2 Middle Click, 3 Right Click
+
+    public void sendKeyEvent(CharSequence sequence) {
+        mInjector.mInjector.sendTextEvent(String.valueOf(sequence).getBytes(UTF_8));
+    }
 
     /** Used to set/store the selected input mode. */
     @SuppressWarnings("unused")
@@ -148,8 +154,10 @@ public class TouchInputHandler {
             event.offsetLocation(-offsetX, -offsetY);
         }
 
-        if (!view.isFocused() && event.getAction() == MotionEvent.ACTION_DOWN)
-            view.requestFocus();
+        if (!view.isFocused() && event.getAction() == MotionEvent.ACTION_DOWN){
+//            view.requestFocus();
+        }
+
 
         if (mInjector.pointerCapture && !view.hasPointerCapture() && event.getAction() == MotionEvent.ACTION_UP)
             view.requestPointerCapture();

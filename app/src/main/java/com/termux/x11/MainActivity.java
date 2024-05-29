@@ -16,6 +16,7 @@ import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.XWindowService.X_WINDOW_PROPERTY;
 import static com.termux.x11.Xserver.ACTION_START;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
+import static com.termux.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.termux.x11.data.Constants.APP_TITLE_PREFIX;
 
 import android.annotation.SuppressLint;
@@ -81,6 +82,7 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
+import com.termux.x11.input.DetectEventEditText;
 import com.termux.x11.input.InputEventSender;
 import com.termux.x11.input.InputStub;
 import com.termux.x11.input.TouchInputHandler.RenderStub;
@@ -108,6 +110,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
     public static Handler handler = new Handler();
     FrameLayout frm;
+
+    public DetectEventEditText detectEventEditText;
     private TouchInputHandler mInputHandler;
     public ICmdEntryInterface service;
 
@@ -200,7 +204,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                             FLAG_NOT_TOUCHABLE);
                 }
-            } else if("UPDATE_ICON".equals(intent.getAction())){
+            } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
                 if(mAttribute !=  null && windowId == mAttribute.getXID()){
                     Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " mAttribute:" + mAttribute) ;
@@ -246,7 +250,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         if(mProperty != null){
             String wmClass = mProperty.getWm_class();
             String netName = mProperty.getNet_name();
-             this.title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
+            this.title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
             Log.d(TAG, "onCreate: title:" + title + "");
             setTitle(title);
         }
@@ -263,6 +267,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 //        getWindow().setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(getLayoutID());
+        detectEventEditText = findViewById(R.id.inputlayout);
         frm = findViewById(R.id.frame);
         findViewById(R.id.preferences_button).setOnClickListener((l) -> startActivity(new Intent(this, LoriePreferences.class) {{ setAction(Intent.ACTION_MAIN); }}));
         findViewById(R.id.help_button).setOnClickListener((l) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/termux/termux-x11/blob/master/README.md#running-graphical-applications"))));
@@ -354,10 +359,12 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             addAction(STOP_ANR_FROM_X);
             addAction(MODALED_ACTION_ACTIVITY_FROM_X);
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
-            addAction("UPDATE_ICON");
+            addAction(ACTION_UPDATE_ICON);
         }},  0);
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);
+        detectEventEditText.setOnKeyListener(mLorieKeyListener);
+        detectEventEditText.setInputHandler(mInputHandler);
         CmdEntryPoint.requestConnection();
         onPreferencesChanged("");
 
@@ -735,11 +742,21 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     @Override
     public void onResume() {
         super.onResume();
-//        mNotificationManager.notify(mNotificationId, mNotification);
         setTerminalToolbarView();
-        getLorieView().requestFocus();
+//        getLorieView().requestFocus();
         String hexString = Long.toHexString(getWindowId());
         Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
+        detectEventEditText.setFocusable(true);
+        detectEventEditText.setFocusableInTouchMode(true);
+        detectEventEditText.requestFocus();
+    }
+
+    public void onTextViewClicked(View view) {
+        detectEventEditText.requestFocus();
+        detectEventEditText.setFocusableInTouchMode(true);
+//        InputMethodManager inputMgr = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+//        inputMgr.showSoftInput(inputlayout,
+//                InputMethodManager.SHOW_FORCED);
     }
 
     @Override
@@ -774,7 +791,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         boolean showNow = enabled && preferences.getBoolean("additionalKbdVisible", true);
 
         terminalToolbarViewPager.setVisibility(showNow ? View.VISIBLE : View.GONE);
-        findViewById(R.id.terminal_toolbar_view_pager).requestFocus();
+//        findViewById(R.id.terminal_toolbar_view_pager).requestFocus();
 
         handler.postDelayed(() -> {
             if (mExtraKeys != null) {
@@ -810,14 +827,14 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
             pager.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
 
-            getLorieView().requestFocus();
+//            getLorieView().requestFocus();
         });
     }
 
     public void toggleExtraKeys() {
         int visibility = getTerminalToolbarViewPager().getVisibility();
         toggleExtraKeys(visibility != View.VISIBLE, true);
-        getLorieView().requestFocus();
+//        getLorieView().requestFocus();
     }
 
     public boolean handleKey(KeyEvent e) {
@@ -873,15 +890,15 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
 
-        if (newConfig.orientation != orientation) {
-            InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
-            View view = getCurrentFocus();
-            if (view == null) {
-                view = getLorieView();
-                view.requestFocus();
-            }
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
+//        if (newConfig.orientation != orientation) {
+//            InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
+//            View view = getCurrentFocus();
+//            if (view == null) {
+//                view = getLorieView();
+//                view.requestFocus();
+//            }
+//            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+//        }
 
         orientation = newConfig.orientation;
         setTerminalToolbarView();
@@ -912,13 +929,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         if (getRequestedOrientation() != requestedOrientation){
             setRequestedOrientation(requestedOrientation);
         }
-
-//        if (hasFocus) {
-        set("fde.click_as_touch", "false");
-//        }else{
-//            set("fde.click_as_touch", "true");
-//        }
-
+        Util.set("fde.click_as_touch", "false");
         if (hasFocus) {
             if (SDK_INT >= VERSION_CODES.P) {
                 if (p.getBoolean("hideCutout", false))
@@ -959,7 +970,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             getLorieView().regenerate();
             execInWindowManager();
         }
-        getLorieView().requestFocus();
+//        getLorieView().requestFocus();
     }
 
     protected void execInWindowManager()  {
@@ -1052,6 +1063,11 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        Log.d(TAG, "dispatchKeyEvent: event:" + event + "");
+        return super.dispatchKeyEvent(event);
     }
 
 
@@ -1345,17 +1361,6 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
             return true;
-        }
-    }
-
-    public static void set(String key, String defaultValue) {
-        try {
-            final Class<?> systemProperties = Class.forName("android.os.SystemProperties");
-            final Method set = systemProperties.getMethod("set", String.class, String.class);
-            set.invoke(null, key, defaultValue);
-            Log.d(TAG,"set " + key + " " + defaultValue);
-        } catch (Exception e) {
-            Log.e(TAG, "Exception while setting system property: ", e);
         }
     }
 

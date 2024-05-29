@@ -96,7 +96,7 @@ bool IfRealizedWindow(WindowPtr widget);
 #define CHECK_CHILD     pWin = pWin->firstChild; \
                         CHECK_WITH_PROP
 
-#define STRCPY             char * atom_value = (char *)malloc(pProper->size + 1);\
+#define STRCPY             char * atom_value = (char *)calloc(pProper->size + 1, sizeof(char));\
                             if(atom_value == NULL){\
                                  log(DEBUG, "malloc faile");\
                                 exit(EXIT_FAILURE);\

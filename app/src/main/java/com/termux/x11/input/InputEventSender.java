@@ -34,7 +34,7 @@ public final class InputEventSender {
     private static final int XI_TouchUpdate = 19;
     private static final int XI_TouchEnd = 20;
 
-    private final InputStub mInjector;
+    public final InputStub mInjector;
 
     public boolean tapToMove = false;
     public boolean preferScancodes = false;

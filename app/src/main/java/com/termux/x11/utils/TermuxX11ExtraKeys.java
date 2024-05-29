@@ -167,7 +167,7 @@ public class TermuxX11ExtraKeys implements ExtraKeysView.IExtraKeysView {
     public void onLorieExtraKeyButtonClick(View view, String key, boolean ctrlDown, boolean altDown, boolean shiftDown, boolean metaDown, boolean fnDown) {
         if ("KEYBOARD".equals(key)) {
             if (getToolbarViewPager()!=null) {
-                getToolbarViewPager().requestFocus();
+//                getToolbarViewPager().requestFocus();
                 toggleKeyboardVisibility(mActivity);
             }
         } else if ("DRAWER".equals(key)) {

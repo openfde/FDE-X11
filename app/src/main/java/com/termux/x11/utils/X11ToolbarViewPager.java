@@ -128,7 +128,7 @@ public class X11ToolbarViewPager {
         @Override
         public void onPageSelected(int position) {
             if (position == 0) {
-                act.getLorieView().requestFocus();
+//                act.getLorieView().requestFocus();
             } else {
                 final EditText editText = mTerminalToolbarViewPager.findViewById(R.id.terminal_toolbar_text_input);
                 if (editText != null) editText.requestFocus();

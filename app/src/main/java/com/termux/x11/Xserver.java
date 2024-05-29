@@ -54,7 +54,8 @@ public class Xserver {
     public static final int PORT = 7892;
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
-    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-legacy-drawing", "-listen", "tcp"};
+    public static final String ACTION_UPDATE_ICON = "UPDATE_ICON";
+    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp"};
 
     private  static final int _NET_WM_WINDOW_TYPE = 267;
     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -143,7 +144,7 @@ public class Xserver {
         Log.d(TAG, "post getWindowIconFromManager: bitmap:" + bitmap.getWidth() + "x" + bitmap.getHeight() + ", window:" + window + "");
         Bitmap newBitmap = Util.scaleBitmapIfneed(bitmap);
         String targetPackage = "com.termux.x11";
-        Intent intent = new Intent("UPDATE_ICON");
+        Intent intent = new Intent(ACTION_UPDATE_ICON);
         intent.setPackage(targetPackage);
         intent.putExtra("window_id", window);
         intent.putExtra("window_icon", newBitmap);

@@ -106,9 +106,9 @@ public class LorieView extends SurfaceView implements InputStub {
     }
 
     public void triggerCallback() {
-        setFocusable(true);
-        setFocusableInTouchMode(true);
-        requestFocus();
+//        setFocusable(true);
+//        setFocusableInTouchMode(true);
+//        requestFocus();
 
         setBackground(new ColorDrawable(Color.TRANSPARENT) {
             public boolean isStateful() {

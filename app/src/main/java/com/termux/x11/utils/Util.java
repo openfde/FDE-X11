@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 
 public class Util {
@@ -128,6 +129,17 @@ public class Util {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static void set(String key, String defaultValue) {
+        try {
+            final Class<?> systemProperties = Class.forName("android.os.SystemProperties");
+            final Method set = systemProperties.getMethod("set", String.class, String.class);
+            set.invoke(null, key, defaultValue);
+            Log.d(TAG,"set " + key + " " + defaultValue);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception while setting system property: ", e);
         }
     }
 
