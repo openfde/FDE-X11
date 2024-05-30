@@ -136,8 +136,6 @@ void android_update_texture_1(Window window) {
         if(!attr){
             return;
         }
-        Atom atom = _NET_WM_WINDOW_TYPE_NORMAL;
-        Window transient;
 //        xserver_fill_window_property(attr->pWin, &atom, &transient);
 //        log(ERROR, "android_update_texture_1 window:%x", attr->pWin->drawable.id);
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);

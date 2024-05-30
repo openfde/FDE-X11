@@ -798,10 +798,10 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         attr->pWin = (WindowPtr) res->pWin;
         attr->index = res->id;
         attr->window = res->window;
-        log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
+//        log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
         if (!res->surface && res->id != 0) {
             _surface_delete_window(sfWraper, res->window);
-            log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
+//            log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
             return;
         }
     } else {
@@ -820,8 +820,8 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     EGLNativeWindowType window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
-    log("renderer_set_window_each window:%p width:%d heigght:%d index:%d %x %x new_buffer:%p",
-        window, width, height, res->id, res->window, res->pWin, new_buffer);
+//    log("renderer_set_window_each window:%p width:%d heigght:%d index:%d %x %x new_buffer:%p",
+//        window, width, height, res->id, res->window, res->pWin, new_buffer);
     WindAttribute *attr = _surface_find_window(sfWraper, res->window);
     EGLSurface sfc = attr->sfc;
     if (sfc != EGL_NO_SURFACE) {

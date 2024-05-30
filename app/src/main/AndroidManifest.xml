@@ -20,7 +20,6 @@
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
@@ -38,6 +37,9 @@
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc"
             android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
 
             <!-- <intent-filter> -->
             <!-- <action android:name="android.intent.action.MAIN" /> -->
@@ -115,7 +117,12 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc1"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity2"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -124,7 +131,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc2"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity3"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -133,7 +144,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc3"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity4"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -142,7 +157,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc4"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity5"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -151,7 +170,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc5"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity6"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -160,7 +183,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc6"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity7"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -169,7 +196,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc7"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity8"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -178,7 +209,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc8"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity9"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -187,7 +222,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc9"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity0"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -196,7 +235,11 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:taskAffinity=".abc0"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainActivityMinHeight}"
+                android:minWidth="${MainActivityMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity11"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -205,7 +248,11 @@
             android:taskAffinity=".abc11"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity12"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -214,7 +261,11 @@
             android:taskAffinity=".abc12"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity13"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -223,7 +274,11 @@
             android:taskAffinity=".abc13"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity14"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -232,7 +287,11 @@
             android:taskAffinity=".abc14"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity15"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -241,7 +300,11 @@
             android:taskAffinity=".abc15"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity16"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -250,7 +313,11 @@
             android:taskAffinity=".abc16"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity17"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -259,7 +326,11 @@
             android:taskAffinity=".abc17"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity18"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -268,7 +339,11 @@
             android:taskAffinity=".abc18"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity19"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -277,7 +352,11 @@
             android:taskAffinity=".abc19"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".MainActivity$MainActivity10"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
@@ -286,7 +365,11 @@
             android:taskAffinity=".abc10"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:windowSoftInputMode="stateHidden"></activity>
+            android:windowSoftInputMode="stateHidden">
+            <layout
+                android:minHeight="${MainDialogMinHeight}"
+                android:minWidth="${MainDialogMinWidth}" />
+        </activity>
         <activity
             android:name=".LoriePreferences"
             android:excludeFromRecents="true"

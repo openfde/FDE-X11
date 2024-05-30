@@ -76,7 +76,7 @@ public class Xserver {
 
     public void startXserver() {
         if (!start(ARGS_DEFAULT)) {
-            Log.e(TAG, "startXserver: failed");
+//            Log.e(TAG, "startXserver: failed");
         }
         spawnListeningThread();
         sendBroadcastDelayed();
@@ -93,13 +93,13 @@ public class Xserver {
     }
 
     public static Xserver getInstance() {
-        Log.d(TAG, "getInstance: " + SingletonHolder.INSTANCE);
+//        Log.d(TAG, "getInstance: " + SingletonHolder.INSTANCE);
         return SingletonHolder.INSTANCE;
     }
 
     public static void startOrUpdateActivity(long aid, long transientfor, long leader, int type, String net_name, String wm_class,
                                              int x, int y, int w, int h, int index, long p, long window, long taskTo) {
-        Log.d(TAG, "startOrUpdateActivity: aid:" + aid + ", transientfor:" + transientfor + ", leader:" + leader + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p + ", window:" + window + ", taskTo:" + taskTo + "");
+//        Log.d(TAG, "startOrUpdateActivity: aid:" + aid + ", transientfor:" + transientfor + ", leader:" + leader + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p + ", window:" + window + ", taskTo:" + taskTo + "");
         EventMessage message = null;
         switch (type) {
             case _NET_WM_WINDOW_TYPE_NORMAL:
@@ -119,7 +119,7 @@ public class Xserver {
     }
 
     public static void closeOrDestroyActivity(int index, long pWin, long window, int action) {
-        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
+//        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
         switch (action){
             case ACTION_DESTORY:
                 EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
@@ -135,13 +135,13 @@ public class Xserver {
     }
 
     public static void  getWindowIconFromManager(Bitmap bitmap, long window){
-        Log.d(TAG, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
+//        Log.d(TAG, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
         Context context = contextRef.get();
         if(context == null){
             Log.d(TAG, "context  == null ");
             return;
         }
-        Log.d(TAG, "post getWindowIconFromManager: bitmap:" + bitmap.getWidth() + "x" + bitmap.getHeight() + ", window:" + window + "");
+//        Log.d(TAG, "post getWindowIconFromManager: bitmap:" + bitmap.getWidth() + "x" + bitmap.getHeight() + ", window:" + window + "");
         Bitmap newBitmap = Util.scaleBitmapIfneed(bitmap);
         String targetPackage = "com.termux.x11";
         Intent intent = new Intent(ACTION_UPDATE_ICON);
@@ -158,7 +158,7 @@ public class Xserver {
 
     void spawnListeningThread() {
         new Thread(() -> {
-            Log.e("Xserver", "Listening port " + PORT);
+//            Log.e("Xserver", "Listening port " + PORT);
             try (ServerSocket listeningSocket =
                          new ServerSocket(PORT, 0, InetAddress.getByName("127.0.0.1"))) {
                 listeningSocket.setReuseAddress(true);

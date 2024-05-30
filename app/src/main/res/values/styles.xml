@@ -4,6 +4,16 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowTranslucentNavigation">true</item>
+
+    </style>
+
+    <style name="CustomTheme" >
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowTranslucentNavigation">true</item>
+        <item name="minWidth">500dp</item>
+        <item name="minHeight">500dp</item>
     </style>
 
     <style name="divider">

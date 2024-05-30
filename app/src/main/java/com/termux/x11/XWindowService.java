@@ -53,16 +53,16 @@ public class XWindowService extends Service {
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
         public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long window, long id) throws RemoteException {
-            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", window:" + window + ", id:" + id + "");
+//            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", window:" + window + ", id:" + id + "");
             if(!pendingDiscardWindow.contains(id)){
-                Log.d(TAG, "windowChanged: pendingDiscardWindow" + id);
+//                Log.d(TAG, "windowChanged: pendingDiscardWindow" + id);
                 Xserver.getInstance().windowChanged(surface, x, y, w, h, index, window, id);
             }
         }
 
         @Override
         public ParcelFileDescriptor getXConnection() throws RemoteException {
-            Log.d(TAG, "getXConnection: ");
+//            Log.d(TAG, "getXConnection: ");
             return Xserver.getInstance().getXConnection();
         }
 
@@ -79,7 +79,7 @@ public class XWindowService extends Service {
         @Override
         public void closeWindow(int index, long winPtr, long window) throws RemoteException {
             if(wm != null && wm.closeWindow(window) > 0){
-                Log.d(TAG, "closeWindow: index:" + index + ", p:" + winPtr + ", window:" + window + "");
+//                Log.d(TAG, "closeWindow: index:" + index + ", p:" + winPtr + ", window:" + window + "");
             }
             pendingDiscardWindow.remove(window);
             wm.WINDOW_XIDS.remove(window);
@@ -88,28 +88,28 @@ public class XWindowService extends Service {
         @Override
         public void configureWindow(long winPtr, long window, int x, int y, int w, int h) throws RemoteException {
             if(wm != null && wm.configureWindow(window, x, y, w, h) > 0){
-                Log.d(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
+//                Log.d(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
             }
         }
 
         @Override
         public void moveWindow(long winPtr, long window, int x, int y) throws RemoteException {
             if(wm != null && wm.moveWindow(window, x, y) > 0){
-                Log.d(TAG, "moveWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + "");
+//                Log.d(TAG, "moveWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + "");
             }
         }
 
         @Override
         public void resizeWindow(long window, int w, int h) throws RemoteException {
             if(wm != null && wm.resizeWindow(window, w, h) > 0){
-                Log.d(TAG, "resizeWindow: window:" + window + ", w:" + w + ", h:" + h + "");
+//                Log.d(TAG, "resizeWindow: window:" + window + ", w:" + w + ", h:" + h + "");
             }
         }
 
         @Override
         public void raiseWindow(long window) throws RemoteException {
             if(wm != null && wm.raiseWindow(window) > 0){
-                Log.d(TAG, "raiseWindow: window:" + window + "");
+//                Log.d(TAG, "raiseWindow: window:" + window + "");
                 Xserver.getInstance().tellFocusWindow(window);
             }
         }
@@ -179,13 +179,13 @@ public class XWindowService extends Service {
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_DESTROY_ACTIVITY:
-                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
+//                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
                 pendingDiscardWindow.add(message.getWindowAttribute().getXID());
                 destroyActivitySafety(5, message.getWindowAttribute());
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
             case X_UNMAP_WINDOW:
-                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
+//                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
                 pendingDiscardWindow.add(message.getWindowAttribute().getXID());
                 stopActivity(message.getWindowAttribute());
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
@@ -233,8 +233,8 @@ public class XWindowService extends Service {
         Intent intent = new Intent(STOP_ANR_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
-        sendBroadcast(intent);
-        Log.d(TAG, "stopActivity: attr:" + attr + "");
+        sendStickyBroadcast(intent);
+//        Log.d(TAG, "stopActivity: attr:" + attr + "");
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
@@ -289,13 +289,13 @@ public class XWindowService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(TAG, "onStartCommand: ");
+//        Log.d(TAG, "onStartCommand: ");
         return Service.START_STICKY;
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-        Log.d(TAG, "onBind: ");
+//        Log.d(TAG, "onBind: ");
         return service;
     }
 }

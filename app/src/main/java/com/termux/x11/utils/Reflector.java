@@ -44,6 +44,7 @@ public class Reflector {
             try {
                 return method.invoke(target, params);
             } catch (Exception e) {
+                e.printStackTrace();
             }
         }
         return null;

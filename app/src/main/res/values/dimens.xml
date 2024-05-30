@@ -23,4 +23,9 @@
     <dimen name="item_padding_right">12dp</dimen>
     <dimen name="item_padding_bottom">10dp</dimen>
 
+    <dimen name="MainActivityMinHeight">250dp</dimen>
+    <dimen name="MainActivityMinWidth">350dp</dimen>
+    <dimen name="MainDialogMinHeight">150dp</dimen>
+    <dimen name="MainDialogMinWidth">200dp</dimen>
+
 </resources>

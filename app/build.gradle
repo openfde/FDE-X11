@@ -10,6 +10,10 @@ android {
         versionCode 1
         versionName "1.0.1"
         buildConfigField "String", "COMMIT", "\"" + ("git rev-parse HEAD\n".execute().getText().trim() ?: (System.getenv('CURRENT_COMMIT') ?: "NO_COMMIT")) + "\""
+        manifestPlaceholders = [MainActivityMinHeight: "350dp",
+                                MainActivityMinWidth: "350dp",
+                                MainDialogMinHeight: "150dp",
+                                MainDialogMinWidth: "180dp"]
     }
 
 //    signingConfigs.debug {
@@ -18,7 +22,6 @@ android {
 //        storePassword 'xrj45yWGLbsO7W0v'
 //        keyPassword 'xrj45yWGLbsO7W0v'
 //    }
-
 
     splits.abi {
         enable true
@@ -62,24 +65,6 @@ android {
                 outputFileName = "FDE_X11.apk"
             }
         }
-//        def buildType = variant.buildType.name
-//        if (buildType == "debug") {
-//            variant.outputs.all { output ->
-//                output.processManifest.doLast {
-//                    // Stores the path to the maifest.
-//                    String manifestPath = variant.outputs[0].getProcessResourcesProvider().get().manifestFile
-//                    def appLabel = android.defaultConfig.buildConfigFields.app_label
-//                    // Stores the contents of the manifest.
-//                    def manifestContent = file(manifestPath).getText()
-//                    println(appLabel)
-//                    // Changes the version code in the stored text.
-//                    manifestContent = manifestContent.replace('android:label="@string/app_name"',
-//                            'android:label="DEBUG FDE:X11"')
-//                    // Overwrites the manifest with the new text.
-//                    file(manifestPath).write(manifestContent)
-//                }
-//            }
-//        }
     }
 
     compileOptions {
@@ -104,7 +89,6 @@ dependencies {
     compileOnly fileTree(include: ['*.jar'], dir: 'libs/compile')
     implementation fileTree(include: ['*.jar'], dir: 'libs/impl')
     compileOnly files('libs/framework.jar')
-
     //noinspection DifferentStdlibGradleVersion
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.0'
     implementation 'androidx.preference:preference:1.2.1'
@@ -117,9 +101,7 @@ dependencies {
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'com.caverock:androidsvg:1.4'
     implementation 'io.github.razerdp:BasePopup:3.2.1'
-    implementation  'org.greenrobot:eventbus:3.2.0'
-
-
+    implementation 'org.greenrobot:eventbus:3.2.0'
     compileOnly project(':shell-loader:stub')
     implementation project(':x_recyclerview')
     implementation project(':fusionwindowmanager')
