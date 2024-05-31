@@ -106,4 +106,5 @@ dependencies {
     implementation project(':x_recyclerview')
     implementation project(':fusionwindowmanager')
     implementation project(':dialogtiplib')
+    implementation project(':easy')
 }

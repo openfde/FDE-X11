@@ -52,4 +52,6 @@
     <string name="info_x_app">info</string>
     <string name="shortcut_x_app">create shortcut</string>
     <string name="refresh_x_app">refresh</string>
+    <string name="exit_app">Exit App</string>
+    <string name="exit_tip">Clicking \"OK\" will directly close the program.</string>
 </resources>

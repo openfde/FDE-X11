@@ -57,6 +57,7 @@ import android.text.TextUtils;
 import android.text.style.SuggestionSpan;
 import android.util.Log;
 import android.view.DragEvent;
+import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -73,14 +74,18 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
+import com.easy.view.dialog.EasyDialog;
+import com.easy.view.utils.EasyUtils;
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.termux.x11.input.DetectEventEditText;
@@ -105,7 +110,7 @@ import java.util.regex.Pattern;
 
 @SuppressLint("ApplySharedPref")
 @SuppressWarnings({"deprecation", "unused"})
-public class MainActivity extends AppCompatActivity implements View.OnApplyWindowInsetsListener {
+public class MainActivity extends Activity implements View.OnApplyWindowInsetsListener {
     static final String ACTION_STOP = "com.termux.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
     private float mDecorCaptionViewHeight = 42;
@@ -125,7 +130,8 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
     private View.OnKeyListener mLorieKeyListener;
     private boolean filterOutWinKey = false;
     private static final int KEY_BACK = 158;
-
+    private EasyDialog.Builder builder;
+    private EasyDialog easyDialog;
     private static final String TAG = MainActivity.class.getSimpleName();
 
     protected long WindowCode = 0;
@@ -399,6 +405,7 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
                 throw new RuntimeException(e);
             }
         }, 2000);
+        builder = new EasyDialog.Builder(this);
     }
 
     protected boolean hideDecorCaptionView() {
@@ -1070,11 +1077,40 @@ public class MainActivity extends AppCompatActivity implements View.OnApplyWindo
 
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
-//        Log.d(TAG, "onWindowDismissed: before");
-        if(checkServiceExits()){
-            closeXwindow();
-        }
-//        Log.d(TAG, "onWindowDismissed: after");
+        showConfirmDialog();
+
+//        finish();
+    }
+
+    private void showConfirmDialog() {
+        builder.setContentView(R.layout.dialog_warm_tip)
+                .addCustomAnimation(Gravity.CENTER, false)
+                .setCancelable(true)
+                .setText(R.id.tv_title, getString(R.string.exit_app))
+                .setText(R.id.tv_content, getString(R.string.exit_tip))
+                .setTextColor(R.id.tv_confirm, ContextCompat.getColor(this, R.color.white))
+                .setBackground(R.id.tv_confirm, ContextCompat.getDrawable(this, R.drawable.shape_confirm_bg))
+                .setWidthAndHeight(EasyUtils.dp2px(this, 320), LinearLayout.LayoutParams.WRAP_CONTENT)
+                .setOnClickListener(R.id.tv_cancel, v1 -> {
+                    easyDialog.dismiss();
+                })
+                .setOnClickListener(R.id.tv_confirm, v2 -> {
+//                    Toast.makeText(this, "", Toast.LENGTH_SHORT).show();
+                    easyDialog.dismiss();
+                    if(checkServiceExits()){
+                        closeXwindow();
+                    }
+                    finish();
+                })
+                .setOnCancelListener(dialog -> {
+                    easyDialog.dismiss();
+//                    Toast.makeText(this, "", Toast.LENGTH_SHORT).show();
+                })
+                .setOnDismissListener(dialog -> {
+//                    Toast.makeText(this, "", Toast.LENGTH_SHORT).show();
+                });
+        easyDialog = builder.create();
+        easyDialog.show();
     }
 
     private void closeXwindow() {

@@ -22,6 +22,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.animation.Animation;
@@ -92,6 +93,14 @@ public class AppListActivity extends AppCompatActivity {
         initAppList();
         Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
         startXWindowService();
+        View childAt = ((ViewGroup) ((ViewGroup) ((ViewGroup) getWindow().getDecorView()).getChildAt(0)).getChildAt(1)).getChildAt(7);
+        childAt.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                Log.d(TAG, "onTouch: v:" + v + ", event:" + event + "");
+                return false;
+            }
+        });
     }
 
     private void startXWindowService() {

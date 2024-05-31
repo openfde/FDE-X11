@@ -52,4 +52,6 @@
     <string name="info_x_app">应用信息</string>
     <string name="shortcut_x_app">创建快捷方式</string>
     <string name="refresh_x_app">刷新</string>
+    <string name="exit_app">退出应用</string>
+    <string name="exit_tip">点击确定将直接关闭程序</string>
 </resources>
