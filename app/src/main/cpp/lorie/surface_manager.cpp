@@ -1,9 +1,7 @@
 //
 // Created by yang on 2024/5/2.
 //
-
 #include "surface_manager.h"
-
 
 ::SurfaceManager *SurfaceManager::create() {
     return new SurfaceManager(10);
@@ -186,7 +184,7 @@ SurfaceManager::SurfaceManager() {
 }
 
 int SurfaceManager::get_avilable_index(Atom type) {
-    int pInt[10];
+    int pInt[CAPACITY];
     if(type == _NET_WM_WINDOW_TYPE_NORMAL){
         auto it = window_attrs.begin();
         while(it != window_attrs.end()) {
@@ -202,13 +200,13 @@ int SurfaceManager::get_avilable_index(Atom type) {
     } else if(type == _NET_WM_WINDOW_TYPE_DIALOG){
         auto it = window_attrs.begin();
         while(it != window_attrs.end()) {
-            pInt[it->second.index - 10] = 1;
+            pInt[it->second.index - CAPACITY] = 1;
             it ++;
         }
         for ( int i = 1; i <= CAPACITY ; i ++ ){
             if(pInt[i] == 0){
-                log("get_avilable_index dialog_type %d", i+10);
-                return i + 10;
+                log("get_avilable_index dialog_type %d", i + CAPACITY);
+                return i + CAPACITY;
             }
         }
     }

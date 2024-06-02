@@ -80,9 +80,9 @@ public class XWindowService extends Service {
         public void closeWindow(int index, long winPtr, long window) throws RemoteException {
             if(wm != null && wm.closeWindow(window) > 0){
 //                Log.d(TAG, "closeWindow: index:" + index + ", p:" + winPtr + ", window:" + window + "");
+                pendingDiscardWindow.remove(window);
+                wm.WINDOW_XIDS.remove(window);
             }
-            pendingDiscardWindow.remove(window);
-            wm.WINDOW_XIDS.remove(window);
         }
 
         @Override
@@ -131,51 +131,11 @@ public class XWindowService extends Service {
         Log.e(TAG, message.toString());
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
-                if(message.getWindowAttribute().getIndex() == 1){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 2){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity2.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 3){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity3.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 4){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity4.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 5){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity5.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 6){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity6.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 7){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity7.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 8){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity8.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 9){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity9.class, 42f);
-                } else if (message.getWindowAttribute().getIndex() == 10){
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity0.class, 42f);
-                }
+                startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_START_ACTIVITY_WINDOW:
-                if(message.getWindowAttribute().getIndex() == 11){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity11.class);
-                } else if (message.getWindowAttribute().getIndex() == 12){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity12.class);
-                } else if (message.getWindowAttribute().getIndex() == 13){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity13.class);
-                } else if (message.getWindowAttribute().getIndex() == 14){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity14.class);
-                } else if (message.getWindowAttribute().getIndex() == 15){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity15.class);
-                } else if (message.getWindowAttribute().getIndex() == 16){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity16.class);
-                } else if (message.getWindowAttribute().getIndex() == 17){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity17.class);
-                } else if (message.getWindowAttribute().getIndex() == 18){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity18.class);
-                } else if (message.getWindowAttribute().getIndex() == 19){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity19.class);
-                }  else if (message.getWindowAttribute().getIndex() == 20){
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity10.class);
-                }
+                startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity11.class);
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_DESTROY_ACTIVITY:

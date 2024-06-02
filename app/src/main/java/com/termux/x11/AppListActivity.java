@@ -4,6 +4,10 @@ import static com.termux.x11.data.Constants.BASEURL;
 import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 import static com.termux.x11.data.Constants.URL_GETALLAPP;
 import static com.termux.x11.data.Constants.URL_STARTAPP_X;
+import static com.termux.x11.utils.Util.showXserverConnectSuccess;
+import static com.termux.x11.utils.Util.showXserverDisconnect;
+import static com.termux.x11.utils.Util.showXserverReconnect;
+import static com.termux.x11.utils.Util.showXserverStartSuccess;
 
 import android.app.PendingIntent;
 import android.content.ComponentName;
@@ -16,6 +20,7 @@ import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.RemoteException;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
@@ -29,6 +34,8 @@ import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.TranslateAnimation;
 import android.widget.ProgressBar;
+import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -47,6 +54,7 @@ import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.callback.JsonCallBack;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import okhttp3.Call;
 import razerdp.basepopup.BasePopupWindow;
@@ -79,6 +87,8 @@ public class AppListActivity extends AppCompatActivity {
     private ServiceConnection connection;
     private boolean isLoading;
 
+    public IBinder service;
+
     public interface ItemClickListener {
         void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event);
     }
@@ -108,12 +118,23 @@ public class AppListActivity extends AppCompatActivity {
             connection = new ServiceConnection() {
                 @Override
                 public void onServiceConnected(ComponentName name, IBinder service) {
-
+                    AppListActivity.this.service = service;
+                    try {
+                        Objects.requireNonNull(AppListActivity.this.service).linkToDeath(() -> {
+                            AppListActivity.this.service = null;
+                            Log.v(TAG, "Disconnected");
+                            showXserverDisconnect(AppListActivity.this);
+                        }, 0);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                    showXserverStartSuccess(AppListActivity.this);
                 }
 
                 @Override
                 public void onServiceDisconnected(ComponentName name) {
-
+                    AppListActivity.this.service = null;
+                    showXserverDisconnect(AppListActivity.this);
                 }
             };
         }
@@ -223,14 +244,14 @@ public class AppListActivity extends AppCompatActivity {
     ItemClickListener mItemClickListener = new ItemClickListener() {
         @Override
         public void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event) {
-//            loadingView.setVisibility(View.VISIBLE);
-//            long nowTime = System.currentTimeMillis();
-//            if (nowTime - mLastClickTime < TIME_INTERVAL) {
-//                // do something
-//                Log.d(TAG, "onItemClick() click too quickly");
-//                return;
-//            }
-//            mLastClickTime = nowTime;
+            long nowTime = System.currentTimeMillis();
+            if (nowTime - mLastClickTime < TIME_INTERVAL) {
+                // do something
+                Log.d(TAG, "onItemClick() click too quickly");
+                mLastClickTime = nowTime;
+                return;
+            }
+            mLastClickTime = nowTime;
             Log.d(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
 //            if (isRight) {
 //                showOptionView(itemView, app, event);
@@ -459,12 +480,17 @@ public class AppListActivity extends AppCompatActivity {
     }
 
     private void load2Start(AppListResult.DataBeanX.DataBean app) {
-        tipLoadDialog.setBackground(R.drawable.custom_dialog_bg_corner)
-                .setNoShadowTheme()
-                .setMsgAndType(getString(R.string.lunching_tip) + app.getName(), TipLoadDialog.ICON_TYPE_LOADING)
-                .setTipTime(5000)
-                .show();
-        tryStartVncApp(app);
+        if (service == null || !service.isBinderAlive()) {
+            showXserverReconnect(this);
+            startXWindowService();
+        } else {
+            tipLoadDialog.setBackground(R.drawable.custom_dialog_bg_corner)
+                    .setNoShadowTheme()
+                    .setMsgAndType(getString(R.string.lunching_tip) + app.getName(), TipLoadDialog.ICON_TYPE_LOADING)
+                    .setTipTime(5000)
+                    .show();
+            tryStartVncApp(app);
+        }
     }
 
 

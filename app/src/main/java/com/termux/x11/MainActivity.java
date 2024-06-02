@@ -7,6 +7,7 @@ import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
 import static com.termux.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
+import static com.termux.x11.XWindowService.ACTION_X_WINDOW_PROPERTY;
 import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
@@ -18,6 +19,9 @@ import static com.termux.x11.Xserver.ACTION_START;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.termux.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.termux.x11.data.Constants.APP_TITLE_PREFIX;
+import static com.termux.x11.utils.Util.showXserverConnectSuccess;
+import static com.termux.x11.utils.Util.showXserverDisconnect;
+import static com.termux.x11.utils.Util.showXserverStartSuccess;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -201,15 +205,16 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 }
             } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(attr != null ){
-//                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
+                Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+                if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
+                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
                     getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                             FLAG_NOT_TOUCHABLE);
                 }
             } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(attr != null ){
-//                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
+                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                             FLAG_NOT_TOUCHABLE);
                 }
@@ -218,9 +223,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 if(mAttribute !=  null && windowId == mAttribute.getXID()){
 //                    Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " mAttribute:" + mAttribute) ;
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
-//                    ActivityManager.TaskDescription description = MainActivity.this.getTaskDescription();
-//                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
-//                    MainActivity.this.setTaskDescription(description);
+                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
+                    MainActivity.this.setTaskDescription(description);
 
                 }
             }
@@ -247,13 +251,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        ActivityManager.TaskDescription description = MainActivity.this.getTaskDescription();
-        Log.d(TAG, "onCreate before: description = " + description);
-        description.setMinWidth(800);
-        description.setMinHeight(800);
-        MainActivity.this.setTaskDescription(description);
-        Log.d(TAG, "onCreate after: description = " + MainActivity.this.getTaskDescription());
 
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
@@ -409,8 +406,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     protected boolean hideDecorCaptionView() {
-//        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-//                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         return false;
     }
 
@@ -436,13 +431,23 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             cmdEntryInterface = ICmdEntryInterface.Stub.asInterface(service);
             if(!killSelf){
                 MainActivity.this.service = cmdEntryInterface;
+                try {
+                    Objects.requireNonNull(MainActivity.this.service).asBinder().linkToDeath(() -> {
+                        MainActivity.this.service = null;
+                        Log.v(TAG, "Disconnected");
+                        showXserverDisconnect(MainActivity.this);
+                    }, 0);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
             }
-            Log.v(TAG, "onServiceConnected: " + MainActivity.this.service);
+            showXserverConnectSuccess(MainActivity.this);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             Log.v(TAG, "onServiceDisconnected: ");
+            showXserverDisconnect(MainActivity.this);
         }
     }
 
@@ -778,6 +783,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 //        getLorieView().requestFocus();
         String hexString = Long.toHexString(getWindowId());
         Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
+        detectViewRequestFocus();
+    }
+
+    private void detectViewRequestFocus() {
         detectEventEditText.setFocusable(true);
         detectEventEditText.setFocusableInTouchMode(true);
         detectEventEditText.requestFocus();
@@ -921,17 +930,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-
-//        if (newConfig.orientation != orientation) {
-//            InputMethodManager imm = (InputMethodManager) getSystemService(Activity.INPUT_METHOD_SERVICE);
-//            View view = getCurrentFocus();
-//            if (view == null) {
-//                view = getLorieView();
-//                view.requestFocus();
-//            }
-//            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-//        }
-
         orientation = newConfig.orientation;
         setTerminalToolbarView();
 //        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
@@ -952,7 +950,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
         Window window = getWindow();
         View decorView = window.getDecorView();
-//        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + "");
+        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
         boolean fullscreen = p.getBoolean("fullscreen", false);
         boolean reseed = p.getBoolean("Reseed", true);
         fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
@@ -990,6 +988,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 //                window.clearFlags(FLAG_FULLSCREEN);
 //                decorView.setSystemUiVisibility(0);
 //            }
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
+                    FLAG_NOT_TOUCHABLE);
         }
         if (p.getBoolean("keepScreenOn", true))
             window.addFlags(FLAG_KEEP_SCREEN_ON);
@@ -1002,10 +1002,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             getLorieView().regenerate();
             execInWindowManager();
         }
+        getLorieView().requestFocus();
+        detectViewRequestFocus();
 
-        ActivityManager.TaskDescription description = MainActivity.this.getTaskDescription();
-        Log.d(TAG, "onWindowFocusChanged  description = " + description);
-//        getLorieView().requestFocus();
     }
 
     protected void execInWindowManager()  {
@@ -1132,14 +1131,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         return super.dispatchKeyEvent(event);
     }
 
-
-    boolean goback = false;
-
-    protected void goback(){
-        goback = true;
-//        finish();
-    }
-
     @Override
     public void onBackPressed() {
         super.onBackPressed();
@@ -1217,98 +1208,35 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity1 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
 
     public static class MainActivity2 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
 
     public static class MainActivity3 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
 
     public static class MainActivity4 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
 
-
     public static class MainActivity5 extends MainActivity {
-        protected void goback() {
-        }
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
     }
 
     public static class MainActivity6 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
 
     public static class MainActivity7 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
     public static class MainActivity8 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
 
     public static class MainActivity9 extends MainActivity {
-        protected void goback() {
-        }
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
     }
 
     public static class MainActivity0 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
     }
 
     public static class MainActivity11 extends MainActivity {
-        protected void goback() {
-        }
 
         protected int getLayoutID() {
             return R.layout.main_activity;
@@ -1322,13 +1250,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity12 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1337,13 +1258,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity13 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1352,13 +1266,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity14 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1368,12 +1275,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
 
     public static class MainActivity15 extends MainActivity {
-        protected void goback() {
-        }
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1383,13 +1284,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity16 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1398,13 +1292,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity17 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1412,13 +1299,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
     }
     public static class MainActivity18 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1427,12 +1307,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity19 extends MainActivity {
-        protected void goback() {
-        }
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -1441,21 +1315,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public static class MainActivity10 extends MainActivity {
-        protected void goback() {
-        }
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
             return true;
         }
     }
-
-
-
-
 }

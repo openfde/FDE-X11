@@ -54,4 +54,8 @@
     <string name="refresh_x_app">refresh</string>
     <string name="exit_app">Exit App</string>
     <string name="exit_tip">Clicking \"OK\" will directly close the program.</string>
+    <string name="xserver_start_success">xserver start success</string>
+    <string name="xserver_disconnect">xserver disconnect</string>
+    <string name="xserver_reconnect">xserver reconnect</string>
+    <string name="xserver_connect_success">xserver connect success</string>
 </resources>

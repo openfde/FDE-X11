@@ -59,13 +59,13 @@ android {
 //        }
     }
 
-    android.applicationVariants.all { variant ->
-        variant.outputs.all {
-            if (outputFile != null && outputFileName.endsWith('.apk')) {
-                outputFileName = "FDE_X11.apk"
-            }
-        }
-    }
+//    android.applicationVariants.all { variant ->
+//        variant.outputs.all {
+//            if (outputFile != null && outputFileName.endsWith('.apk')) {
+//                outputFileName = "FDE_X11.apk"
+//            }
+//        }
+//    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

@@ -8,8 +8,11 @@ import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.termux.x11.AppListActivity;
 import com.termux.x11.MainActivity;
+import com.termux.x11.R;
 
 import java.io.Closeable;
 import java.io.File;
@@ -158,5 +161,21 @@ public class Util {
             return bitmap;
         }
         return Bitmap.createScaledBitmap(bitmap, BITMAP_SIZE_LIMIT, BITMAP_SIZE_LIMIT, true);
+    }
+
+    public static void showXserverStartSuccess(Context context) {
+        Toast.makeText(context, R.string.xserver_start_success, Toast.LENGTH_SHORT).show();
+    }
+
+    public static void showXserverConnectSuccess(Context context) {
+        Toast.makeText(context, R.string.xserver_connect_success, Toast.LENGTH_SHORT).show();
+    }
+
+    public static void showXserverDisconnect(Context context) {
+        Toast.makeText(context, R.string.xserver_disconnect, Toast.LENGTH_SHORT).show();
+    }
+
+    public static void showXserverReconnect(Context context) {
+        Toast.makeText(context, R.string.xserver_reconnect, Toast.LENGTH_SHORT).show();
     }
 }

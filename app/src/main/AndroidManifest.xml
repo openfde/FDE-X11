@@ -109,19 +109,30 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+<!--        <activity-->
+<!--            android:name=".MainActivity$MainActivity1"-->
+<!--            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"-->
+<!--            android:exported="true"-->
+<!--            android:process=":abc1"-->
+<!--            android:resizeableActivity="true"-->
+<!--            android:supportsPictureInPicture="true"-->
+<!--            android:taskAffinity=".abc1"-->
+<!--            android:windowSoftInputMode="stateHidden">-->
+<!--            <layout-->
+<!--                android:minHeight="${MainActivityMinHeight}"-->
+<!--                android:minWidth="${MainActivityMinWidth}" />-->
+<!--        </activity>-->
         <activity
             android:name=".MainActivity$MainActivity1"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
-            android:process=":abc1"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:taskAffinity=".abc1"
+            android:documentLaunchMode="always"
             android:windowSoftInputMode="stateHidden">
             <layout
                 android:minHeight="${MainActivityMinHeight}"
                 android:minWidth="${MainActivityMinWidth}" />
-
         </activity>
         <activity
             android:name=".MainActivity$MainActivity2"
@@ -244,8 +255,7 @@
             android:name=".MainActivity$MainActivity11"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
-            android:process=":abc11"
-            android:taskAffinity=".abc11"
+            android:documentLaunchMode="always"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:windowSoftInputMode="stateHidden">
@@ -253,6 +263,19 @@
                 android:minHeight="${MainDialogMinHeight}"
                 android:minWidth="${MainDialogMinWidth}" />
         </activity>
+<!--        <activity-->
+<!--            android:name=".MainActivity$MainActivity11"-->
+<!--            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"-->
+<!--            android:exported="true"-->
+<!--            android:process=":abc11"-->
+<!--            android:taskAffinity=".abc11"-->
+<!--            android:resizeableActivity="true"-->
+<!--            android:supportsPictureInPicture="true"-->
+<!--            android:windowSoftInputMode="stateHidden">-->
+<!--            <layout-->
+<!--                android:minHeight="${MainDialogMinHeight}"-->
+<!--                android:minWidth="${MainDialogMinWidth}" />-->
+<!--        </activity>-->
         <activity
             android:name=".MainActivity$MainActivity12"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
