@@ -1141,9 +1141,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
-        showConfirmDialog();
-
-//        finish();
+        if(checkServiceExits() && mProperty != null && mProperty.getSupportDeleteWindow() == 1){
+            closeXwindow();
+        } else {
+            finish();
+        }
+//        showConfirmDialog();
     }
 
     private void showConfirmDialog() {

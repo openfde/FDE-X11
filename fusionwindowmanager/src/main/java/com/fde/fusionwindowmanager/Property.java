@@ -14,6 +14,18 @@ public class Property implements Parcelable {
     String net_name;
     String wm_class;
 
+    int supportDeleteWindow;
+
+    public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class, int supportDeleteWindow) {
+        this.XID = XID;
+        this.transientfor = transientfor;
+        this.leader = leader;
+        this.type = type;
+        this.net_name = net_name;
+        this.wm_class = wm_class;
+        this.supportDeleteWindow = supportDeleteWindow;
+    }
+
     public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class) {
         this.XID = XID;
         this.transientfor = transientfor;
@@ -30,6 +42,7 @@ public class Property implements Parcelable {
         type = in.readInt();
         net_name = in.readString();
         wm_class = in.readString();
+        supportDeleteWindow = in.readInt();
     }
 
     public static final Creator<Property> CREATOR = new Creator<Property>() {
@@ -44,6 +57,13 @@ public class Property implements Parcelable {
         }
     };
 
+    public int getSupportDeleteWindow() {
+        return supportDeleteWindow;
+    }
+
+    public void setSupportDeleteWindow(int supportDeleteWindow) {
+        this.supportDeleteWindow = supportDeleteWindow;
+    }
 
     public long getXID() {
         return XID;
@@ -106,6 +126,7 @@ public class Property implements Parcelable {
         dest.writeInt(type);
         dest.writeString(net_name);
         dest.writeString(wm_class);
+        dest.writeInt(supportDeleteWindow);
     }
 
     @Override
@@ -115,6 +136,7 @@ public class Property implements Parcelable {
                 ", transientfor=" + transientfor +
                 ", leader=" + leader +
                 ", type=" + type +
+                ", supportDeleteWindow=" + supportDeleteWindow +
                 ", net_name='" + net_name + '\'' +
                 ", wm_class='" + wm_class + '\'' +
                 '}';

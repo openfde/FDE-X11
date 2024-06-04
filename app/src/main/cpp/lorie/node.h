@@ -22,7 +22,7 @@ typedef struct {
     const char * net_wm_name;   //_NET_WM_NAME              UTF8_STRING
     const char * wm_name;       //WM_NAME                  STRING
     const char * wm_class;       //WM_CLASS                  STRING
-
+    Bool support_wm_delete;     //WM_PROTOCOLS      WM_DELETE_WINDOW
 } WindProperty;
 
 typedef struct {

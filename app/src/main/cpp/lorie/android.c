@@ -312,6 +312,13 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
             int height = *(icon_data+1);
             int * imageData = ( int*) (icon_data + 2);
             android_icon_convert_bitmap(imageData, width, height, pProperty->window);
+        } else if (STRING_EQUAL(NameForAtom(name), WINDOW_PROTOCOLS)) {
+            Atom *atoms = (Atom *)propData;
+            for (int i = 0; i < pProper->size; i++) {
+                if(STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_DELETE_WINDOW)){
+                    pProperty->support_wm_delete = TRUE;
+                }
+            }
         }
         pProper = pProper->next;
     }
@@ -394,11 +401,11 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateActivity", "(JJJILjava/lang/String;Ljava/lang/String;"
                                                                                   "IIIII"
-                                                                                  "JJJ)V");
+                                                                                  "JJJI)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
-                                         (long) windowPtr, (long) window, (long) taskTo);
+                                         (long) windowPtr, (long) window, (long) taskTo, aProperty.support_wm_delete);
     }
 }
 
