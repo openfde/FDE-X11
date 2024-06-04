@@ -45,6 +45,7 @@ public class XWindowService extends Service {
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
+    private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
 
     private Handler handler = new Handler();
@@ -113,6 +114,13 @@ public class XWindowService extends Service {
                 Xserver.getInstance().tellFocusWindow(window);
             }
         }
+
+        @Override
+        public void sendClipText(String cliptext) throws RemoteException {
+            if(wm != null && wm.sendClipText(cliptext) > 0){
+                Log.d(TAG, "sendClipText: cliptext:" + cliptext + "");
+            }
+        }
     };
 
     @Override
@@ -122,8 +130,10 @@ public class XWindowService extends Service {
         Xserver.getInstance().registerContext(new WeakReference<>(this));
         Xserver.getInstance().startXserver();
         Log.d(TAG, "onCreate: ");
-        wm = new WindowManager( new WeakReference<>(this));
-        wm.startWindowManager(DISPLAY_GLOBAL_PARAM);
+        if(DWM_START_DEFAULT){
+            wm = new WindowManager( new WeakReference<>(this));
+            wm.startWindowManager(DISPLAY_GLOBAL_PARAM);
+        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)

@@ -91,9 +91,9 @@ public class WindowManager implements AWindowManagerInterface {
     public native int resizeWindow(long window, int width, int height);
 
     public native int closeWindow(long window);
-
     public native int raiseWindow(long window);
 
+    public native int sendClipText(String cliptext);
     public native int disconnect2Server();
 
     public static void  getWindowIconFromManager(Bitmap bitmap, long window){

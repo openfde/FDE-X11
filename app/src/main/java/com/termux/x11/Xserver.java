@@ -9,6 +9,8 @@ import android.annotation.SuppressLint;
 import android.app.IActivityManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.IIntentReceiver;
 import android.content.IIntentSender;
@@ -21,6 +23,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
 
@@ -131,6 +134,15 @@ public class Xserver {
                 break;
             default:
                 break;
+        }
+    }
+
+    public static void updateXserverCliptext(String text){
+//        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
+        if(contextRef.get() != null && !TextUtils.isEmpty(text)){
+            ClipData mClipData = ClipData.newPlainText("x11", text);
+            android.content.ClipboardManager mClipboardManager = (ClipboardManager) contextRef.get().getSystemService(Context.CLIPBOARD_SERVICE);
+            mClipboardManager.setPrimaryClip(mClipData);
         }
     }
 

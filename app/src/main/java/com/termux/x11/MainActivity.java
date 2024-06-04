@@ -109,6 +109,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Timer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -245,6 +246,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     protected int getLayoutID(){
         return R.layout.main_activity;
     }
+
+    // Used to set the contents of the clipboard.
+    android.content.ClipboardManager.OnPrimaryClipChangedListener mOnPrimaryClipChangedListener;
+    android.content.ClipboardManager mClipboardManager;
+    private String mClipText = null;
 
 
     @Override
@@ -403,6 +409,37 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         }, 2000);
         builder = new EasyDialog.Builder(this);
+
+        initClipMonitor();
+    }
+
+
+    private void initClipMonitor() {
+        mClipboardManager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        mOnPrimaryClipChangedListener = () -> {
+            updateX11Cliptext();
+        };
+        mClipboardManager.addPrimaryClipChangedListener(mOnPrimaryClipChangedListener);
+    }
+
+    private void updateX11Cliptext() {
+        if (mClipboardManager.hasPrimaryClip()
+                && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
+            CharSequence content =
+                    mClipboardManager.getPrimaryClip().getItemAt(0).getText();
+            Log.d(TAG, "clip:content:" + content);
+            if(content != null && !TextUtils.isEmpty(content)
+                    && !TextUtils.equals(content, mClipText)
+            && checkServiceExits()){
+                mClipText = content.toString();
+                Log.d(TAG, "run cliptext:" + mClipText);
+                try {
+                    service.sendClipText(mClipText);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
     protected boolean hideDecorCaptionView() {
@@ -480,6 +517,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         unbindService(connection);
         service = null;
         Log.v(TAG, "onDestroy: " + mAttribute);
+        removeClipboardListener();
+    }
+
+    private void removeClipboardListener() {
+        if(mClipboardManager != null){
+            mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
+            mClipboardManager = null;
+        }
+        mOnPrimaryClipChangedListener = null;
     }
 
 
@@ -695,7 +741,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 LorieView.connect(fd.detachFd());
                 getLorieView().triggerCallback();
                 clientConnectedStateChanged(true);
-                LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", false));
+                LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
 //                handler.postDelayed(this::goback, 2000);
             } else
                 handler.postDelayed(this::tryConnect, 500);
@@ -728,7 +774,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
         setTerminalToolbarView();
         onWindowFocusChanged(true);
-        LorieView.setClipboardSyncEnabled(p.getBoolean("clipboardSync", false));
+        LorieView.setClipboardSyncEnabled(p.getBoolean("clipboardSync", true));
 
         lorieView.triggerCallback();
 
@@ -950,7 +996,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
         Window window = getWindow();
         View decorView = window.getDecorView();
-        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
+//        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
         boolean fullscreen = p.getBoolean("fullscreen", false);
         boolean reseed = p.getBoolean("Reseed", true);
         fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
@@ -1004,7 +1050,26 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
         getLorieView().requestFocus();
         detectViewRequestFocus();
+        getClipText();
+    }
 
+    private void getClipText() {
+        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()
+                && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
+            CharSequence content =
+                    mClipboardManager.getPrimaryClip().getItemAt(0).getText();
+            Log.d(TAG, "clip:content:" + content);
+            if(content != null && !TextUtils.isEmpty(content) &&
+                    !TextUtils.equals(content, mClipText) && checkServiceExits()){
+                mClipText = content.toString();
+                Log.d(TAG, "run cliptext:" + mClipText);
+                try {
+                    service.sendClipText(mClipText);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 
     protected void execInWindowManager()  {

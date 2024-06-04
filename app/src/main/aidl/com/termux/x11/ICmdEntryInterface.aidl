@@ -19,4 +19,6 @@ interface ICmdEntryInterface {
     void resizeWindow(long window, int w, int h);
 
     void raiseWindow(long window);
+
+    void sendClipText(String cliptext);
 }

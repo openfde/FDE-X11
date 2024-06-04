@@ -111,6 +111,16 @@ JNIEXPORT jint JNICALL raiseWindow(JNIEnv * env, jobject obj, jlong ptr){
     return window_manager->raiseWindow(ptr);
 }
 
+JNIEXPORT jint JNICALL sendClipText(JNIEnv * env, jobject obj, jstring string){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    jboolean isCopy = false;
+    const char* cliptext = env->GetStringUTFChars(string, &isCopy);
+    return window_manager->sendClipText(cliptext);
+}
+
 JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
     if(window_manager){
         log("disconnect2Server");
@@ -129,6 +139,7 @@ static JNINativeMethod method_table[] = {
         {"resizeWindow","(JII)I", (void *) resizeWindow},
         {"closeWindow","(J)I", (void *) closeWindow},
         {"raiseWindow","(J)I", (void *) raiseWindow},
+        {"sendClipText","(Ljava/lang/String;)I", (void *) sendClipText},
         {"disconnect2Server","()I", (void *) disconnect2Server},
 
 };

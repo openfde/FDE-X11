@@ -81,6 +81,7 @@ public:
     bool isInFrameMap(long window);
     void initCompositor();
     int stoped = False;
+    jint sendClipText(const char *pJstring);
 
 private:
 
@@ -141,6 +142,9 @@ private:
     std::set<Window> named_windows;
 
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
+    Window owner;
+    Atom sel, utf8;
+    char * cliptext;
 
 
     // Atom constants.
@@ -148,6 +152,12 @@ private:
     const Atom WM_DELETE_WINDOW;
 
     jobject printProperty(Display *display, Window window);
+
+    void OnPropertyNotify(XEvent event);
+
+    void OnSelectionClear(XEvent event);
+
+    void OnSelectionRequest(XEvent event);
 };
 
 

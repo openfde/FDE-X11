@@ -285,7 +285,7 @@ jobject WindowManager::printProperty(Display *display, Window window) {
                 XFree(propData);
 
                 jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                "getWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
+                                                                "getWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
                 GlobalEnv->CallStaticVoidMethod(staticClass, method, bitmap, window);
                 return bitmap;
             } else {
@@ -518,6 +518,10 @@ void WindowManager::OnKeyPress(const XKeyEvent& e) {
 
 void WindowManager::OnKeyRelease(const XKeyEvent& e) {}
 
+void WindowManager::OnPropertyNotify(XEvent e) {
+
+}
+
 int WindowManager::OnXError(Display* display, XErrorEvent* e) {
     const int MAX_ERROR_TEXT_LENGTH = 1024;
     char error_text[MAX_ERROR_TEXT_LENGTH];
@@ -588,12 +592,18 @@ void WindowManager::Run() {
     //   e. Ungrab X server.
     XUngrabServer(display_);
 
+    owner = XCreateSimpleWindow(display_, root_, -10, -10, 1, 1, 0, 0, 0);
+    log("owner:%x", owner);
+    sel = XInternAtom(display_, "CLIPBOARD", False);
+    utf8 = XInternAtom(display_, "UTF8_STRING", False);
+    XSetSelectionOwner(display_, sel, owner, CurrentTime);
+
     // 2. Main event loop.
     while (!stoped) {
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
-//        log("------Received event: %s",ToString(e).c_str());
+        log("------Received event: %s",ToString(e).c_str());
 //        log("type:%d", e.type);
         // 2. Dispatch event.
         switch (e.type) {
@@ -639,12 +649,101 @@ void WindowManager::Run() {
             case KeyRelease:
                 OnKeyRelease(e.xkey);
                 break;
+            case PropertyNotify:
+                OnPropertyNotify(e);
+                break;
+            case SelectionClear:
+                OnSelectionClear(e);
+                break;
+            case SelectionRequest:
+                OnSelectionRequest(e);
+                break;
             default:
                 break;
                 log("Ignored event");
         }
     }
 }
+
+
+void WindowManager::OnSelectionRequest(XEvent e) {
+    XSelectionRequestEvent *sev = (XSelectionRequestEvent*)&e.xselectionrequest;
+    log("OnSelectionRequest owner:%lx requestor:%lx ", sev->owner, sev->requestor);
+    if(sev->requestor == root_){
+        return;
+    }
+
+    if (sev->target != utf8 || sev->property == None){
+        XSelectionEvent ssev;
+        char *an;
+        an = XGetAtomName(display_, sev->target);
+        log("Denying request of type '%s'\n", an);
+        if (an)
+            XFree(an);
+        /* All of these should match the values of the request. */
+        ssev.type = SelectionNotify;
+        ssev.requestor = sev->requestor;
+        ssev.selection = sev->selection;
+        ssev.target = sev->target;
+        ssev.property = None;  /* signifies "nope" */
+        ssev.time = sev->time;
+        XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
+    } else {
+        XSelectionEvent ssev;
+        time_t now_tm;
+        char *now, *an;
+        now_tm = time(NULL);
+        now = ctime(&now_tm);
+        an = XGetAtomName(display_, sev->property);
+        log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, an);
+        if (an)
+            XFree(an);
+        XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
+                        (unsigned char *)cliptext, strlen(cliptext));
+        ssev.type = SelectionNotify;
+        ssev.requestor = sev->requestor;
+        ssev.selection = sev->selection;
+        ssev.target = sev->target;
+        ssev.property = sev->property;
+        ssev.time = sev->time;
+        XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
+    }
+}
+
+
+void WindowManager::OnSelectionClear(XEvent e) {
+    char *result;
+    unsigned long ressize, restail;
+    int resbits;
+    Atom bufid = XInternAtom(display_, "CLIPBOARD", False),
+            fmtid = XInternAtom(display_, "UTF8_STRING", False),
+            propid = XInternAtom(display_, "XSEL_DATA", False),
+            incrid = XInternAtom(display_, "INCR", False);
+    XEvent event;
+    XConvertSelection(display_, bufid, fmtid, propid, owner, CurrentTime);
+    do {
+        XNextEvent(display_, &event);
+    } while (event.type != SelectionNotify || event.xselection.selection != bufid);
+
+    if (event.xselection.property)
+    {
+        XGetWindowProperty(display_, owner, propid, 0, LONG_MAX/4, False, AnyPropertyType,
+                           &fmtid, &resbits, &ressize, &restail, (unsigned char**)&result);
+        if (fmtid == incrid){
+            log("Buffer is too large and INCR reading is not implemented yet.\n");
+        } else {
+            cliptext = (char*)malloc(strlen(result) + 1);
+            if (cliptext != NULL) {
+                strcpy(cliptext, result);
+            }
+            log("%.*s \n", (int)ressize, result);
+        }
+        XFree(result);
+    }
+    log("OnSelectionClear:\n");
+    XSetSelectionOwner(display_, sel, owner, CurrentTime);
+}
+
 
 int WindowManager::moveWindow(long window, int x, int y) {
 //    log("moveWindow %x: x:%d y:%d", window, x, y);
@@ -735,3 +834,14 @@ void WindowManager::initCompositor() {
     XCompositeRedirectSubwindows(display_, root_, CompositeRedirectAutomatic);
     XSync(display_, false);
 }
+
+jint WindowManager::sendClipText(const char *string) {
+    cliptext = (char*)malloc(strlen(string) + 1);
+    if (cliptext != NULL) {
+        strcpy(cliptext, string);
+    }
+    return True;
+}
+
+
+

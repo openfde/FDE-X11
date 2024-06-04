@@ -187,7 +187,7 @@ public class LinuxActivity extends AppCompatActivity {
                 XwindowView.connect(fd.detachFd());
                 getXwindowView().triggerCallback();
                 clientConnectedStateChanged(true);
-                XwindowView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", false));
+                XwindowView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
             } else{
                 handler.postDelayed(this::tryConnect, 500);
             }

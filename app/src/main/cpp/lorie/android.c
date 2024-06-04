@@ -918,8 +918,17 @@ int is_valid_utf8(const char *string) {
 }
 
 void lorieSendClipboardData(const char *data) {
-    if (data && conn_fd != -1)
+    if (data && conn_fd != -1){
+        log(DEBUG, "lorieSendClipboardData data:%s", data);
         write(conn_fd, data, strlen(data));
+        JNIEnv *JavaEnv = GetJavaEnv();
+        if (JavaEnv && JavaCmdEntryPointClass && is_valid_utf8(data)) {
+            jstring cliptext = (*JavaEnv)->NewStringUTF(JavaEnv, data);
+            jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+              "updateXserverCliptext", "(Ljava/lang/String;)V");
+            (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, cliptext);
+        }
+    }
 }
 
 static Bool addFd(unused ClientPtr pClient, void *closure) {
@@ -1454,6 +1463,9 @@ Java_com_termux_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong win
     focusWindow = window;
 }
 
+
+
 #endif
+
 
 
