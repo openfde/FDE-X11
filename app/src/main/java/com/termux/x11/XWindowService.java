@@ -36,7 +36,7 @@ public class XWindowService extends Service {
     public static final String ACTION_X_WINDOW_PROPERTY = "action_x_window_property";
 
     public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
-    public static final String STOP_ANR_FROM_X = "com.termux.x11.Xserver.ACTION_STOP";
+    public static final String STOP_WINDOW_FROM_X = "com.termux.x11.Xserver.ACTION_STOP";
 
     public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_start";
 
@@ -149,16 +149,15 @@ public class XWindowService extends Service {
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_DESTROY_ACTIVITY:
-//                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
-                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
-                destroyActivitySafety(5, message.getWindowAttribute());
-                sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
-                break;
             case X_UNMAP_WINDOW:
-//                Log.d(TAG, "pendingDiscardWindow add window:" + message.getWindowAttribute().getXID());
-                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
+//                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
+//                destroyActivitySafety(5, message.getWindowAttribute());
+//                sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
+//                break;
+//            case X_UNMAP_WINDOW:
                 stopActivity(message.getWindowAttribute());
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
+                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
                 break;
             default:
                 break;
@@ -199,18 +198,23 @@ public class XWindowService extends Service {
     }
 
     private void stopActivity(WindowAttribute attr) {
+        Log.d(TAG, "stopActivity: attr:" + attr + "");
+        if(pendingDiscardWindow.contains(attr.getXID())){
+            return;
+        }
         String targetPackage = "com.termux.x11";
-        Intent intent = new Intent(STOP_ANR_FROM_X);
+        Intent intent = new Intent(STOP_WINDOW_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
         sendStickyBroadcast(intent);
-//        Log.d(TAG, "stopActivity: attr:" + attr + "");
+        Log.d(TAG, "stopActivity: attr:" + attr + "");
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
         if(retry == 0){
             return;
         }
+        Log.d(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
         String targetPackage = "com.termux.x11";
         Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
         intent.setPackage(targetPackage);

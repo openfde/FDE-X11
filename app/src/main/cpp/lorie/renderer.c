@@ -685,12 +685,6 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         attr->pWin = (WindowPtr) res->pWin;
         attr->index = res->id;
         attr->window = res->window;
-//        log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
-        if (!res->surface && res->id != 0) {
-            _surface_delete_window(sfWraper, res->window);
-//            log("renderer_set_window_each surface:%p id:%d", res->surface, res->id);
-            return;
-        }
     } else {
         WindAttribute attr = {
                 .offset_x = res->offset_x,

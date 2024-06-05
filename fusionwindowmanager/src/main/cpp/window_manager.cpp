@@ -819,6 +819,7 @@ int WindowManager::closeWindow(long window) {
 //    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
     int ret;
     if(supported) {
+        log("closeWindow supported1");
         XEvent msg;
         memset(&msg, 0, sizeof(msg));
         msg.xclient.type = ClientMessage;
@@ -828,6 +829,7 @@ int WindowManager::closeWindow(long window) {
         msg.xclient.data.l[0] = WM_DELETE_WINDOW;
         ret = XSendEvent(display_, window, false, 0, &msg);
     } else {
+        log("closeWindow not supported");
         ret = XKillClient(display_, window);
     }
     XSync(display_, False);

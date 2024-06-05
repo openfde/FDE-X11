@@ -168,7 +168,7 @@ void android_destroy_window(Window window) {
 void android_unmap_window(Window window){
     log(ERROR, "android_unmap_window %x", window);
     if (_surface_count_window(sfWraper, window)) {
-        log(DEBUG, "unmap activity");
+        log(DEBUG, "unmap activity window:%x", window);
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         android_destroy_activity(attr->index, attr->pWin, attr->window, ACTION_UNMAP);
 //        glDeleteTextures(1, &attr->texture_id);
@@ -409,13 +409,14 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
     }
 }
 
-void android_destroy_activity(int index, WindowPtr windowPtr, Window window, int action) {
+void android_destroy_activity(int index, WindowPtr pWin, Window window, int action) {
+    log(DEBUG, "android_destroy_activity index%d pWin:%p window:%x", index, pWin, window);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "closeOrDestroyActivity", "(IJJI)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
-                                         (long) windowPtr, (long) window, action);
+                                         (long) pWin, (long) window, action);
     }
 }
 

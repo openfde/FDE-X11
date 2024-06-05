@@ -11,7 +11,7 @@ import static com.termux.x11.XWindowService.ACTION_X_WINDOW_PROPERTY;
 import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
-import static com.termux.x11.XWindowService.STOP_ANR_FROM_X;
+import static com.termux.x11.XWindowService.STOP_WINDOW_FROM_X;
 import static com.termux.x11.XWindowService.UNMODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.XWindowService.X_WINDOW_PROPERTY;
@@ -159,6 +159,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "onReceive: context:" + context + ", action:" + intent.getAction() + "");
             if (ACTION_START.equals(intent.getAction()) && service != null &&!mClientConnected) {
                 try {
                     Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
@@ -180,7 +181,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
-//                    Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
+                    Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
                     killSelf = true;
                     finish();
                 }
@@ -198,10 +199,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     options.setLaunchBounds(new Rect(100, 100, 200 , 200));
                     startActivity(startAct, options.toBundle());
                 }
-            } else if(STOP_ANR_FROM_X.equals(intent.getAction())){
+            } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
-//                    Log.d(TAG, "onReceive: " + STOP_ANR_FROM_X + ", attr:" + attr + "");
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
+//                        && mAttribute.getWindowPtr() == attr.getWindowPtr()
+                ){
+                    Log.d(TAG, "onReceive: " + STOP_WINDOW_FROM_X + ", attr:" + attr + "");
                     finish();
                 }
             } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
@@ -257,7 +260,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         }
@@ -382,7 +384,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(ACTION_STOP);
             addAction(DESTROY_ACTIVITY_FROM_X);
             addAction(START_ACTIVITY_FROM_X);
-            addAction(STOP_ANR_FROM_X);
+            addAction(STOP_WINDOW_FROM_X);
             addAction(MODALED_ACTION_ACTIVITY_FROM_X);
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
@@ -933,6 +935,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     @SuppressLint("ObsoleteSdkInt")
     Notification buildNotification() {
+        Log.d(TAG, "buildNotification");
         Intent preferencesIntent = new Intent(this, LoriePreferences.class);
         preferencesIntent.putExtra("key", "value");
         preferencesIntent.setAction(Intent.ACTION_MAIN);

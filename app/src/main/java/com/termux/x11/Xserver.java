@@ -123,7 +123,7 @@ public class Xserver {
     }
 
     public static void closeOrDestroyActivity(int index, long pWin, long window, int action) {
-//        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
+        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
         switch (action){
             case ACTION_DESTORY:
                 EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
