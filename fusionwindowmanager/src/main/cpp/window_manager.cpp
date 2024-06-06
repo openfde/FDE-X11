@@ -228,18 +228,6 @@ void WindowManager::OnMapNotify(const XMapEvent &e) {
         XCompositeNameWindowPixmap(display_, e.window);
         named_windows.insert(e.window);
         XSync(display_, False);
-        Atom* supported_protocols;
-        int num_supported_protocols;
-        if (XGetWMProtocols(display_,
-                            e.window,
-                            &supported_protocols,
-                            &num_supported_protocols) &&
-            (::std::find(supported_protocols,
-                         supported_protocols + num_supported_protocols,
-                         WM_DELETE_WINDOW) !=
-             supported_protocols + num_supported_protocols)){
-
-        }
     }
 }
 

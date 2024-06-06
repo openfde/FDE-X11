@@ -20,8 +20,15 @@
 #include <globals.h>
 #include "c_interface.h"
 
-#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__)
-#define loge(...) __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__)
+#define PRINT_LOG 1
+
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__);\
+                }              \
 
 static GLuint create_program(const char *p_vertex_source, const char *p_fragment_source);
 
@@ -547,7 +554,6 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
 void renderer_set_window(JNIEnv *env, jobject new_surface, AHardwareBuffer *new_buffer) {
     EGLNativeWindowType window;
     log("renderer_set_window begin0 %p", window);
-
     if (new_surface && surface && new_surface != surface &&
         (*env)->IsSameObject(env, new_surface, surface)) {
         (*env)->DeleteGlobalRef(env, new_surface);
@@ -676,8 +682,13 @@ void renderer_set_window(JNIEnv *env, jobject new_surface, AHardwareBuffer *new_
 }
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
-    if(_surface_count_window(sfWraper, res->window)){
+    if(!_surface_count_window(sfWraper, res->window) || !res->surface){
+        return;
+    } else {
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
+        if(attr->discard){
+            return;
+        }
         attr->offset_x = res->offset_x;
         attr->offset_y = res->offset_y;
         attr->width = res->width;
@@ -685,25 +696,15 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         attr->pWin = (WindowPtr) res->pWin;
         attr->index = res->id;
         attr->window = res->window;
-    } else {
-        WindAttribute attr = {
-                .offset_x = res->offset_x,
-                .offset_y = res->offset_y,
-                .width =  res->width,
-                .height =  res->height,
-                .pWin = (WindowPtr) res->pWin,
-                .index = res->id,
-                .window = res->window
-        };
-        _surface_update_window(sfWraper, res->window, attr);
     }
     jobject new_surface = res->surface;
     EGLNativeWindowType window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
-//    log("renderer_set_window_each window:%p width:%d heigght:%d index:%d %x %x new_buffer:%p",
-//        window, width, height, res->id, res->window, res->pWin, new_buffer);
+    log("renderer_set_window_each window:%p width:%d height:%d index:%d p:%x surface:%p new_surface:%p",
+        window, width, height, res->id, res->pWin, res->surface, new_surface);
     WindAttribute *attr = _surface_find_window(sfWraper, res->window);
+    _surface_log_traversal_window(sfWraper);
     EGLSurface sfc = attr->sfc;
     if (sfc != EGL_NO_SURFACE) {
         if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
@@ -745,7 +746,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         return;
     }
     attr->sfc = sfc;
-//    log("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
+    log("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
         if (!g_texture_program) {
@@ -785,8 +786,8 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
-//    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-//        w, h, data, flip, display.width, display.height );
+    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+        w, h, data, flip, display.width, display.height );
     if (display.width != (float) w || display.height != (float) h) {
         display.width = (float) w;
         display.height = (float) h;
@@ -811,8 +812,8 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
                         GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
-//    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-//        w, h, data, flip, display.width, display.height);
+    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+        w, h, data, flip, display.width, display.height);
 
 }
 
@@ -902,7 +903,7 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
-    log("renderer_update_widget_texture x:%d y:%d w:%d h:%d", x, y, w, h);
+//    log("renderer_update_widget_texture x:%d y:%d w:%d h:%d", x, y, w, h);
     widget->offset_x = (float) x;
     widget->offset_y = (float) y;
     if (widget->width != (float) w || widget->height != (float) h) {
@@ -1014,7 +1015,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip) {
 //    log("renderer_redraw size = %d", size);
     int i = 0 ;
     while (i<size) {
-        err_traversal = renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window);
+        renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window);
         i++;
     }
     attrs = NULL;
@@ -1036,8 +1037,8 @@ int renderer_redraw_traversal(JNIEnv *env, uint8_t flip, int index) {
         width = windowNode->data.width;
         height = windowNode->data.height;
     }
-//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
-//        index, width, height, id);
+    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
+        index, width, height, id);
     if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id) {
         return FALSE;
     }
@@ -1061,11 +1062,8 @@ int renderer_redraw_traversal(JNIEnv *env, uint8_t flip, int index) {
             float y0 = (y - windowNode->data.offset_y) * 2.0f / height - 1.0f;
             float x1 = x0 + w / width * 2.0f;
             float y1 = y0 + h / height * 2.0f;
-//            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
+            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
             draw(widget.texture_id, x0, y0, x1, y1, flip);
-        } else {
-//            glDeleteTextures(1, &windowNode->data.widget.texture_id);
-//            windowNode->data.widget.texture_id = 0;
         }
     } else {
         draw(id, -1.f, -1.f, 1.f, 1.f, flip);
@@ -1101,11 +1099,13 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         width = attr->width;
         height = attr->height;
     }
-//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
-//        index, width, height, id);
+
     if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id) {
         return FALSE;
     }
+
+//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
+//        index, width, height, id);
     glViewport(0, 0, width, height);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
@@ -1117,8 +1117,8 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     if(attr->widget_size > 0){
         for(int i = 0 ; i < attr->widget_size ; i ++){
             Widget widget = attr->widgets[i];
-            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
-                widget.texture_id);
+//            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+//                widget.texture_id);
             if((int)widget.texture_id <= 0 || !widget.window || !IfRealizedWindow(widget.pWin)){
                 continue;
             }
@@ -1132,7 +1132,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             float x1 = x0 + w / width * 2.0f;
             float y1 = y0 + h / height * 2.0f;
             draw(widget.texture_id, x0, y0, x1, y1, flip);
-            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
+//            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
         }
     }
     draw_cursor_1(index, window);

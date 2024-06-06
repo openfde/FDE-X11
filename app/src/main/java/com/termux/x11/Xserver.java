@@ -122,16 +122,18 @@ public class Xserver {
         }
     }
 
-    public static void closeOrDestroyActivity(int index, long pWin, long window, int action) {
+    public static void closeOrDestroyActivity(int index, long pWin, long window, int action, int support_wm_delete) {
         Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
+        Property property = new Property();
+        property.setSupportDeleteWindow(support_wm_delete);
         switch (action){
             case ACTION_DESTORY:
                 EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
-                        "xserver finish activity", new WindowAttribute(index, pWin, window)));
+                        "xserver finish activity", new WindowAttribute(index, pWin, window), property));
                 break;
             case ACTION_UNMAP:
                 EventBus.getDefault().post(new EventMessage(EventType.X_UNMAP_WINDOW,
-                        "xserver hide any window", new WindowAttribute(index, pWin, window)));
+                        "xserver hide any window", new WindowAttribute(index, pWin, window), property));
                 break;
             default:
                 break;

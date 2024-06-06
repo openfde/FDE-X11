@@ -16,6 +16,9 @@ public class Property implements Parcelable {
 
     int supportDeleteWindow;
 
+    public Property() {
+    }
+
     public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class, int supportDeleteWindow) {
         this.XID = XID;
         this.transientfor = transientfor;

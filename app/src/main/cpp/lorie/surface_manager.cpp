@@ -22,7 +22,16 @@ int SurfaceManager::redirect_window_2_surface(Window window, WindAttribute *attr
 }
 
 void SurfaceManager::update_window(Window window, WindAttribute attr) {
-    window_attrs[window] = attr;
+    WindAttribute *pAttr =  &window_attrs[window];
+    if(pAttr){
+        pAttr->offset_x = attr.offset_x;
+        pAttr->offset_y = attr.offset_y;
+        pAttr->width = attr.width;
+        pAttr->height = attr.height;
+        pAttr->pWin = attr.pWin;
+        pAttr->index = attr.index;
+        pAttr->window = attr.window;
+    }
 }
 
 int SurfaceManager::remove_widget(Window window) {
@@ -56,19 +65,19 @@ int SurfaceManager::remove_widget(Window window) {
                     }
                 }
             }
-            LogWindAttribute(pair.second);
+            LogWindAttribute(pair.first, pair.second);
         }
     }
     return TRUE;
 }
 
 WindAttribute* SurfaceManager::find_window(Window window) {
-    WindAttribute* attr = &window_attrs[window];
-    if(attr){
-//        log("found attr window:%x", window);
-//        LogWindAttribute(*attr);
+    WindAttribute* attr;
+    if(window_attrs.count(window)){
+        attr = &window_attrs[window];
+        log("found attr window:%x", window);
     } else {
-//        log("not found window:%x", window);
+        log("not found window:%x", window);
     }
     return attr;
 }
@@ -127,6 +136,16 @@ int SurfaceManager::count_widget(Window window) {
 
 void SurfaceManager::delete_window(Window window) {
     window_attrs.erase(window);
+//    auto it = window_attrs.begin();
+//    while (it != window_attrs.end()) {
+//        if (it->second.window == 0 && it->second.width == 0
+//        && it->second.height == 0 && it->second.sfc == 0
+//        && it->second.pWin == 0 && it->second.index == 0  ) {
+//            it = window_attrs.erase(it);
+//        } else {
+//            ++it;
+//        }
+//    }
 }
 
 void SurfaceManager::traversal_window_func(void (* func)(WindAttribute)){
@@ -146,14 +165,15 @@ void SurfaceManager::traversal_log_window(){
     }
     log("traversal_window_attrs--------------->>>>");
     for (const auto& pair : window_attrs) {
-        LogWindAttribute(pair.second);
+        LogWindAttribute(pair.first, pair.second);
     }
     log("traversal_window_attrs<<<<<<<---------------");
 
 }
 
-void SurfaceManager::LogWindAttribute(WindAttribute attr) {
-    log("\t traversal_window_attrs window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d win:%p s:%p ",
+void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
+    log("\t traversal_window_attrs window:%x window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d win:%p s:%p ",
+        window,
         attr.window,
         attr.index,
         attr.width,

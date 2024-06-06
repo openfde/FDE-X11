@@ -15,6 +15,15 @@ public class AppListResult implements Serializable {
     public String message;
     public DataBeanX data;
 
+    @Override
+    public String toString() {
+        return "AppListResult{" +
+                "code=" + code +
+                ", message='" + message + '\'' +
+                ", data=" + data +
+                '}';
+    }
+
     public int getCode() {
         return code;
     }
@@ -48,6 +57,14 @@ public class AppListResult implements Serializable {
         public PageBean page;
         public List<DataBean> data;
 
+        @Override
+        public String toString() {
+            return "DataBeanX{" +
+                    "page=" + page +
+                    ", data=" + data +
+                    '}';
+        }
+
         public PageBean getPage() {
             return page;
         }
@@ -76,6 +93,16 @@ public class AppListResult implements Serializable {
             public int total;
             public int page;
             public int page_size;
+
+            @Override
+            public String toString() {
+                return "PageBean{" +
+                        "page_enable=" + page_enable +
+                        ", total=" + total +
+                        ", page=" + page +
+                        ", page_size=" + page_size +
+                        '}';
+            }
 
             public boolean isPage_enable() {
                 return page_enable;

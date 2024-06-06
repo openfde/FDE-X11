@@ -73,7 +73,7 @@ private:
     int max_size_;
     std::map<Window, WindAttribute> window_attrs;
     int get_avilable_index(Atom atom);
-    void LogWindAttribute(WindAttribute attr);
+    void LogWindAttribute(Window window,WindAttribute attr);
 
 };
 

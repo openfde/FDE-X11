@@ -5,7 +5,7 @@ android {
     defaultConfig {
         targetSdkVersion 34
         minSdkVersion project.getProperties().get("SDK_VERSION")
-        multiDexEnabled true
+//        multiDexEnabled true
     }
     buildTypes {
         release {

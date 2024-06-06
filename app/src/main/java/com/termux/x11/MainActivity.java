@@ -106,6 +106,7 @@ import com.termux.x11.utils.Util;
 import com.termux.x11.utils.X11ToolbarViewPager;
 
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -139,10 +140,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private EasyDialog easyDialog;
     private static final String TAG = MainActivity.class.getSimpleName();
 
+    private boolean correctMarked = false;
     protected long WindowCode = 0;
     protected int mIndex = 0;
-    protected WindowAttribute mAttribute;
-    protected Property mProperty;
+    public WindowAttribute mAttribute;
+    public Property mProperty;
     protected Rect mWindowRect = new Rect();
     ActivityManager am;
     private String title;
@@ -159,7 +161,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "onReceive: context:" + context + ", action:" + intent.getAction() + "");
             if (ACTION_START.equals(intent.getAction()) && service != null &&!mClientConnected) {
                 try {
                     Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
@@ -184,6 +185,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
                     killSelf = true;
                     finish();
+                    App.getApp().stopingActivityWindow.add(mAttribute.getXID());
                 }
             } else if (START_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
@@ -202,7 +204,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
-//                        && mAttribute.getWindowPtr() == attr.getWindowPtr()
+                        && mAttribute.getWindowPtr() == attr.getWindowPtr()
+                        && mProperty!=null && mProperty.getSupportDeleteWindow() == 1
+//                        && App.getApp().stopingActivityWindow.contains(attr.getWindowPtr())
                 ){
                     Log.d(TAG, "onReceive: " + STOP_WINDOW_FROM_X + ", attr:" + attr + "");
                     finish();
@@ -402,16 +406,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         initStylusAuxButtons();
         initMouseAuxButtons();
         bindXserver();
-
-        getWindow().getDecorView().postDelayed(()->{
-            try {
-                checkConfiguration(mConfiguration, true);
-            } catch (RemoteException e) {
-                throw new RuntimeException(e);
-            }
-        }, 2000);
         builder = new EasyDialog.Builder(this);
-
         initClipMonitor();
     }
 
@@ -474,19 +469,19 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     Objects.requireNonNull(MainActivity.this.service).asBinder().linkToDeath(() -> {
                         MainActivity.this.service = null;
                         Log.v(TAG, "Disconnected");
-                        showXserverDisconnect(MainActivity.this);
+//                        showXserverDisconnect(MainActivity.this);
                     }, 0);
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
             }
-            showXserverConnectSuccess(MainActivity.this);
+//            showXserverConnectSuccess(MainActivity.this);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             Log.v(TAG, "onServiceDisconnected: ");
-            showXserverDisconnect(MainActivity.this);
+//            showXserverDisconnect(MainActivity.this);
         }
     }
 
@@ -828,6 +823,16 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public void onResume() {
         super.onResume();
         setTerminalToolbarView();
+        getWindow().getDecorView().postDelayed(()->{
+            if(!correctMarked){
+                correctMarked = true;
+                try {
+                    checkConfiguration(mConfiguration, true);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        },1000);
 //        getLorieView().requestFocus();
         String hexString = Long.toHexString(getWindowId());
         Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
@@ -1148,6 +1153,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             closeXwindow();
         } else {
             finish();
+            App.getApp().stopingActivityWindow.add(mAttribute.getXID());
         }
 //        showConfirmDialog();
     }
@@ -1171,6 +1177,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                         closeXwindow();
                     }
                     finish();
+                    App.getApp().stopingActivityWindow.add(mAttribute.getXID());
                 })
                 .setOnCancelListener(dialog -> {
                     easyDialog.dismiss();

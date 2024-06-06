@@ -48,17 +48,16 @@ public class XWindowService extends Service {
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
 
-    private Handler handler = new Handler();
-    private HashSet<Long> pendingDiscardWindow = new HashSet<>();
+    private HashSet<Long> startingWindow = new HashSet<>();
+    private HashSet<Long> stopingWindow = new HashSet<>();
+
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
-        public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long window, long id) throws RemoteException {
-//            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", window:" + window + ", id:" + id + "");
-            if(!pendingDiscardWindow.contains(id)){
-//                Log.d(TAG, "windowChanged: pendingDiscardWindow" + id);
-                Xserver.getInstance().windowChanged(surface, x, y, w, h, index, window, id);
-            }
+        public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long pWin, long XID) throws RemoteException {
+            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
+            startingWindow.remove(XID);
+            Xserver.getInstance().windowChanged(surface, x, y, w, h, index, pWin, XID);
         }
 
         @Override
@@ -79,10 +78,10 @@ public class XWindowService extends Service {
 
         @Override
         public void closeWindow(int index, long winPtr, long window) throws RemoteException {
+            startingWindow.remove(window);
+            stopingWindow.remove(window);
             if(wm != null && wm.closeWindow(window) > 0){
-//                Log.d(TAG, "closeWindow: index:" + index + ", p:" + winPtr + ", window:" + window + "");
-                pendingDiscardWindow.remove(window);
-                wm.WINDOW_XIDS.remove(window);
+//                Log.d(TAG, "closeWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
             }
         }
 
@@ -122,6 +121,7 @@ public class XWindowService extends Service {
             }
         }
     };
+    private Handler handler = new Handler();
 
     @Override
     public void onCreate() {
@@ -150,14 +150,12 @@ public class XWindowService extends Service {
                 break;
             case X_DESTROY_ACTIVITY:
             case X_UNMAP_WINDOW:
-//                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
-//                destroyActivitySafety(5, message.getWindowAttribute());
-//                sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
-//                break;
-//            case X_UNMAP_WINDOW:
-                stopActivity(message.getWindowAttribute());
+                if(message.getProperty()!= null && message.getProperty().getSupportDeleteWindow() != 0){
+                    destroyActivitySafety(2, message.getWindowAttribute());
+                } else {
+                    stopActivity(message.getWindowAttribute());
+                }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
-                pendingDiscardWindow.add(message.getWindowAttribute().getXID());
                 break;
             default:
                 break;
@@ -198,16 +196,16 @@ public class XWindowService extends Service {
     }
 
     private void stopActivity(WindowAttribute attr) {
-        Log.d(TAG, "stopActivity: attr:" + attr + "");
-        if(pendingDiscardWindow.contains(attr.getXID())){
+        if(stopingWindow.contains(attr.getXID())){
             return;
         }
+        stopingWindow.add(attr.getXID());
+        Log.d(TAG, "stopActivity: attr:" + attr + "");
         String targetPackage = "com.termux.x11";
         Intent intent = new Intent(STOP_WINDOW_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
         sendStickyBroadcast(intent);
-        Log.d(TAG, "stopActivity: attr:" + attr + "");
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
@@ -222,7 +220,7 @@ public class XWindowService extends Service {
         sendBroadcast(intent);
         handler.postDelayed(()->{
             destroyActivitySafety(retry - 1, attr);
-        }, 2000);
+        }, 1000);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {
@@ -230,11 +228,12 @@ public class XWindowService extends Service {
     }
 
     public void startActLikeWindowWithDecorHeight(WindowAttribute attr, Class cls, float decorHeight) {
-        if (wm.WINDOW_XIDS.contains(attr.getXID())) {
+        stopingWindow.remove(attr.getXID());
+        if (startingWindow.contains(attr.getXID())) {
             return;
         }
+        startingWindow.add(attr.getXID());
         Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
-        wm.WINDOW_XIDS.add(attr.getXID());
         if(attr.getTaskTo() != 0){
             String targetPackage = "com.termux.x11";
             Intent intent = new Intent(START_ACTIVITY_FROM_X);

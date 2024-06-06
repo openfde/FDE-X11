@@ -124,7 +124,7 @@ public class AppUtils {
         if (Constants.SURFFIX_SVG.equals(iconType) || Constants.SURFFIX_SVGZ.equals(iconType)) {
             byte[] decodedData = Base64.decode(imageStr, Base64.DEFAULT);
             FileOutputStream svgFile = null;
-            File file = new File(App.getApp().getFilesDir(), name + "_output.svg");
+            File file = new File(context.getFilesDir(), name + "_output.svg");
             try {
                 svgFile = new FileOutputStream(file.getAbsolutePath());
                 svgFile.write(decodedData);

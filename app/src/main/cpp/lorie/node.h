@@ -43,6 +43,8 @@ typedef struct {
     EGLSurface sfc;
     Widget widget , *widgets;
     int widget_size ;
+    int discard;
+    WindProperty aProperty;
 } WindAttribute;
 
 typedef struct WindowNode {

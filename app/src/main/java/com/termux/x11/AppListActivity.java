@@ -1,5 +1,18 @@
 package com.termux.x11;
 
+import static android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
+import static com.termux.x11.MainActivity.ACTION_STOP;
+import static com.termux.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
+import static com.termux.x11.XWindowService.ACTION_X_WINDOW_PROPERTY;
+import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.STOP_WINDOW_FROM_X;
+import static com.termux.x11.XWindowService.UNMODALED_ACTION_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
+import static com.termux.x11.Xserver.ACTION_START;
+import static com.termux.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.termux.x11.data.Constants.BASEURL;
 import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 import static com.termux.x11.data.Constants.URL_GETALLAPP;
@@ -9,13 +22,21 @@ import static com.termux.x11.utils.Util.showXserverDisconnect;
 import static com.termux.x11.utils.Util.showXserverReconnect;
 import static com.termux.x11.utils.Util.showXserverStartSuccess;
 
+import android.annotation.SuppressLint;
+import android.app.ActivityManager;
+import android.app.ActivityOptions;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.Handler;
@@ -30,6 +51,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.TranslateAnimation;
@@ -41,7 +63,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.Util;
+import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.recyclerview.SwipeRecyclerView;
 import com.termux.x11.data.AppAdapter;
 import com.termux.x11.data.AppListResult;
@@ -103,15 +127,43 @@ public class AppListActivity extends AppCompatActivity {
         initAppList();
         Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
         startXWindowService();
-        View childAt = ((ViewGroup) ((ViewGroup) ((ViewGroup) getWindow().getDecorView()).getChildAt(0)).getChildAt(1)).getChildAt(7);
-        childAt.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                Log.d(TAG, "onTouch: v:" + v + ", event:" + event + "");
-                return false;
-            }
-        });
+        registerReceiver(receiver, new IntentFilter(ACTION_START) {{
+            addAction(ACTION_PREFERENCES_CHANGED);
+            addAction(ACTION_STOP);
+            addAction(DESTROY_ACTIVITY_FROM_X);
+            addAction(START_ACTIVITY_FROM_X);
+            addAction(STOP_WINDOW_FROM_X);
+            addAction(MODALED_ACTION_ACTIVITY_FROM_X);
+            addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
+            addAction(ACTION_UPDATE_ICON);
+        }},  0);
     }
+
+    private final BroadcastReceiver receiver = new BroadcastReceiver() {
+        @SuppressLint("UnspecifiedRegisterReceiverFlag")
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (ACTION_START.equals(intent.getAction())) {
+            } else if (ACTION_STOP.equals(intent.getAction())) {
+            } else if (ACTION_PREFERENCES_CHANGED.equals(intent.getAction())) {
+            } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+            } else if (START_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+            } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                App.getApp().stopingActivityWindow.add(attr.getXID());
+            } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+            } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+            } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
+                long windowId = intent.getLongExtra("window_id", 0);
+            }
+        }
+    };
+
 
     private void startXWindowService() {
         if(connection == null){
@@ -123,7 +175,7 @@ public class AppListActivity extends AppCompatActivity {
                         Objects.requireNonNull(AppListActivity.this.service).linkToDeath(() -> {
                             AppListActivity.this.service = null;
                             Log.v(TAG, "Disconnected");
-                            showXserverDisconnect(AppListActivity.this);
+//                            showXserverDisconnect(AppListActivity.this);
                         }, 0);
                     } catch (RemoteException e) {
                         e.printStackTrace();
@@ -134,7 +186,7 @@ public class AppListActivity extends AppCompatActivity {
                 @Override
                 public void onServiceDisconnected(ComponentName name) {
                     AppListActivity.this.service = null;
-                    showXserverDisconnect(AppListActivity.this);
+//                    showXserverDisconnect(AppListActivity.this);
                 }
             };
         }
@@ -150,6 +202,7 @@ public class AppListActivity extends AppCompatActivity {
         if(tipLoadDialog != null){
             tipLoadDialog = null;
         }
+        unregisterReceiver(receiver);
     }
 
 
@@ -256,7 +309,7 @@ public class AppListActivity extends AppCompatActivity {
 //            if (isRight) {
 //                showOptionView(itemView, app, event);
 //            } else {
-                load2Start(app);
+            load2Start(app);
 //            }
         }
     };
@@ -420,7 +473,7 @@ public class AppListActivity extends AppCompatActivity {
                             tipLoadDialog.dismiss();
                         }
                         isLoading = false;
-                        Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
+//                        Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
                         List<AppListResult.DataBeanX.DataBean> data = response.getData().getData();
                         if (fromShortcut) {
                             gotoShortcutApp(data);
@@ -436,11 +489,11 @@ public class AppListActivity extends AppCompatActivity {
                         }
                         mRecyclerView.loadMoreFinish(mDataList.size() == 0, response.getData().getPage().getTotal() > mDataList.size());
                         mRefreshLayout.setRefreshing(false);
-
-                        if(forceRefresh){
-                            mRecyclerView.scrollToPosition(0);
-                        }
-                        mAppListInit = mDataList.size() != 0;
+//
+//                        if(forceRefresh){
+//                            mRecyclerView.scrollToPosition(0);
+//                        }
+//                        mAppListInit = mDataList.size() != 0;
                     }
                 });
     }
