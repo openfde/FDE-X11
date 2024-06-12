@@ -39,7 +39,15 @@ static jclass staticClass = NULL;
     PropertyChangeMask|\
     ColormapChangeMask
 
-#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__)
+#define PRINT_LOG 0
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_wm", __VA_ARGS__);\
+                }              \
+
 #define CHECK(condition)  \
       if(condition){     \
           log("#condition fatal"); \

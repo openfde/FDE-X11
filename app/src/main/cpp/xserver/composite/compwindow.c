@@ -93,8 +93,15 @@ compCheckTree(ScreenPtr pScreen)
 }
 #endif
 #include <android/log.h>
-#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "yang_compwindow", __VA_ARGS__)
-#define loge(...) __android_log_print(ANDROID_LOG_ERROR, "yang_compwindow", __VA_ARGS__)
+#define PRINT_LOG 0
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_compwindow", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_compwindow", __VA_ARGS__);\
+                }              \
+
 void android_destroy_window(Window window);
 
 typedef struct _compPixmapVisit {

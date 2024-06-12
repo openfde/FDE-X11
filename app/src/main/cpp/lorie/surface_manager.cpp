@@ -72,14 +72,14 @@ int SurfaceManager::remove_widget(Window window) {
 }
 
 WindAttribute* SurfaceManager::find_window(Window window) {
-    WindAttribute* attr;
     if(window_attrs.count(window)){
-        attr = &window_attrs[window];
+        WindAttribute *attr = &window_attrs[window];
         log("found attr window:%x", window);
+        return attr;
     } else {
         log("not found window:%x", window);
+        return NULL;
     }
-    return attr;
 }
 
 WindAttribute* SurfaceManager::find_widget(Window window) {

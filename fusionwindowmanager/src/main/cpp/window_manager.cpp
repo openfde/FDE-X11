@@ -387,19 +387,19 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     changes.sibling = e.above;
     changes.stack_mode = e.detail;
     unsigned long value_mask = e.value_mask;
-//    log("value_mask : %lu", value_mask);
+    log("value_mask : %lu", value_mask);
     if(e.y < DECORCATIONVIEW_HEIGHT) {
         value_mask  = e.value_mask | (1 << 1);
     }
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
         XConfigureWindow(display_, frame, value_mask, &changes);
-//        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
-//        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
+        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     } else {
         XConfigureWindow(display_, e.window, value_mask, &changes);
-//        log("Resize_ %lx to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
-//        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+        log("Resize_ %lx to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
+        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     }
     XSync(display_, False);
 
@@ -528,7 +528,9 @@ int WindowManager::OnXError(Display* display, XErrorEvent* e) {
     XGetErrorText(display, e->error_code, error_text, sizeof(error_text));
     log("Received X error:\n");
     log("    Request: %d", int(e->request_code));
-    log(" - %s \n", XRequestCodeToString(e->request_code).c_str());
+    if(e->request_code < 120){
+        log(" - %s \n", XRequestCodeToString(e->request_code).c_str());
+    }
     log("    Error code %d: " , int(e->error_code));
     log(" - %s \n", error_text );
     log("    Resource ID: %x",e->resourceid);
@@ -746,31 +748,31 @@ void WindowManager::OnSelectionClear(XEvent e) {
 
 
 int WindowManager::moveWindow(long window, int x, int y) {
-//    log("moveWindow %x: x:%d y:%d", window, x, y);
+    log("moveWindow %x: x:%d y:%d", window, x, y);
     int ret = XMoveWindow(display_, window, x, y);
     XSync(display_, False);
     return ret;
 }
 
 int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
-//    log("configureWindow %x: x:%d y:%d w:%d h:%d", window, x, y, w, h);
+    log("configureWindow %x: x:%d y:%d w:%d h:%d", window, x, y, w, h);
     XWindowChanges changes;
     changes.x = x;
     changes.y = y;
     changes.width = w;
     changes.height = h;
     unsigned long value_mask = CWX | CWY | CWWidth | CWHeight ;
-    int ret = 0 ;
+    int ret;
     if (isInFrameMap(window)) {
-//        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
-//            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-//            value_mask);
+        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
+            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+            value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
         XSync(display_, False);
     } else {
-//        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
-//            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-//            value_mask);
+        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
+            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+            value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
         XSync(display_, False);
     }
@@ -778,10 +780,10 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
 }
 
 int WindowManager::resizeWindow(long window, int w, int h) {
-//    log("resizeWindow %x w:%d h:%d", window, w, h);
+    log("resizeWindow %x w:%d h:%d", window, w, h);
     int  ret = XResizeWindow(display_, window, w, h);
     XSync(display_, False);
-    return ret - 1;
+    return ret;
 }
 
 Window WindowManager::getFirstChild(Window window){
@@ -804,7 +806,7 @@ int WindowManager::closeWindow(long window) {
     Atom* supported;
     int num_supported;
     XGetWMProtocols(display_, window, &supported, &num_supported);
-//    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
+    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
     int ret;
     if(supported) {
         log("closeWindow supported1");
@@ -825,7 +827,7 @@ int WindowManager::closeWindow(long window) {
 }
 
 int WindowManager::raiseWindow(long window) {
-//    log("raiseWindow %x", window);
+    log("raiseWindow %x", window);
     int ret = XRaiseWindow(display_, window);
     XSetInputFocus(display_, window, RevertToPointerRoot, CurrentTime);
     XSync(display_, False);

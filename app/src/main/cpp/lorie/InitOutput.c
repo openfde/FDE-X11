@@ -85,8 +85,8 @@ from The Open Group.
 #define wrap(priv, real, mem, func) { priv->mem = real->mem; real->mem = func; }
 #define unwrap(priv, real, mem) { real->mem = priv->mem; }
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
-#define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__)
 
+#define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__)
 #define logh(...) __android_log_print(ANDROID_LOG_ERROR, "huyang_InitOutput", __VA_ARGS__)
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;

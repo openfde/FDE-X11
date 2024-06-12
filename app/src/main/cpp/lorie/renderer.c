@@ -12,16 +12,14 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <android/native_window_jni.h>
-#include <android/log.h>
 #include "node.h"
 #include <dlfcn.h>
 #include "renderer.h"
 #include "os.h"
 #include <globals.h>
 #include "c_interface.h"
-
-#define PRINT_LOG 1
-
+#include <android/log.h>
+#define PRINT_LOG 0
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);\
                 }              \
@@ -963,12 +961,13 @@ GLuint renderer_gen_bind_texture(int x, int y, int w, int h, void *data, uint8_t
 }
 
 void renderer_update_cursor(int w, int h, int xhot, int yhot, void *data) {
-//    log("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
+    log("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
     cursor.width = (float) w;
     cursor.height = (float) h;
     cursor.xhot = (float) xhot;
     cursor.yhot = (float) yhot;
-
+    cursor.x = 0;
+    cursor.y = 0;
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !cursor.width || !cursor.height)
         return;
 
@@ -988,7 +987,7 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void *data) {
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
-//    log("set_cursor x:%d, y :%d", x , y);
+    log("set_cursor x:%d, y :%d", x , y);
     cursor.x = (float) x;
     cursor.y = (float) y;
 }
@@ -1335,6 +1334,15 @@ maybe_unused static void draw_cursor(int index) {
 maybe_unused static void draw_cursor_1(int index, Window window) {
     float x, y, w, h;
 
+
+    WindAttribute *attr = _surface_find_window(sfWraper, window);
+    if (attr) {
+        if (cursor.x < attr->offset_x || cursor.y < attr->offset_y)
+            return;
+        if (cursor.x > attr->offset_x + attr->width || cursor.y > attr->offset_y + attr->height)
+            return;
+    }
+
     if (!cursor.width || !cursor.height)
         return;
 
@@ -1345,7 +1353,6 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     float cursor_xhot = cursor.xhot;
     float cursor_yhot = cursor.yhot;
     if (index != 0) {
-        WindAttribute *attr = _surface_find_window(sfWraper, window);
         if (attr) {
             width = attr->width;
             height = attr->height;
@@ -1358,7 +1365,7 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     w = 2.f * cursor.width / width;
     h = 2.f * cursor.height / height;
 
-//    log("draw_cursor x:%.5f y:%.5f w:%.5f h:%.5f", x, y, x + w, y + h);
+    log("draw_cursor x:%.5f y:%.5f w:%.5f h:%.5f", x, y, x + w, y + h);
     glEnable(GL_BLEND);
     checkGlError();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
