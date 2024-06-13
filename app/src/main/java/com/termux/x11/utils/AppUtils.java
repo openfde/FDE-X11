@@ -54,6 +54,8 @@ public class AppUtils {
     private static AlertDialog alertDialog;
     private static final String CLASS_NAME = "android.os.SystemProperties";
 
+    public static int GLOBAL_SCREEN_WIDTH = 1920;
+    public static int GLOBAL_SCREEN_HEIGHT = 1080;
     private static Context mContext;
     private static Thread mUiThread;
 

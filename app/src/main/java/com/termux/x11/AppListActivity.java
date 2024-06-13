@@ -52,6 +52,7 @@ import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.WindowMetrics;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.TranslateAnimation;
@@ -125,6 +126,14 @@ public class AppListActivity extends AppCompatActivity {
         loadingView = (ProgressBar) findViewById(R.id.loadingView);
         tipLoadDialog = new TipLoadDialog(this);
         initAppList();
+//        WindowMetrics maximumWindowMetrics = getWindow().getWindowManager().getMaximumWindowMetrics();
+//        Rect bounds = null;
+//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+//            bounds = maximumWindowMetrics.getBounds();
+//        }
+//        Log.d(TAG, "onCreate: bounds:" + bounds + "");
+//        AppUtils.GLOBAL_SCREEN_WIDTH = bounds.right;
+//        AppUtils.GLOBAL_SCREEN_HEIGHT = bounds.bottom;
         Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
         startXWindowService();
         registerReceiver(receiver, new IntentFilter(ACTION_START) {{

@@ -97,6 +97,7 @@ import com.termux.x11.input.InputEventSender;
 import com.termux.x11.input.InputStub;
 import com.termux.x11.input.TouchInputHandler.RenderStub;
 import com.termux.x11.input.TouchInputHandler;
+import com.termux.x11.utils.AppUtils;
 import com.termux.x11.utils.FullscreenWorkaround;
 import com.termux.x11.utils.KeyInterceptor;
 import com.termux.x11.utils.Reflector;
@@ -267,6 +268,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         }
+        int measuredHeight = getWindow().getDecorView().getMeasuredHeight();
+//        setOverlayWithDecorCaptionEnabled(false);
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
@@ -352,13 +355,13 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 //            Log.v(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
 //                    + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
 //            );
-            LorieView.sendWindowChange(1920, 989, framerate);
+            LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
             WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
             if (service != null && !killSelf) {
                 if(attribute == null){
                     try {
                         service.windowChanged(sfc, 0, 0,
-                                1920, 989, 0,
+                                AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, 0,
                                 1000, 1000);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -504,6 +507,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
+//        setOverlayWithDecorCaptionEnabled(false);
+        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
         super.onWindowAttributesChanged(params);
     }
 
@@ -986,7 +991,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         super.onConfigurationChanged(newConfig);
         orientation = newConfig.orientation;
         setTerminalToolbarView();
-//        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
+        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
         if(!checkServiceExits()){
             return;
         }
@@ -1004,7 +1009,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
         Window window = getWindow();
         View decorView = window.getDecorView();
-//        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
+        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
         boolean fullscreen = p.getBoolean("fullscreen", false);
         boolean reseed = p.getBoolean("Reseed", true);
         fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
@@ -1049,8 +1054,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             window.addFlags(FLAG_KEEP_SCREEN_ON);
         else
             window.clearFlags(FLAG_KEEP_SCREEN_ON);
-        window.setSoftInputMode((reseed ? SOFT_INPUT_ADJUST_RESIZE : SOFT_INPUT_ADJUST_PAN) | SOFT_INPUT_STATE_HIDDEN);
-        ((FrameLayout) findViewById(android.R.id.content)).getChildAt(0).setFitsSystemWindows(!fullscreen);
+//        window.setSoftInputMode((reseed ? SOFT_INPUT_ADJUST_RESIZE : SOFT_INPUT_ADJUST_PAN) | SOFT_INPUT_STATE_HIDDEN);
+//        ((FrameLayout) findViewById(android.R.id.content)).getChildAt(0).setFitsSystemWindows(!fullscreen);
         SamsungDexUtils.dexMetaKeyCapture(this, hasFocus && p.getBoolean("dexMetaKeyCapture", false));
         if (hasFocus && mIndex != 0){
             getLorieView().regenerate();
