@@ -217,8 +217,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
                     Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
-                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
-                            FLAG_NOT_TOUCHABLE);
+//                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
+//                            FLAG_NOT_TOUCHABLE);
                 }
             } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);

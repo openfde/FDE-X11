@@ -597,7 +597,7 @@ void WindowManager::Run() {
     owner = XCreateSimpleWindow(display_, root_, -10, -10, 1, 1, 0, 0, 0);
     log("owner:%x", owner);
     sel = XInternAtom(display_, "CLIPBOARD", False);
-    utf8 = XInternAtom(display_, "UTF8_STRING", False);
+//    utf8 = XInternAtom(display_, "UTF8_STRING", False);
     XSetSelectionOwner(display_, sel, owner, CurrentTime);
 
     // 2. Main event loop.
@@ -674,22 +674,44 @@ void WindowManager::OnSelectionRequest(XEvent e) {
     if(sev->requestor == root_){
         return;
     }
+    sel = XInternAtom(display_, "CLIPBOARD", False);
+    utf8 = XInternAtom(display_, "UTF8_STRING", False);
 
-    if (sev->target != utf8 || sev->property == None){
+//    if (sev->target != utf8 || sev->property == None){
+//        XSelectionEvent ssev;
+//        char *an;
+//        an = XGetAtomName(display_, sev->target);
+//        log("Denying request of type '%s'\n", an);
+//        if (an)
+//            XFree(an);
+//        /* All of these should match the values of the request. */
+//        ssev.type = SelectionNotify;
+//        ssev.requestor = sev->requestor;
+//        ssev.selection = sev->selection;
+//        ssev.target = sev->target;
+//        ssev.property = None;  /* signifies "nope" */
+//        ssev.time = sev->time;
+//        XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
+
+    Atom targets = XInternAtom(display_, "TARGETS", False);
+    if(sev->target == targets){
+        Atom types[2] = { targets, utf8 };
+        XChangeProperty(display_,
+                        sev->requestor,
+                        sev->property,
+                        XA_ATOM,
+                        32, PropModeReplace, (unsigned char *) types,
+                        (int) (sizeof(types) / sizeof(Atom))
+        );
         XSelectionEvent ssev;
-        char *an;
-        an = XGetAtomName(display_, sev->target);
-        log("Denying request of type '%s'\n", an);
-        if (an)
-            XFree(an);
-        /* All of these should match the values of the request. */
         ssev.type = SelectionNotify;
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        ssev.property = None;  /* signifies "nope" */
+        ssev.property = sev->property;
         ssev.time = sev->time;
-        XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
+        XSendEvent(display_, sev->requestor, 0, NoEventMask, (XEvent *)&ssev);
+        XFlush(display_);
     } else {
         XSelectionEvent ssev;
         time_t now_tm;
@@ -709,11 +731,16 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         ssev.property = sev->property;
         ssev.time = sev->time;
         XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
+        XFlush(display_);
     }
+
 }
 
 
 void WindowManager::OnSelectionClear(XEvent e) {
+    sel = XInternAtom(display_, "CLIPBOARD", False);
+    utf8 = XInternAtom(display_, "UTF8_STRING", False);
+
     char *result;
     unsigned long ressize, restail;
     int resbits;
