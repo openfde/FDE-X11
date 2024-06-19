@@ -47,9 +47,14 @@
 
 #include "compint.h"
 #include <android/log.h>
-#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_compalloc", __VA_ARGS__)
-#define loge(...) __android_log_print(ANDROID_LOG_ERROR, "huyang_compalloc", __VA_ARGS__)
+#define PRINT_LOG 0
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_compalloc", __VA_ARGS__);\
+                }              \
 
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_compalloc", __VA_ARGS__);\
+                }
 
 static Bool
 compScreenUpdate(ClientPtr pClient, void *closure)
