@@ -1,6 +1,5 @@
 package com.termux.x11;
 
-import static com.termux.x11.MainActivity.ACTION_STOP;
 import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 
 import android.app.ActivityOptions;
@@ -24,10 +23,18 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+
+/**
+ * native xserver run on this,
+ * start activity/dialog like a x window,
+ * close activity/dialog,
+ * update icon,
+ *
+ * window manager confiure window and update clipboard
+ */
 public class XWindowService extends Service {
 
     private static final String TAG = "XWindowService";
@@ -254,18 +261,13 @@ public class XWindowService extends Service {
         }
     }
 
-
-
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-//        Log.d(TAG, "onStartCommand: ");
         return Service.START_STICKY;
     }
 
     @Override
     public IBinder onBind(Intent intent) {
-//        Log.d(TAG, "onBind: ");
         return service;
     }
 }

@@ -58,7 +58,7 @@ public class Xserver {
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
     public static final String ACTION_UPDATE_ICON = "UPDATE_ICON";
-    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp"};
+    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp", "-ac"};
 
     private  static final int _NET_WM_WINDOW_TYPE = 267;
     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -96,10 +96,27 @@ public class Xserver {
     }
 
     public static Xserver getInstance() {
-//        Log.d(TAG, "getInstance: " + SingletonHolder.INSTANCE);
         return SingletonHolder.INSTANCE;
     }
 
+    /**
+     * Start or update activity:  call from jni
+     * @param aid                   Property window XID
+     * @param transientfor          ICCCM transient for window XID
+     * @param leader                leader window XID
+     * @param type                  window type
+     * @param net_name              window name
+     * @param wm_class              window name -1
+     * @param x                     offset x
+     * @param y                     offset y
+     * @param w                     width
+     * @param h                     height
+     * @param index                 index for ecah window by myself
+     * @param p                     window pointer
+     * @param window                window XID
+     * @param taskTo                in which activity task
+     * @param support_wm_delete     close action
+     */
     public static void startOrUpdateActivity(long aid, long transientfor, long leader, int type, String net_name, String wm_class,
     int x, int y, int w, int h, int index, long p, long window, long taskTo, int support_wm_delete) {
         Log.d(TAG, "startOrUpdateActivity: aid:" + aid + ", transientfor:" + transientfor + ", leader:" + leader + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p +
@@ -122,6 +139,15 @@ public class Xserver {
         }
     }
 
+
+    /**
+     * close or destory a activity: call from jni
+     * @param index                 window index
+     * @param pWin                  window pointer
+     * @param window                window XID
+     * @param action                action to window
+     * @param support_wm_delete     close action
+     */
     public static void closeOrDestroyActivity(int index, long pWin, long window, int action, int support_wm_delete) {
         Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
         Property property = new Property();
@@ -140,6 +166,11 @@ public class Xserver {
         }
     }
 
+
+    /**
+     * call from jni
+     * @param text
+     */
     public static void updateXserverCliptext(String text){
 //        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
         if(contextRef.get() != null && !TextUtils.isEmpty(text)){
@@ -149,6 +180,12 @@ public class Xserver {
         }
     }
 
+
+    /**
+     * update icon: call from jni
+     * @param bitmap
+     * @param window
+     */
     public static void  getWindowIconFromManager(Bitmap bitmap, long window){
 //        Log.d(TAG, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
         Context context = contextRef.get();
@@ -156,7 +193,6 @@ public class Xserver {
             Log.d(TAG, "context  == null ");
             return;
         }
-//        Log.d(TAG, "post getWindowIconFromManager: bitmap:" + bitmap.getWidth() + "x" + bitmap.getHeight() + ", window:" + window + "");
         Bitmap newBitmap = Util.scaleBitmapIfneed(bitmap);
         String targetPackage = "com.termux.x11";
         Intent intent = new Intent(ACTION_UPDATE_ICON);

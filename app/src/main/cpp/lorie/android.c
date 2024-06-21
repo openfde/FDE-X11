@@ -862,7 +862,7 @@ static inline void checkConnection(JNIEnv *env) {
 
     if ((retval = recv(conn_fd, &b, 1, MSG_PEEK)) <= 0 && errno != EAGAIN) {
         log(DEBUG, "recv %d %s", retval, strerror(errno));
-        jclass cls = (*env)->FindClass(env, "com/termux/x11/CmdEntryPoint");
+        jclass cls = (*env)->FindClass(env, "com/termux/x11/Xserver");
         jmethodID method = !cls ? NULL : (*env)->GetStaticMethodID(env, cls, "requestConnection",
                                                                    "()V");
         if (method)
