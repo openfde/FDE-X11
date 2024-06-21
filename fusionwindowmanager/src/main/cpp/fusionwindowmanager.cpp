@@ -141,23 +141,19 @@ static JNINativeMethod method_table[] = {
         {"raiseWindow","(J)I", (void *) raiseWindow},
         {"sendClipText","(Ljava/lang/String;)I", (void *) sendClipText},
         {"disconnect2Server","()I", (void *) disconnect2Server},
-
 };
 
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void *reserved){
-    jniVM = vm;
     JNIEnv *env = NULL;
     if (vm->AttachCurrentThread(&env,NULL) == JNI_OK){
         jclass clazz = env->FindClass("com/fde/fusionwindowmanager/WindowManager");
         if (clazz == NULL){
             return JNI_ERR;
         }
-
         if (env->RegisterNatives(clazz, method_table, sizeof(method_table)/ sizeof(method_table[0]))==JNI_OK) {
             return JNI_VERSION_1_6;
         }
     }
-
     return JNI_ERR;
 }

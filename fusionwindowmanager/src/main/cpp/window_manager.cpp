@@ -15,13 +15,9 @@ using ::std::unique_ptr;
 bool WindowManager::wm_detected_;
 bool WindowManager::support_composite;
 mutex WindowManager::wm_detected_mutex_;
-Window frame_window;
-Window top_level_debug;
 
 
 ::WindowManager *WindowManager::create(const char *export_display, JNIEnv * env, jclass cls) {
-    staticClass = cls;
-    GlobalEnv = env;
     Display* display = XOpenDisplay(export_display);
     if (display == nullptr) {
         log("Failed to open X display");
@@ -71,10 +67,6 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     // 1. Retrieve attributes of window to frame.
     XWindowAttributes x_window_attrs;
     CHECK(!XGetWindowAttributes(display_, w, &x_window_attrs));
-
-//    if(!isNormalWindow(w)){
-//        return;
-//    }
 
     // 2. If window was created before window manager started, we should frame
     // it only if it is visible and doesn't set override_redirect.
@@ -157,8 +149,6 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             false,
             GrabModeAsync,
             GrabModeAsync);
-    frame_window = frame;
-    top_level_debug = w;
     window_under_frames.insert(w);
     frames.insert(frame);
     log("Framed_ window %x reparent to frame %x" ,w , frame);
@@ -175,7 +165,6 @@ bool WindowManager::isNormalWindow(long window) {
     Atom type_menu = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_MENU", False);
     Atom type_dialog = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     Atom type_popup = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
-
     log("isNormalWindow ? %lx", window);
     if (XGetWindowProperty(display_, window, type, 0, 1024, False, AnyPropertyType,
                            &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
@@ -198,7 +187,6 @@ bool WindowManager::isNormalWindow(long window) {
             }
         }
     }
-//    printProperty(display_, window);
     XFree(propData);
     return True;
 }
@@ -212,8 +200,6 @@ bool WindowManager::isInFrameMap(long window ){
     return False;
 }
 
-
-
 void WindowManager::OnCreateNotify(const XCreateWindowEvent& e) {}
 
 void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {
@@ -224,82 +210,11 @@ void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {
 void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 
 void WindowManager::OnMapNotify(const XMapEvent &e) {
-    if(e.event == root_){
+    if(e.event == root_ && support_composite){
         XCompositeNameWindowPixmap(display_, e.window);
         named_windows.insert(e.window);
         XSync(display_, False);
     }
-}
-
-jobject WindowManager::printProperty(Display *display, Window window) {
-    Atom prop = XInternAtom(display, "_NET_WM_ICON", False);
-    Atom actualType;
-    int actualFormat;
-    unsigned long nItems, bytesAfter;
-    unsigned char *propData = NULL;
-    if (XGetWindowProperty(display, window, prop, 0, (~0L), False, AnyPropertyType,
-                           &actualType, &actualFormat, &nItems, &bytesAfter, &propData) == Success) {
-        if (actualType == XA_CARDINAL && actualFormat == 32) {
-//            unsigned long *icon_data = (unsigned long *)propData;
-            unsigned long length = nItems;
-            if (length >= 2) {
-                int *icon_data = (int *)propData;
-                int width = *icon_data;
-                int height = *(icon_data+1);
-                int * imageData = ( int*) (icon_data + 2);
-                log("printicon window:%x nItems:%ld  width:%ld  height:%ld", window, nItems,  width, height);
-                log("sizeof int:%d char:%d long:%d unsignedlong:%d", sizeof(int), sizeof(char), sizeof(long), sizeof(unsigned long));
-                for(int i = 0 ; i  < 10; i ++ ){
-                    log( "get icon  value:%ld i:%d", *(icon_data + i), i);
-                }
-                for(int i = 255 ; i  < 275; i ++ ){
-                    log( "get icon  value:%ld i:%d", *(icon_data + i), i);
-                }
-                for(int i = 1280 ; i  < 1290; i ++ ){
-                    log( "get icon  value:%ld i:%d", *(icon_data + i), i);
-                }
-//                unsigned char* imageData = (unsigned char*) (icon_data + 2);
-                jclass bitmapClass = GlobalEnv->FindClass("android/graphics/Bitmap");
-                jmethodID createBitmapMethod = GlobalEnv->GetStaticMethodID(bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-                jstring configName = GlobalEnv->NewStringUTF("RGBA_8888");
-                jclass bitmapConfigClass = GlobalEnv->FindClass("android/graphics/Bitmap$Config");
-                jmethodID valueOfMethod = GlobalEnv->GetStaticMethodID(bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
-                jobject bitmapConfig = GlobalEnv->CallStaticObjectMethod(bitmapConfigClass, valueOfMethod, configName);
-                jobject bitmap = GlobalEnv->CallStaticObjectMethod(bitmapClass, createBitmapMethod, (int)width, (int)height, bitmapConfig);
-                void* bitmapPixels;
-                if (AndroidBitmap_lockPixels(GlobalEnv, bitmap, &bitmapPixels) < 0) {
-                    log("Failed to lock bitmap pixels\n");
-                    XFree(propData);
-                    return NULL;
-                }
-                uint32_t* src = (uint32_t*)imageData;
-                uint32_t* dst = (uint32_t*)bitmapPixels;
-                for (unsigned long y = 0; y < height; ++y) {
-                    for (unsigned long x = 0; x < width; ++x) {
-                        dst[y * width + x] = src[y * width + x];
-                    }
-                }
-                AndroidBitmap_unlockPixels(GlobalEnv, bitmap);
-                GlobalEnv->DeleteLocalRef(configName);
-                GlobalEnv->DeleteLocalRef(bitmapConfigClass);
-                XFree(propData);
-
-                jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                                                                "getWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
-                GlobalEnv->CallStaticVoidMethod(staticClass, method, bitmap, window);
-                return bitmap;
-            } else {
-                log("Property data too short, length: %lu\n", length);
-            }
-        } else {
-            log("Property format/type mismatch: type %lu, format %d\n", actualType, actualFormat);
-        }
-        XFree(propData);
-    } else {
-        log("Failed to get property value\n");
-    }
-
-    return NULL;
 }
 
 void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
@@ -310,7 +225,6 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
         log("Ignore UnmapNotify for non-client window %lu",e.window);
         return;
     }
-
     // Ignore event if it is triggered by reparenting a window that was mapped
     // before the window manager started.
     //
@@ -324,7 +238,6 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
         log("Ignore UnmapNotify for reparented pre-existing window %lu", e.window);
         return;
     }
-
 //    Unframe(e.window);
 }
 
@@ -518,9 +431,7 @@ void WindowManager::OnKeyPress(const XKeyEvent& e) {
 
 void WindowManager::OnKeyRelease(const XKeyEvent& e) {}
 
-void WindowManager::OnPropertyNotify(XEvent e) {
-
-}
+void WindowManager::OnPropertyNotify(XEvent e) {}
 
 int WindowManager::OnXError(Display* display, XErrorEvent* e) {
     const int MAX_ERROR_TEXT_LENGTH = 1024;
@@ -546,7 +457,6 @@ void WindowManager::Run() {
 
     {
         ::std::lock_guard<mutex> lock(wm_detected_mutex_);
-
         wm_detected_ = false;
         XSetErrorHandler(&WindowManager::OnWMDetected);
         XSelectInput(
@@ -677,22 +587,6 @@ void WindowManager::OnSelectionRequest(XEvent e) {
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
 
-//    if (sev->target != utf8 || sev->property == None){
-//        XSelectionEvent ssev;
-//        char *an;
-//        an = XGetAtomName(display_, sev->target);
-//        log("Denying request of type '%s'\n", an);
-//        if (an)
-//            XFree(an);
-//        /* All of these should match the values of the request. */
-//        ssev.type = SelectionNotify;
-//        ssev.requestor = sev->requestor;
-//        ssev.selection = sev->selection;
-//        ssev.target = sev->target;
-//        ssev.property = None;  /* signifies "nope" */
-//        ssev.time = sev->time;
-//        XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
-
     Atom targets = XInternAtom(display_, "TARGETS", False);
     if(sev->target == targets){
         Atom types[2] = { targets, utf8 };
@@ -733,9 +627,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
     }
-
 }
-
 
 void WindowManager::OnSelectionClear(XEvent e) {
     sel = XInternAtom(display_, "CLIPBOARD", False);
@@ -811,22 +703,6 @@ int WindowManager::resizeWindow(long window, int w, int h) {
     int  ret = XResizeWindow(display_, window, w, h);
     XSync(display_, False);
     return ret;
-}
-
-Window WindowManager::getFirstChild(Window window){
-    Window returned_root, returned_parent;
-    Window* children;
-    unsigned int nchildren;
-    XQueryTree(
-            display_,
-            window,
-            &returned_root,
-            &returned_parent,
-            &children,
-            &nchildren);
-//    log("closeWindow %x", children[0]);
-    XSync(display_, False);
-    return children[0];
 }
 
 int WindowManager::closeWindow(long window) {

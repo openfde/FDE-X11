@@ -47,10 +47,10 @@ public class XWindowService extends Service {
     public static final String X_WINDOW_PROPERTY = "x_window_property";
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
-
     private HashSet<Long> startingWindow = new HashSet<>();
     private HashSet<Long> stopingWindow = new HashSet<>();
 
+    private HashMap<Long, Property> propertyHashMap = new HashMap<>();
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
@@ -161,9 +161,6 @@ public class XWindowService extends Service {
                 break;
         }
     }
-
-    private HashMap<Long, Property> propertyHashMap = new HashMap<>();
-
 
     private void sendBroadcastFocusableIfNeed(WindowAttribute attr, boolean isFocusable) {
         if(!isFocusable){

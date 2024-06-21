@@ -45,7 +45,6 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btConfigureNative = findViewById(R.id.button_configure);
         btStopWindowManager = findViewById(R.id.button_stopwm);
         btstartXserver = findViewById(R.id.button_startServer);
-
         btCreateWindow.setOnClickListener(this);
         btStartScreen.setOnClickListener(this);
         btBindWindowManager.setOnClickListener(this);
@@ -57,9 +56,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         btStopWindowManager.setOnClickListener(this);
         btstartXserver.setOnClickListener(this);
         btConfigureNative.setOnClickListener(this);
-
         Util.copyAssetsToFiles(this, "xkb", "xkb");
-
 //        if(connection == null ){
 //            connection = new WMServiceConnection();
 //        }
@@ -75,12 +72,6 @@ public class ControlActivity extends Activity implements View.OnClickListener {
 
             }
         }, BIND_AUTO_CREATE);
-
-
-//        windowManager = new WindowManager();
-
-
-
     }
 
     @Override
@@ -124,7 +115,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         } else if ( v == btStopWindowManager){
             windowManager.stopWindowManager();
         } else if ( v == btstartXserver){
-            CmdEntryPoint.main(new String[]{":1", "-legacy-drawing", "-listen", "tcp"});
+            Xserver.getInstance().startXserver();
         }
     }
 

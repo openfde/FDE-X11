@@ -102,7 +102,7 @@ dependencies {
     implementation 'com.caverock:androidsvg:1.4'
     implementation 'io.github.razerdp:BasePopup:3.2.1'
     implementation 'org.greenrobot:eventbus:3.2.0'
-    compileOnly project(':shell-loader:stub')
+//    compileOnly project(':shell-loader:stub')
     implementation project(':x_recyclerview')
     implementation project(':fusionwindowmanager')
     implementation project(':dialogtiplib')

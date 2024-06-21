@@ -18,8 +18,6 @@ import android.view.View;
 
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.termux.x11.LorieView;
-import com.termux.x11.R;
-import com.termux.x11.XwindowView;
 
 import java.util.Arrays;
 import java.util.List;

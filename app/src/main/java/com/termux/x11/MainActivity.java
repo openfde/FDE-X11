@@ -286,7 +286,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             setTitle(title);
         }
         Util.setBaseContext(this);
-        CmdEntryPoint.ctx = this;
+//        Xserver.ctx = this;
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         int modeValue = Integer.parseInt(preferences.getString("touchMode", "1")) - 1;
         if (modeValue > 2) {
@@ -400,7 +400,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         FullscreenWorkaround.assistActivity(this);
         detectEventEditText.setOnKeyListener(mLorieKeyListener);
         detectEventEditText.setInputHandler(mInputHandler);
-        CmdEntryPoint.requestConnection();
+        Xserver.requestConnection();
         onPreferencesChanged("");
 
         toggleExtraKeys(false, false);
@@ -1278,7 +1278,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             // We should recover connection in the case if file descriptor for some reason was broken...
             if (!connected)
                 tryConnect();
-
             if (connected && mIndex != 0){
                 getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
             }
@@ -1293,111 +1292,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public static class MainActivity1 extends MainActivity {
     }
 
-    public static class MainActivity2 extends MainActivity {
-    }
-
-    public static class MainActivity3 extends MainActivity {
-    }
-
-    public static class MainActivity4 extends MainActivity {
-    }
-
-    public static class MainActivity5 extends MainActivity {
-    }
-
-    public static class MainActivity6 extends MainActivity {
-    }
-
-    public static class MainActivity7 extends MainActivity {
-    }
-    public static class MainActivity8 extends MainActivity {
-    }
-
-    public static class MainActivity9 extends MainActivity {
-    }
-
-    public static class MainActivity0 extends MainActivity {
-    }
-
     public static class MainActivity11 extends MainActivity {
 
         protected int getLayoutID() {
             return R.layout.main_activity;
         }
 
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-
-    public static class MainActivity12 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-
-    public static class MainActivity13 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-
-    public static class MainActivity14 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-
-
-    public static class MainActivity15 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-
-    }
-
-    public static class MainActivity16 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-
-    public static class MainActivity17 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-    public static class MainActivity18 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-
-    public static class MainActivity19 extends MainActivity {
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            return true;
-        }
-    }
-
-    public static class MainActivity10 extends MainActivity {
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
