@@ -51,13 +51,11 @@ maybe_unused void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwa
 maybe_unused void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* buffer);
 maybe_unused int renderer_should_redraw(void);
 maybe_unused int renderer_redraw(JNIEnv* env, uint8_t flip);
-maybe_unused int renderer_redraw_traversal(JNIEnv* env, uint8_t flip, int index);
 maybe_unused int renderer_redraw_traversal_1(JNIEnv* env, uint8_t flip, int index, Window window);
 
 maybe_unused void renderer_print_fps(float millis);
 
 maybe_unused void renderer_update_root(int w, int h, void* data, uint8_t flip);
-maybe_unused void renderer_update_root_process1(int x, int y, int w, int h, void* data, uint8_t flip, int wid);
 maybe_unused void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t flip, Window window);
 //maybe_unused void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, Widget * widget);
 maybe_unused GLuint renderer_gen_bind_texture(int x, int y, int w, int h, void* data, uint8_t flip);

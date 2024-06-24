@@ -269,7 +269,6 @@ add_library(Xlorie SHARED
         "lorie/InitOutput.c"
         "lorie/InitInput.c"
         "lorie/InputXKB.c"
-        "lorie/node.c"
         "lorie/c_interface.cpp"
         "lorie/surface_manager.cpp"
         "lorie/renderer.c")

@@ -59,7 +59,6 @@ char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
 static jclass JavaCmdEntryPointClass;
 static JavaVM *jniVM = NULL;
-extern struct WindowNode *NamedWindow_WindowPtr;
 extern struct SurfaceManagerWrapper *sfWraper;
 Window focusWindow;
 
@@ -74,8 +73,6 @@ void android_destroy_window(Window window);
 void android_unmap_window(Window window);
 
 void android_destroy_activity(int index, WindowPtr windowPtr, Window window, int action, Bool wm_delete);
-
-void android_update_texture(int index);
 
 void android_redirect_widget(WindowPtr pWindow, Window window);
 
@@ -101,11 +98,11 @@ bool IfRealizedWindow(WindowPtr widget);
                         CHECK_WITH_PROP
 
 #define STRCPY             char * atom_value = (char *)calloc(pProper->size + 1, sizeof(char));\
-                           strncpy(atom_value, propData, pProper->size); \
+                           strncpy(atom_value, propData, pProper->size);
 
 #define STRING_EQUAL(str1, str2) (strcmp((str1), (str2)) == 0 ? 1 : 0)
 
-bool andorid_check_bounds(WindowPtr pWindow, WindAttribute *attr);
+bool android_check_bounds(WindowPtr pWindow, WindAttribute *attr);
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1);
 
@@ -118,15 +115,6 @@ static inline JNIEnv *GetJavaEnv(void) {
     JNIEnv *ret = NULL;
     (*jniVM)->GetEnv(jniVM, (void **) &ret, JNI_VERSION_1_6);
     return ret;
-}
-
-void android_update_texture(int index) {
-    WindowNode *node = node_get_at_index(NamedWindow_WindowPtr, index);
-    if (node) {
-        PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(node->data.pWin);
-        renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                pixmap->drawable.height, pixmap->devPrivate.ptr, 0, index);
-    }
 }
 
 void android_update_texture_1(Window window) {
@@ -180,7 +168,6 @@ void android_unmap_window(Window window){
         int size;
         WindAttribute * attrs = _surface_all_window(sfWraper, &size);
         log(DEBUG,"android_unmap_window after size = %d", size);
-
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget");
         int ret = _surface_remove_widget(sfWraper, window);
@@ -202,13 +189,13 @@ void android_redirect_window(WindowPtr pWin) {
         WindAttribute *attr = _surface_find_window(sfWraper, aProperty.transient);
         if(attr){
             taskTo = attr->window;
-            intransient_bounds = andorid_check_bounds(pWin, attr);
+            intransient_bounds = android_check_bounds(pWin, attr);
         }
     }
     log(DEBUG, "android_redirect_window %x redirect:%d atom:%d transient:%x, taskTo:%x inbounds:%d",
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo, intransient_bounds);
 
-    if ( redirect ) {
+    if (redirect) {
         if(taskTo == 0){
             taskTo = focusWindow;
         }
@@ -347,7 +334,7 @@ bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
     return 1;
 }
 
-bool andorid_check_bounds(WindowPtr pWin, WindAttribute *attr) {
+bool android_check_bounds(WindowPtr pWin, WindAttribute *attr) {
     int x = pWin->drawable.x;
     int y = pWin->drawable.y;
     int w = pWin->drawable.width;
@@ -431,7 +418,7 @@ void android_destroy_activity(int index, WindowPtr pWin, Window window, int acti
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "closeOrDestroyActivity", "(IJJII)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
-                                         (long) pWin, (long) window, action);
+                                         (long) pWin, (long) window, action, wm_delete);
     }
 }
 
@@ -819,7 +806,6 @@ Java_com_termux_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
     socketpair(AF_UNIX, SOCK_STREAM, 0, client);
     fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
     QueueWorkProc(addFd, NULL, (void *) (int64_t) client[1]);
-
     return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
 }
 
@@ -900,17 +886,14 @@ Java_com_termux_x11_LorieView_handleXEvents(JNIEnv *env, maybe_unused jobject th
             jmethodID mid_Charset_forName = cls_Charset ? (*env)->GetStaticMethodID(env,
                                                                                     cls_Charset,
                                                                                     "forName",
-                                                                                    "(Ljava/lang/String;)Ljava/nio/charset/Charset;")
-                                                        : NULL;
+                                                                                    "(Ljava/lang/String;)Ljava/nio/charset/Charset;"): NULL;
             jmethodID mid_Charset_decode = cls_Charset ? (*env)->GetMethodID(env, cls_Charset,
                                                                              "decode",
-                                                                             "(Ljava/nio/ByteBuffer;)Ljava/nio/CharBuffer;")
-                                                       : NULL;
+                                                                             "(Ljava/nio/ByteBuffer;)Ljava/nio/CharBuffer;"): NULL;
             jmethodID mid_CharBuffer_toString = cls_CharBuffer ? (*env)->GetMethodID(env,
                                                                                      cls_CharBuffer,
                                                                                      "toString",
-                                                                                     "()Ljava/lang/String;")
-                                                               : NULL;
+                                                                                     "()Ljava/lang/String;") : NULL;
 
             if (!id)
                 log(ERROR, "setClipboardText method not found");
@@ -934,7 +917,6 @@ Java_com_termux_x11_LorieView_handleXEvents(JNIEnv *env, maybe_unused jobject th
                                                                                       "UTF-8"));
                 jobject cb = (*env)->CallObjectMethod(env, charset, mid_Charset_decode, bb);
                 (*env)->DeleteLocalRef(env, bb);
-
                 jstring str = (*env)->CallObjectMethod(env, cb, mid_CharBuffer_toString);
                 (*env)->CallVoidMethod(env, thiz, id, str);
             }
@@ -1058,7 +1040,6 @@ Java_com_termux_x11_LorieView_sendUnicodeEvent(JNIEnv *env, unused jobject thiz,
         log(DEBUG, "Sending unicode event: %lc (U+%X)", code, code);
         lorieEvent e = {.unicode = {.t = EVENT_UNICODE, .code = code}};
         write(conn_fd, &e, sizeof(e));
-
         checkConnection(env);
     }
 }

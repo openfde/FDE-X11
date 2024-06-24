@@ -88,6 +88,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
+import com.android.internal.widget.DecorCaptionView;
 import com.easy.view.dialog.EasyDialog;
 import com.easy.view.utils.EasyUtils;
 import com.fde.fusionwindowmanager.Property;
@@ -106,6 +107,7 @@ import com.termux.x11.utils.TermuxX11ExtraKeys;
 import com.termux.x11.utils.Util;
 import com.termux.x11.utils.X11ToolbarViewPager;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.List;
@@ -150,6 +152,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     ActivityManager am;
     private String title;
     private Configuration mConfiguration;
+    private boolean hasFocused;
 
 
     protected long getWindowId() {
@@ -282,7 +285,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             String wmClass = mProperty.getWm_class();
             String netName = mProperty.getNet_name();
             this.title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
-            Log.d(TAG, "onCreate: title:" + title + "");
+//            Log.d(TAG, "onCreate: title:" + title + "");
             setTitle(title);
         }
         Util.setBaseContext(this);
@@ -352,9 +355,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
             mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
             mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
-//            Log.v(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
-//                    + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
-//            );
+            Log.v(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
+                    + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
+            );
             LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
             WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
             if (service != null && !killSelf) {
@@ -384,6 +387,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     }
                 }
             }
+            if(!isCaptionShowing()){
+                getWindow().getDecorView().postDelayed(()->{
+                    execInWindowManager();
+                }, 200);
+            }
+
         });
         getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
         registerReceiver(receiver, new IntentFilter(ACTION_START) {{
@@ -427,12 +436,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
             CharSequence content =
                     mClipboardManager.getPrimaryClip().getItemAt(0).getText();
-            Log.d(TAG, "clip:content:" + content);
+//            Log.d(TAG, "clip:content:" + content);
             if(content != null && !TextUtils.isEmpty(content)
                     && !TextUtils.equals(content, mClipText)
-            && checkServiceExits()){
+                    && checkServiceExits()){
                 mClipText = content.toString();
-                Log.d(TAG, "run cliptext:" + mClipText);
+//                Log.d(TAG, "run cliptext:" + mClipText);
                 try {
                     service.sendClipText(mClipText);
                 } catch (RemoteException e) {
@@ -471,7 +480,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 try {
                     Objects.requireNonNull(MainActivity.this.service).asBinder().linkToDeath(() -> {
                         MainActivity.this.service = null;
-                        Log.v(TAG, "Disconnected");
+//                        Log.v(TAG, "Disconnected");
 //                        showXserverDisconnect(MainActivity.this);
                     }, 0);
                 } catch (RemoteException e) {
@@ -483,7 +492,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            Log.v(TAG, "onServiceDisconnected: ");
+//            Log.v(TAG, "onServiceDisconnected: ");
 //            showXserverDisconnect(MainActivity.this);
         }
     }
@@ -508,7 +517,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
 //        setOverlayWithDecorCaptionEnabled(false);
-        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
+//        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
         super.onWindowAttributesChanged(params);
     }
 
@@ -518,7 +527,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         unregisterReceiver(receiver);
         unbindService(connection);
         service = null;
-        Log.v(TAG, "onDestroy: " + mAttribute);
+//        Log.v(TAG, "onDestroy: " + mAttribute);
         removeClipboardListener();
     }
 
@@ -832,7 +841,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if(!correctMarked){
                 correctMarked = true;
                 try {
-                    checkConfiguration(mConfiguration, true);
+                    checkConfigBeforeExec(mConfiguration, true);
                 } catch (RemoteException e) {
                     throw new RuntimeException(e);
                 }
@@ -995,11 +1004,14 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(!checkServiceExits()){
             return;
         }
-        try {
-            checkConfiguration(newConfig, true);
-        } catch (RemoteException e) {
-            e.printStackTrace();
-        }
+        getWindow().getDecorView().postDelayed(()->{
+            try {
+                checkConfigBeforeExec(newConfig, true);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        },300);
+
     }
 
     @SuppressLint("WrongConstant")
@@ -1020,6 +1032,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
         Util.set("fde.click_as_touch", "false");
         if (hasFocus) {
+            hasFocused = true;
             if (SDK_INT >= VERSION_CODES.P) {
                 if (p.getBoolean("hideCutout", false))
                     getWindow().getAttributes().layoutInDisplayCutoutMode = (SDK_INT >= VERSION_CODES.R) ?
@@ -1071,11 +1084,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
             CharSequence content =
                     mClipboardManager.getPrimaryClip().getItemAt(0).getText();
-            Log.d(TAG, "clip:content:" + content);
+//            Log.d(TAG, "clip:content:" + content);
             if(content != null && !TextUtils.isEmpty(content) &&
                     !TextUtils.equals(content, mClipText) && checkServiceExits()){
                 mClipText = content.toString();
-                Log.d(TAG, "run cliptext:" + mClipText);
+//                Log.d(TAG, "run cliptext:" + mClipText);
                 try {
                     service.sendClipText(mClipText);
                 } catch (RemoteException e) {
@@ -1091,7 +1104,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if(checkServiceExits() && TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
                 Configuration configuration = info.configuration;
                 try {
-                    checkConfiguration(configuration, false);
+                    checkConfigBeforeExec(configuration, false);
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
@@ -1104,11 +1117,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         return service != null && mAttribute != null;
     }
 
-    private void checkConfiguration(Configuration configuration, boolean newConfig) throws RemoteException{
+    private void checkConfigBeforeExec(Configuration configuration, boolean newConfig) throws RemoteException{
         if(configuration == null){
             return;
         }
-//        Log.d(TAG, "checkConfiguration configuration:" + configuration + " mWindowRect:" + mWindowRect);
         this.mConfiguration = configuration;
         Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
         Matcher matcher = pattern.matcher(configuration.toString());
@@ -1117,14 +1129,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
             int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
             int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
-            Rect rect = new Rect(left, (int) (top + mDecorCaptionViewHeight), right, bottom);
+            float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
+//            Log.d(TAG, "topMargin: " + topMargin);
+            Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
             if(service == null){
                 return;
             }
             if( newConfig ||  !samePosition || !sameSize ){
-//                Log.d(TAG, "checkConfiguration: move&resize ");
                 updateAttribueOnly(rect);
                 service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
@@ -1161,6 +1174,20 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             App.getApp().stopingActivityWindow.add(mAttribute.getXID());
         }
 //        showConfirmDialog();
+    }
+
+    private boolean isCaptionShowing() {
+        Window window = getWindow();
+        ViewGroup decor = (ViewGroup)window.getDecorView();
+        DecorCaptionView decorCaptionView = (DecorCaptionView)decor.getChildAt(0);
+        try {
+            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+            Method isCaptionShowing = aClass.getMethod("isCaptionShowing");
+            return (boolean) isCaptionShowing.invoke(decorCaptionView);
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+                 InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void showConfirmDialog() {

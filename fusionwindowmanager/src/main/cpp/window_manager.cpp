@@ -300,9 +300,9 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     changes.sibling = e.above;
     changes.stack_mode = e.detail;
     unsigned long value_mask = e.value_mask;
-    log("value_mask : %lu", value_mask);
     if(e.y < DECORCATIONVIEW_HEIGHT) {
         value_mask  = e.value_mask | (1 << 1);
+        log("value_mask : %lu", value_mask);
     }
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
