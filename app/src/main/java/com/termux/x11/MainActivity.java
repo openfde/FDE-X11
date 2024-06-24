@@ -355,9 +355,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
             mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
             mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
-            Log.v(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
-                    + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
-            );
+//            Log.v(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
+//                    + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
+//            );
             LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
             WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
             if (service != null && !killSelf) {
@@ -847,9 +847,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 }
             }
         },1000);
-//        getLorieView().requestFocus();
+        getLorieView().requestFocus();
         String hexString = Long.toHexString(getWindowId());
-        Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
+//        Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
         detectViewRequestFocus();
     }
 
@@ -1010,7 +1010,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
-        },300);
+        },100);
 
     }
 
@@ -1130,8 +1130,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
             int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
             float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
-//            Log.d(TAG, "topMargin: " + topMargin);
             Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
+            Log.d(TAG, "topMargin: " + topMargin + " rect: " + rect +  " iscaptionshowing:" + isCaptionShowing());
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
             if(service == null){
