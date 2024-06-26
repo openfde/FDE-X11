@@ -42,7 +42,7 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-#define PRINT_LOG 1
+#define PRINT_LOG 0
 #define log(prio, ...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);\
                 }              \
@@ -148,9 +148,7 @@ void android_destroy_window(Window window) {
         android_destroy_activity(attr->index, attr->pWin, attr->window, attr->aProperty.support_wm_delete, ACTION_DESTORY);
         glDeleteTextures(1, &attr->texture_id);
         _surface_delete_window(sfWraper, window);
-        int size;
-        WindAttribute * attrs = _surface_all_window(sfWraper, &size);
-        log(DEBUG,"android_destroy_window after size = %d", size);
+        log(DEBUG,"android_destroy_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "destroy widget");
     }
@@ -165,12 +163,10 @@ void android_unmap_window(Window window){
         android_destroy_activity(attr->index, attr->pWin, attr->window,  attr->aProperty.support_wm_delete, ACTION_UNMAP);
         glDeleteTextures(1, &attr->texture_id);
         _surface_delete_window(sfWraper, window);
-        int size;
-        WindAttribute * attrs = _surface_all_window(sfWraper, &size);
-        log(DEBUG,"android_unmap_window after size = %d", size);
+        log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget");
-        int ret = _surface_remove_widget(sfWraper, window);
+        _surface_remove_widget(sfWraper, window);
     }
 }
 
@@ -328,9 +324,9 @@ bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
     log(DEBUG, "check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
         x, y, w, h, x1, y1, w1, h1);
     if (x < x1 || y < y1 || (x + w) > (x1 + w1) || (y + h) > (y1 + h1)) {
-        return 0;
+        return FALSE;
     }
-    return 1;
+    return TRUE;
 }
 
 bool android_check_bounds(WindowPtr pWin, WindAttribute *attr) {
@@ -406,12 +402,6 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
                                          aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
                                          (long) windowPtr, (long) window, (long) taskTo, aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL);
-//        if(aProperty.icon){
-//            log(DEBUG, "get icon");
-//            jmethodID iconMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-//                                                             "getWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
-//            (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, iconMethod, aProperty.icon, (long)aProperty.window);
-//        }
     }
 }
 
@@ -472,7 +462,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
         return JNI_ERR;
     }
     jniVM = vm;
-    sfWraper = _surface_create_manager(10);
+    sfWraper = _surface_create_manager();
     return JNI_VERSION_1_6;
 }
 

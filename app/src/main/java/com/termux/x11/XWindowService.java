@@ -62,7 +62,7 @@ public class XWindowService extends Service {
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
         public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long pWin, long XID) throws RemoteException {
-            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
+//            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
             startingWindow.remove(XID);
             Xserver.getInstance().windowChanged(surface, x, y, w, h, index, pWin, XID);
         }
@@ -124,7 +124,7 @@ public class XWindowService extends Service {
         @Override
         public void sendClipText(String cliptext) throws RemoteException {
             if(wm != null && wm.sendClipText(cliptext) > 0){
-                Log.d(TAG, "sendClipText: cliptext:" + cliptext + "");
+//                Log.d(TAG, "sendClipText: cliptext:" + cliptext + "");
             }
         }
     };
@@ -136,7 +136,7 @@ public class XWindowService extends Service {
         EventBus.getDefault().register(this);
         Xserver.getInstance().registerContext(new WeakReference<>(this));
         Xserver.getInstance().startXserver();
-        Log.d(TAG, "onCreate: ");
+//        Log.d(TAG, "onCreate: ");
         if(DWM_START_DEFAULT){
             wm = new WindowManager( new WeakReference<>(this));
             wm.startWindowManager(DISPLAY_GLOBAL_PARAM);
@@ -145,7 +145,7 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
-        Log.e(TAG, message.toString());
+//        Log.e(TAG, message.toString());
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
                 startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
@@ -216,7 +216,7 @@ public class XWindowService extends Service {
         if(retry == 0){
             return;
         }
-        Log.d(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
+//        Log.d(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
         String targetPackage = "com.termux.x11";
         Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
         intent.setPackage(targetPackage);
@@ -237,7 +237,7 @@ public class XWindowService extends Service {
             return;
         }
         startingWindow.add(attr.getXID());
-        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+//        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         if(attr.getTaskTo() != 0){
             String targetPackage = "com.termux.x11";
             Intent intent = new Intent(START_ACTIVITY_FROM_X);
@@ -257,7 +257,7 @@ public class XWindowService extends Service {
             intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent, options.toBundle());
-            Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+//            Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         }
     }
 

@@ -49,7 +49,9 @@ public class DetectInputConnection extends BaseInputConnection {
 
     @Override
     public boolean beginBatchEdit() {
-        Log.d(TAG, "beginBatchEdit() called");
+        if (DEBUG) {
+            Log.d(TAG, "beginBatchEdit() called");
+        }
         synchronized (this) {
             if (mBatchEditNesting >= 0) {
                 detectEventEditText.beginBatchEdit();
@@ -62,7 +64,9 @@ public class DetectInputConnection extends BaseInputConnection {
 
     @Override
     public boolean endBatchEdit() {
-        Log.d(TAG, "endBatchEdit() called");
+        if (DEBUG) {
+            Log.d(TAG, "endBatchEdit() called");
+        }
         synchronized (this) {
             if (mBatchEditNesting > 0) {
                 // When the connection is reset by the InputMethodManager and reportFinish
@@ -79,7 +83,9 @@ public class DetectInputConnection extends BaseInputConnection {
 
     @Override
     public boolean clearMetaKeyStates(int states) {
-        Log.d(TAG, "clearMetaKeyStates() called with: states = [" + states + "]");
+        if (DEBUG) {
+            Log.d(TAG, "clearMetaKeyStates() called with: states = [" + states + "]");
+        }
         Editable content = getEditable();
         if (content == null) {
             return false;
@@ -143,7 +149,9 @@ public class DetectInputConnection extends BaseInputConnection {
 
     @Override
     public ExtractedText getExtractedText(ExtractedTextRequest request, int flags) {
-        Log.d(TAG, "getExtractedText() called with: request = [" + request + "], flags = [" + flags + "]");
+        if (DEBUG) {
+            Log.d(TAG, "getExtractedText() called with: request = [" + request + "], flags = [" + flags + "]");
+        }
         if (detectEventEditText != null) {
             ExtractedText et = new ExtractedText();
             if (detectEventEditText.extractText(request, et)) {

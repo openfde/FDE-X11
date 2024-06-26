@@ -4,11 +4,7 @@
 #include "surface_manager.h"
 
 ::SurfaceManager *SurfaceManager::create() {
-    return new SurfaceManager(10);
-}
-
-SurfaceManager::SurfaceManager(int size) :
-        max_size_(size) {
+    return new SurfaceManager();
 }
 
 int SurfaceManager::redirect_window_2_surface(Window window, WindAttribute *attr, Atom type) {
@@ -82,30 +78,6 @@ WindAttribute* SurfaceManager::find_window(Window window) {
     }
 }
 
-WindAttribute* SurfaceManager::find_widget(Window window) {
-    for (auto& pair : window_attrs) {
-        if(pair.second.widget_size == 0) {
-            continue;
-        } else {
-            for (int i = 0; i < pair.second.widget_size; ++i) {
-                if(pair.second.widgets[i].window == window){
-                    return &pair.second;
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
-WindAttribute* SurfaceManager::find_main_window(Window window) {
-    for (auto& pair : window_attrs) {
-        if(pair.second.child == window){
-            return &pair.second;
-        }
-    }
-    return NULL;
-}
-
 WindAttribute* SurfaceManager::all_window(int * size){
     *size = window_attrs.size();
     WindAttribute* array = new WindAttribute[window_attrs.size()];
@@ -148,11 +120,6 @@ void SurfaceManager::delete_window(Window window) {
 //    }
 }
 
-void SurfaceManager::traversal_window_func(void (* func)(WindAttribute)){
-    for (const auto &pair: window_attrs) {
-        func(pair.second);
-    }
-}
 
 int SurfaceManager::size(){
     return window_attrs.size();
@@ -200,7 +167,6 @@ void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
 }
 
 SurfaceManager::SurfaceManager() {
-    SurfaceManager(CAPACITY);
 }
 
 int SurfaceManager::get_avilable_index(Atom type) {
@@ -232,4 +198,8 @@ int SurfaceManager::get_avilable_index(Atom type) {
     }
     log("index out of CAPACITY");
     return CAPACITY;
+}
+
+SurfaceManager::~SurfaceManager() {
+
 }

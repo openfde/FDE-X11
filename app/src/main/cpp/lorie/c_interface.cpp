@@ -8,9 +8,9 @@ struct SurfaceManagerWrapper{
     SurfaceManager* surfaceManager;
 };
 
-SurfaceManagerWrapper* _surface_create_manager(int size){
+SurfaceManagerWrapper* _surface_create_manager(){
     ARGE_PWRAP = new SurfaceManagerWrapper();
-    wrapper->surfaceManager = new SurfaceManager(size);
+    wrapper->surfaceManager = new SurfaceManager();
     return wrapper;
 }
 
@@ -32,12 +32,6 @@ void _surface_delete_window(ARGE_PWRAP, Window window){
     surfaceManager->delete_window(window);
 }
 
-void _surface_update_window(ARGE_PWRAP, Window window, WindAttribute attr){
-    CHECKWRAPER(wrapper);
-    GET_PWRAP;
-    surfaceManager->update_window(window, attr);
-}
-
 WindAttribute* _surface_all_window(ARGE_PWRAP, int * size){
     CHECKWRAPER_N(wrapper);
     GET_PWRAP;
@@ -56,14 +50,6 @@ int _surface_count_widget(ARGE_PWRAP, Window window){
     return surfaceManager->count_widget(window);
 }
 
-
-void _surface_traversal_window(ARGE_PWRAP,void (* func)(WindAttribute)){
-    CHECKWRAPER(wrapper);
-    GET_PWRAP;
-    surfaceManager->traversal_window_func((* func));
-}
-
-
 WindAttribute* _surface_find_window(ARGE_PWRAP, Window window){
     CHECKWRAPER_N(wrapper);
     GET_PWRAP;
@@ -74,25 +60,6 @@ int _surface_remove_widget(ARGE_PWRAP, Window window){
     CHECKWRAPER_R(wrapper);
     GET_PWRAP;
     return surfaceManager->remove_widget(window);
-}
-
-WindAttribute* _surface_find_widget(ARGE_PWRAP, Window window){
-    CHECKWRAPER_N(wrapper);
-    GET_PWRAP;
-    return surfaceManager->find_widget(window);
-}
-
-WindAttribute* _surface_find_main_window(ARGE_PWRAP, Window window){
-    CHECKWRAPER_N(wrapper);
-    GET_PWRAP;
-    return surfaceManager->find_main_window(window);
-}
-
-
-int _surface_size(ARGE_PWRAP){
-    CHECKWRAPER_R(wrapper);
-    GET_PWRAP;
-    return surfaceManager->size();
 }
 
 void _surface_log_traversal_window(ARGE_PWRAP){

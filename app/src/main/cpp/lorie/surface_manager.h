@@ -62,22 +62,18 @@ public:
     ~SurfaceManager();
     SurfaceManager(int size);
     SurfaceManager();
-    int redirect_window_2_surface(Window window, WindAttribute *attr, Atom i); //add
-    void delete_window(Window window);                                //delete
-    int remove_widget(Window window);                                //delete
-    void update_window(Window window, WindAttribute attr);            //update
-    WindAttribute* find_window(Window window);                              //query
-    WindAttribute* find_widget(Window window);                              //query
+    int redirect_window_2_surface(Window window, WindAttribute *attr, Atom i);  //add
+    void delete_window(Window window);                                          //delete
+    int remove_widget(Window window);                                           //delete
+    void update_window(Window window, WindAttribute attr);                      //update
+    WindAttribute* find_window(Window window);                                  //query
     WindAttribute* all_window(int * size);
-    void traversal_window_func(void (* func)(WindAttribute));         //traversal
     int count_window(Window window);
     int count_widget(Window window);
     void traversal_log_window();
     int size();
-    WindAttribute* find_main_window(Window window);                              //query
 
 private:
-    int max_size_;
     std::map<Window, WindAttribute> window_attrs;
     int get_avilable_index(Atom atom);
     void LogWindAttribute(Window window,WindAttribute attr);
