@@ -59,11 +59,11 @@ public class EventMessage {
 
     @Override
     public String toString() {
-        return "EventMessage{" +
-                "windowAttribute=" + windowAttribute +
-                ", property=" + property +
-                ", type=" + type +
-                ", message='" + message + '\'' +
+        return "\n EventMessage{" +
+                " \n windowAttribute=" + windowAttribute +
+                " \n , property=" + property +
+//                " \n , type=" + type +
+//                " \n , message='" + message + '\'' +
                 '}';
     }
 }

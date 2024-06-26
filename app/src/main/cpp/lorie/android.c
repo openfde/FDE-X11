@@ -42,7 +42,7 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(prio, ...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);\
                 }              \
@@ -183,6 +183,7 @@ void android_redirect_window(WindowPtr pWin) {
      * get real property (name leader transient)
      */
     WindProperty aProperty;
+    memset(&aProperty, 0, sizeof(WindProperty));
     xserver_get_window_property(pWin, &aProperty);
     Atom win_type = aProperty.window_type;
     if (aProperty.transient != 0) {
@@ -228,8 +229,8 @@ void android_redirect_window(WindowPtr pWin) {
     }
 }
 
-void android_icon_convert_bitmap(int* data, int width, int height, Window window){
-    log(DEBUG, " CONVERT_ICON width:%d height:%d window:%x", width, height, window);
+void android_icon_convert_bitmap(int* data, int width, int height, WindProperty * pProp){
+    log(DEBUG, " CONVERT_ICON width:%d height:%d window:%x", width, height, pProp->window);
     JNIEnv *JavaEnv = GetJavaEnv();
     jclass bitmapClass = (*JavaEnv)->FindClass(JavaEnv,"android/graphics/Bitmap");
     jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
@@ -262,10 +263,8 @@ void android_icon_convert_bitmap(int* data, int width, int height, Window window
     AndroidBitmap_unlockPixels(JavaEnv, bitmap);
     (*JavaEnv)->DeleteLocalRef(JavaEnv,configName);
     (*JavaEnv)->DeleteLocalRef(JavaEnv,bitmapConfigClass);
-    jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                     "getWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
-    (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, bitmap, window);
-}
+    pProp->icon = bitmap;
+ }
 
 
 void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
@@ -309,7 +308,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
             int width = *icon_data;
             int height = *(icon_data+1);
             int * imageData = ( int*) (icon_data + 2);
-            android_icon_convert_bitmap(imageData, width, height, pProperty->window);
+            android_icon_convert_bitmap(imageData, width, height, pProperty);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_PROTOCOLS)) {
             Atom *atoms = (Atom *)propData;
             for (int i = 0; i < pProper->size; i++) {
@@ -401,13 +400,18 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
         WindowPtr windowPtr = attribute.pWin;
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "startOrUpdateActivity", "(JJJILjava/lang/String;Ljava/lang/String;"
-                                                                                  "IIIII"
-                                                                                  "JJJI)V");
+                                                         "startOrUpdateActivity",
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
-                                         (long) windowPtr, (long) window, (long) taskTo, aProperty.support_wm_delete);
+                                         (long) windowPtr, (long) window, (long) taskTo, aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL);
+//        if(aProperty.icon){
+//            log(DEBUG, "get icon");
+//            jmethodID iconMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+//                                                             "getWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
+//            (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, iconMethod, aProperty.icon, (long)aProperty.window);
+//        }
     }
 }
 

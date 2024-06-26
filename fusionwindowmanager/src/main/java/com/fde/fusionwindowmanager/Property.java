@@ -1,5 +1,6 @@
 package com.fde.fusionwindowmanager;
 
+import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -16,6 +17,8 @@ public class Property implements Parcelable {
 
     int supportDeleteWindow;
 
+    Bitmap icon;
+
     public Property() {
     }
 
@@ -27,6 +30,17 @@ public class Property implements Parcelable {
         this.net_name = net_name;
         this.wm_class = wm_class;
         this.supportDeleteWindow = supportDeleteWindow;
+    }
+
+    public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class, int supportDeleteWindow, Bitmap icon) {
+        this.XID = XID;
+        this.transientfor = transientfor;
+        this.leader = leader;
+        this.type = type;
+        this.net_name = net_name;
+        this.wm_class = wm_class;
+        this.supportDeleteWindow = supportDeleteWindow;
+        this.icon = icon;
     }
 
     public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class) {
@@ -46,6 +60,7 @@ public class Property implements Parcelable {
         net_name = in.readString();
         wm_class = in.readString();
         supportDeleteWindow = in.readInt();
+        icon = in.readParcelable(Bitmap.class.getClassLoader());
     }
 
     public static final Creator<Property> CREATOR = new Creator<Property>() {
@@ -82,6 +97,14 @@ public class Property implements Parcelable {
 
     public void setTransientfor(long transientfor) {
         this.transientfor = transientfor;
+    }
+
+    public Bitmap getIcon() {
+        return icon;
+    }
+
+    public void setIcon(Bitmap icon) {
+        this.icon = icon;
     }
 
     public long getLeader() {
@@ -130,18 +153,20 @@ public class Property implements Parcelable {
         dest.writeString(net_name);
         dest.writeString(wm_class);
         dest.writeInt(supportDeleteWindow);
+        dest.writeParcelable(icon, flags);
     }
 
+    @NonNull
     @Override
     public String toString() {
-        return "Property{" +
-                "XID=" + XID +
-                ", transientfor=" + transientfor +
-                ", leader=" + leader +
-                ", type=" + type +
-                ", supportDeleteWindow=" + supportDeleteWindow +
-                ", net_name='" + net_name + '\'' +
-                ", wm_class='" + wm_class + '\'' +
+        return "\n Property{" +
+                "\n XID=" + XID +
+                "\n, transientfor=" + transientfor +
+//                "\n, leader=" + leader +
+//                "\n, type=" + type +
+//                "\n, supportDeleteWindow=" + supportDeleteWindow +
+                "\n, net_name='" + net_name + '\'' +
+//                "\n, wm_class='" + wm_class + '\'' +
                 '}';
     }
 }

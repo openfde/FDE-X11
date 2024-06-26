@@ -60,6 +60,9 @@
             android:resizeableActivity="true"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="stateHidden|adjustResize">
+            <layout
+                android:minHeight="420dp"
+                android:minWidth="560dp" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

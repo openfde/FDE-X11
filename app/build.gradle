@@ -10,10 +10,10 @@ android {
         versionCode 2
         versionName "1.0.2"
         buildConfigField "String", "COMMIT", "\"" + ("git rev-parse HEAD\n".execute().getText().trim() ?: (System.getenv('CURRENT_COMMIT') ?: "NO_COMMIT")) + "\""
-        manifestPlaceholders = [MainActivityMinHeight: "350dp",
-                                MainActivityMinWidth: "350dp",
-                                MainDialogMinHeight: "150dp",
-                                MainDialogMinWidth: "180dp"]
+        manifestPlaceholders = [MainActivityMinHeight: "50dp",
+                                MainActivityMinWidth: "50dp",
+                                MainDialogMinHeight: "50dp",
+                                MainDialogMinWidth: "50dp"]
     }
 
 //    signingConfigs.debug {

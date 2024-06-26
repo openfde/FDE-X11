@@ -270,4 +270,10 @@ public class XWindowService extends Service {
     public IBinder onBind(Intent intent) {
         return service;
     }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this);
+    }
 }
