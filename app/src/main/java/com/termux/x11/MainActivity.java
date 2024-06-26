@@ -226,16 +226,14 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
 //                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
-                    getLorieView().setPointerIcon(PointerIcon.getSystemIcon(MainActivity.this, PointerIcon.TYPE_ARROW));
-                    getWindow().addFlags(WindowManager.LayoutParams.
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                             FLAG_NOT_TOUCHABLE);
                 }
             } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(attr != null ){
 //                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
-                    getLorieView().setPointerIcon(PointerIcon.getSystemIcon(MainActivity.this, PointerIcon.TYPE_NULL));
-                    getWindow().clearFlags(WindowManager.LayoutParams.
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                             FLAG_NOT_TOUCHABLE);
                 }
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
@@ -250,22 +248,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         }
     };
-
-    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
-    public void onReceiveMsg(EventMessage message){
-//        Log.d(TAG, "onReceiveMsg: transientfor:" + message.getProperty().getTransientfor() +
-//                " " +  " \n XID:" + mAttribute.getXID());
-        if(mAttribute.getXID() != message.getProperty().getTransientfor()){
-            return;
-        }
-        if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
-            Log.d(TAG, "X_UNMODAL_ACTIVITY: ");
-            getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
-            getWindow().clearFlags(
-                    FLAG_NOT_TOUCHABLE);
-        }
-    }
-
 
     @SuppressLint("StaticFieldLeak")
     private static MainActivity instance;
@@ -486,6 +468,21 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     protected boolean hideDecorCaptionView() {
         return false;
     }
+
+    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
+    public void onReceiveMsg(EventMessage message){
+//        Log.d(TAG, "onReceiveMsg: transientfor:" + message.getProperty().getTransientfor() +
+//                " " +  " \n XID:" + mAttribute.getXID());
+        if(mAttribute.getXID() != message.getProperty().getTransientfor()){
+            return;
+        }
+        if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
+            Log.d(TAG, "X_UNMODAL_ACTIVITY: ");
+            getWindow().clearFlags(FLAG_NOT_FOCUSABLE |
+                    FLAG_NOT_TOUCHABLE);
+        }
+    }
+
 
     private void bindXserver() {
         try {
