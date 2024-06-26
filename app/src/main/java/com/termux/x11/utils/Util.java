@@ -26,7 +26,7 @@ import java.util.HashMap;
 
 public class Util {
     private static final String TAG = "Util";
-    private static final int BITMAP_SIZE_LIMIT = 360;
+    private static final int BITMAP_SIZE_LIMIT = 180;
     private static Context baseContext;
 
     public static void setBaseContext(Context context){
