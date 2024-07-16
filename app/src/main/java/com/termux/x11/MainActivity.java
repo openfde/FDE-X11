@@ -1058,7 +1058,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if (getRequestedOrientation() != requestedOrientation){
             setRequestedOrientation(requestedOrientation);
         }
-        Util.set("fde.click_as_touch", "false");
+//        Util.set("fde.click_as_touch", "false");
         if (hasFocus) {
             hasFocused = true;
             if (SDK_INT >= VERSION_CODES.P) {

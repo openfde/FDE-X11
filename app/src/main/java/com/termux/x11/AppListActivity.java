@@ -146,6 +146,7 @@ public class AppListActivity extends AppCompatActivity {
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
         }},  0);
+        Log.d(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
     }
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -233,11 +234,10 @@ public class AppListActivity extends AppCompatActivity {
         if(screenHeight == 0 | screenWidth == 0){
             screenWidth = DimenUtils.getScreenWidth();
             screenHeight = DimenUtils.getScreenHeight();
-        } else if( screenHeight != DimenUtils.getScreenHeight()){
+        } else if( screenWidth != DimenUtils.getScreenWidth()){
             screenWidth = DimenUtils.getScreenWidth();
             screenHeight = DimenUtils.getScreenHeight();
             int count = Math.max(DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f), 3);
-            Log.d(TAG, "mayGetApps count:" + count + " spanCount:" + spanCount);
             if(spanCount != count){
                 initAppList();
                 spanCount = count;
@@ -280,7 +280,7 @@ public class AppListActivity extends AppCompatActivity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        AppUtils.set("fde.click_as_touch", "false");
+//        AppUtils.set("fde.click_as_touch", "false");
         if(hasFocus){
             mayGetApps();
         }
