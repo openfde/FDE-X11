@@ -58,7 +58,7 @@ WindowManager::~WindowManager() {
 void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
     log("Frame_ %x", w);
     // Visual properties of the frame to create.
-    const unsigned int BORDER_WIDTH = 1;
+    const unsigned int BORDER_WIDTH = 0;
     const unsigned long BORDER_COLOR = 0xffffff;
     const unsigned long BG_COLOR = 0xffffff;
     // We shouldn't be framing windows we've already framed.

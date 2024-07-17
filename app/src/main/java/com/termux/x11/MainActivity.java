@@ -545,7 +545,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
 //        setOverlayWithDecorCaptionEnabled(false);
-//        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
+        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
         super.onWindowAttributesChanged(params);
     }
 
@@ -782,7 +782,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 getLorieView().triggerCallback();
                 clientConnectedStateChanged(true);
                 LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
-//                handler.postDelayed(this::goback, 2000);
             } else
                 handler.postDelayed(this::tryConnect, 500);
         } catch (Exception e) {
@@ -878,7 +877,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         },1000);
 //        getLorieView().requestFocus();
         String hexString = Long.toHexString(getWindowId());
-//        Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
+        Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
         detectViewRequestFocus();
     }
 
@@ -1029,7 +1028,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         super.onConfigurationChanged(newConfig);
         orientation = newConfig.orientation;
         setTerminalToolbarView();
-//        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
+        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
         if(!checkServiceExits()){
             return;
         }
@@ -1049,7 +1048,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
         Window window = getWindow();
         View decorView = window.getDecorView();
-//        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
+        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
         boolean fullscreen = p.getBoolean("fullscreen", false);
         boolean reseed = p.getBoolean("Reseed", true);
         fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
@@ -1058,7 +1057,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if (getRequestedOrientation() != requestedOrientation){
             setRequestedOrientation(requestedOrientation);
         }
-//        Util.set("fde.click_as_touch", "false");
+        Util.set("fde.click_as_touch", "false");
         if (hasFocus) {
             hasFocused = true;
             if (SDK_INT >= VERSION_CODES.P) {
@@ -1150,6 +1149,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             return;
         }
         this.mConfiguration = configuration;
+        Log.d(TAG, "checkConfigBeforeExec: configuration:" + configuration + ", newConfig:" + newConfig + "");
         Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
         Matcher matcher = pattern.matcher(configuration.toString());
         if(matcher.find()){
@@ -1340,8 +1340,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private void checkXEvents() {
-//        getLorieView().handleXEvents();
-//        handler.postDelayed(this::checkXEvents, 300);
     }
 
     public static class MainActivity1 extends MainActivity {

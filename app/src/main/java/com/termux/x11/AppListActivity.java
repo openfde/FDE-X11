@@ -80,6 +80,8 @@ import com.xwdz.http.callback.JsonCallBack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.Call;
 import razerdp.basepopup.BasePopupWindow;
@@ -228,16 +230,18 @@ public class AppListActivity extends AppCompatActivity {
             }, 3000);
         }
         mayGetApps();
+        Log.d(TAG, "onResume");
     }
 
     private void mayGetApps() {
         if(screenHeight == 0 | screenWidth == 0){
             screenWidth = DimenUtils.getScreenWidth();
             screenHeight = DimenUtils.getScreenHeight();
-        } else if( screenWidth != DimenUtils.getScreenWidth()){
-            screenWidth = DimenUtils.getScreenWidth();
-            screenHeight = DimenUtils.getScreenHeight();
-            int count = Math.max(DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f), 3);
+        } else if( screenWidth != globalWidth){
+            screenWidth = globalWidth;
+            screenHeight = globalHeight;
+            Log.d(TAG, "mayGetApps");
+            int count = Math.max(globalWidth / (int) DimenUtils.dpToPx(160.0f), 3);
             if(spanCount != count){
                 initAppList();
                 spanCount = count;
@@ -248,6 +252,25 @@ public class AppListActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        checkConfig(newConfig);
+        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
+    }
+
+    private void checkConfig(Configuration configuration){
+        if(configuration == null){
+            return;
+        }
+        Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
+        Matcher matcher = pattern.matcher(configuration.toString());
+        if(matcher.find()) {
+            int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
+            int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
+            int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
+            int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
+            globalWidth = right - left;
+            globalHeight = bottom - top;
+        }
+        mayGetApps();
     }
 
     private void initAppList() {
@@ -277,10 +300,12 @@ public class AppListActivity extends AppCompatActivity {
         });
     }
 
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-//        AppUtils.set("fde.click_as_touch", "false");
+        AppUtils.set("fde.click_as_touch", "false");
+        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + "");
         if(hasFocus){
             mayGetApps();
         }

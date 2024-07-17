@@ -940,7 +940,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip) {
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window) {
-//    log("renderer_redraw_traversal_1 index:%d window:%x", index, window);
+    log("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
     int id;
@@ -958,8 +958,8 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
-//    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
-//        index, width, height, id);
+    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
+        index, width, height, id);
     glViewport(0, 0, width, height);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
@@ -971,8 +971,8 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     if(attr->widget_size > 0){
         for(int i = 0 ; i < attr->widget_size ; i ++){
             Widget widget = attr->widgets[i];
-//            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
-//                widget.texture_id);
+            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+                widget.texture_id);
             if((int)widget.texture_id <= 0 || !widget.window || !IfRealizedWindow(widget.pWin)){
                 continue;
             }
