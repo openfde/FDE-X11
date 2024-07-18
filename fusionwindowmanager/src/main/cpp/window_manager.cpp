@@ -673,7 +673,29 @@ int WindowManager::moveWindow(long window, int x, int y) {
     return ret;
 }
 
+
 int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
+//    Atom prop = XInternAtom(display_, "_NET_WM_STATE", False);
+//    Atom type;
+//    int format;
+//    unsigned long nitems, bytes_after;
+//    unsigned char *data = NULL;
+//
+//    if (XGetWindowProperty(display_, window, prop, 0, 1024, False, XA_ATOM, &type,
+//                           &format, &nitems, &bytes_after, &data) != Success) {
+//        return 0; // Error
+//    }
+//
+//    if (data != NULL) {
+//        Atom *atoms = (Atom *)data;
+//        for (int i = 0; i < nitems; ++i) {
+//            if (atoms[i] == XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False)) {
+//                XFree(data);
+//                return 0; // Window is hidden
+//            }
+//        }
+//        XFree(data);
+//    }
     log("configureWindow %x: x:%d y:%d w:%d h:%d", window, x, y, w, h);
     XWindowChanges changes;
     changes.x = x;

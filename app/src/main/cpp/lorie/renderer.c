@@ -19,7 +19,7 @@
 #include <globals.h>
 #include "c_interface.h"
 #include <android/log.h>
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);\
                 }              \
@@ -149,7 +149,7 @@ static jmethodID Surface_destroy = NULL;
 struct SurfaceManagerWrapper *sfWraper = NULL;
 extern void android_update_texture(int index);
 extern void android_update_texture_1(Window window);
-extern void android_update_widget_texture(Widget widget);
+extern void android_update_widget_texture(Widget *widget);
 extern void android_redirect_window(WindowPtr pWin);
 extern bool IfRealizedWindow(WindowPtr widget);
 GLuint tempid = -1;
@@ -819,10 +819,11 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
-//    log("renderer_update_widget_texture x:%d y:%d w:%d h:%d", x, y, w, h);
+    log("renderer_update_widget_texture x:%d y:%d w:%d h:%d window:%x tid:%d", x, y, w, h, widget->window,
+            widget->texture_id);
     widget->offset_x = (float) x;
     widget->offset_y = (float) y;
-    if (widget->width != (float) w || widget->height != (float) h) {
+//    if (widget->width != (float) w || widget->height != (float) h) {
         widget->width = (float) w;
         widget->height = (float) h;
         if (!widget->texture_id) {
@@ -842,13 +843,13 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
-    } else {
-        glBindTexture(GL_TEXTURE_2D, widget->texture_id);
-        checkGlError();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-                        GL_UNSIGNED_BYTE, data);
-        checkGlError();
-    }
+//    } else {
+//        glBindTexture(GL_TEXTURE_2D, widget->texture_id);
+//        checkGlError();
+//        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+//                        GL_UNSIGNED_BYTE, data);
+//        checkGlError();
+//    }
     if (!widget->texture_id) {
         glGenTextures(1, &widget->texture_id);
         checkGlError();
@@ -976,7 +977,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             if((int)widget.texture_id <= 0 || !widget.window || !IfRealizedWindow(widget.pWin)){
                 continue;
             }
-            android_update_widget_texture(widget);
+            android_update_widget_texture(&widget);
             float x = widget.offset_x;
             float y = widget.offset_y;
             float w = widget.width;

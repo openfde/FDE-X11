@@ -42,7 +42,7 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(prio, ...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);\
                 }              \
@@ -131,11 +131,12 @@ void android_update_texture_1(Window window) {
     }
 }
 
-void android_update_widget_texture(Widget widget) {
-    log(ERROR, "android_update_widget_texture window:%x", widget.window);
-    PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget.pWin);
+void android_update_widget_texture(Widget *widget) {
+    log(ERROR, "android_update_widget_texture window:%x", widget->window);
+    PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget->pWin);
     renderer_update_widget_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                   pixmap->drawable.height, pixmap->devPrivate.ptr, 0, &widget);
+                                   pixmap->drawable.height, pixmap->devPrivate.ptr, 0, widget);
+    _surface_log_traversal_window(sfWraper);
 }
 
 
