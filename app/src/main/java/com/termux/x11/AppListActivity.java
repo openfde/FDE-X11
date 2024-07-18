@@ -25,6 +25,7 @@ import static com.termux.x11.utils.Util.showXserverStartSuccess;
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
+import android.app.ActivityTaskManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -80,6 +81,7 @@ import com.xwdz.http.callback.JsonCallBack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -149,6 +151,7 @@ public class AppListActivity extends AppCompatActivity {
             addAction(ACTION_UPDATE_ICON);
         }},  0);
         Log.d(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
+
     }
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {

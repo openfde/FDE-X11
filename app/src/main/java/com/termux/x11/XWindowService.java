@@ -17,11 +17,13 @@ import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
+import com.termux.x11.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.io.File;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,7 +64,7 @@ public class XWindowService extends Service {
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
         public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long pWin, long XID) throws RemoteException {
-//            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
+            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
             startingWindow.remove(XID);
             Xserver.getInstance().windowChanged(surface, x, y, w, h, index, pWin, XID);
         }
@@ -275,5 +277,6 @@ public class XWindowService extends Service {
     public void onDestroy() {
         super.onDestroy();
         EventBus.getDefault().unregister(this);
+        Util.deleteRecursive(new File("/tmp/fde"));
     }
 }

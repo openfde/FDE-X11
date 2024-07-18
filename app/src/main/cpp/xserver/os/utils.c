@@ -234,7 +234,7 @@ OsSignal(int sig, OsSigHandlerPtr handler)
  * server at a time.  This keeps the servers from stomping on each other
  * if the user forgets to give them different display numbers.
  */
-#define LOCK_DIR (getenv("TMPDIR") ?: "/tmp")
+#define LOCK_DIR (getenv("TMPDIR") ?: "/tmp/fde")
 #define LOCK_TMP_PREFIX "/.tX"
 #define LOCK_PREFIX "/.X"
 #define LOCK_SUFFIX "-lock"

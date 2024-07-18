@@ -137,9 +137,18 @@ from the copyright holders.
 #if defined(SO_DONTLINGER) && defined(SO_LINGER)
 #undef SO_DONTLINGER
 #endif
+#include <android/log.h>
 
 /* others don't need this */
 #define SocketInitOnce() /**/
+#define PRINT_LOG 1
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_xtranssock", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_xtranssock", __VA_ARGS__);\
+                }              \
 
 #ifdef linux
 #define HAVE_ABSTRACT_SOCKETS
@@ -961,6 +970,8 @@ TRANS(SocketUNIXCreateListener) (XtransConnInfo ciptr, const char *port,
     char		tmpport[108];
 
     int			abstract = 0;
+    log("TRANS, path:%s dir:%s", UNIX_PATH, UNIX_DIR);
+
 #ifdef HAVE_ABSTRACT_SOCKETS
     abstract = ciptr->transptr->flags & TRANS_ABSTRACT;
 #endif
@@ -991,6 +1002,7 @@ TRANS(SocketUNIXCreateListener) (XtransConnInfo ciptr, const char *port,
 
     if (!(port && *port)) {
 	snprintf (tmpport, sizeof(tmpport), "%s%ld", UNIX_PATH, (long)getpid());
+    log("TRANS, path:%s dir:%s", UNIX_PATH, UNIX_DIR);
 	port = tmpport;
     }
     if (set_sun_path(port, UNIX_PATH, sockname.sun_path, abstract) != 0) {

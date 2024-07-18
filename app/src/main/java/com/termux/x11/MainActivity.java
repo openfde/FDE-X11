@@ -27,6 +27,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
+import android.app.ActivityTaskManager;
 import android.app.AppOpsManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -119,6 +120,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Timer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -159,6 +161,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private String title;
     private Configuration mConfiguration;
     private boolean hasFocused;
+    private boolean isFullscreen = false;
+    private boolean isFreeform = true;
 
 
     protected long getWindowId() {
@@ -434,6 +438,22 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         bindXserver();
         builder = new EasyDialog.Builder(this);
         initClipMonitor();
+//
+//        findViewById(R.id.button).setOnClickListener((v)->{
+////            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
+////            int left  = new Random().nextInt(100);
+////            Rect rect = new Rect(left, left, left + 500, left + 500);
+////            taskManager.resizeTask(getTaskId(),rect);
+////            Log.e(TAG, "ActivityTaskManager: rect:" + rect + "");
+//            Rect rect = mWindowRect;
+//            try {
+//                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+//                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+//                        rect.right - rect.left, rect.bottom - rect.top);
+//            } catch (RemoteException e) {
+//                throw new RuntimeException(e);
+//            }
+//        });
     }
 
 
@@ -544,8 +564,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
-//        setOverlayWithDecorCaptionEnabled(false);
-        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
+//        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
         super.onWindowAttributesChanged(params);
     }
 
@@ -1145,7 +1164,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private void checkConfigBeforeExec(Configuration configuration, boolean newConfig) throws RemoteException{
-        if(configuration == null){
+        if(configuration == null || !checkServiceExits()){
             return;
         }
         this.mConfiguration = configuration;
@@ -1173,6 +1192,28 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         }
         service.raiseWindow(mAttribute.getXID());
+
+         pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
+         matcher = pattern.matcher(configuration.toString());
+        if (matcher.find()) {
+            String windowingMode = matcher.group(1);
+            isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
+            isFreeform = TextUtils.equals(windowingMode, "freeform");
+        }
+//        if (isFullscreen) {
+            handler.postDelayed(() -> {
+                try {
+                    if(!checkServiceExits()){
+                        return;
+                    }
+                    service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                            (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                            mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            },100);
+//        }
     }
 
     private void updateAttribueOnly(Rect rect) {
@@ -1304,7 +1345,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @SuppressLint("WrongConstant")
     @Override
     public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-        handler.postDelayed(() -> getLorieView().triggerCallback(), 100);
+//        handler.postDelayed(() -> getLorieView().triggerCallback(), 100);
         return insets;
     }
 

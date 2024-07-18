@@ -23,6 +23,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Objects;
 
 public class Util {
     private static final String TAG = "Util";
@@ -59,6 +60,14 @@ public class Util {
     }
 
 
+    public static void deleteRecursive(File fileOrDirectory) {
+        if (fileOrDirectory.isDirectory()) {
+            for (File child : Objects.requireNonNull(fileOrDirectory.listFiles())) {
+                deleteRecursive(child);
+            }
+        }
+        fileOrDirectory.delete();
+    }
 
     public static void copyAssetsToFiles(Context context, String sourceDir, String targetDir) {
         AssetManager assetManager = context.getAssets();

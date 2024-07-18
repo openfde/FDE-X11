@@ -246,7 +246,16 @@ is_numeric (const char *str)
 #else
 # define SOCKLEN_T int
 #endif
+#include <android/log.h>
 
+#define PRINT_LOG 1
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_xtranssock", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_xtranssock", __VA_ARGS__);\
+                }              \
 /*
  * These are some utility function used by the real interface function below.
  */
@@ -285,6 +294,7 @@ TRANS(SocketINETGetAddr) (XtransConnInfo ciptr)
 #endif
     void *socknamePtr;
     SOCKLEN_T namelen;
+    log("TRANS, path:%s dir:%s", UNIX_PATH, UNIX_DIR);
 
     prmsg (3,"SocketINETGetAddr(%p)\n", ciptr);
 

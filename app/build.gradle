@@ -23,6 +23,17 @@ android {
 //        keyPassword 'xrj45yWGLbsO7W0v'
 //    }
 
+
+    signingConfigs {
+        debug {
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storeFile file('plugin.keystore')
+            storePassword 'android'
+        }
+    }
+
+
     splits.abi {
         enable true
         reset()

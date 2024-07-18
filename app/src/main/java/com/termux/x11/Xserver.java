@@ -210,7 +210,7 @@ public class Xserver {
 
     private void sendBroadcastDelayed() {
         sendBroadcast();
-        handler.postDelayed(this::sendBroadcastDelayed, 1000);
+//        handler.postDelayed(this::sendBroadcastDelayed, 1000);
     }
 
     void spawnListeningThread() {
