@@ -18,6 +18,8 @@ mutex WindowManager::wm_detected_mutex_;
 
 
 ::WindowManager *WindowManager::create(const char *export_display, JNIEnv * env, jclass cls) {
+    staticClass = cls;
+    GlobalEnv = env;
     Display* display = XOpenDisplay(export_display);
     if (display == nullptr) {
         log("Failed to open X display");
@@ -33,7 +35,9 @@ WindowManager::WindowManager(Display* display)
           root_(DefaultRootWindow(display_)),
           WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
           WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
-          stoped(False) {
+          stoped(False)
+//          ,cliptext("\0")
+          {
 }
 
 
@@ -165,11 +169,11 @@ bool WindowManager::isNormalWindow(long window) {
     Atom type_menu = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_MENU", False);
     Atom type_dialog = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     Atom type_popup = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
-    log("isNormalWindow ? %lx", window);
+//    log("isNormalWindow ? %lx", window);
     if (XGetWindowProperty(display_, window, type, 0, 1024, False, AnyPropertyType,
                            &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
         Success) {
-        log(" actualType = %ld \n", actualType);
+//        log(" actualType = %ld \n", actualType);
         if (actualType == XA_ATOM) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < nItems; i++) {
@@ -180,7 +184,7 @@ bool WindowManager::isNormalWindow(long window) {
                            || atoms[i] == type_popup
                         ) {
                     char *atomValue = XGetAtomName(display_, atoms[i]);
-                    log("%s not normal window %lx \n", atomValue, window);
+//                    log("%s not normal window %lx \n", atomValue, window);
                     XFree(atomName);
                     return False;
                 }
@@ -222,7 +226,7 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
     // need the check because we will receive an UnmapNotify event for a frame
     // window we just destroyed ourselves.
     if (!clients_.count(e.window)) {
-        log("Ignore UnmapNotify for non-client window %lu",e.window);
+//        log("Ignore UnmapNotify for non-client window %lu",e.window);
         return;
     }
     // Ignore event if it is triggered by reparenting a window that was mapped
@@ -235,7 +239,7 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
     // UnmapNotify event triggered by reparenting a pre-existing window will have
     // this attribute set to the root window.
     if (e.event == root_) {
-        log("Ignore UnmapNotify for reparented pre-existing window %lu", e.window);
+//        log("Ignore UnmapNotify for reparented pre-existing window %lu", e.window);
         return;
     }
 //    Unframe(e.window);
@@ -289,6 +293,12 @@ void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
 
 }
 
+void syncConfigureRequest(int x, int y, int w, int h, XID window){
+    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+         "syncConfigureRequest", "(IIIIJ)V");
+    GlobalEnv->CallStaticVoidMethod(staticClass, method, x,y,w,h, window);
+}
+
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     XWindowChanges changes;
     bool normal = isNormalWindow(e.window);
@@ -302,20 +312,22 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     unsigned long value_mask = e.value_mask;
     if(e.y < DECORCATIONVIEW_HEIGHT) {
         value_mask  = e.value_mask | (1 << 1);
-        log("value_mask : %lu", value_mask);
+//        log("value_mask : %lu", value_mask);
     }
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
         XConfigureWindow(display_, frame, value_mask, &changes);
-        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
-        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+//        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
+//        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     } else {
         XConfigureWindow(display_, e.window, value_mask, &changes);
-        log("Resize_ %lx to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
-        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+//        log("Resize_ %lx to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
+//        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     }
     XSync(display_, False);
-
+    if (value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight) {
+        syncConfigureRequest(changes.x, changes.y, changes.width,  changes.height, e.window);
+    }
 }
 
 void WindowManager::OnButtonPress(const XButtonEvent &e) {
@@ -515,7 +527,7 @@ void WindowManager::Run() {
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
-        log("------Received event: %s",ToString(e).c_str());
+//        log("------Received event: %s",ToString(e).c_str());
 //        log("type:%d", e.type);
         // 2. Dispatch event.
         switch (e.type) {
@@ -572,7 +584,7 @@ void WindowManager::Run() {
                 break;
             default:
                 break;
-                log("Ignored event");
+//                log("Ignored event");
         }
     }
 }
@@ -586,8 +598,8 @@ void WindowManager::OnSelectionRequest(XEvent e) {
     }
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
-
     Atom targets = XInternAtom(display_, "TARGETS", False);
+    log("OnSelectionRequest target:%s", XGetAtomName(display_, sev->target));
     if(sev->target == targets){
         Atom types[2] = { targets, utf8 };
         XChangeProperty(display_,
@@ -602,7 +614,11 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        ssev.property = sev->property;
+        if(cliptext != nullptr && std::strlen(cliptext) != 0){
+            ssev.property = sev->property;
+        } else {
+            ssev.property = None;
+        }
         ssev.time = sev->time;
         XSendEvent(display_, sev->requestor, 0, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
@@ -614,15 +630,23 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         now = ctime(&now_tm);
         an = XGetAtomName(display_, sev->property);
         log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, an);
-        if (an)
+        if (!an || !cliptext){
+            log("No data to send to window 0x%lx, property '%s'\n", sev->requestor, an);
             XFree(an);
+            return;
+        }
+        log("change property to cliptext:%s\n", cliptext);
         XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
                         (unsigned char *)cliptext, strlen(cliptext));
         ssev.type = SelectionNotify;
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        ssev.property = sev->property;
+        if(cliptext != nullptr && std::strlen(cliptext) != 0){
+            ssev.property = sev->property;
+        } else {
+            ssev.property = None;
+        }
         ssev.time = sev->time;
         XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
@@ -667,7 +691,7 @@ void WindowManager::OnSelectionClear(XEvent e) {
 
 
 int WindowManager::moveWindow(long window, int x, int y) {
-    log("moveWindow %x: x:%d y:%d", window, x, y);
+//    log("moveWindow %x: x:%d y:%d", window, x, y);
     int ret = XMoveWindow(display_, window, x, y);
     XSync(display_, False);
     return ret;
@@ -696,7 +720,7 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
 //        }
 //        XFree(data);
 //    }
-    log("configureWindow %x: x:%d y:%d w:%d h:%d", window, x, y, w, h);
+//    log("configureWindow %x: x:%d y:%d w:%d h:%d", window, x, y, w, h);
     XWindowChanges changes;
     changes.x = x;
     changes.y = y;
@@ -705,15 +729,15 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
     unsigned long value_mask = CWX | CWY | CWWidth | CWHeight ;
     int ret;
     if (isInFrameMap(window)) {
-        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
-            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-            value_mask);
+//        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
+//            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+//            value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
         XSync(display_, False);
     } else {
-        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
-            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-            value_mask);
+//        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
+//            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+//            value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
         XSync(display_, False);
     }
@@ -721,7 +745,7 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
 }
 
 int WindowManager::resizeWindow(long window, int w, int h) {
-    log("resizeWindow %x w:%d h:%d", window, w, h);
+//    log("resizeWindow %x w:%d h:%d", window, w, h);
     int  ret = XResizeWindow(display_, window, w, h);
     XSync(display_, False);
     return ret;
@@ -731,10 +755,10 @@ int WindowManager::closeWindow(long window) {
     Atom* supported;
     int num_supported;
     XGetWMProtocols(display_, window, &supported, &num_supported);
-    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
+//    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
     int ret;
     if(supported) {
-        log("closeWindow supported1");
+//        log("closeWindow supported1");
         XEvent msg;
         memset(&msg, 0, sizeof(msg));
         msg.xclient.type = ClientMessage;
@@ -744,7 +768,7 @@ int WindowManager::closeWindow(long window) {
         msg.xclient.data.l[0] = WM_DELETE_WINDOW;
         ret = XSendEvent(display_, window, false, 0, &msg);
     } else {
-        log("closeWindow not supported");
+//        log("closeWindow not supported");
         ret = XKillClient(display_, window);
     }
     XSync(display_, False);
@@ -752,7 +776,7 @@ int WindowManager::closeWindow(long window) {
 }
 
 int WindowManager::raiseWindow(long window) {
-    log("raiseWindow %x", window);
+//    log("raiseWindow %x", window);
     int ret = XRaiseWindow(display_, window);
     XSetInputFocus(display_, window, RevertToPointerRoot, CurrentTime);
     XSync(display_, False);

@@ -14,7 +14,9 @@ public enum EventType {
     X_UNMAP_WINDOW("ANY"),
     X_DESTROY_ACTIVITY("destroy_activity"),
     X_DESTROY_DIALOG("destroy_dialog"),
-    X_DESTROY_VIEW("destroy_view");
+    X_DESTROY_VIEW("destroy_view"),
+
+    X_CONFIGURE_WINDOW("configure_window");
 
     private final String usefor;
     EventType(final String usefor){

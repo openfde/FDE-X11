@@ -199,10 +199,10 @@ public class WindowAttribute implements Parcelable {
     @Override
     public String toString() {
         return "\n WindowAttribute{" +
-//                "\noffsetX=" + offsetX +
-//                "\n, offsetY=" + offsetY +
-//                "\n, width=" + width +
-//                "\n, height=" + height +
+                "\noffsetX=" + offsetX +
+                "\n, offsetY=" + offsetY +
+                "\n, width=" + width +
+                "\n, height=" + height +
 //                "\n, index=" + index +
 //                "\n, windowPtr=" + windowPtr +
                 "\n, XID=" + XID +

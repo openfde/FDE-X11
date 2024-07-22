@@ -19,7 +19,7 @@
 #include <globals.h>
 #include "c_interface.h"
 #include <android/log.h>
-#define PRINT_LOG 1
+#define PRINT_LOG 0
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);\
                 }              \

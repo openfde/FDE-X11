@@ -7,7 +7,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="android.permission.MANAGE_ACTIVITY_STACKS" />
-
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
@@ -35,10 +34,8 @@
             android:name=".MainActivity"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
-            android:process=":abc"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
-            android:taskAffinity=".abc"
             android:windowSoftInputMode="stateHidden">
             <layout
                 android:minHeight="${MainActivityMinHeight}"
@@ -119,6 +116,7 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:documentLaunchMode="always"
+            android:taskAffinity=".taskx11"
             android:windowSoftInputMode="stateHidden">
             <layout
                 android:minHeight="${MainActivityMinHeight}"

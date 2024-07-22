@@ -29,6 +29,7 @@ public class KeyInterceptor extends AccessibilityService {
 
     @Override
     public boolean onKeyEvent(KeyEvent event) {
+        Log.d("TAG", "onKeyEvent: event:" + event + "");
         boolean ret = false;
         MainActivity instance = MainActivity.getInstance();
 

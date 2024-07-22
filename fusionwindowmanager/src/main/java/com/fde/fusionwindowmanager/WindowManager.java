@@ -16,6 +16,11 @@ import android.view.View;
 
 import androidx.annotation.NonNull;
 
+import com.fde.fusionwindowmanager.eventbus.EventMessage;
+import com.fde.fusionwindowmanager.eventbus.EventType;
+
+import org.greenrobot.eventbus.EventBus;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -44,7 +49,7 @@ public class WindowManager implements AWindowManagerInterface {
     public static final int MSG_START_WM = 1;
     public static final int MSG_STOP_WM = 2;
     public static List<WindowAttribute> PERFORM_WINDOW_LIST = new ArrayList<>();
-    public Set<Long> WINDOW_XIDS = new HashSet<>();
+    public static Set<Long> WINDOW_XIDS = new HashSet<>();
     private String display;
 
     public WindowManager() {
@@ -115,6 +120,13 @@ public class WindowManager implements AWindowManagerInterface {
         saveBitmapToFile(bitmap, path);
 
 
+    }
+
+    //called from native code
+    public static void  syncConfigureRequest(int x, int y, int width, int height, long window){
+        Log.d(TAG, "syncConfigureRequest: x:" + x + ", y:" + y + ", width:" + width + ", height:" + height + ", window:" + window + "");
+        EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
+        EventBus.getDefault().post(message);
     }
 
     public static void saveBitmapToFile(Bitmap bitmap, String filePath) {

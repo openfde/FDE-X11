@@ -25,6 +25,7 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -44,6 +45,7 @@ public class XWindowService extends Service {
     public static final String ACTION_X_WINDOW_ATTRIBUTE = "action_x_window_attribute";
     public static final String ACTION_X_WINDOW_PROPERTY = "action_x_window_property";
 
+    public static final String CONFIGURE_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_CONFIGURE";
     public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
     public static final String STOP_WINDOW_FROM_X = "com.termux.x11.Xserver.ACTION_STOP";
 
@@ -166,9 +168,19 @@ public class XWindowService extends Service {
                 }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
+            case X_CONFIGURE_WINDOW:
+                sendBroadcastConfigureWindow(message.getWindowAttribute());
             default:
                 break;
         }
+    }
+
+    private void sendBroadcastConfigureWindow(WindowAttribute attr) {
+        String targetPackage = "com.termux.x11";
+        Intent intent = new Intent(CONFIGURE_ACTIVITY_FROM_X);
+        intent.setPackage(targetPackage);
+        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+        sendBroadcast(intent);
     }
 
     private void sendBroadcastFocusableIfNeed(WindowAttribute attr, boolean isFocusable) {
@@ -255,6 +267,12 @@ public class XWindowService extends Service {
             Intent intent = new Intent(this, cls);
             if(attr.getProperty() != null){
                 intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
+            }
+            try {
+                Method method = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);
+                method.invoke(options, 5); // change to freeform mode
+            } catch (Exception e) {
+                e.printStackTrace();
             }
             intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

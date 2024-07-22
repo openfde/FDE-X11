@@ -118,7 +118,7 @@ static inline JNIEnv *GetJavaEnv(void) {
 }
 
 void android_update_texture_1(Window window) {
-    log(ERROR, "android_update_texture_1 window:%x", window);
+//    log(ERROR, "android_update_texture_1 window:%x", window);
     if (_surface_count_window(sfWraper, window)) {
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         if(!attr){
@@ -675,8 +675,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             }
             case EVENT_MOUSE: {
                 int flags;
-                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
-                    e.mouse.y);
+//                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
+//                    e.mouse.y);
                 switch (e.mouse.detail) {
                     case 0: // BUTTON_UNDEFINED
                         if (e.mouse.relative) {

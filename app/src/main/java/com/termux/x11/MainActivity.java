@@ -8,6 +8,7 @@ import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
 import static com.termux.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.XWindowService.ACTION_X_WINDOW_PROPERTY;
+import static com.termux.x11.XWindowService.CONFIGURE_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
@@ -130,7 +131,7 @@ import java.util.regex.Pattern;
 public class MainActivity extends Activity implements View.OnApplyWindowInsetsListener {
     static final String ACTION_STOP = "com.termux.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
-    private float mDecorCaptionViewHeight = 42;
+
 
     public static Handler handler = new Handler();
     FrameLayout frm;
@@ -149,7 +150,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private static final int KEY_BACK = 158;
     private EasyDialog.Builder builder;
     private EasyDialog easyDialog;
-    private static final String TAG = "lifecycle";
+    private String TAG = "lifecycle ";
 
     private boolean correctMarked = false;
     protected long WindowCode = 0;
@@ -163,6 +164,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private boolean hasFocused;
     private boolean isFullscreen = false;
     private boolean isFreeform = true;
+    private int mDecorCaptionViewHeight = 42;
 
 
     protected long getWindowId() {
@@ -171,6 +173,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
 
     private boolean killSelf;
+    private Rect mConfigureRect;
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
@@ -196,7 +199,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
-//                    Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
+                    Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
                     killSelf = true;
                     finish();
                     App.getApp().stopingActivityWindow.add(mAttribute.getXID());
@@ -222,7 +225,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                         && mProperty!=null && mProperty.getSupportDeleteWindow() == 1
 //                        && App.getApp().stopingActivityWindow.contains(attr.getWindowPtr())
                 ){
-//                    Log.d(TAG, "onReceive: " + STOP_WINDOW_FROM_X + ", attr:" + attr + "");
+                    Log.d(TAG, "onReceive: " + STOP_WINDOW_FROM_X + ", attr:" + attr + "");
                     finish();
                 }
             } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
@@ -248,6 +251,18 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
                     MainActivity.this.setTaskDescription(description);
 
+                }
+            } else if(CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Log.d(TAG, "onReceive: XID EQUAL:" + (mAttribute.getXID() == attr.getXID()) + ", istouching:" + mInputHandler.isTouching() + "");
+                if (mAttribute != null && mAttribute.getXID() == attr.getXID()
+                )
+                {
+                    mConfigureRect = attr.getRect();
+                    if(!mInputHandler.isTouching()){
+                        configureFromX();
+                    }
+//                    Log.d(TAG, "onReceive: mConfigureRect:" + mConfigureRect);
                 }
             }
         }
@@ -290,7 +305,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             WindowCode = mAttribute.getXID();
             mWindowRect.set(mAttribute.getRect());
             App.getApp().windowAttrMap.put(mAttribute.getXID(), mAttribute);
-//            Log.d(TAG, "onCreate: windowid:" + mAttribute.getXID() + "  " + this);
+            Log.d(TAG, "onCreate: mAttribute:" + mAttribute + "");
         }
         mProperty = getIntent().getParcelableExtra(X_WINDOW_PROPERTY);
         if(mProperty != null){
@@ -422,6 +437,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(MODALED_ACTION_ACTIVITY_FROM_X);
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
+            addAction(CONFIGURE_ACTIVITY_FROM_X);
         }},  0);
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);
@@ -440,11 +456,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         initClipMonitor();
 //
 //        findViewById(R.id.button).setOnClickListener((v)->{
-////            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
-////            int left  = new Random().nextInt(100);
-////            Rect rect = new Rect(left, left, left + 500, left + 500);
-////            taskManager.resizeTask(getTaskId(),rect);
-////            Log.e(TAG, "ActivityTaskManager: rect:" + rect + "");
+//            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
+//            int left  = new Random().nextInt(100);
+//            Rect rect = new Rect(left, left, left + 500, left + 500);
+//            taskManager.resizeTask(getTaskId(),rect);
+//            Log.e(TAG, "ActivityTaskManager: rect:" + rect + "");
 //            Rect rect = mWindowRect;
 //            try {
 //                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
@@ -459,10 +475,14 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void initClipMonitor() {
         mClipboardManager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        mOnPrimaryClipChangedListener = () -> {
-            updateX11Cliptext();
-        };
-        mClipboardManager.addPrimaryClipChangedListener(mOnPrimaryClipChangedListener);
+//        if (mClipboardManager != null) {
+//            try {
+//                mClipboardManager.setPrimaryClip(mClipboardManager.getPrimaryClip());
+//                mClipboardManager.setText(null);
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
     }
 
     private void updateX11Cliptext() {
@@ -511,6 +531,28 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             e.printStackTrace();
         }
     }
+
+    public void configureFromXIfNeed() {
+        //todo check
+        configureFromX();
+    }
+    public synchronized void configureFromX() {
+        if(mConfigureRect != null){
+//            Log.d(TAG, "configureFromX mConfigureRect:" + mConfigureRect);
+//            Log.d(TAG, "configureFromX mAttribute:" + mAttribute.getRect());
+//            Log.d(TAG, "configureFromX mWindowRect:" + mWindowRect);
+            mAttribute.setRect(mConfigureRect);
+            mWindowRect = mConfigureRect;
+            Rect rect = mConfigureRect;
+            if(isCaptionShowing()){
+                rect.top = mConfigureRect.top - (int)mDecorCaptionViewHeight;
+            }
+            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
+            taskManager.resizeTask(getTaskId(), rect);
+            mConfigureRect = null;
+        }
+    }
+
 
     public class Connection implements ServiceConnection {
         private ICmdEntryInterface cmdEntryInterface;
@@ -564,7 +606,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
-//        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
         super.onWindowAttributesChanged(params);
     }
 
@@ -574,7 +615,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         unregisterReceiver(receiver);
         unbindService(connection);
         service = null;
-//        Log.v(TAG, "onDestroy: " + mAttribute);
+        Log.v(TAG, "onDestroy: ");
         removeClipboardListener();
         EventBus.getDefault().unregister(this);
     }
@@ -836,7 +877,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
         lorieView.triggerCallback();
 
-        filterOutWinKey = p.getBoolean("filterOutWinkey", false);
+        filterOutWinKey = false; // p.getBoolean("filterOutWinkey", false);
         if (p.getBoolean("enableAccessibilityServiceAutomatically", false)) {
             try {
                 Settings.Secure.putString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, "com.termux.x11/.utils.KeyInterceptor");
@@ -896,6 +937,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         },1000);
 //        getLorieView().requestFocus();
         String hexString = Long.toHexString(getWindowId());
+        TAG = "lifecycle " + hexString;
         Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
         detectViewRequestFocus();
     }
@@ -993,6 +1035,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public boolean handleKey(KeyEvent e) {
+        Log.d(TAG, "handleKey: e:" + e + "");
         if (filterOutWinKey && (e.getKeyCode() == KEYCODE_META_LEFT || e.getKeyCode() == KEYCODE_META_RIGHT || e.isMetaPressed()))
             return false;
         mLorieKeyListener.onKey(getLorieView(), e.getKeyCode(), e);
@@ -1094,14 +1137,14 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         if (hasFocus) {
 //            if (fullscreen) {
-            window.addFlags(FLAG_FULLSCREEN);
-            decorView.setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+//            window.addFlags(FLAG_FULLSCREEN);
+//            decorView.setSystemUiVisibility(
+//                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+//                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+//                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+//                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+//                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+//                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 //            } else {
 //                window.clearFlags(FLAG_FULLSCREEN);
 //                decorView.setSystemUiVisibility(0);
@@ -1127,14 +1170,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void getClipText() {
         if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()
+             && mClipboardManager.getPrimaryClip() != null
                 && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
             CharSequence content =
                     mClipboardManager.getPrimaryClip().getItemAt(0).getText();
-//            Log.d(TAG, "clip:content:" + content);
+            Log.d(TAG, "clip:content:" + content);
             if(content != null && !TextUtils.isEmpty(content) &&
                     !TextUtils.equals(content, mClipText) && checkServiceExits()){
                 mClipText = content.toString();
-//                Log.d(TAG, "run cliptext:" + mClipText);
+                Log.d(TAG, "run cliptext:" + mClipText);
                 try {
                     service.sendClipText(mClipText);
                 } catch (RemoteException e) {
@@ -1168,7 +1212,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             return;
         }
         this.mConfiguration = configuration;
-        Log.d(TAG, "checkConfigBeforeExec: configuration:" + configuration + ", newConfig:" + newConfig + "");
+//        Log.d(TAG, "checkConfigBeforeExec: configuration:" + configuration. + ", newConfig:" + newConfig + "");
         Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
         Matcher matcher = pattern.matcher(configuration.toString());
         if(matcher.find()){
@@ -1179,6 +1223,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
 //            Log.d(TAG, "topMargin: " + topMargin);
             Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
+            Log.d(TAG, "checkConfigBeforeExec: rect:" + rect + ", newConfig:" + newConfig + "");
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
             if(service == null){
@@ -1193,31 +1238,32 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
         service.raiseWindow(mAttribute.getXID());
 
-         pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
-         matcher = pattern.matcher(configuration.toString());
+        pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
+        matcher = pattern.matcher(configuration.toString());
         if (matcher.find()) {
             String windowingMode = matcher.group(1);
             isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
             isFreeform = TextUtils.equals(windowingMode, "freeform");
+            Log.d(TAG, "windowingMode: " + windowingMode);
         }
 //        if (isFullscreen) {
-            handler.postDelayed(() -> {
-                try {
-                    if(!checkServiceExits()){
-                        return;
-                    }
-                    service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-                            (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-                            mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
-            },100);
+//        handler.postDelayed(() -> {
+//            try {
+//                if(!checkServiceExits()){
+//                    return;
+//                }
+//                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+//                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+//                        mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
+//            } catch (RemoteException e) {
+//                e.printStackTrace();
+//            }
+//        },100);
 //        }
     }
 
     private void updateAttribueOnly(Rect rect) {
-//        Log.d(TAG, "updateAttribue: rect:" + rect);
+        Log.d(TAG, "updateAttribue: rect:" + rect);
         mWindowRect.set(rect);
         mAttribute.setRect(rect);
         getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
@@ -1237,8 +1283,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
         if(checkServiceExits() && mProperty != null && mProperty.getSupportDeleteWindow() == 1){
+            Log.e(TAG, "onWindowDismissed: ");
             closeXwindow();
         } else {
+            Log.e(TAG, "finish: ");
             finish();
             App.getApp().stopingActivityWindow.add(mAttribute.getXID());
         }
@@ -1355,7 +1403,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      */
     public static void toggleKeyboardVisibility(Context context) {
         InputMethodManager inputMethodManager = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-        Log.v(TAG, "Toggling keyboard visibility");
+//        Log.v(TAG, "Toggling keyboard visibility");
         if(inputMethodManager != null)
             inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
     }
@@ -1395,6 +1443,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         protected boolean hideDecorCaptionView() {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            Log.d("TAG", "hideDecorCaptionView");
             return true;
         }
     }

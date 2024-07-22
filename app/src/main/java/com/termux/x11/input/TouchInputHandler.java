@@ -10,6 +10,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.PointF;
 import android.os.Handler;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.InputDevice;
 import android.view.KeyEvent;
@@ -19,6 +20,8 @@ import android.view.ViewConfiguration;
 
 import androidx.annotation.IntDef;
 import androidx.core.math.MathUtils;
+
+import com.termux.x11.MainActivity;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -30,8 +33,10 @@ import java.lang.annotation.RetentionPolicy;
  */
 public class TouchInputHandler {
     private static final float EPSILON = 0.001f;
+    private static final String TAG = "TouchInputHandler";
 
     public static int STYLUS_INPUT_HELPER_MODE = 1; //1 = Left Click, 2 Middle Click, 3 Right Click
+    private boolean isTouching = false;
 
     public void sendKeyEvent(CharSequence sequence) {
         mInjector.mInjector.sendTextEvent(String.valueOf(sequence).getBytes(UTF_8));
@@ -140,7 +145,20 @@ public class TouchInputHandler {
                 && (event.getToolType(event.getActionIndex()) == MotionEvent.TOOL_TYPE_FINGER);
     }
 
+    public boolean isTouching(){
+        return isTouching;
+    }
+
+
     public boolean handleTouchEvent(View view0, View view, MotionEvent event) {
+//        Log.d(TAG, "handl_e:" + event);
+        if(event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE){
+            isTouching = true;
+        } else if(event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+            isTouching = false;
+            MainActivity mainActivity = (MainActivity) mContext;
+            mainActivity.configureFromXIfNeed();
+        }
         if (view0 != view) {
             int[] view0Location = new int[2];
             int[] viewLocation = new int[2];
@@ -169,7 +187,7 @@ public class TouchInputHandler {
                 || (event.getSource() & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE)
                 || (event.getSource() & InputDevice.SOURCE_MOUSE_RELATIVE) == InputDevice.SOURCE_MOUSE_RELATIVE
                 || (event.getPointerCount() == 1 && mTouchpadHandler == null
-                   && (event.getSource() & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD))
+                && (event.getSource() & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD))
             return mHMListener.onTouch(view, event);
 
         if (event.getToolType(event.getActionIndex()) == MotionEvent.TOOL_TYPE_FINGER) {
@@ -466,6 +484,7 @@ public class TouchInputHandler {
     }
 
     public boolean sendKeyEvent(View view, KeyEvent event) {
+        Log.d(TAG, "sendKeyEvent: view:" + view + ", event:" + event + "");
         return mInjector.sendKeyEvent(view, event);
     }
 

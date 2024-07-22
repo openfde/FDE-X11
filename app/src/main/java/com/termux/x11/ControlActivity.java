@@ -1,6 +1,9 @@
 package com.termux.x11;
 
 import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+import static com.termux.x11.utils.AppUtils.CONTENT_HEIGHT;
+import static com.termux.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
+import static com.termux.x11.utils.AppUtils.GLOBAL_SCREEN_HEIGHT;
 
 import android.app.Activity;
 import android.content.ComponentName;
@@ -79,7 +82,8 @@ public class ControlActivity extends Activity implements View.OnClickListener {
         if(v == btCreateWindow){
             windowManager.createXWindow();
         } else if( v == btStartScreen){
-            startActivityForXserver(0, 0 , 1920, 989, 0 , 0);
+            startActivityForXserver(0, 0 , (int)DECOR_CAPTION_HEIGHT,
+                    (int)CONTENT_HEIGHT, 0 , 0);
 //            startActivityForXserver(0, 0 , 960, 720, 0 , 0);
         } else if( v == btBindWindowManager){
             windowManager.startWindowManager(DISPLAY_GLOBAL_PARAM);

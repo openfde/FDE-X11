@@ -56,6 +56,10 @@ public class AppUtils {
 
     public static int GLOBAL_SCREEN_WIDTH = 1920;
     public static int GLOBAL_SCREEN_HEIGHT = 1080;
+    public static final int DECOR_CAPTION_HEIGHT = 42;
+    public static final int NAVIGATION_BAR_HEIGHT = 48;
+    public static final int CONTENT_HEIGHT = GLOBAL_SCREEN_HEIGHT - NAVIGATION_BAR_HEIGHT - DECOR_CAPTION_HEIGHT -1;
+
     private static Context mContext;
     private static Thread mUiThread;
 

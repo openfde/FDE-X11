@@ -20,6 +20,10 @@
 #include <jni.h>
 //#include "ewmh_icccm.h"
 #include <X11/Xatom.h>
+static JavaVM *jniVM = NULL;
+static JNIEnv *GlobalEnv = NULL;
+static jobject bitmap = NULL;
+static jclass staticClass = NULL;
 
 #define DECORCATIONVIEW_HEIGHT 42
 #define BASE_EVENT_MASK \

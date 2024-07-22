@@ -1,5 +1,8 @@
 package com.termux.x11;
 
+import static com.termux.x11.utils.AppUtils.CONTENT_HEIGHT;
+import static com.termux.x11.utils.AppUtils.GLOBAL_SCREEN_WIDTH;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ClipData;
@@ -70,7 +73,8 @@ public class LorieView extends SurfaceView implements InputStub {
                 return;
 
             getDimensionsFromSettings();
-            mCallback.changed(holder.getSurface(), 1920, 989, 1920 , 989);
+            mCallback.changed(holder.getSurface(), GLOBAL_SCREEN_WIDTH,
+                    CONTENT_HEIGHT, GLOBAL_SCREEN_WIDTH , CONTENT_HEIGHT);
         }
 
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
@@ -213,6 +217,7 @@ public class LorieView extends SurfaceView implements InputStub {
 
     @Override
     public boolean dispatchKeyEventPreIme(KeyEvent event) {
+        Log.d(TAG, "dispatchKeyEventPreIme: event:" + event + "");
         Activity a = getActivity();
         return (a instanceof MainActivity) && ((MainActivity) a).handleKey(event);
     }
