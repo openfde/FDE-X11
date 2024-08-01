@@ -593,9 +593,9 @@ void WindowManager::Run() {
 void WindowManager::OnSelectionRequest(XEvent e) {
     XSelectionRequestEvent *sev = (XSelectionRequestEvent*)&e.xselectionrequest;
     log("OnSelectionRequest owner:%lx requestor:%lx ", sev->owner, sev->requestor);
-    if(sev->requestor == root_){
-        return;
-    }
+//    if(sev->requestor == root_){
+//        return;
+//    }
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
     Atom targets = XInternAtom(display_, "TARGETS", False);
@@ -630,7 +630,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         now = ctime(&now_tm);
         an = XGetAtomName(display_, sev->property);
         log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, an);
-        if (!an || !cliptext){
+        if (!an){
             log("No data to send to window 0x%lx, property '%s'\n", sev->requestor, an);
             XFree(an);
             return;
@@ -668,10 +668,12 @@ void WindowManager::OnSelectionClear(XEvent e) {
     XConvertSelection(display_, bufid, fmtid, propid, owner, CurrentTime);
     do {
         XNextEvent(display_, &event);
+        log("OnSelectionClear event.tpe:%d", event.type);
     } while (event.type != SelectionNotify || event.xselection.selection != bufid);
 
     if (event.xselection.property)
     {
+        log("OnSelectionClear 1");
         XGetWindowProperty(display_, owner, propid, 0, LONG_MAX/4, False, AnyPropertyType,
                            &fmtid, &resbits, &ressize, &restail, (unsigned char**)&result);
         if (fmtid == incrid){

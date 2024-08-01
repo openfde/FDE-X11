@@ -56,6 +56,7 @@
     <string name="exit_tip">点击确定将直接关闭程序</string>
     <string name="xserver_start_success">xserver启动成功</string>
     <string name="xserver_disconnect">xserver断开连接</string>
+    <string name="xserver_close_disconnect">xserver异常，关闭窗口，请启动后重新打开</string>
     <string name="xserver_reconnect">xserver重连</string>
     <string name="xserver_connect_success">xserver连接成功</string>
 </resources>

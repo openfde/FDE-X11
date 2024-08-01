@@ -20,6 +20,7 @@ import static com.termux.x11.Xserver.ACTION_START;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.termux.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.termux.x11.data.Constants.APP_TITLE_PREFIX;
+import static com.termux.x11.utils.Util.showXserverCloseOnDisconnect;
 import static com.termux.x11.utils.Util.showXserverConnectSuccess;
 import static com.termux.x11.utils.Util.showXserverDisconnect;
 import static com.termux.x11.utils.Util.showXserverStartSuccess;
@@ -454,8 +455,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         bindXserver();
         builder = new EasyDialog.Builder(this);
         initClipMonitor();
-//
-//        findViewById(R.id.button).setOnClickListener((v)->{
+        findViewById(R.id.button).setOnClickListener((v)->{
+
+            Log.d(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
+
 //            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
 //            int left  = new Random().nextInt(100);
 //            Rect rect = new Rect(left, left, left + 500, left + 500);
@@ -469,7 +472,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 //            } catch (RemoteException e) {
 //                throw new RuntimeException(e);
 //            }
-//        });
+        });
     }
 
 
@@ -583,7 +586,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         @Override
         public void onServiceDisconnected(ComponentName name) {
 //            Log.v(TAG, "onServiceDisconnected: ");
-//            showXserverDisconnect(MainActivity.this);
+            showXserverCloseOnDisconnect(MainActivity.this);
+            finish();
         }
     }
 

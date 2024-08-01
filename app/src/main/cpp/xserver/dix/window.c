@@ -138,7 +138,7 @@ Equipment Corporation.
 
 void android_unmap_window(Window window);
 
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "huyang_window", __VA_ARGS__);\
                 }              \

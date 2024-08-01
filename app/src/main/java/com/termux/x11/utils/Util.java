@@ -184,6 +184,10 @@ public class Util {
         Toast.makeText(context, R.string.xserver_disconnect, Toast.LENGTH_SHORT).show();
     }
 
+    public static void showXserverCloseOnDisconnect(Context context) {
+        Toast.makeText(context, R.string.xserver_close_disconnect, Toast.LENGTH_LONG).show();
+    }
+
     public static void showXserverReconnect(Context context) {
         Toast.makeText(context, R.string.xserver_reconnect, Toast.LENGTH_SHORT).show();
     }

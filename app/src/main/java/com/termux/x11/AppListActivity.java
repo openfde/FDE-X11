@@ -201,7 +201,7 @@ public class AppListActivity extends AppCompatActivity {
                 @Override
                 public void onServiceDisconnected(ComponentName name) {
                     AppListActivity.this.service = null;
-//                    showXserverDisconnect(AppListActivity.this);
+                    showXserverDisconnect(AppListActivity.this);
                 }
             };
         }
