@@ -147,6 +147,16 @@ Equipment Corporation.
 #include "enterleave.h"
 #include "eventconvert.h"
 #include "mi.h"
+#include <android/log.h>
+
+#define PRINT_LOG 0
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_events", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_events", __VA_ARGS__);\
+                }              \
 
 /* Extension events type numbering starts at EXTENSION_EVENT_BASE.  */
 #define NoSuchEvent 0x80000000  /* so doesn't match NoEventMask */
@@ -4929,8 +4939,10 @@ SetInputFocus(ClientPtr client,
             return rc;
         /* It is a match error to try to set the input focus to an
            unviewable window. */
-        if (!focusWin->realized)
-            return BadMatch;
+        if (!focusWin->realized){
+            log("SetInputFocus, focusWin id:%x", focusWin->drawable.id);
+            return Success;
+        }
     }
     rc = XaceHook(XACE_DEVICE_ACCESS, client, dev, DixSetFocusAccess);
     if (rc != Success)
@@ -4983,6 +4995,8 @@ SetInputFocus(ClientPtr client,
 int
 ProcSetInputFocus(ClientPtr client)
 {
+
+//    return Success;
     DeviceIntPtr kbd = PickKeyboard(client);
 
     REQUEST(xSetInputFocusReq);
