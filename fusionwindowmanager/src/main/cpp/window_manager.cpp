@@ -317,12 +317,12 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
         XConfigureWindow(display_, frame, value_mask, &changes);
-//        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
-//        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu " , frame, Size<int>(e.width, e.height).ToString().c_str()
+        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     } else {
         XConfigureWindow(display_, e.window, value_mask, &changes);
-//        log("Resize_ %lx to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
-//        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+        log("Resize_ %lx to %s x.y %s value_mask:%lu " , e.window , Size<int>(e.width, e.height).ToString().c_str()
+        ,Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
     }
     XSync(display_, False);
     if (value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight) {
@@ -446,18 +446,20 @@ void WindowManager::OnKeyRelease(const XKeyEvent& e) {}
 void WindowManager::OnPropertyNotify(XEvent e) {}
 
 int WindowManager::OnXError(Display* display, XErrorEvent* e) {
-    const int MAX_ERROR_TEXT_LENGTH = 1024;
-    char error_text[MAX_ERROR_TEXT_LENGTH];
-    XGetErrorText(display, e->error_code, error_text, sizeof(error_text));
-    log("Received X error:\n");
-    log("    Request: %d", int(e->request_code));
-    if(e->request_code < 120){
-        log(" - %s \n", XRequestCodeToString(e->request_code).c_str());
+    if(PRINT_XERROR){
+        const int MAX_ERROR_TEXT_LENGTH = 1024;
+        char error_text[MAX_ERROR_TEXT_LENGTH];
+        XGetErrorText(display, e->error_code, error_text, sizeof(error_text));
+        log("Received X error:\n");
+        log("    Request: %d", int(e->request_code));
+        if(e->request_code < 120){
+            log(" - %s \n", XRequestCodeToString(e->request_code).c_str());
+        }
+        log("    Error code %d: " , int(e->error_code));
+        log(" - %s \n", error_text );
+        log("    Resource ID: %x",e->resourceid);
+        log("    serial ID: %ld",e->serial);
     }
-    log("    Error code %d: " , int(e->error_code));
-    log(" - %s \n", error_text );
-    log("    Resource ID: %x",e->resourceid);
-    log("    serial ID: %ld",e->serial);
     return 0;
 
 }
@@ -701,28 +703,6 @@ int WindowManager::moveWindow(long window, int x, int y) {
 
 
 int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
-//    Atom prop = XInternAtom(display_, "_NET_WM_STATE", False);
-//    Atom type;
-//    int format;
-//    unsigned long nitems, bytes_after;
-//    unsigned char *data = NULL;
-//
-//    if (XGetWindowProperty(display_, window, prop, 0, 1024, False, XA_ATOM, &type,
-//                           &format, &nitems, &bytes_after, &data) != Success) {
-//        return 0; // Error
-//    }
-//
-//    if (data != NULL) {
-//        Atom *atoms = (Atom *)data;
-//        for (int i = 0; i < nitems; ++i) {
-//            if (atoms[i] == XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False)) {
-//                XFree(data);
-//                return 0; // Window is hidden
-//            }
-//        }
-//        XFree(data);
-//    }
-//    log("configureWindow %x: x:%d y:%d w:%d h:%d", window, x, y, w, h);
     XWindowChanges changes;
     changes.x = x;
     changes.y = y;
@@ -731,15 +711,15 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
     unsigned long value_mask = CWX | CWY | CWWidth | CWHeight ;
     int ret;
     if (isInFrameMap(window)) {
-//        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
-//            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-//            value_mask);
+        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
+            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+            value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
         XSync(display_, False);
     } else {
-//        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
-//            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-//            value_mask);
+        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
+            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
+            value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
         XSync(display_, False);
     }

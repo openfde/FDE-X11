@@ -256,7 +256,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if(CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Log.d(TAG, "onReceive: XID EQUAL:" + (mAttribute.getXID() == attr.getXID()) + ", istouching:" + mInputHandler.isTouching() + "");
-                if (mAttribute != null && mAttribute.getXID() == attr.getXID()
+                if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen
                 )
                 {
                     mConfigureRect = attr.getRect();
@@ -455,10 +455,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         bindXserver();
         builder = new EasyDialog.Builder(this);
         initClipMonitor();
+//        findViewById(R.id.button).setVisibility(View.VISIBLE);
         findViewById(R.id.button).setOnClickListener((v)->{
-
-            Log.d(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
-
+            try {
+                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                        mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
 //            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
 //            int left  = new Random().nextInt(100);
 //            Rect rect = new Rect(left, left, left + 500, left + 500);
@@ -1250,20 +1255,20 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             isFreeform = TextUtils.equals(windowingMode, "freeform");
             Log.d(TAG, "windowingMode: " + windowingMode);
         }
-//        if (isFullscreen) {
-//        handler.postDelayed(() -> {
-//            try {
-//                if(!checkServiceExits()){
-//                    return;
-//                }
-//                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-//                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-//                        mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
-//            } catch (RemoteException e) {
-//                e.printStackTrace();
-//            }
-//        },100);
-//        }
+        if (isFullscreen) {
+        handler.postDelayed(() -> {
+            try {
+                if(!checkServiceExits()){
+                    return;
+                }
+                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                        mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        },100);
+        }
     }
 
     private void updateAttribueOnly(Rect rect) {
