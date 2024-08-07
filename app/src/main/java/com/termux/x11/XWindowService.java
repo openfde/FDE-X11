@@ -51,8 +51,8 @@ public class XWindowService extends Service {
 
     public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_start";
 
-    public static final String MODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_modaled";
-    public static final String UNMODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_unmodaled";
+    public static final String MODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_MODALED";
+    public static final String UNMODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_UNMODALED";
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
@@ -189,7 +189,7 @@ public class XWindowService extends Service {
             if(property == null || property.getTransientfor() == 0 ){
                 return;
             }
-            attr.setFocusable(isFocusable);
+            attr.setFocusable(false);
             String targetPackage = "com.termux.x11";
             Intent intent = new Intent( MODALED_ACTION_ACTIVITY_FROM_X);
             intent.setPackage(targetPackage);
@@ -202,7 +202,7 @@ public class XWindowService extends Service {
             if(property == null || property.getTransientfor() == 0 ){
                 return;
             }
-            attr.setFocusable(isFocusable);
+            attr.setFocusable(true);
             String targetPackage = "com.termux.x11";
             Intent intent = new Intent( UNMODALED_ACTION_ACTIVITY_FROM_X);
             intent.setPackage(targetPackage);
@@ -251,7 +251,7 @@ public class XWindowService extends Service {
             return;
         }
         startingWindow.add(attr.getXID());
-//        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         if(attr.getTaskTo() != 0){
             String targetPackage = "com.termux.x11";
             Intent intent = new Intent(START_ACTIVITY_FROM_X);

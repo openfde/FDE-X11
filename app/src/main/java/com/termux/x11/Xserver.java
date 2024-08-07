@@ -121,13 +121,16 @@ public class Xserver {
                                              int type, String net_name, String wm_class,
                                              int x, int y, int w, int h, int index, long p,
                                              long window, long taskTo, int support_wm_delete, Bitmap bitmap) {
-        Log.d(TAG, "startOrUpdateActivity: aid:" + aid + ", transientfor:" + transientfor + ", leader:" + leader + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p + ", window:" + window + ", taskTo:" + taskTo +
+        Log.d(TAG, "startOrUpdateActivity: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
+                + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
+                + ", window:" + Long.toHexString(window) + ", taskTo:" + Long.toHexString(taskTo) +
                 ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap + "");
         EventMessage message = null;
         if(bitmap != null){
             bitmap = Util.scaleBitmapIfneed(bitmap);
             Log.d(TAG, "startOrUpdateActivity: " + bitmap.getWidth() + " " + bitmap.getHeight());
         }
+        type = convert2AndroidType(type, x, y, w, h);
         switch (type) {
             case _NET_WM_WINDOW_TYPE_NORMAL:
                 message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
@@ -143,6 +146,20 @@ public class Xserver {
         if (message != null) {
             EventBus.getDefault().post(message);
         }
+    }
+
+    private static int convert2AndroidType(int type, int x, int y, int w, int h) {
+        //case 1:
+        if(type == _NET_WM_WINDOW_TYPE_NORMAL){
+            if(w < 400 || h < 250){
+                Log.d(TAG, "change to type:dialog" +  ", w:" + w + ", h:" + h + "");
+                return _NET_WM_WINDOW_TYPE_DIALOG;
+            } else {
+                Log.d(TAG, "change to type:normal" +  ", w:" + w + ", h:" + h + "");
+                return _NET_WM_WINDOW_TYPE_NORMAL;
+            }
+        }
+        return type;
     }
 
 

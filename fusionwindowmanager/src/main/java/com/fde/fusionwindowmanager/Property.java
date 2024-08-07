@@ -159,14 +159,14 @@ public class Property implements Parcelable {
     @NonNull
     @Override
     public String toString() {
-        return "\n Property{" +
-                "\n XID=" + XID +
-                "\n, transientfor=" + transientfor +
+        return "\n Property:" +
+                " XID=" + Long.toHexString(XID) +
+                "     transientfor=" + Long.toHexString(transientfor) +
 //                "\n, leader=" + leader +
 //                "\n, type=" + type +
 //                "\n, supportDeleteWindow=" + supportDeleteWindow +
-                "\n, net_name='" + net_name + '\'' +
+                "       net_name='" + net_name + '\'' +
 //                "\n, wm_class='" + wm_class + '\'' +
-                '}';
+                "";
     }
 }

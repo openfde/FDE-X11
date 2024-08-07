@@ -233,17 +233,21 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
-//                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
-                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
-                            FLAG_NOT_TOUCHABLE);
+                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+//                            |FLAG_NOT_TOUCHABLE
+                    );
+                    setDecorCaptionViewFocuseable(false);
                 }
             } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(attr != null ){
-//                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
-                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
-                            FLAG_NOT_TOUCHABLE);
-                }
+                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+//                            |FLAG_NOT_TOUCHABLE
+                    );
+                    setDecorCaptionViewFocuseable(true);
+                 }
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
                 if(mAttribute !=  null && windowId == mAttribute.getXID()){
@@ -255,7 +259,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 }
             } else if(CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                Log.d(TAG, "onReceive: XID EQUAL:" + (mAttribute.getXID() == attr.getXID()) + ", istouching:" + mInputHandler.isTouching() + "");
+                Log.d(TAG, "onReceive: XID equal:" + (mAttribute.getXID() == attr.getXID()) + ", istouching:" + mInputHandler.isTouching() + "");
                 if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen
                 )
                 {
@@ -268,6 +272,24 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         }
     };
+
+    private void setDecorCaptionViewFocuseable(boolean focusable) {
+        Window window = getWindow();
+        ViewGroup decor = (ViewGroup) window.getDecorView();
+        DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
+        boolean isCaptionShowing = true;
+        try {
+            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+            Method method = aClass.getMethod("isCaptionShowing");
+            isCaptionShowing = (boolean) method.invoke(decorCaptionView);
+            if(isCaptionShowing) {
+                decorCaptionView.setOperateEnabled(focusable);
+            }
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+                 InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
 
     @SuppressLint("StaticFieldLeak")
     private static MainActivity instance;
@@ -1142,6 +1164,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
             window.setStatusBarColor(Color.BLACK);
             window.setNavigationBarColor(Color.BLACK);
+            setDecorCaptionViewFocuseable(true);
         }
         window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         if (hasFocus) {

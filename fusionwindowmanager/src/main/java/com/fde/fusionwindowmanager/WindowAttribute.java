@@ -198,18 +198,18 @@ public class WindowAttribute implements Parcelable {
     @NonNull
     @Override
     public String toString() {
-        return "\n WindowAttribute{" +
-                "\noffsetX=" + offsetX +
-                "\n, offsetY=" + offsetY +
-                "\n, width=" + width +
-                "\n, height=" + height +
+        return "\n WindowAttribute:" +
+                "      offsetX=" + offsetX +
+                "      offsetY=" + offsetY +
+                "      width=" + width +
+                "      height=" + height +
 //                "\n, index=" + index +
 //                "\n, windowPtr=" + windowPtr +
-                "\n, XID=" + XID +
-                "\n, taskTo=" + taskTo +
+                "      XID=" + Long.toHexString(XID) +
+                "      taskTo=" + Long.toHexString(taskTo) +
 //                "\n, focusable=" + focusable +
 //                "\n, property=" + property +
-                '}';
+                "";
     }
 
     public Rect getRect() {
