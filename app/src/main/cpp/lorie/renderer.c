@@ -955,7 +955,16 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         height = attr->height;
     }
 
-    if (!eglSurface || eglGetCurrentContext() == EGL_NO_CONTEXT || !id) {
+    if (!eglSurface ) {
+        log("renderer_redraw_traversal_1 bad egl ");
+        return FALSE;
+    }
+    if ( eglGetCurrentContext() == EGL_NO_CONTEXT ) {
+        log("renderer_redraw_traversal_1 bad context ")
+        return FALSE;
+    }
+    if (!id) {
+        log("renderer_redraw_traversal_1 id:%d ", id)
         return FALSE;
     }
 

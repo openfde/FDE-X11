@@ -42,7 +42,7 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-#define PRINT_LOG 1
+#define PRINT_LOG 0
 #define log(prio, ...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);\
                 }              \
@@ -675,8 +675,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             }
             case EVENT_MOUSE: {
                 int flags;
-//                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
-//                    e.mouse.y);
+                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
+                    e.mouse.y);
                 switch (e.mouse.detail) {
                     case 0: // BUTTON_UNDEFINED
                         if (e.mouse.relative) {
