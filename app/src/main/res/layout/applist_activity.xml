@@ -21,4 +21,18 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:visibility="gone" />
+
+    <EditText
+        android:id="@+id/et_appname"
+        android:cursorVisible="false"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="0.1dp"
+        android:layout_gravity="left|top"
+        android:layout_marginTop="50dp"
+        android:inputType="textFilter"
+        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        android:textColor="@color/dark_gray"
+        android:background="#ddd"
+        />
 </FrameLayout>

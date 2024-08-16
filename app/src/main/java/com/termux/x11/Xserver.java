@@ -58,7 +58,11 @@ public class Xserver {
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
     public static final String ACTION_UPDATE_ICON = "UPDATE_ICON";
-    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp", "-ac"};
+    // listen TCP, for remote and local X client
+    // private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
+
+    // listen unix or tcp socket, only for local X client
+    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM};
 
     private  static final int _NET_WM_WINDOW_TYPE = 267;
     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;

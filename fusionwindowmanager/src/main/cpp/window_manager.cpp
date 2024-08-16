@@ -20,7 +20,8 @@ mutex WindowManager::wm_detected_mutex_;
 ::WindowManager *WindowManager::create(const char *export_display, JNIEnv * env, jclass cls) {
     staticClass = cls;
     GlobalEnv = env;
-    Display* display = XOpenDisplay(export_display);
+//    char * display_str= std::strcat(export_display)
+    Display* display = XOpenDisplay("unix:/tmp/.X11-unix/X1000");
     if (display == nullptr) {
         log("Failed to open X display");
         return nullptr;

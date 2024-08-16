@@ -42,7 +42,7 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(prio, ...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);\
                 }              \
@@ -534,8 +534,8 @@ Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray
 
         if (!getcwd(cwd, sizeof(cwd)) || access(cwd, F_OK) != 0)
             chdir(tmp);
-        asprintf(&xtrans_unix_path_x11, "%s/fde/.X11-unix/X", tmp);
-        asprintf(&xtrans_unix_dir_x11, "%s/fde/.X11-unix/", tmp);
+        asprintf(&xtrans_unix_path_x11, "%s/.X11-unix/X", tmp);
+        asprintf(&xtrans_unix_dir_x11, "%s/.X11-unix/", tmp);
     }
 
     log(VERBOSE, "Using TMPDIR=\"%s\"", getenv("TMPDIR"));

@@ -10,6 +10,7 @@ import android.content.Context;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -27,6 +28,8 @@ import com.termux.x11.utils.AppUtils;
 import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.callback.JsonCallBack;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import okhttp3.Call;
 
 public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
@@ -39,9 +42,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
     private boolean isConnecting;
 
     AppListActivity.ItemClickListener itemClickListener;
+    private String filter;
+    private List<AppListResult.DataBeanX.DataBean> filteredList;
 
     public AppAdapter(@NonNull Context context, List<AppListResult.DataBeanX.DataBean> list, AppListActivity.ItemClickListener listener) {
         this.context = context;
+        this.filteredList = list;
         this.list = list;
         this.itemClickListener = listener;
     }
@@ -56,7 +62,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, @SuppressLint("RecyclerView") int position) {
-        final AppListResult.DataBeanX.DataBean app = list.get(position);
+        final AppListResult.DataBeanX.DataBean app = filteredList.get(position);
         app.id = position;
         TextView textView = holder.textView;
         textView.setText(app.Name);
@@ -120,12 +126,17 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
 
     @Override
     public int getItemCount() {
-        return list.size();
+        return filteredList.size();
     }
 
-    public void notifyDataSetChanged(List<AppListResult.DataBeanX.DataBean> mDataList) {
-        this.list = mDataList;
-        super.notifyDataSetChanged();
+    public void filterAppName(String filter) {
+        this.filter = filter;
+        if(TextUtils.isEmpty(filter)){
+            this.filteredList = list;
+        } else if(list!= null && !list.isEmpty()){
+            this.filteredList = list.stream().filter(app -> app.Name.toLowerCase().contains(filter.toLowerCase())).collect(Collectors.toList());
+        }
+        notifyDataSetChanged();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder{

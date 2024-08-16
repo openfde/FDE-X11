@@ -59,4 +59,7 @@
     <string name="xserver_close_disconnect">xserver异常，关闭窗口，请启动后重新打开</string>
     <string name="xserver_reconnect">xserver重连</string>
     <string name="xserver_connect_success">xserver连接成功</string>
+
+    <string name="compatible_config_x_app">兼容配置</string>
+
 </resources>

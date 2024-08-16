@@ -1,6 +1,5 @@
 package com.termux.x11;
 
-import static android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
 import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.termux.x11.MainActivity.ACTION_STOP;
 import static com.termux.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
@@ -10,22 +9,17 @@ import static com.termux.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.STOP_WINDOW_FROM_X;
 import static com.termux.x11.XWindowService.UNMODALED_ACTION_ACTIVITY_FROM_X;
-import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
 import static com.termux.x11.Xserver.ACTION_START;
 import static com.termux.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.termux.x11.data.Constants.BASEURL;
 import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 import static com.termux.x11.data.Constants.URL_GETALLAPP;
 import static com.termux.x11.data.Constants.URL_STARTAPP_X;
-import static com.termux.x11.utils.Util.showXserverConnectSuccess;
 import static com.termux.x11.utils.Util.showXserverDisconnect;
 import static com.termux.x11.utils.Util.showXserverReconnect;
 import static com.termux.x11.utils.Util.showXserverStartSuccess;
 
 import android.annotation.SuppressLint;
-import android.app.ActivityManager;
-import android.app.ActivityOptions;
-import android.app.ActivityTaskManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -36,29 +30,25 @@ import android.content.ServiceConnection;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
-import android.graphics.Bitmap;
-import android.graphics.Rect;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
-import android.view.Window;
-import android.view.WindowManager;
-import android.view.WindowMetrics;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.TranslateAnimation;
+import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -81,7 +71,6 @@ import com.xwdz.http.callback.JsonCallBack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -100,8 +89,6 @@ public class AppListActivity extends AppCompatActivity {
     private List<AppListResult.DataBeanX.DataBean> mDataList = new ArrayList<>();
     private int mPage = 1;
     private int pageSize = 100;
-    //todo mock addr
-    public static boolean MOCK_ADDR = false;
     private String shortcutApp;
     private String shortcuPath;
     private boolean fromShortcut;
@@ -111,12 +98,14 @@ public class AppListActivity extends AppCompatActivity {
     private int screenWidth;
     private int screenHeight;
     private int spanCount;
-    private boolean mAppListInit = false;
     public TipLoadDialog tipLoadDialog;
     private ServiceConnection connection;
     private boolean isLoading;
 
     public IBinder service;
+    private EditText filterView;
+
+    private Handler handler = new Handler();
 
     public interface ItemClickListener {
         void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event);
@@ -129,15 +118,8 @@ public class AppListActivity extends AppCompatActivity {
         com.xiaokun.dialogtiplib.util.AppUtils.init(this);
         loadingView = (ProgressBar) findViewById(R.id.loadingView);
         tipLoadDialog = new TipLoadDialog(this);
+        filterView = (EditText)findViewById(R.id.et_appname);
         initAppList();
-//        WindowMetrics maximumWindowMetrics = getWindow().getWindowManager().getMaximumWindowMetrics();
-//        Rect bounds = null;
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-//            bounds = maximumWindowMetrics.getBounds();
-//        }
-//        Log.d(TAG, "onCreate: bounds:" + bounds + "");
-//        AppUtils.GLOBAL_SCREEN_WIDTH = bounds.right;
-//        AppUtils.GLOBAL_SCREEN_HEIGHT = bounds.bottom;
         Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
         startXWindowService();
         registerReceiver(receiver, new IntentFilter(ACTION_START) {{
@@ -151,7 +133,38 @@ public class AppListActivity extends AppCompatActivity {
             addAction(ACTION_UPDATE_ICON);
         }},  0);
         Log.d(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
+        filterView.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                Log.d(TAG, "onTextChanged: s:" + s + ", start:" + start + ", before:" + before + ", count:" + count + "");
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                Log.d(TAG, "afterTextChanged: s:" + s + "");
+                handler.removeCallbacks(null);
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(mAdapter != null){
+                            mAdapter.filterAppName(s.toString());
+                        }
+                    }
+                }, 100);
+            }
+        });
+
+        if(getIntent() != null && getIntent().getExtras() != null){
+            shortcutApp = (String)getIntent().getExtras().get("App");
+            shortcuPath = (String)getIntent().getExtras().get("Path");
+            Log.d(TAG, "onCreate() called with: shortcutApp = [" + shortcuPath + "]  shortcutApp = [" + shortcuPath + "]");
+            fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
+        }
     }
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -218,22 +231,16 @@ public class AppListActivity extends AppCompatActivity {
             tipLoadDialog = null;
         }
         unregisterReceiver(receiver);
+        handler.removeCallbacks(null);
     }
 
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (MOCK_ADDR) {
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    tryLunchApp(null);
-                }
-            }, 3000);
-        }
         mayGetApps();
         Log.d(TAG, "onResume");
+        findViewById(R.id.et_appname).requestFocus();
     }
 
     private void mayGetApps() {
@@ -343,11 +350,11 @@ public class AppListActivity extends AppCompatActivity {
             }
             mLastClickTime = nowTime;
             Log.d(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
-//            if (isRight) {
-//                showOptionView(itemView, app, event);
-//            } else {
-            load2Start(app);
-//            }
+            if (isRight) {
+                showOptionView(itemView, app, event);
+            } else {
+                load2Start(app, false);
+            }
         }
     };
 
@@ -372,7 +379,7 @@ public class AppListActivity extends AppCompatActivity {
         mPopupSlideSmall.setOptionItemClickListener(new PopupSlideSmall.onAppOptionItemClickListener() {
             @Override
             public void onOptionOpenClick() {
-                load2Start(app);
+                load2Start(app, false);
             }
 
             @Override
@@ -391,6 +398,18 @@ public class AppListActivity extends AppCompatActivity {
 
             }
 
+            @Override
+            public void onOptionCompatibleClick() {
+                String showAppName = getRealAppName(app);
+                Intent intent = new Intent();
+                ComponentName cn = ComponentName.unflattenFromString("com.android.settings/.Settings$SetCompatibleActivity");
+                intent.setComponent(cn);
+                intent.putExtra("appName", "VNC_"+showAppName);
+                intent.putExtra("packageName", showAppName);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            }
+
         });
 
         popupWindow = mPopupSlideSmall;
@@ -404,8 +423,8 @@ public class AppListActivity extends AppCompatActivity {
                 break;
         }
 
-        fromY = globalHeight - event.getY() > DimenUtils.dpToPx(240.0f)? -1 : 1;
-        gravity = globalHeight - event.getY() > DimenUtils.dpToPx(240.0f)? Gravity.BOTTOM : Gravity.TOP;
+        fromY = globalHeight - event.getY() > DimenUtils.dpToPx(250.0f)? -1 : 1;
+        gravity = globalHeight - event.getY() > DimenUtils.dpToPx(250.0f)? Gravity.BOTTOM : Gravity.TOP;
         if (fromX != 0 || fromY != 0) {
             showAnimation = createTranslateAnimation(fromX, toX, fromY, toY);
             dismissAnimation = createTranslateAnimation(toX, fromX, toY, fromY);
@@ -441,51 +460,11 @@ public class AppListActivity extends AppCompatActivity {
                 fromY,
                 Animation.RELATIVE_TO_SELF,
                 toY);
-        animation.setDuration(200);
+        animation.setDuration(100);
         animation.setInterpolator(new DecelerateInterpolator());
         return animation;
     }
 
-
-    public class GetAppsCallback extends JsonCallBack<AppListResult>{
-
-        private boolean forceRefresh;
-        private int page;
-        public GetAppsCallback(boolean forceRefresh, int page){
-            this.forceRefresh = forceRefresh;
-            this.page = page;
-        }
-
-        @Override
-        public void onFailure(Call call, Exception e) {
-            mRecyclerView.loadMoreFinish(false, false);
-            mRefreshLayout.setRefreshing(false);
-        }
-
-        @Override
-        public void onSuccess(Call call, AppListResult response) {
-            Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
-            List<AppListResult.DataBeanX.DataBean> data = response.getData().getData();
-            if (fromShortcut) {
-                gotoShortcutApp(data);
-                return;
-            }
-            if (forceRefresh) {
-                mDataList.clear();
-            }
-            mDataList.addAll(data);
-            mAdapter.notifyDataSetChanged();
-            if (data.size() > 0) {
-                AppListActivity.this.mPage = page;
-            }
-            mRecyclerView.loadMoreFinish(mDataList.size() == 0, response.getData().getPage().getTotal() > mDataList.size());
-            mRefreshLayout.setRefreshing(false);
-
-            if(forceRefresh){
-                mRecyclerView.scrollToPosition(0);
-            }
-        }
-    }
 
     private void getAllLinuxApp(boolean forceRefresh, int page) {
         QuietOkHttp.get(BASEURL + URL_GETALLAPP)
@@ -501,7 +480,6 @@ public class AppListActivity extends AppCompatActivity {
                         Log.d(TAG, "onFailure() called with: call = [" + call + "], e = [" + e + "]");
                         mRecyclerView.loadMoreFinish(false, false);
                         mRefreshLayout.setRefreshing(false);
-                        mAppListInit = mDataList.size() != 0;
                     }
 
                     @Override
@@ -510,10 +488,11 @@ public class AppListActivity extends AppCompatActivity {
                             tipLoadDialog.dismiss();
                         }
                         isLoading = false;
-//                        Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
+                        Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
                         List<AppListResult.DataBeanX.DataBean> data = response.getData().getData();
                         if (fromShortcut) {
-                            gotoShortcutApp(data);
+                            fromShortcut = false;
+                            gotoShortcutApp(data, true);
                             return;
                         }
                         if (forceRefresh) {
@@ -526,23 +505,15 @@ public class AppListActivity extends AppCompatActivity {
                         }
                         mRecyclerView.loadMoreFinish(mDataList.size() == 0, response.getData().getPage().getTotal() > mDataList.size());
                         mRefreshLayout.setRefreshing(false);
-//
-//                        if(forceRefresh){
-//                            mRecyclerView.scrollToPosition(0);
-//                        }
-//                        mAppListInit = mDataList.size() != 0;
                     }
                 });
     }
 
     private void createShortcut(AppListResult.DataBeanX.DataBean app) {
-        Log.d(TAG, "createShortcut() called with: app = [" + app + "]");
         byte[] decode = Base64.decode(app.getIcon(), Base64.DEFAULT);
-//        Bitmap bitmap = BitmapFactory.decodeByteArray(decode, 0, decode.length);
         Icon icon = Icon.createWithBitmap(AppUtils.getScaledBitmap(decode, this));
         ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
         if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported()) {
-//            Intent launchIntentForPackage = getPackageManager().getLaunchIntentForPackage(getPackageName());
             Intent launchIntentForPackage = new Intent(this, AppListActivity.class);
             launchIntentForPackage.setAction(Intent.ACTION_MAIN);
             launchIntentForPackage.putExtra("App", app.getName());
@@ -560,16 +531,16 @@ public class AppListActivity extends AppCompatActivity {
         }
     }
 
-    private void gotoShortcutApp(List<AppListResult.DataBeanX.DataBean> data) {
+    private void gotoShortcutApp(List<AppListResult.DataBeanX.DataBean> data, boolean finish) {
         for (AppListResult.DataBeanX.DataBean bean : data){
-            Log.d(TAG, "gotoShortcutApp() called with: bean = [" + bean.getName() + "]");
             if (TextUtils.equals(shortcutApp, bean.getName())){
-                load2Start(bean);
+                load2Start(bean, finish);
             }
         }
     }
 
-    private void load2Start(AppListResult.DataBeanX.DataBean app) {
+    private void load2Start(AppListResult.DataBeanX.DataBean app, boolean finish) {
+//        Log.d(TAG, "load2Start: app:" + app + "");
         if (service == null || !service.isBinderAlive()) {
             showXserverReconnect(this);
             startXWindowService();
@@ -579,13 +550,12 @@ public class AppListActivity extends AppCompatActivity {
                     .setMsgAndType(getString(R.string.lunching_tip) + app.getName(), TipLoadDialog.ICON_TYPE_LOADING)
                     .setTipTime(5000)
                     .show();
-            tryStartVncApp(app);
+            startLinuxApp(app, finish);
         }
     }
 
 
-    private void tryStartVncApp(AppListResult.DataBeanX.DataBean app) {
-        // todo mock
+    private void startLinuxApp(AppListResult.DataBeanX.DataBean app, boolean finish) {
         QuietOkHttp.post(BASEURL + URL_STARTAPP_X)
                 .setCallbackToMainUIThread(true)
                 .addParams("App", app.Name)
@@ -594,22 +564,17 @@ public class AppListActivity extends AppCompatActivity {
                 .execute(new JsonCallBack<VncResult.GetPortResult>() {
                     @Override
                     public void onFailure(Call call, Exception e) {
-                        Log.d(TAG, "onFailure() called with: call = [" + call + "], e = [" + e + "]");
                         tipLoadDialog.dismiss();
                     }
 
                     @Override
                     public void onSuccess(Call call, VncResult.GetPortResult response) {
                         tipLoadDialog.dismiss();
-                        Log.i(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
-//                        tryLunchApp(app);
+                        if(finish){
+                            moveTaskToBack(false);
+                        }
                     }
                 });
-    }
-
-    private void tryLunchApp(AppListResult.DataBeanX.DataBean app) {
-        loadingView.setVisibility(View.GONE);
-        tipLoadDialog.dismiss();
     }
 
 }

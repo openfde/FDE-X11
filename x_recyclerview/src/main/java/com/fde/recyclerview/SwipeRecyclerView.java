@@ -457,6 +457,7 @@ public class SwipeRecyclerView extends RecyclerView {
      * Add view at the footer.
      */
     public void addFooterView(View view) {
+        mFooterViewList.clear();
         mFooterViewList.add(view);
         if (mAdapterWrapper != null) {
             mAdapterWrapper.addFooterViewAndNotify(view);
