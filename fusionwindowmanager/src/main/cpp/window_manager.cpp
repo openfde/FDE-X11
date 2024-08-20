@@ -617,8 +617,9 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        log("OnSelectionRequest cliptext:%s", cliptext);
+        log(" cliptext 0");
         if(cliptext != nullptr && std::strlen(cliptext) != 0){
+//            log("OnSelectionRequest cliptext:%s", cliptext);
             ssev.property = sev->property;
         } else {
             ssev.property = None;
@@ -634,12 +635,12 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         now = ctime(&now_tm);
         an = XGetAtomName(display_, sev->property);
         log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, an);
-        if (!an || cliptext == nullptr && std::strlen(cliptext) == 0){
+        if (!an){
             log("No data to send to window 0x%lx, property '%s'\n", sev->requestor, an);
             XFree(an);
+            XFlush(display_);
             return;
         }
-        log("change property to cliptext:%s\n", cliptext);
         XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
                         (unsigned char *)cliptext, strlen(cliptext));
         ssev.type = SelectionNotify;
@@ -647,6 +648,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         ssev.selection = sev->selection;
         ssev.target = sev->target;
         if(cliptext != nullptr && std::strlen(cliptext) != 0){
+//            log("change property to cliptext:%s\n", cliptext);
             ssev.property = sev->property;
         } else {
             ssev.property = None;

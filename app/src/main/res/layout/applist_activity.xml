@@ -23,16 +23,22 @@
         android:visibility="gone" />
 
     <EditText
-        android:id="@+id/et_appname"
-        android:cursorVisible="false"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:minWidth="0.1dp"
-        android:layout_gravity="left|top"
-        android:layout_marginTop="50dp"
-        android:inputType="textFilter"
         android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        android:textColor="@color/dark_gray"
-        android:background="#ddd"
-        />
+        android:textColorHint="@android:color/darker_gray"
+        android:hint="@string/fde_search"
+        android:textColor="#222222"
+        android:layout_height="36dp"
+        android:layout_width="268dp"
+        android:paddingHorizontal="5dp"
+        android:maxLength="18"
+        android:inputType="textFilter"
+        android:layout_marginTop="80dp"
+        android:layout_marginHorizontal="12dp"
+        android:layout_gravity="center_horizontal"
+        android:drawablePadding="4dp"
+        android:drawableLeft="@drawable/icon_search"
+        android:background="@drawable/search_text_background"
+        android:id="@+id/et_appname"
+        android:textSize="17sp"
+        android:singleLine="true"/>
 </FrameLayout>

@@ -147,7 +147,7 @@ private:
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
     Window owner;
     Atom sel, utf8;
-    char * cliptext;
+    char * cliptext ="";
 
     // Atom constants.
     const Atom WM_PROTOCOLS;

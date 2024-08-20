@@ -93,7 +93,7 @@ from The Open Group.
 
 #define logh(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_ERROR, "huyang_InitOutput", __VA_ARGS__);\
-                }              \
+                }               \
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 
@@ -121,6 +121,7 @@ typedef struct {
     JNIEnv* env;
 } lorieScreenInfo, *lorieScreenInfoPtr;
 
+int init_cusor;
 ScreenPtr pScreenPtr;
 WindowPtr separateWindowPtr1;
 WindowPtr separateWindowPtr2;
@@ -302,6 +303,7 @@ static void lorieConvertCursor(CursorPtr pCurs, CARD32 *data) {
     }
 }
 
+
 static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, CursorPtr pCurs, int x0, int y0) {
     CursorBitsPtr bits = pCurs ? pCurs->bits : NULL;
     if (pCurs && bits) {
@@ -312,8 +314,13 @@ static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, Curs
     } else
         renderer_update_cursor(0, 0, 0, 0, NULL);
 
-    if (x0 >= 0 && y0 >= 0)
-        lorieMoveCursor(NULL, NULL, x0, y0);
+    if (x0 >= 0 && y0 >= 0) {
+        init_cusor++;
+        logh(" lorieSetCursor x0:%d y0:%d", x0, y0);
+        if (init_cusor > 1) {
+            lorieMoveCursor(NULL, NULL, x0, y0);
+        }
+    }
 }
 
 static miPointerSpriteFuncRec loriePointerSpriteFuncs = {
@@ -706,6 +713,7 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
     if(res->id == 0){
         res->pWin = pScreenPtr->root;
     }
+    init_cusor = 0;
     logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
          pvfb->root.buffer, res->id, surface);
     renderer_set_window_each(pvfb->env, res, pvfb->root.buffer);

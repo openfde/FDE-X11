@@ -61,5 +61,6 @@
     <string name="xserver_connect_success">xserver连接成功</string>
 
     <string name="compatible_config_x_app">兼容配置</string>
+    <string name="fde_search">搜索应用(只支持英文)</string>
 
 </resources>
