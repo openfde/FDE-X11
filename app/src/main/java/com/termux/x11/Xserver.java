@@ -78,6 +78,8 @@ public class Xserver {
     private static final int ACTION_UNMAP = 1;
     private static final int ACTION_DESTORY = 2;
 
+    private static final int ACTION_DISMISS_VIEW = 3;
+
 
     private static WeakReference<Service> contextRef;
 
@@ -124,17 +126,24 @@ public class Xserver {
     public static void startOrUpdateActivity(long aid, long transientfor, long leader,
                                              int type, String net_name, String wm_class,
                                              int x, int y, int w, int h, int index, long p,
-                                             long window, long taskTo, int support_wm_delete, Bitmap bitmap) {
+                                             long window, long taskTo, int support_wm_delete, Bitmap bitmap, boolean inbound) {
         Log.d(TAG, "startOrUpdateActivity: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
                 + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
                 + ", window:" + Long.toHexString(window) + ", taskTo:" + Long.toHexString(taskTo) +
-                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap + "");
+                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +  " inbound:" + inbound);
         EventMessage message = null;
         if(bitmap != null){
             bitmap = Util.scaleBitmapIfneed(bitmap);
             Log.d(TAG, "startOrUpdateActivity: " + bitmap.getWidth() + " " + bitmap.getHeight());
         }
-        type = convert2AndroidType(type, x, y, w, h);
+        if( type == _NET_WM_WINDOW_TYPE_NORMAL || type ==  _NET_WM_WINDOW_TYPE_DIALOG ){
+            type = convert2AndroidType(type, x, y, w, h);
+        }
+
+        if( type == _NET_WM_WINDOW_TYPE_UTILITY || type ==  _NET_WM_WINDOW_TYPE_MENU ||
+                type ==  _NET_WM_WINDOW_TYPE_POPUP_MENU){
+            transientfor = transientfor == 0 ? taskTo:transientfor;
+        }
         switch (type) {
             case _NET_WM_WINDOW_TYPE_NORMAL:
                 message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
@@ -144,7 +153,12 @@ public class Xserver {
                 message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
                         "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, net_name, wm_class, support_wm_delete)));
                 break;
-            default:
+            case _NET_WM_WINDOW_TYPE_UTILITY:
+            case _NET_WM_WINDOW_TYPE_MENU:
+            case _NET_WM_WINDOW_TYPE_TOOLTIP:
+            case _NET_WM_WINDOW_TYPE_POPUP_MENU:
+                message = new EventMessage(EventType.X_START_VIEW,
+                        "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, window, taskTo), new Property(aid, transientfor, leader, type, net_name, wm_class, support_wm_delete));
                 break;
         }
         if (message != null) {
@@ -175,10 +189,12 @@ public class Xserver {
      * @param action                action to window
      * @param support_wm_delete     close action
      */
-    public static void closeOrDestroyActivity(int index, long pWin, long window, int action, int support_wm_delete) {
-        Log.d(TAG, "closeOrDestroyActivity: index:" + index + ", p:" + pWin + ", window:" + window + ", action:" + action + "");
+    public static void closeOrDestroyWindow(int index, long pWin, long taskTo,long window, int action, int support_wm_delete) {
+        Log.d(TAG, "closeOrDestroyWindow: index:" + index + ", pWin:" + pWin +
+                ", taskTo:" + taskTo + ", window:" + window + ", action:" + action + ", support_wm_delete:" + support_wm_delete + "");
         Property property = new Property();
         property.setSupportDeleteWindow(support_wm_delete);
+        property.setTransientfor(taskTo);
         switch (action){
             case ACTION_DESTORY:
                 EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
@@ -187,6 +203,11 @@ public class Xserver {
             case ACTION_UNMAP:
                 EventBus.getDefault().post(new EventMessage(EventType.X_UNMAP_WINDOW,
                         "xserver hide any window", new WindowAttribute(index, pWin, window), property));
+                break;
+            case ACTION_DISMISS_VIEW:
+                EventBus.getDefault().post(new EventMessage(EventType.X_DISMISS_WINDOW,
+                        "xserver dismiss any window", new WindowAttribute(index, pWin, window), property));
+
                 break;
             default:
                 break;

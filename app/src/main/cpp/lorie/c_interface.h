@@ -10,8 +10,10 @@
 #define WINDOW_TYPE                     "_NET_WM_WINDOW_TYPE"
 #define WINDOW_TYPE_NORMAL              "_NET_WM_WINDOW_TYPE_NORMAL"
 #define WINDOW_TYPE_MENU                "_NET_WM_WINDOW_TYPE_MENU"
+#define WINDOW_TYPE_TOOLTIP             "_NET_WM_WINDOW_TYPE_TOOLTIP"
 #define WINDOW_TYPE_DIALOG              "_NET_WM_WINDOW_TYPE_DIALOG"
 #define WINDOW_TYPE_POPUP               "_NET_WM_WINDOW_TYPE_POPUP_MENU"
+#define WINDOW_TYPE_UTILITY             "_NET_WM_WINDOW_TYPE_UTILITY"
 #define WINDWO_TRANSIENT_FOR            "WM_TRANSIENT_FOR"
 #define NET_WINDOW_NAME                 "_NET_WM_NAME"
 #define WINDOW_CLIENT_LEADER            "WM_CLIENT_LEADER"
@@ -23,6 +25,7 @@
 
 #define ACTION_UNMAP 1
 #define ACTION_DESTORY 2
+#define ACTION_DISMISS 3
 
 #define ARGE_PWRAP SurfaceManagerWrapper* wrapper
 #define GET_PWRAP  SurfaceManager* surfaceManager = wrapper->surfaceManager;
@@ -48,6 +51,8 @@ extern "C" {
 typedef struct SurfaceManagerWrapper SurfaceManagerWrapper;
 
 WindAttribute* _surface_find_window(ARGE_PWRAP, Window window);
+
+Widget* _surface_find_widget(ARGE_PWRAP, Window window);
 
 int _surface_remove_widget(ARGE_PWRAP, Window window);
 

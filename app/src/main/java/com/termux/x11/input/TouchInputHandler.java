@@ -21,6 +21,7 @@ import android.view.ViewConfiguration;
 import androidx.annotation.IntDef;
 import androidx.core.math.MathUtils;
 
+import com.fde.fusionwindowmanager.WindowAttribute;
 import com.termux.x11.MainActivity;
 
 import java.lang.annotation.Retention;
@@ -240,6 +241,102 @@ public class TouchInputHandler {
 
         return false;
     }
+
+    public boolean handleTouchEvent(View view0, View view, MotionEvent event, WindowAttribute attr) {
+//        Log.d(TAG, "handl_e:" + event);
+        if(event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE){
+            isTouching = true;
+        } else if(event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
+            isTouching = false;
+            MainActivity mainActivity = (MainActivity) mContext;
+            mainActivity.configureFromXIfNeed();
+        }
+        if (view0 != view) {
+            int[] view0Location = new int[2];
+            int[] viewLocation = new int[2];
+
+            view0.getLocationOnScreen(view0Location);
+            view.getLocationOnScreen(viewLocation);
+
+            int offsetX = viewLocation[0] - view0Location[0];
+            int offsetY = viewLocation[1] - view0Location[1];
+
+            event.offsetLocation(-offsetX, -offsetY);
+        }
+
+        if (!view.isFocused() && event.getAction() == MotionEvent.ACTION_DOWN){
+//            view.requestFocus();
+        }
+        event.offsetLocation(attr.getOffsetX(), attr.getOffsetY());
+
+        if (mInjector.pointerCapture && !view.hasPointerCapture() && event.getAction() == MotionEvent.ACTION_UP)
+            view.requestPointerCapture();
+
+        if (event.getToolType(event.getActionIndex()) == MotionEvent.TOOL_TYPE_STYLUS){
+            Log.d(TAG, "handleTouchEvent1: view0:" + view0 + ", view:" + view + ", event:" + event + ", attr:" + attr + "");
+            return mStylusListener.onTouch(event);
+        }
+
+        if (!isDexEvent(event) && (event.getToolType(event.getActionIndex()) == MotionEvent.TOOL_TYPE_MOUSE
+                || (event.getSource() & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE)
+                || (event.getSource() & InputDevice.SOURCE_MOUSE_RELATIVE) == InputDevice.SOURCE_MOUSE_RELATIVE
+                || (event.getPointerCount() == 1 && mTouchpadHandler == null
+                && (event.getSource() & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD)){
+            Log.d(TAG, "handleTouchEvent2: view0:" + view0 + ", view:" + view + ", event:" + event + ", attr:" + attr + "");
+            return mHMListener.onTouch(view, event);
+        }
+
+        if (event.getToolType(event.getActionIndex()) == MotionEvent.TOOL_TYPE_FINGER) {
+            // Dex touchpad sends events as finger, but it should be considered as a mouse.
+            if (isDexEvent(event) && mDexListener.onTouch(view, event))
+                return true;
+
+            // Regular touchpads and Dex touchpad send events as finger too,
+            // but they should be handled as touchscreens with trackpad mode.
+            if (mTouchpadHandler != null && (event.getSource() & InputDevice.SOURCE_TOUCHPAD) == InputDevice.SOURCE_TOUCHPAD)
+                return mTouchpadHandler.handleTouchEvent(view, view, event);
+
+            // Give the underlying input strategy a chance to observe the current motion event before
+            // passing it to the gesture detectors.  This allows the input strategy to react to the
+            // event or save the payload for use in recreating the gesture remotely.
+            if (mInputStrategy instanceof InputStrategyInterface.NullInputStrategy)
+                mInjector.sendTouchEvent(event, mRenderData);
+            else
+                mInputStrategy.onMotionEvent(event);
+
+            // Avoid short-circuit logic evaluation - ensure all gesture detectors see all events so
+            // that they generate correct notifications.
+            mScroller.onTouchEvent(event);
+            mTapDetector.onTouchEvent(event);
+            mSwipePinchDetector.onTouchEvent(event);
+
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    mSuppressCursorMovement = false;
+                    mSwipeCompleted = false;
+                    mIsDragging = false;
+                    break;
+
+                case MotionEvent.ACTION_SCROLL:
+                    float scrollY = -100 * event.getAxisValue(MotionEvent.AXIS_VSCROLL);
+                    float scrollX = -100 * event.getAxisValue(MotionEvent.AXIS_HSCROLL);
+
+                    mInjector.sendMouseWheelEvent(scrollX, scrollY);
+                    return true;
+
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    mTotalMotionY = 0;
+                    break;
+
+                default:
+                    break;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
 
     private void resetTransformation() {
         float sx = (float) mRenderData.screenWidth / (float) mRenderData.imageWidth;
@@ -518,8 +615,12 @@ public class TouchInputHandler {
 
             if (!v.hasPointerCapture()) {
                 float scaledX = e.getX() * mRenderData.scale.x, scaledY = e.getY() * mRenderData.scale.y;
-                if (mRenderData.setCursorPosition(scaledX, scaledY))
+
+                if (mRenderData.setCursorPosition(scaledX, scaledY)){
                     mInjector.sendCursorMove(scaledX, scaledY, false);
+                } else {
+                    mInjector.sendCursorMove(e.getX(), e.getY(), false);
+                }
             } else if (e.getAction() == MotionEvent.ACTION_MOVE && e.getPointerCount() == 1){
                 if (e.getDevice().getMotionRange(MotionEvent.AXIS_RELATIVE_X) != null) {
                     float x = e.getAxisValue(MotionEvent.AXIS_RELATIVE_X), y = e.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
@@ -532,9 +633,11 @@ public class TouchInputHandler {
             }
 
             currentBS = e.getButtonState();
-            for (int[] button: buttons)
-                if (isMouseButtonChanged(button[0]))
+            for (int[] button: buttons){
+                if (isMouseButtonChanged(button[0])){
                     mInjector.sendMouseEvent(null, button[1], mouseButtonDown(button[0]), true);
+                }
+            }
             savedBS = currentBS;
             return true;
         }

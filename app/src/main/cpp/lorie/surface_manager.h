@@ -27,7 +27,7 @@
 #include <sstream>
 #include <iomanip>
 #include <android/log.h>
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "huyang_sm", __VA_ARGS__);\
                 }              \
@@ -67,6 +67,7 @@ public:
     int remove_widget(Window window);                                           //delete
     void update_window(Window window, WindAttribute attr);                      //update
     WindAttribute* find_window(Window window);                                  //query
+    Widget* find_widget(Window window);                                         //query
     WindAttribute* all_window(int * size);
     int count_window(Window window);
     int count_widget(Window window);

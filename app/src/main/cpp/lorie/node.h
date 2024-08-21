@@ -29,6 +29,9 @@ typedef struct {
     float offset_x, offset_y;
     Window task_to, window;
     WindowPtr pWin;
+    bool inbounds;
+    EGLSurface sfc;
+    int discard;
 } Widget;
 
 typedef struct {

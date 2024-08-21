@@ -1,5 +1,8 @@
 package com.termux.x11;
 
+import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
+import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
+import static com.fde.fusionwindowmanager.eventbus.EventType.X_UNMAP_WINDOW;
 import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 
 import android.app.ActivityOptions;
@@ -17,6 +20,7 @@ import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
+import com.fde.fusionwindowmanager.eventbus.EventType;
 import com.termux.x11.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
@@ -28,6 +32,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Objects;
 
 
 /**
@@ -46,6 +51,10 @@ public class XWindowService extends Service {
     public static final String ACTION_X_WINDOW_PROPERTY = "action_x_window_property";
 
     public static final String CONFIGURE_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_CONFIGURE";
+
+    public static final String START_VIEW_FROM_X = "com.termux.x11.Xserver.start_action_view";
+    public static final String STOP_VIEW_FROM_X = "com.termux.x11.Xserver.stop_action_view";
+
     public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
     public static final String STOP_WINDOW_FROM_X = "com.termux.x11.Xserver.ACTION_STOP";
 
@@ -149,7 +158,7 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
-//        Log.e(TAG, message.toString());
+        Log.e(TAG,  message.getType().usefor);
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
                 startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
@@ -164,15 +173,37 @@ public class XWindowService extends Service {
                 if(message.getProperty()!= null && message.getProperty().getSupportDeleteWindow() != 0){
                     destroyActivitySafety(2, message.getWindowAttribute());
                 } else {
-                    stopActivity(message.getWindowAttribute());
+                    stopWindow(message.getWindowAttribute());
                 }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
             case X_CONFIGURE_WINDOW:
                 sendBroadcastConfigureWindow(message.getWindowAttribute());
+                break;
+            case X_START_VIEW:
+                sendBroadcastAboutView(message.getWindowAttribute(), message.getProperty(), X_START_VIEW);
+                break;
+            case X_DISMISS_WINDOW:
+                sendBroadcastAboutView(message.getWindowAttribute(),message.getProperty(), X_DISMISS_WINDOW);
+                break;
             default:
                 break;
         }
+    }
+
+    private void sendBroadcastAboutView(WindowAttribute attr, Property property, EventType type) {
+        Log.d(TAG, "sendBroadcastAboutView: attr:" + attr + ", type:" + type + "");
+        String targetPackage = "com.termux.x11";
+        Intent intent = new Intent();
+        if (Objects.requireNonNull(type) == X_START_VIEW) {
+            intent.setAction(START_VIEW_FROM_X);
+        } else if (Objects.requireNonNull(type) == X_DISMISS_WINDOW) {
+            intent.setAction(STOP_VIEW_FROM_X);
+        }
+        intent.setPackage(targetPackage);
+        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+        intent.putExtra(ACTION_X_WINDOW_PROPERTY, property);
+        sendBroadcast(intent);
     }
 
     private void sendBroadcastConfigureWindow(WindowAttribute attr) {
@@ -213,7 +244,7 @@ public class XWindowService extends Service {
         }
     }
 
-    private void stopActivity(WindowAttribute attr) {
+    private void stopWindow(WindowAttribute attr) {
         if(stopingWindow.contains(attr.getXID())){
             return;
         }

@@ -19,7 +19,7 @@
 #include <globals.h>
 #include "c_interface.h"
 #include <android/log.h>
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);\
                 }              \
@@ -130,6 +130,8 @@ static const char vertex_shader[] =
     "void main(void) {\n" \
     "   gl_FragColor = texture2D(texture, outTexCoords)" texture ";\n" \
     "}\n"
+
+maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int index, Widget widget);
 
 static const char fragment_shader[] = FRAGMENT_SHADER();
 static const char fragment_shader_bgra[] = FRAGMENT_SHADER(".bgra");
@@ -640,9 +642,14 @@ void renderer_set_window(JNIEnv *env, jobject new_surface, AHardwareBuffer *new_
 }
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
-    if(!_surface_count_window(sfWraper, res->window) || !res->surface){
+    log("renderer_set_window_each 1")
+    if(!res->surface){
         return;
-    } else {
+    }
+    log("renderer_set_window_each 2")
+    bool isWidget = false;
+    if(_surface_count_window(sfWraper, res->window)){
+        log("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
         if(attr->discard){
             return;
@@ -654,16 +661,36 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         attr->pWin = (WindowPtr) res->pWin;
         attr->index = res->id;
         attr->window = res->window;
+    } else if(_surface_count_widget(sfWraper, res->window)){
+        log("set widget attr")
+        isWidget = true;
+        Widget *widget = _surface_find_widget(sfWraper, res->window);
+        widget->offset_x = res->offset_x;
+        widget->offset_y = res->offset_y;
+        widget->width = res->width;
+        widget->height = res->height;
+        widget->window = res->window;
+    } else {
+        return;
     }
+
     jobject new_surface = res->surface;
     EGLNativeWindowType window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
     log("renderer_set_window_each window:%p width:%d height:%d index:%d p:%x surface:%p new_surface:%p",
         window, width, height, res->id, res->pWin, res->surface, new_surface);
-    WindAttribute *attr = _surface_find_window(sfWraper, res->window);
-    _surface_log_traversal_window(sfWraper);
-    EGLSurface sfc = attr->sfc;
+    EGLSurface sfc;
+    WindAttribute *attr;
+    Widget *widget;
+    if(isWidget){
+        widget = _surface_find_widget(sfWraper, res->window);
+        sfc = widget->sfc;
+    } else {
+        attr = _surface_find_window(sfWraper, res->window);
+        sfc = attr->sfc;
+    }
+//    _surface_log_traversal_window(sfWraper);
     if (sfc != EGL_NO_SURFACE) {
         if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
             EGL_TRUE) {
@@ -703,7 +730,11 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         eglCheckError(__LINE__);
         return;
     }
-    attr->sfc = sfc;
+    if(isWidget){
+        widget->sfc = sfc;
+    } else {
+        attr->sfc = sfc;
+    }
     log("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
@@ -729,9 +760,16 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     }
     glActiveTexture(GL_TEXTURE0);
     checkGlError();
-    if (!attr->texture_id) {
-        glGenTextures(1, &attr->texture_id);
-        checkGlError();
+    if(widget){
+        if (!widget->texture_id) {
+            glGenTextures(1, &widget->texture_id);
+            checkGlError();
+        }
+    } else {
+        if (!attr->texture_id) {
+            glGenTextures(1, &attr->texture_id);
+            checkGlError();
+        }
     }
     if (!cursor.id) {
         glGenTextures(1, &cursor.id);
@@ -776,7 +814,7 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
 }
 
 void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t flip, Window window) {
-    if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
+    if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h ) {
         return;
     }
     WindAttribute *attr = (WindAttribute *) _surface_find_window(sfWraper, window);
@@ -955,6 +993,10 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         height = attr->height;
     }
 
+    if(width == 0 || height == 0){
+        return FALSE;
+    }
+
     if (!eglSurface ) {
         log("renderer_redraw_traversal_1 bad egl ");
         return FALSE;
@@ -983,7 +1025,9 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             Widget widget = attr->widgets[i];
             log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
                 widget.texture_id);
-            if((int)widget.texture_id <= 0 || !widget.window || !IfRealizedWindow(widget.pWin)){
+            if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
+            || !widget.inbounds || !widget.width || !widget.height
+            || !IfRealizedWindow(widget.pWin)){
                 continue;
             }
             android_update_widget_texture(&widget);
@@ -1009,6 +1053,62 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
                 eglErrorLabel(err));
 //            renderer_clear_window(env, index);
 //            renderer_set_window(env, NULL, NULL);
+            return FALSE;
+        }
+    }
+    if(attr->widget_size > 0){
+        for(int i = 0 ; i < attr->widget_size ; i ++){
+            Widget widget = attr->widgets[i];
+            if(widget.inbounds){
+                continue;
+            }
+            if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
+                || !widget.width || !widget.height){
+                continue;
+            }
+            android_update_widget_texture(&widget);
+            renderer_redraw_traversal_inner(env, flip, 0, widget);
+        }
+    }
+    return TRUE;
+}
+
+maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int index, Widget widget){
+    int err = EGL_SUCCESS;
+    EGLSurface eglSurface = widget.sfc;
+    int id = widget.texture_id;
+    float width = widget.width;
+    float height = widget.height;
+    log("renderer_redraw_traversal_inner widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+        widget.texture_id);
+
+    if (!eglSurface ) {
+        log("renderer_redraw_traversal_1 bad egl ");
+        return FALSE;
+    }
+    if (eglGetCurrentContext() == EGL_NO_CONTEXT ) {
+        log("renderer_redraw_traversal_1 bad context ")
+        return FALSE;
+    }
+    if (!id) {
+        log("renderer_redraw_traversal_1 id:%d ", id)
+        return FALSE;
+    }
+    glViewport(0, 0, width, height);
+    checkGlError();
+    if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
+        log("Xlorie: eglMakeCurrent failed.\n");
+        eglCheckError(__LINE__);
+    }
+    draw(id, -1.f, -1.f, 1.f, 1.f, flip);
+//    draw_cursor_1(index, window);
+    if (eglSwapBuffers(global_egl_display, eglSurface) != EGL_TRUE) {
+        err = eglGetError();
+        eglCheckError(__LINE__);
+        if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
+            log("We've got %s so window is to be destroyed. "
+                "Native window disconnected/abandoned, probably activity is destroyed or in background",
+                eglErrorLabel(err));
             return FALSE;
         }
     }
@@ -1097,6 +1197,7 @@ static GLuint create_program(const char *p_vertex_source, const char *p_fragment
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip) {
     float coords[20] = {
+
             x0, -y0, 0.f, 0.f, 0.f,
             x1, -y0, 0.f, 1.f, 0.f,
             x0, -y1, 0.f, 0.f, 1.f,
@@ -1145,13 +1246,11 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     float cursor_y = cursor.y;
     float cursor_xhot = cursor.xhot;
     float cursor_yhot = cursor.yhot;
-    if (index != 0) {
-        if (attr) {
-            width = attr->width;
-            height = attr->height;
-            cursor_x -= attr->offset_x;
-            cursor_y -= attr->offset_y;
-        }
+    if (attr) {
+        width = attr->width;
+        height = attr->height;
+        cursor_x -= attr->offset_x;
+        cursor_y -= attr->offset_y;
     }
     x = 2.f * (cursor_x - cursor_xhot) / width - 1.f;
     y = 2.f * (cursor_y - cursor_yhot) / height - 1.f;

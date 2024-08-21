@@ -12,6 +12,8 @@ import static com.termux.x11.XWindowService.CONFIGURE_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.START_ACTIVITY_FROM_X;
+import static com.termux.x11.XWindowService.START_VIEW_FROM_X;
+import static com.termux.x11.XWindowService.STOP_VIEW_FROM_X;
 import static com.termux.x11.XWindowService.STOP_WINDOW_FROM_X;
 import static com.termux.x11.XWindowService.UNMODALED_ACTION_ACTIVITY_FROM_X;
 import static com.termux.x11.XWindowService.X_WINDOW_ATTRIBUTE;
@@ -21,9 +23,6 @@ import static com.termux.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.termux.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.termux.x11.data.Constants.APP_TITLE_PREFIX;
 import static com.termux.x11.utils.Util.showXserverCloseOnDisconnect;
-import static com.termux.x11.utils.Util.showXserverConnectSuccess;
-import static com.termux.x11.utils.Util.showXserverDisconnect;
-import static com.termux.x11.utils.Util.showXserverStartSuccess;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -48,6 +47,7 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -61,12 +61,13 @@ import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.text.TextUtils;
-import android.text.style.SuggestionSpan;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
 import android.view.View;
@@ -79,13 +80,10 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.math.MathUtils;
@@ -106,7 +104,6 @@ import com.termux.x11.input.TouchInputHandler;
 import com.termux.x11.utils.AppUtils;
 import com.termux.x11.utils.FullscreenWorkaround;
 import com.termux.x11.utils.KeyInterceptor;
-import com.termux.x11.utils.Reflector;
 import com.termux.x11.utils.SamsungDexUtils;
 import com.termux.x11.utils.TermuxX11ExtraKeys;
 import com.termux.x11.utils.Util;
@@ -118,12 +115,11 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
-import java.util.Timer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -208,12 +204,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if (START_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getTaskTo()){
-//                    Log.d(TAG, "onReceive: "  + START_ACTIVITY_FROM_X  + " attr:" + attr);
                     ActivityOptions options = ActivityOptions.makeBasic();
-//                    options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
-//                            (int)(attr.getOffsetY()),
-//                            (int)(attr.getWidth() + attr.getOffsetX()),
-//                            (int)(attr.getHeight() + attr.getOffsetY())));
                     Intent startAct = new Intent(MainActivity.this, MainActivity.MainActivity11.class);
                     startAct.putExtra(X_WINDOW_ATTRIBUTE, attr);
                     options.setLaunchBounds(new Rect(100, 100, 200 , 200));
@@ -269,6 +260,17 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     }
 //                    Log.d(TAG, "onReceive: mConfigureRect:" + mConfigureRect);
                 }
+            } else if(START_VIEW_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+                long transientfor = Objects.requireNonNull(prop).getTransientfor();
+                if(transientfor == Objects.requireNonNull(mAttribute).getXID()){
+                    addFloatView(attr);
+                }
+            } else if(STOP_VIEW_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+                stopFloatView(attr);
             }
         }
     };
@@ -461,6 +463,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
             addAction(CONFIGURE_ACTIVITY_FROM_X);
+            addAction(START_VIEW_FROM_X);
+            addAction(STOP_VIEW_FROM_X);
         }},  0);
         // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
         FullscreenWorkaround.assistActivity(this);
@@ -486,33 +490,113 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } catch (RemoteException e) {
                 throw new RuntimeException(e);
             }
-//            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
-//            int left  = new Random().nextInt(100);
-//            Rect rect = new Rect(left, left, left + 500, left + 500);
-//            taskManager.resizeTask(getTaskId(),rect);
-//            Log.e(TAG, "ActivityTaskManager: rect:" + rect + "");
-//            Rect rect = mWindowRect;
-//            try {
-//                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-//                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-//                        rect.right - rect.left, rect.bottom - rect.top);
-//            } catch (RemoteException e) {
-//                throw new RuntimeException(e);
-//            }
         });
+    }
+
+    Map<Long, View> mFloatViews = new HashMap<>();
+    WindowManager floatWindow;
+    private void addFloatView(WindowAttribute attr) {
+        Log.d(TAG, "initFloatView: attr:" + attr + "");
+        View floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view,null,false);
+        WindowManager.LayoutParams floatParams = createLayoutParams();
+        floatWindow = createWindow( (int)attr.getOffsetX(),(int)attr.getOffsetY(),
+                (int)attr.getWidth(),
+                (int) attr.getHeight(),
+                floatView, floatParams);
+        floatWindow.updateViewLayout(floatView,floatParams);
+        LorieView widgetView = floatView.findViewById(R.id.widget_view);
+        widgetView.updateCoordinate(attr);
+        widgetView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) ->{
+            if (service != null ) {
+                    try {
+                        service.windowChanged(sfc, attr.getOffsetX(), attr.getOffsetY(),
+                                attr.getWidth(), attr.getHeight(), attr.getIndex(),
+                                attr.getWindowPtr(), attr.getXID());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+            }
+        });
+        TouchInputHandler inputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
+            @Override
+            public void swipeDown() {
+                toggleExtraKeys();
+            }
+        }, new InputEventSender(widgetView));
+        floatView.setOnTouchListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        floatView.setOnHoverListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        floatView.setOnGenericMotionListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        widgetView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
+        floatView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
+        widgetView.setOnKeyListener(mLorieKeyListener);
+        mFloatViews.put(attr.getXID(), floatView);
+    }
+
+    public WindowManager createWindow(int x, int y, int width, int height, View view,
+                                      WindowManager.LayoutParams params){
+        WindowManager windowManager = (WindowManager) this.getSystemService(WINDOW_SERVICE);
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+        params.width = width;
+        params.height = height;
+        params.x = x;
+        params.y = y;
+        params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        params.gravity = Gravity.TOP | Gravity.START;
+        windowManager.addView(view,params);
+        return windowManager;
+    }
+
+    public WindowManager.LayoutParams createLayoutParams() {
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams();
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                | WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | WindowManager.LayoutParams.FLAG_SCALED
+                | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+
+        if (Build.VERSION.SDK_INT >= 26) {
+            params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        } else {
+            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
+        }
+        params.format = PixelFormat.RGBA_8888;
+        return params;
+    }
+
+
+    private void stopFloatView(WindowAttribute attr) {
+        Log.d(TAG, "stopFloatView: attr:" + attr + "");
+        if(attr == null || mFloatViews.isEmpty()){
+            return;
+        }
+        View floatView = mFloatViews.get(attr.getXID());
+        if(floatWindow != null && floatView != null){
+            floatWindow.removeView(floatView);
+        }
+        mFloatViews.remove(floatView);
+    }
+
+
+    private void stopFloatView() {
+        Rect rect = new Rect(mWindowRect);
+        rect.offset(1,1);
+        ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
+        taskManager.resizeTask(getTaskId(), rect);
+
+//        for(Map.Entry set: mFloatViews.entrySet()){
+//            View view = (View) set.getValue();
+//            if(view.isAttachedToWindow()){
+//                floatWindow.removeView(view);
+//            }
+//        }
+//        mFloatViews.clear();
     }
 
 
     private void initClipMonitor() {
         mClipboardManager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-//        if (mClipboardManager != null) {
-//            try {
-//                mClipboardManager.setPrimaryClip(mClipboardManager.getPrimaryClip());
-//                mClipboardManager.setText(null);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }
     }
 
     private void updateX11Cliptext() {
@@ -873,8 +957,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 getLorieView().triggerCallback();
                 clientConnectedStateChanged(true);
                 LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
-            } else
-                handler.postDelayed(this::tryConnect, 500);
+            }
+//            else
+//                handler.postDelayed(this::tryConnect, 500);
         } catch (Exception e) {
             Log.e(TAG, "Something went wrong while we were establishing connection", e);
             service = null;
@@ -1168,21 +1253,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
         window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         if (hasFocus) {
-//            if (fullscreen) {
-//            window.addFlags(FLAG_FULLSCREEN);
-//            decorView.setSystemUiVisibility(
-//                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-//                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-//                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-//                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-//                            | View.SYSTEM_UI_FLAG_FULLSCREEN
-//                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
-//            } else {
-//                window.clearFlags(FLAG_FULLSCREEN);
-//                decorView.setSystemUiVisibility(0);
-//            }
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                     FLAG_NOT_TOUCHABLE);
+        } else {
+//            stopFloatView();
         }
         if (p.getBoolean("keepScreenOn", true))
             window.addFlags(FLAG_KEEP_SCREEN_ON);

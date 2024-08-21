@@ -56,6 +56,12 @@ WindAttribute* _surface_find_window(ARGE_PWRAP, Window window){
     return surfaceManager->find_window(window);
 }
 
+Widget* _surface_find_widget(ARGE_PWRAP, Window window){
+    CHECKWRAPER_N(wrapper);
+    GET_PWRAP;
+    return surfaceManager->find_widget(window);
+}
+
 int _surface_remove_widget(ARGE_PWRAP, Window window){
     CHECKWRAPER_R(wrapper);
     GET_PWRAP;

@@ -35,34 +35,43 @@ int SurfaceManager::remove_widget(Window window) {
         if (pair.second.widget_size == 0 ) {
             continue;
         } else {
+            bool update = false;
+            size_t size = pair.second.widget_size;
             for (int i = 0; i < pair.second.widget_size; ++i) {
                 Widget* widget = &pair.second.widgets[i];
                 if (widget->window == window) {
-                    memset(widget, 0, sizeof(Widget));
-                    widget->window = 0;
-                    widget->texture_id = 0;
+                    update = true;
+//                    memset(widget, 0, sizeof(Widget));
+//                    widget->window = 0;
+//                    widget->texture_id = 0;
                     widget->width = 0;
                     widget->height = 0;
                     widget->offset_x = 0;
                     widget->offset_y = 0;
                     widget->task_to = 0;
                     widget->pWin = NULL;
-                    pair.second.widget_size --;
+                    size --;
+//                    pair.second.widget_size--;
                 }
             }
-            if(pair.second.widget_size >0){
-                Widget *filtered_widgets = (Widget *)malloc(pair.second.widget_size * sizeof(Widget));
+            if(update){
+                Widget *filtered_widgets = (Widget *)malloc(50 * sizeof(Widget));
                 size_t index = 0;
                 for (size_t i = 0; i < pair.second.widget_size; i++) {
-                    Widget* widgets = &pair.second.widgets[i];
-                    if (widgets[i].window != 0) {
-                        filtered_widgets[index] = widgets[i];
+                    Widget* widget = &pair.second.widgets[i];
+                    if (widget->window != 0 && widget->width != 0 && widget->height != 0) {
+                        filtered_widgets[index] = *widget;
                         index++;
                     }
+                    if(widget->discard){
+                        free(widget);
+                    }
                 }
+                find_window(pair.first)->widgets = filtered_widgets;
+                find_window(pair.first)->widget_size = index;
             }
-            LogWindAttribute(pair.first, pair.second);
         }
+        LogWindAttribute(pair.first, pair.second);
     }
     return TRUE;
 }
@@ -70,7 +79,7 @@ int SurfaceManager::remove_widget(Window window) {
 WindAttribute* SurfaceManager::find_window(Window window) {
     if(window_attrs.count(window)){
         WindAttribute *attr = &window_attrs[window];
-        log("found attr window:%x", window);
+//        log("found attr window:%x", window);
         return attr;
     } else {
         log("not found window:%x", window);
@@ -78,13 +87,24 @@ WindAttribute* SurfaceManager::find_window(Window window) {
     }
 }
 
+Widget* SurfaceManager::find_widget(Window window) {
+    for (auto& pair : window_attrs) {
+        for (int i = 0; i < pair.second.widget_size; ++i) {
+            if(pair.second.widgets[i].window == window){
+                return &pair.second.widgets[i];
+            }
+        }
+    }
+    return NULL;
+}
+
 WindAttribute* SurfaceManager::all_window(int * size){
     *size = window_attrs.size();
     WindAttribute* array = new WindAttribute[window_attrs.size()];
     int i = 0 ;
     for (const auto& pair : window_attrs) {
-       array[i] =  pair.second;
-       i++;
+        array[i] =  pair.second;
+        i++;
     }
     return array;
 }
@@ -96,6 +116,7 @@ int SurfaceManager::count_window(Window window) {
 int SurfaceManager::count_widget(Window window) {
     log("count_widget %x", window);
     for (auto& pair : window_attrs) {
+        log("count_widget window:%lx widget size:%d", pair.first, pair.second.widget_size);
         for (int i = 0; i < pair.second.widget_size; ++i) {
             if(pair.second.widgets[i].window == window){
                 return TRUE;

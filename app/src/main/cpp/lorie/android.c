@@ -66,7 +66,9 @@ extern int ucs2keysym(long ucs);
 
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 
-void android_create_window(WindAttribute attribute, WindProperty  aProperty, Window main_win);
+void android_create_window(WindAttribute attribute, WindProperty  aProperty, Window main_win, bool inbound);
+
+void android_create_view(Widget widget, WindProperty aProperty, Window main_win, bool inbound);
 
 void android_destroy_window(Window window);
 
@@ -74,7 +76,9 @@ void android_unmap_window(Window window);
 
 void android_destroy_activity(int index, WindowPtr windowPtr, Window window, int action, Bool wm_delete);
 
-void android_redirect_widget(WindowPtr pWindow, Window window);
+void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window window, int action);
+
+void android_redirect_widget(WindowPtr pWindow, WindProperty prop, Window window);
 
 int is_valid_utf8(const char *string);
 
@@ -152,11 +156,19 @@ void android_destroy_window(Window window) {
         log(DEBUG,"android_destroy_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "destroy widget");
+//        Widget *widget = _surface_find_widget(sfWraper, window);
+//        if(!widget->inbounds){
+//            android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
+//        }
+//        widget->discard = 1;
+//        glDeleteTextures(1, &widget->texture_id);
+//        _surface_remove_widget(sfWraper, window);
     }
 }
 
 void android_unmap_window(Window window){
     log(ERROR, "android_unmap_window %x", window);
+    _surface_log_traversal_window(sfWraper);
     if (_surface_count_window(sfWraper, window)) {
         log(DEBUG, "unmap activity window:%x", window);
         WindAttribute *attr = _surface_find_window(sfWraper, window);
@@ -166,7 +178,13 @@ void android_unmap_window(Window window){
         _surface_delete_window(sfWraper, window);
         log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
-        log(DEBUG, "unmap widget");
+        log(DEBUG, "unmap widget:%0x", window);
+        Widget *widget = _surface_find_widget(sfWraper, window);
+        if(!widget->inbounds){
+            android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
+        }
+        glDeleteTextures(1, &widget->texture_id);
+        widget->discard = 1;
         _surface_remove_widget(sfWraper, window);
     }
 }
@@ -178,6 +196,8 @@ void android_redirect_window(WindowPtr pWin) {
     Window taskTo = 0;
     /**
      * get real property (name leader transient)
+     *
+     *
      */
     WindProperty aProperty;
     memset(&aProperty, 0, sizeof(WindProperty));
@@ -193,11 +213,11 @@ void android_redirect_window(WindowPtr pWin) {
     log(DEBUG, "android_redirect_window %x redirect:%d atom:%d transient:%x, taskTo:%x inbounds:%d",
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo, intransient_bounds);
 
-    if (redirect ) {
+    if (redirect){
         if(taskTo == 0){
             taskTo = focusWindow;
         }
-        android_redirect_widget(pWin, taskTo);
+        android_redirect_widget(pWin, aProperty ,taskTo);
         return;
     } else if (_surface_count_window(sfWraper, pWin->drawable.id)) {
         log(DEBUG, "already redirect_window");
@@ -221,7 +241,7 @@ void android_redirect_window(WindowPtr pWin) {
                 .aProperty = aProperty
         };
         _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
-        android_create_window(windAttribute, aProperty,  0);
+        android_create_window(windAttribute, aProperty,  0, false);
         return;
     }
 }
@@ -277,11 +297,18 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
             for (int i = 0; i < pProper->size; i++) {
                 if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
-                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_MENU) ||
-                           STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG) ||
-                           STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_POPUP)) {
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG) ) {
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_UTILITY)){
+                    pProperty->window_type = _NET_WM_WINDOW_TYPE_UTILITY;
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_POPUP)){
+                    pProperty->window_type = _NET_WM_WINDOW_TYPE_POPUP_MENU;
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_MENU)){
+                    pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_TOOLTIP)){
+                    pProperty->window_type = _NET_WM_WINDOW_TYPE_TOOLTIP;
                 }
+
                 const char *atomValue = NameForAtom(atoms[i]);
             }
         } else if (STRING_EQUAL(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
@@ -291,15 +318,15 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
         } else if (STRING_EQUAL(NameForAtom(name), NET_WINDOW_NAME)) {
             STRCPY;
             pProperty->net_wm_name = atom_value;
-            log(DEBUG, " %s:%s size:%d", NET_WINDOW_NAME, atom_value, pProper->size);
+            log(DEBUG, "%s:%s size:%d", NET_WINDOW_NAME, atom_value, pProper->size);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)){
             STRCPY;
             pProperty->wm_class = atom_value;
-            log(DEBUG, " %s:%s size:%d", WINDOW_CLASS, atom_value, pProper->size);
+            log(DEBUG, "%s:%s size:%d", WINDOW_CLASS, atom_value, pProper->size);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             STRCPY;
             pProperty->wm_name = atom_value;
-            log(DEBUG, " %s:%s size:%d", WINDOW_NAME, atom_value, pProper->size);
+            log(DEBUG, "%s:%s size:%d", WINDOW_NAME, atom_value, pProper->size);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
             int *icon_data = (int *)propData;
             int width = *icon_data;
@@ -342,13 +369,14 @@ bool android_check_bounds(WindowPtr pWin, WindAttribute *attr) {
     return check_bounds(x, y, w, h, x1, y1, w1, h1);
 }
 
-void android_redirect_widget(WindowPtr pWin, Window window) {
+void android_redirect_widget(WindowPtr pWin, WindProperty prop,  Window window) {
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (attr) {
         GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
                                               pixmap->drawable.width,
                                               pixmap->drawable.height, pixmap->devPrivate.ptr, 0);
+        bool inBound = android_check_bounds(pWin, attr);
         Widget widget = {
                 .texture_id = id,
                 .offset_x = pWin->drawable.x,
@@ -357,21 +385,61 @@ void android_redirect_widget(WindowPtr pWin, Window window) {
                 .height = pWin->drawable.height,
                 .window = pWin->drawable.id,
                 .pWin = pWin,
-                .task_to = window
+                .task_to = window,
+                .inbounds = inBound
         };
-        int realized = pWin->realized;
         if(!attr->widgets) {
             attr->widgets = malloc(sizeof(Widget) * 50);
         }
         attr->widgets[attr->widget_size] = widget;
         attr->widget_size++;
-//        attr->widget = widget;
         log(ERROR, "android_redirect_widget texture:%d", id);
+        if(!inBound){
+            android_create_view(widget, prop, window, inBound);
+        }
     }
 }
 
-void android_create_window(WindAttribute attribute, WindProperty aProperty, Window taskTo) {
-    log(DEBUG, " android_create_activity window:%x wm_name:%s net_wm_name:%s ", attribute.window,aProperty.wm_name, aProperty.net_wm_name );
+void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, bool inbound) {
+    log(DEBUG, "android_create_view window:%x wm_name:%s net_wm_name:%s inbound:%d",
+        widget.window,aProperty.wm_name, aProperty.net_wm_name, inbound );
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if (JavaEnv && JavaCmdEntryPointClass) {
+        log(DEBUG, "ready to create view");
+        Window aWindow = aProperty.window;
+        Window aTransient = aProperty.transient;
+        Window aLeader = aProperty.leader;
+        int aType = aProperty.window_type;
+        jstring wm_name= NULL, net_wm_name = NULL, wm_class= NULL;
+        if(is_valid_utf8(aProperty.net_wm_name)){
+            net_wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.net_wm_name);
+        }
+        if(is_valid_utf8(aProperty.wm_name)){
+            wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.wm_name);
+        }
+        if(is_valid_utf8(aProperty.wm_class)){
+            wm_class = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.wm_class);
+        }
+        int offsetX = widget.pWin->drawable.x;
+        int offsetY = widget.pWin->drawable.y;
+        int width = widget.pWin->drawable.width;
+        int height = widget.pWin->drawable.height;
+//        int index = widget.index;
+        WindowPtr windowPtr = widget.pWin;
+        Window window = widget.window;
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                         "startOrUpdateActivity",
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;Z)V");
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
+                                         aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
+                                         offsetX, offsetY, width, height, 0,
+                                         (long) windowPtr, (long) window, (long) taskTo,
+                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound);
+    }
+}
+
+void android_create_window(WindAttribute attribute, WindProperty aProperty, Window taskTo, bool inbound) {
+    log(DEBUG, "android_create_activity window:%x wm_name:%s net_wm_name:%s ", attribute.window,aProperty.wm_name, aProperty.net_wm_name );
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         log(DEBUG, "ready to create activity");
@@ -398,11 +466,12 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateActivity",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;)V");
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;Z)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
-                                         (long) windowPtr, (long) window, (long) taskTo, aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL);
+                                         (long) windowPtr, (long) window, (long) taskTo,
+                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound);
     }
 }
 
@@ -411,9 +480,20 @@ void android_destroy_activity(int index, WindowPtr pWin, Window window, int acti
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "closeOrDestroyActivity", "(IJJII)V");
+                                                         "closeOrDestroyWindow", "(IJJJII)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
-                                         (long) pWin, (long) window, action, wm_delete);
+                                         (long) pWin, 0L, (long) window, action, wm_delete);
+    }
+}
+
+void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window window, int action) {
+    log(DEBUG, "android_destroy_view index%d task_to:%p window:%x", index, task_to, window);
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if (JavaEnv && JavaCmdEntryPointClass) {
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                         "closeOrDestroyWindow", "(IJJJII)V");
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
+                                         (long) pWin, (long)task_to, (long) window, action, 0);
     }
 }
 
@@ -675,8 +755,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             }
             case EVENT_MOUSE: {
                 int flags;
-                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
-                    e.mouse.y);
+//                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
+//                    e.mouse.y);
                 switch (e.mouse.detail) {
                     case 0: // BUTTON_UNDEFINED
                         if (e.mouse.relative) {

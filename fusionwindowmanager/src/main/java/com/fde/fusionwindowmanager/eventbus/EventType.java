@@ -12,13 +12,15 @@ public enum EventType {
     X_UNMODAL_ACTIVITY("unmodal_activity"),
 
     X_UNMAP_WINDOW("ANY"),
+
+    X_DISMISS_WINDOW("FloatView"),
     X_DESTROY_ACTIVITY("destroy_activity"),
     X_DESTROY_DIALOG("destroy_dialog"),
     X_DESTROY_VIEW("destroy_view"),
 
     X_CONFIGURE_WINDOW("configure_window");
 
-    private final String usefor;
+    public final String usefor;
     EventType(final String usefor){
         this.usefor = usefor;
     }
