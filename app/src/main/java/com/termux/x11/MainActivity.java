@@ -228,7 +228,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
 //                            |FLAG_NOT_TOUCHABLE
                     );
-                    setDecorCaptionViewFocuseable(false);
+//                    setDecorCaptionViewFocuseable(false);
                 }
             } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
@@ -237,7 +237,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
 //                            |FLAG_NOT_TOUCHABLE
                     );
-                    setDecorCaptionViewFocuseable(true);
+//                    setDecorCaptionViewFocuseable(true);
                  }
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
@@ -580,18 +580,21 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
 
     private void stopFloatView() {
-        Rect rect = new Rect(mWindowRect);
-        rect.offset(1,1);
-        ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
-        taskManager.resizeTask(getTaskId(), rect);
+        for(Map.Entry set: mFloatViews.entrySet()){
+            View view = (View) set.getValue();
+            if(view.isAttachedToWindow()){
+                view.setVisibility(View.GONE);
+            }
+        }
+    }
 
-//        for(Map.Entry set: mFloatViews.entrySet()){
-//            View view = (View) set.getValue();
-//            if(view.isAttachedToWindow()){
-//                floatWindow.removeView(view);
-//            }
-//        }
-//        mFloatViews.clear();
+    private void showFloatView() {
+        for(Map.Entry set: mFloatViews.entrySet()){
+            View view = (View) set.getValue();
+            if(view.isAttachedToWindow()){
+                view.setVisibility(View.VISIBLE);
+            }
+        }
     }
 
 
@@ -604,12 +607,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
             CharSequence content =
                     mClipboardManager.getPrimaryClip().getItemAt(0).getText();
-//            Log.d(TAG, "clip:content:" + content);
             if(content != null && !TextUtils.isEmpty(content)
                     && !TextUtils.equals(content, mClipText)
                     && checkServiceExits()){
                 mClipText = content.toString();
-//                Log.d(TAG, "run cliptext:" + mClipText);
                 try {
                     service.sendClipText(mClipText);
                 } catch (RemoteException e) {
@@ -625,8 +626,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
-//        Log.d(TAG, "onReceiveMsg: transientfor:" + message.getProperty().getTransientfor() +
-//                " " +  " \n XID:" + mAttribute.getXID());
         if(mAttribute.getXID() != message.getProperty().getTransientfor()){
             return;
         }
@@ -652,9 +651,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
     public synchronized void configureFromX() {
         if(mConfigureRect != null){
-//            Log.d(TAG, "configureFromX mConfigureRect:" + mConfigureRect);
-//            Log.d(TAG, "configureFromX mAttribute:" + mAttribute.getRect());
-//            Log.d(TAG, "configureFromX mWindowRect:" + mWindowRect);
             mAttribute.setRect(mConfigureRect);
             mWindowRect = mConfigureRect;
             Rect rect = mConfigureRect;
@@ -684,19 +680,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 try {
                     Objects.requireNonNull(MainActivity.this.service).asBinder().linkToDeath(() -> {
                         MainActivity.this.service = null;
-//                        Log.v(TAG, "Disconnected");
-//                        showXserverDisconnect(MainActivity.this);
                     }, 0);
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
             }
-//            showXserverConnectSuccess(MainActivity.this);
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-//            Log.v(TAG, "onServiceDisconnected: ");
             showXserverCloseOnDisconnect(MainActivity.this);
             finish();
         }
@@ -708,13 +700,13 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
-//        Log.d(TAG, "onAttachedToWindow: ");
+        Log.d(TAG, "onAttachedToWindow: ");
     }
 
     @Override
     public void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-//        Log.d(TAG, "onDetachedFromWindow: ");
+        Log.d(TAG, "onDetachedFromWindow: ");
     }
 
 
@@ -722,6 +714,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
         super.onWindowAttributesChanged(params);
+        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
     }
 
     @Override
@@ -1249,14 +1242,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
             window.setStatusBarColor(Color.BLACK);
             window.setNavigationBarColor(Color.BLACK);
-            setDecorCaptionViewFocuseable(true);
+//            setDecorCaptionViewFocuseable(true);
         }
         window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         if (hasFocus) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                     FLAG_NOT_TOUCHABLE);
+            showFloatView();
         } else {
-//            stopFloatView();
+            stopFloatView();
         }
         if (p.getBoolean("keepScreenOn", true))
             window.addFlags(FLAG_KEEP_SCREEN_ON);
