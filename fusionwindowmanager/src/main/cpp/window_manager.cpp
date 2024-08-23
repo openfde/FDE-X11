@@ -782,5 +782,17 @@ jint WindowManager::sendClipText(const char *string) {
     return True;
 }
 
+jint WindowManager::circulaSubWindows(jlong window, jboolean lowest) {
+    int ret;
+    if(lowest){
+        ret = XCirculateSubwindows(display_, window, LowerHighest);
+        log("circulaSubWindows ret:%d", ret);
+    } else {
+        ret = XCirculateSubwindowsUp(display_, window);
+    }
+    XSync(display_, False);
+    return ret;
+}
+
 
 

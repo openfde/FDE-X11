@@ -191,7 +191,8 @@ public class Xserver {
      */
     public static void closeOrDestroyWindow(int index, long pWin, long taskTo,long window, int action, int support_wm_delete) {
         Log.d(TAG, "closeOrDestroyWindow: index:" + index + ", pWin:" + pWin +
-                ", taskTo:" + taskTo + ", window:" + window + ", action:" + action + ", support_wm_delete:" + support_wm_delete + "");
+                ", taskTo:" + Long.toHexString(taskTo) + ", window:" + Long.toHexString(window) +
+                ", action:" + action + ", support_wm_delete:" + support_wm_delete + "");
         Property property = new Property();
         property.setSupportDeleteWindow(support_wm_delete);
         property.setTransientfor(taskTo);

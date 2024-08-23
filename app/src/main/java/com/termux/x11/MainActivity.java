@@ -1,7 +1,5 @@
 package com.termux.x11;
 
-import static android.Manifest.permission.WRITE_SECURE_SETTINGS;
-import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
@@ -31,9 +29,7 @@ import android.app.ActivityOptions;
 import android.app.ActivityTaskManager;
 import android.app.AppOpsManager;
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ComponentName;
@@ -48,6 +44,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.PointF;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -57,9 +54,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
-import android.os.SystemClock;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -68,10 +63,9 @@ import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.PointerIcon;
+import android.view.Surface;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
@@ -79,19 +73,14 @@ import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
 import com.android.internal.widget.DecorCaptionView;
 import com.easy.view.dialog.EasyDialog;
-import com.easy.view.utils.EasyUtils;
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
@@ -102,8 +91,7 @@ import com.termux.x11.input.InputStub;
 import com.termux.x11.input.TouchInputHandler.RenderStub;
 import com.termux.x11.input.TouchInputHandler;
 import com.termux.x11.utils.AppUtils;
-import com.termux.x11.utils.FullscreenWorkaround;
-import com.termux.x11.utils.KeyInterceptor;
+import com.termux.x11.utils.FLog;
 import com.termux.x11.utils.SamsungDexUtils;
 import com.termux.x11.utils.TermuxX11ExtraKeys;
 import com.termux.x11.utils.Util;
@@ -115,7 +103,6 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,27 +115,20 @@ import java.util.regex.Pattern;
 public class MainActivity extends Activity implements View.OnApplyWindowInsetsListener {
     static final String ACTION_STOP = "com.termux.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
-
-
     public static Handler handler = new Handler();
     FrameLayout frm;
-
     public DetectEventEditText detectEventEditText;
     private TouchInputHandler mInputHandler;
     public ICmdEntryInterface service;
-
     public TermuxX11ExtraKeys mExtraKeys;
     private Notification mNotification;
     private final int mNotificationId = 7892;
     NotificationManager mNotificationManager;
     private boolean mClientConnected = false;
     private View.OnKeyListener mLorieKeyListener;
-    private boolean filterOutWinKey = false;
     private static final int KEY_BACK = 158;
-    private EasyDialog.Builder builder;
     private EasyDialog easyDialog;
     private String TAG = "lifecycle ";
-
     private boolean correctMarked = false;
     protected long WindowCode = 0;
     protected int mIndex = 0;
@@ -158,144 +138,24 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     ActivityManager am;
     private String title;
     private Configuration mConfiguration;
-    private boolean hasFocused;
     private boolean isFullscreen = false;
-    private boolean isFreeform = true;
     private int mDecorCaptionViewHeight = 42;
 
-
+    // Used to set the contents of the clipboard.
+    private android.content.ClipboardManager.OnPrimaryClipChangedListener mOnPrimaryClipChangedListener;
+    private android.content.ClipboardManager mClipboardManager;
+    private String mClipText = null;
+    //flaot view for some window outside of activity
+    private final Map<Long, View> mFloatViews = new HashMap<>();
+    private WindowManager floatWindow;
+    private final ServiceConnection connection = new Connection();
     protected long getWindowId() {
         return WindowCode;
     }
-
-
     private boolean killSelf;
     private Rect mConfigureRect;
-    private final BroadcastReceiver receiver = new BroadcastReceiver() {
-        @SuppressLint("UnspecifiedRegisterReceiverFlag")
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (ACTION_START.equals(intent.getAction()) && service != null &&!mClientConnected) {
-                try {
-                    Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
-                        service = null;
-                        Xserver.requestConnection();
-                        Log.v(TAG, "Disconnected");
-                        runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
-                    }, 0);
-                    onReceiveConnection();
-                } catch (Exception e) {
-                    Log.e(TAG, "Something went wrong while we extracted connection details from binder.", e);
-                }
-            } else if (ACTION_STOP.equals(intent.getAction())) {
-                finishAffinity();
-            } else if (ACTION_PREFERENCES_CHANGED.equals(intent.getAction())) {
-                Log.v(TAG, "preference: " + intent.getStringExtra("key"));
-                if (!"additionalKbdVisible".equals(intent.getStringExtra("key")))
-                    onPreferencesChanged("");
-            } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
-                    Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
-                    killSelf = true;
-                    finish();
-                    App.getApp().stopingActivityWindow.add(mAttribute.getXID());
-                }
-            } else if (START_ACTIVITY_FROM_X.equals(intent.getAction())){
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getTaskTo()){
-                    ActivityOptions options = ActivityOptions.makeBasic();
-                    Intent startAct = new Intent(MainActivity.this, MainActivity.MainActivity11.class);
-                    startAct.putExtra(X_WINDOW_ATTRIBUTE, attr);
-                    options.setLaunchBounds(new Rect(100, 100, 200 , 200));
-                    startActivity(startAct, options.toBundle());
-                }
-            } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())){
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
-                        && mAttribute.getWindowPtr() == attr.getWindowPtr()
-                        && mProperty!=null && mProperty.getSupportDeleteWindow() == 1
-//                        && App.getApp().stopingActivityWindow.contains(attr.getWindowPtr())
-                ){
-                    Log.d(TAG, "onReceive: " + STOP_WINDOW_FROM_X + ", attr:" + attr + "");
-                    finish();
-                }
-            } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
-                if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
-                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
-                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-//                            |FLAG_NOT_TOUCHABLE
-                    );
-//                    setDecorCaptionViewFocuseable(false);
-                }
-            } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(attr != null ){
-                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
-                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-//                            |FLAG_NOT_TOUCHABLE
-                    );
-//                    setDecorCaptionViewFocuseable(true);
-                 }
-            } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
-                long windowId = intent.getLongExtra("window_id", 0);
-                if(mAttribute !=  null && windowId == mAttribute.getXID()){
-//                    Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " mAttribute:" + mAttribute) ;
-                    Bitmap windowIcon = intent.getParcelableExtra("window_icon");
-                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
-                    MainActivity.this.setTaskDescription(description);
-
-                }
-            } else if(CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                Log.d(TAG, "onReceive: XID equal:" + (mAttribute.getXID() == attr.getXID()) + ", istouching:" + mInputHandler.isTouching() + "");
-                if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen
-                )
-                {
-                    mConfigureRect = attr.getRect();
-                    if(!mInputHandler.isTouching()){
-                        configureFromX();
-                    }
-//                    Log.d(TAG, "onReceive: mConfigureRect:" + mConfigureRect);
-                }
-            } else if(START_VIEW_FROM_X.equals(intent.getAction())){
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
-                long transientfor = Objects.requireNonNull(prop).getTransientfor();
-                if(transientfor == Objects.requireNonNull(mAttribute).getXID()){
-                    addFloatView(attr);
-                }
-            } else if(STOP_VIEW_FROM_X.equals(intent.getAction())){
-                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
-                stopFloatView(attr);
-            }
-        }
-    };
-
-    private void setDecorCaptionViewFocuseable(boolean focusable) {
-        Window window = getWindow();
-        ViewGroup decor = (ViewGroup) window.getDecorView();
-        DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
-        boolean isCaptionShowing = true;
-        try {
-            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-            Method method = aClass.getMethod("isCaptionShowing");
-            isCaptionShowing = (boolean) method.invoke(decorCaptionView);
-            if(isCaptionShowing) {
-                decorCaptionView.setOperateEnabled(focusable);
-            }
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-                 InvocationTargetException e) {
-            e.printStackTrace();
-        }
-    }
-
     @SuppressLint("StaticFieldLeak")
     private static MainActivity instance;
-
     public MainActivity() {
         instance = this;
     }
@@ -303,26 +163,34 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public static MainActivity getInstance() {
         return instance;
     }
-
     protected int getLayoutID(){
         return R.layout.main_activity;
     }
 
-    // Used to set the contents of the clipboard.
-    android.content.ClipboardManager.OnPrimaryClipChangedListener mOnPrimaryClipChangedListener;
-    android.content.ClipboardManager mClipboardManager;
-    private String mClipText = null;
 
-
+    /**
+     * ============================================ oncreate ==================================================
+     * @param savedInstanceState If the activity is being re-initialized after
+     *     previously being shut down then this Bundle contains the data it most
+     *     recently supplied in {@link #onSaveInstanceState}.  <b><i>Note: Otherwise it is null.</i></b>
+     *
+     */
     @Override
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        initXParams();
+        Util.setBaseContext(this);
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        initView();
+        initEvent();
+    }
+
+    private void initXParams() {
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         }
         int measuredHeight = getWindow().getDecorView().getMeasuredHeight();
-//        setOverlayWithDecorCaptionEnabled(false);
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
@@ -330,14 +198,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             WindowCode = mAttribute.getXID();
             mWindowRect.set(mAttribute.getRect());
             App.getApp().windowAttrMap.put(mAttribute.getXID(), mAttribute);
-            Log.d(TAG, "onCreate: mAttribute:" + mAttribute + "");
         }
         mProperty = getIntent().getParcelableExtra(X_WINDOW_PROPERTY);
         if(mProperty != null){
             String wmClass = mProperty.getWm_class();
             String netName = mProperty.getNet_name();
             this.title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
-//            Log.d(TAG, "onCreate: title:" + title + "");
             if(mProperty.getIcon() != null){
                 ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
                 MainActivity.this.setTaskDescription(description);
@@ -345,9 +211,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             setTitle(title);
             App.getApp().windowPropertyMap.put(mAttribute.getXID(), mProperty);
         }
+    }
 
-        Util.setBaseContext(this);
-//        Xserver.ctx = this;
+    private void initView() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
         int modeValue = Integer.parseInt(preferences.getString("touchMode", "1")) - 1;
         if (modeValue > 2) {
@@ -355,14 +221,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             e.putString("touchMode", "1");
             e.apply();
         }
-        preferences.registerOnSharedPreferenceChangeListener((sharedPreferences, key) -> onPreferencesChanged(key));
-//        getWindow().setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(getLayoutID());
-//        View decorView = getWindow().getDecorView().findViewById(android.R.id.content);
-//        decorView.setMinimumWidth(500);
-//        decorView.setMinimumHeight(500);
-        EventBus.getDefault().register(this);
         detectEventEditText = findViewById(R.id.inputlayout);
         frm = findViewById(R.id.frame);
         findViewById(R.id.preferences_button).setOnClickListener((l) -> startActivity(new Intent(this, LoriePreferences.class) {{ setAction(Intent.ACTION_MAIN); }}));
@@ -401,48 +260,34 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
             return mInputHandler.sendKeyEvent(v, e);
         };
-
         lorieParent.setOnTouchListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
         lorieParent.setOnHoverListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
         lorieParent.setOnGenericMotionListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
         lorieView.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
         lorieParent.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
         lorieView.setOnKeyListener(mLorieKeyListener);
-
         lorieView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) -> {
             int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
             mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
             mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
-//            Log.v(TAG, "onCreate: surfaceWidth:" + surfaceWidth + "  surfaceHeight:"  + surfaceHeight
-//                    + "  screenWidth: " + screenWidth + "  screenHeight: " + screenHeight
-//            );
             LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
             WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
-            if (service != null && !killSelf) {
-                if(attribute == null){
-                    try {
-                        service.windowChanged(sfc, 0, 0,
-                                AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, 0,
-                                1000, 1000);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                } else {
-                    try {
-                        if(surfaceWidth == 0 || surfaceHeight == 0){
-                            service.windowChanged(sfc, 0, 0,
-                                    0, 0, attribute.getIndex(),
-                                    attribute.getWindowPtr(), attribute.getXID());
+            if (!killSelf) {
+                try {
+                    if(attribute == null){
+                        serviceWindowChange(sfc, 0, 0, AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT,
+                                0, 1000, 1000);
+                    } else {
+                        if (surfaceWidth == 0 || surfaceHeight == 0) {
+                            serviceWindowChange(sfc, 0, 0,0, 0, attribute.getIndex(),attribute.getWindowPtr(), attribute.getXID());
                         } else {
-                            service.windowChanged(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
+                            serviceWindowChange(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
                                     attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
                                     attribute.getWindowPtr(), attribute.getXID());
                         }
-
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
                     }
+                } catch (Exception e) {
+                    Log.e(TAG, "serviceWindowChange Exception: " + e);
                 }
             }
             if(!isCaptionShowing()){
@@ -450,9 +295,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     execInWindowManager();
                 }, 200);
             }
-
         });
         getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+        detectEventEditText.setOnKeyListener(mLorieKeyListener);
+        detectEventEditText.setInputHandler(mInputHandler);
+        EasyDialog.Builder builder = new EasyDialog.Builder(this);
+        initStylusAuxButtons();
+    }
+
+    private void initEvent() {
         registerReceiver(receiver, new IntentFilter(ACTION_START) {{
             addAction(ACTION_PREFERENCES_CHANGED);
             addAction(ACTION_STOP);
@@ -466,22 +317,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(START_VIEW_FROM_X);
             addAction(STOP_VIEW_FROM_X);
         }},  0);
-        // Taken from Stackoverflow answer https://stackoverflow.com/questions/7417123/android-how-to-adjust-layout-in-full-screen-mode-when-softkeyboard-is-visible/7509285#
-        FullscreenWorkaround.assistActivity(this);
-        detectEventEditText.setOnKeyListener(mLorieKeyListener);
-        detectEventEditText.setInputHandler(mInputHandler);
+        EventBus.getDefault().register(this);
         Xserver.requestConnection();
-        onPreferencesChanged("");
-
-        toggleExtraKeys(false, false);
-        checkXEvents();
-
-        initStylusAuxButtons();
-        initMouseAuxButtons();
-        bindXserver();
-        builder = new EasyDialog.Builder(this);
-        initClipMonitor();
-//        findViewById(R.id.button).setVisibility(View.VISIBLE);
+        bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
+        mClipboardManager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         findViewById(R.id.button).setOnClickListener((v)->{
             try {
                 service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
@@ -493,10 +332,394 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         });
     }
 
-    Map<Long, View> mFloatViews = new HashMap<>();
-    WindowManager floatWindow;
+
+    /**
+     *============================================ lifecycle ==================================================
+     */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        FLog.a("lifecycle", getWindowId(), "onstart");
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        FLog.a("lifecycle", getWindowId(), "onRestart");
+    }
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+//        FLog.a("lifecycle", getWindowId(), "onUserInteraction");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        setTerminalToolbarView();
+        getWindow().getDecorView().postDelayed(()->{
+            if(!correctMarked){
+                correctMarked = true;
+                try {
+                    checkConfigBeforeExec(mConfiguration, true);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        },1000);
+//        getLorieView().requestFocus();
+        FLog.a("lifecycle", getWindowId(), "onResume");
+        detectViewRequestFocus();
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        setTerminalToolbarView();
+        FLog.a("lifecycle", getWindowId(), "onConfigurationChanged");
+        if(!checkServiceExits()){
+            return;
+        }
+        getWindow().getDecorView().postDelayed(()->{
+            try {
+                checkConfigBeforeExec(newConfig, true);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        },300);
+    }
+
+    @SuppressLint("WrongConstant")
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged");
+        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
+        Window window = getWindow();
+        View decorView = window.getDecorView();
+        boolean fullscreen = p.getBoolean("fullscreen", false);
+        boolean reseed = p.getBoolean("Reseed", true);
+        fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
+        int requestedOrientation = p.getBoolean("forceLandscape", false) ?
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+        if (getRequestedOrientation() != requestedOrientation){
+            setRequestedOrientation(requestedOrientation);
+        }
+        Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
+        if (hasFocus) {
+            boolean hasFocused = true;
+            if (SDK_INT >= VERSION_CODES.P) {
+                if (p.getBoolean("hideCutout", false))
+                    getWindow().getAttributes().layoutInDisplayCutoutMode = (SDK_INT >= VERSION_CODES.R) ?
+                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS :
+                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                else
+                    getWindow().getAttributes().layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
+            }
+
+            window.setStatusBarColor(Color.BLACK);
+            window.setNavigationBarColor(Color.BLACK);
+            setDecorCaptionViewFocuseable(true);
+        }
+        window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
+        if (hasFocus) {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
+                    FLAG_NOT_TOUCHABLE);
+            showFloatView();
+        } else {
+            if(mInputHandler != null){
+                mInputHandler.mouseClick();
+            }
+        }
+        if (p.getBoolean("keepScreenOn", true))
+            window.addFlags(FLAG_KEEP_SCREEN_ON);
+        else
+            window.clearFlags(FLAG_KEEP_SCREEN_ON);
+        SamsungDexUtils.dexMetaKeyCapture(this, hasFocus && p.getBoolean("dexMetaKeyCapture", false));
+        if (hasFocus && mIndex != 0){
+            getLorieView().regenerate();
+            execInWindowManager();
+        }
+        getLorieView().requestFocus();
+        detectViewRequestFocus();
+        getClipText();
+    }
+
+    @Override
+    public void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        FLog.a("lifecycle", getWindowId(), "onAttachedToWindow");
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        FLog.a("lifecycle", getWindowId(), "onPause");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        FLog.a("lifecycle", getWindowId(), "onStop");
+    }
+
+    @Override
+    public void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        FLog.a("lifecycle", getWindowId(), "onDetachedFromWindow");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        String hexString = Long.toHexString(getWindowId());
+        unregisterReceiver(receiver);
+        unbindService(connection);
+        service = null;
+        FLog.a("lifecycle", getWindowId(), "onDestroy");
+        if(mClipboardManager != null){
+            mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
+            mClipboardManager = null;
+        }
+        mOnPrimaryClipChangedListener = null;
+        EventBus.getDefault().unregister(this);
+    }
+
+    public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
+        String hexString = Long.toHexString(getWindowId());
+        if(checkServiceExits() && mProperty != null && mProperty.getSupportDeleteWindow() == 1){
+            FLog.a("lifecycle", getWindowId(), "onWindowDismissed");
+            closeXWindow();
+        } else {
+            FLog.a("lifecycle", getWindowId(), "onWindowDismissed finish");
+            finish();
+            App.getApp().stopingActivityWindow.add(mAttribute.getXID());
+        }
+    }
+
+    @NonNull
+    @Override
+    public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+        FLog.a("lifecycle", getWindowId(), "onApplyWindowInsets");
+        return insets;
+    }
+
+    @Override
+    public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
+        super.onWindowAttributesChanged(params);
+        FLog.a("lifecycle", getWindowId(), "onWindowAttributesChanged");
+    }
+
+    /**
+     *============================================ about X Window ==================================================
+     */
+    private void getClipText() {
+        FLog.a("window", getWindowId(), "getClipText");
+        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()
+                && mClipboardManager.getPrimaryClip() != null
+                && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
+            CharSequence content =
+                    mClipboardManager.getPrimaryClip().getItemAt(0).getText();
+            Log.d(TAG, "clip:content:" + content);
+            if(content != null && !TextUtils.isEmpty(content) &&
+                    !TextUtils.equals(content, mClipText) && checkServiceExits()){
+                mClipText = content.toString();
+                Log.d(TAG, "run cliptext:" + mClipText);
+                try {
+                    service.sendClipText(mClipText);
+                } catch (RemoteException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    protected void execInWindowManager()  {
+        FLog.a("window", getWindowId(), "execInWindowManager");
+        List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
+        for (ActivityManager.RunningTaskInfo info: runningTasks){
+            if(checkServiceExits() && TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
+                Configuration configuration = info.configuration;
+                try {
+                    checkConfigBeforeExec(configuration, false);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+                return;
+            }
+        }
+    }
+
+    private boolean checkServiceExits() {
+        return service != null && mAttribute != null;
+    }
+
+    private void checkConfigBeforeExec(Configuration configuration, boolean newConfig) throws RemoteException{
+        if(configuration == null || !checkServiceExits()){
+            return;
+        }
+        FLog.a("window", getWindowId(), "checkConfigBeforeExec");
+        this.mConfiguration = configuration;
+//        Log.d(TAG, "checkConfigBeforeExec: configuration:" + configuration. + ", newConfig:" + newConfig + "");
+        Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
+        Matcher matcher = pattern.matcher(configuration.toString());
+        if(matcher.find()){
+            int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
+            int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
+            int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
+            int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
+            float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
+//            Log.d(TAG, "topMargin: " + topMargin);
+            Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
+            Log.d(TAG, "checkConfigBeforeExec: rect:" + rect + ", newConfig:" + newConfig + "");
+            boolean samePosition = atSamePosition(rect);
+            boolean sameSize = atSameSize(rect);
+            if(service == null){
+                return;
+            }
+            if( newConfig ||  !samePosition || !sameSize ){
+                updateAttribueOnly(rect);
+                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                        rect.right - rect.left, rect.bottom - rect.top);
+            }
+        }
+        service.raiseWindow(mAttribute.getXID());
+
+        pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
+        matcher = pattern.matcher(configuration.toString());
+        if (matcher.find()) {
+            String windowingMode = matcher.group(1);
+            isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
+            boolean isFreeform = TextUtils.equals(windowingMode, "freeform");
+            Log.d(TAG, "windowingMode: " + windowingMode);
+        }
+        if (isFullscreen) {
+            handler.postDelayed(() -> {
+                try {
+                    if(!checkServiceExits()){
+                        return;
+                    }
+                    service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                            (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                            mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
+                } catch (RemoteException e) {
+                    e.printStackTrace();
+                }
+            },100);
+        }
+    }
+
+    private void updateAttribueOnly(Rect rect) {
+        FLog.a("window", getWindowId(), "updateAttribueOnly");
+        mWindowRect.set(rect);
+        mAttribute.setRect(rect);
+        getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
+    }
+
+    private boolean atSameSize(Rect rect) {
+        Rect r = mWindowRect;
+        return ( r.right - r.left ) == ( rect.right - rect.left )
+                && ( r.bottom - r.top ) == ( rect.bottom - rect.top );
+    }
+
+    private boolean atSamePosition(Rect rect) {
+        Rect r = mWindowRect;
+        return r.left == rect.left && r.top == rect.top ;
+    }
+
+    private boolean isCaptionShowing() {
+        Window window = getWindow();
+        ViewGroup decor = (ViewGroup)window.getDecorView();
+        DecorCaptionView decorCaptionView = (DecorCaptionView)decor.getChildAt(0);
+        try {
+            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+            Method isCaptionShowing = aClass.getMethod("isCaptionShowing");
+            return (boolean) isCaptionShowing.invoke(decorCaptionView);
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+                 InvocationTargetException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void closeXWindow() {
+        FLog.a("window", getWindowId(), "closeXWindow");
+        if(checkServiceExits()){
+            try {
+                WindowAttribute a = mAttribute;
+                service.windowChanged(null, a.getOffsetX(),
+                        a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
+                        a.getWindowPtr(), a.getXID());
+                service.closeWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void setDecorCaptionViewFocuseable(boolean focusable) {
+        FLog.a("window", getWindowId(), "setDecorCaptionViewFocuseable");
+        Window window = getWindow();
+        ViewGroup decor = (ViewGroup) window.getDecorView();
+        DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
+        boolean isCaptionShowing = true;
+        try {
+            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+            Method method = aClass.getMethod("isCaptionShowing");
+            isCaptionShowing = (boolean) method.invoke(decorCaptionView);
+            if(isCaptionShowing) {
+//                decorCaptionView.setOperateEnabled(focusable);
+            }
+        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+                 InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) throws RemoteException {
+        if(checkServiceExits()){
+            service.windowChanged(sfc, x, y, w, h, index, pWin, window);
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
+    public void onReceiveMsg(EventMessage message){
+        if(mAttribute.getXID() != message.getProperty().getTransientfor()){
+            return;
+        }
+        if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
+            Log.d(TAG, "X_UNMODAL_ACTIVITY: ");
+            getWindow().clearFlags(FLAG_NOT_FOCUSABLE |
+                    FLAG_NOT_TOUCHABLE);
+        }
+    }
+
+    public void configureFromXIfNeed() {
+        //todo check
+        configureFromX();
+    }
+
+    public synchronized void configureFromX() {
+        FLog.a("window", getWindowId(), "configureFromX");
+        if(mConfigureRect != null){
+            mAttribute.setRect(mConfigureRect);
+            mWindowRect = mConfigureRect;
+            Rect rect = mConfigureRect;
+            if(isCaptionShowing()){
+                rect.top = mConfigureRect.top - (int)mDecorCaptionViewHeight;
+            }
+            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
+            taskManager.resizeTask(getTaskId(), rect);
+            mConfigureRect = null;
+        }
+    }
+
+    /**
+     *============================================ about X floatview ==================================================
+     */
     private void addFloatView(WindowAttribute attr) {
-        Log.d(TAG, "initFloatView: attr:" + attr + "");
+        FLog.a("float", getWindowId(), "addFloatView");
         View floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view,null,false);
         WindowManager.LayoutParams floatParams = createLayoutParams();
         floatWindow = createWindow( (int)attr.getOffsetX(),(int)attr.getOffsetY(),
@@ -507,14 +730,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         LorieView widgetView = floatView.findViewById(R.id.widget_view);
         widgetView.updateCoordinate(attr);
         widgetView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) ->{
-            if (service != null ) {
-                    try {
-                        service.windowChanged(sfc, attr.getOffsetX(), attr.getOffsetY(),
-                                attr.getWidth(), attr.getHeight(), attr.getIndex(),
-                                attr.getWindowPtr(), attr.getXID());
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+            try {
+                serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+            } catch (Exception e) {
+                Log.e(TAG, "serviceWindowChange Exception:" + e);
             }
         });
         TouchInputHandler inputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
@@ -555,7 +774,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 | WindowManager.LayoutParams.FLAG_SCALED
                 | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
-
         if (Build.VERSION.SDK_INT >= 26) {
             params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         } else {
@@ -567,7 +785,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
 
     private void stopFloatView(WindowAttribute attr) {
-        Log.d(TAG, "stopFloatView: attr:" + attr + "");
+        FLog.a("float", getWindowId(), "stopFloatView");
         if(attr == null || mFloatViews.isEmpty()){
             return;
         }
@@ -579,16 +797,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
 
-    private void stopFloatView() {
-        for(Map.Entry set: mFloatViews.entrySet()){
-            View view = (View) set.getValue();
-            if(view.isAttachedToWindow()){
-                view.setVisibility(View.GONE);
-            }
-        }
-    }
-
     private void showFloatView() {
+        FLog.a("float", getWindowId(), "showFloatView");
         for(Map.Entry set: mFloatViews.entrySet()){
             View view = (View) set.getValue();
             if(view.isAttachedToWindow()){
@@ -597,147 +807,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
     }
 
-
-    private void initClipMonitor() {
-        mClipboardManager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-    }
-
-    private void updateX11Cliptext() {
-        if (mClipboardManager.hasPrimaryClip()
-                && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
-            CharSequence content =
-                    mClipboardManager.getPrimaryClip().getItemAt(0).getText();
-            if(content != null && !TextUtils.isEmpty(content)
-                    && !TextUtils.equals(content, mClipText)
-                    && checkServiceExits()){
-                mClipText = content.toString();
-                try {
-                    service.sendClipText(mClipText);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-    }
-
-    protected boolean hideDecorCaptionView() {
-        return false;
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
-    public void onReceiveMsg(EventMessage message){
-        if(mAttribute.getXID() != message.getProperty().getTransientfor()){
-            return;
-        }
-        if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
-            Log.d(TAG, "X_UNMODAL_ACTIVITY: ");
-            getWindow().clearFlags(FLAG_NOT_FOCUSABLE |
-                    FLAG_NOT_TOUCHABLE);
-        }
-    }
-
-
-    private void bindXserver() {
-        try {
-            bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void configureFromXIfNeed() {
-        //todo check
-        configureFromX();
-    }
-    public synchronized void configureFromX() {
-        if(mConfigureRect != null){
-            mAttribute.setRect(mConfigureRect);
-            mWindowRect = mConfigureRect;
-            Rect rect = mConfigureRect;
-            if(isCaptionShowing()){
-                rect.top = mConfigureRect.top - (int)mDecorCaptionViewHeight;
-            }
-            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
-            taskManager.resizeTask(getTaskId(), rect);
-            mConfigureRect = null;
-        }
-    }
-
-
-    public class Connection implements ServiceConnection {
-        private ICmdEntryInterface cmdEntryInterface;
-
-        public ICmdEntryInterface getInterface(){
-            return cmdEntryInterface;
-        }
-
-
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            cmdEntryInterface = ICmdEntryInterface.Stub.asInterface(service);
-            if(!killSelf){
-                MainActivity.this.service = cmdEntryInterface;
-                try {
-                    Objects.requireNonNull(MainActivity.this.service).asBinder().linkToDeath(() -> {
-                        MainActivity.this.service = null;
-                    }, 0);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            showXserverCloseOnDisconnect(MainActivity.this);
-            finish();
-        }
-    }
-
-
-    ServiceConnection connection = new Connection();
-
-    @Override
-    public void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        Log.d(TAG, "onAttachedToWindow: ");
-    }
-
-    @Override
-    public void onDetachedFromWindow() {
-        super.onDetachedFromWindow();
-        Log.d(TAG, "onDetachedFromWindow: ");
-    }
-
-
-
-    @Override
-    public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
-        super.onWindowAttributesChanged(params);
-        Log.d(TAG, "onWindowAttributesChanged: params:" + params + "");
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        unregisterReceiver(receiver);
-        unbindService(connection);
-        service = null;
-        Log.v(TAG, "onDestroy: ");
-        removeClipboardListener();
-        EventBus.getDefault().unregister(this);
-    }
-
-    private void removeClipboardListener() {
-        if(mClipboardManager != null){
-            mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
-            mClipboardManager = null;
-        }
-        mOnPrimaryClipChangedListener = null;
-    }
-
-
-    //Register the needed events to handle stylus as left, middle and right click
+    /**
+     *============================================ other  ==================================================
+     */
     @SuppressLint("ClickableViewAccessibility")
     private void initStylusAuxButtons() {
         SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
@@ -827,107 +899,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         });
     }
 
-    void setSize(View v, int width, int height) {
-        ViewGroup.LayoutParams p = v.getLayoutParams();
-        p.width = (int) (width * getResources().getDisplayMetrics().density);
-        p.height = (int) (height * getResources().getDisplayMetrics().density);
-        v.setLayoutParams(p);
-        v.setMinimumWidth((int) (width * getResources().getDisplayMetrics().density));
-        v.setMinimumHeight((int) (height * getResources().getDisplayMetrics().density));
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    void initMouseAuxButtons() {
-        Button left = findViewById(R.id.mouse_button_left_click);
-        Button right = findViewById(R.id.mouse_button_right_click);
-        Button middle = findViewById(R.id.mouse_button_middle_click);
-        ImageButton pos = findViewById(R.id.mouse_buttons_position);
-        LinearLayout primaryLayer = findViewById(R.id.mouse_buttons);
-        LinearLayout secondaryLayer = findViewById(R.id.mouse_buttons_secondary_layer);
-
-        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean mouseHelperEnabled = p.getBoolean("showMouseHelper", false) && "1".equals(p.getString("touchMode", "1"));
-        primaryLayer.setVisibility(mouseHelperEnabled ? View.VISIBLE : View.GONE);
-
-        pos.setOnClickListener((v) -> {
-            if (secondaryLayer.getOrientation() == LinearLayout.HORIZONTAL) {
-                setSize(left, 48, 96);
-                setSize(right, 48, 96);
-                secondaryLayer.setOrientation(LinearLayout.VERTICAL);
-            } else {
-                setSize(left, 96, 48);
-                setSize(right, 96, 48);
-                secondaryLayer.setOrientation(LinearLayout.HORIZONTAL);
-            }
-            handler.postDelayed(() -> {
-                int[] offset = new int[2];
-                frm.getLocationOnScreen(offset);
-                primaryLayer.setX(MathUtils.clamp(primaryLayer.getX(), offset[0], offset[0] + frm.getWidth() - primaryLayer.getWidth()));
-                primaryLayer.setY(MathUtils.clamp(primaryLayer.getY(), offset[1], offset[1] + frm.getHeight() - primaryLayer.getHeight()));
-            }, 10);
-        });
-
-        Map.of(left, InputStub.BUTTON_LEFT, middle, InputStub.BUTTON_MIDDLE, right, InputStub.BUTTON_RIGHT)
-                .forEach((v, b) -> v.setOnTouchListener((__, e) -> {
-                    switch(e.getAction()) {
-                        case MotionEvent.ACTION_DOWN:
-                        case MotionEvent.ACTION_POINTER_DOWN:
-                            getLorieView().sendMouseEvent(0, 0, b, true, true, mIndex);
-                            v.setPressed(true);
-                            break;
-                        case MotionEvent.ACTION_UP:
-                        case MotionEvent.ACTION_POINTER_UP:
-                            getLorieView().sendMouseEvent(0, 0, b, false, true, mIndex);
-                            v.setPressed(false);
-                            break;
-                    }
-                    return true;
-                }));
-
-        pos.setOnTouchListener(new View.OnTouchListener() {
-            final int touchSlop = (int) Math.pow(ViewConfiguration.get(MainActivity.this).getScaledTouchSlop(), 2);
-            final int tapTimeout = ViewConfiguration.getTapTimeout();
-            final float[] startOffset = new float[2];
-            final int[] startPosition = new int[2];
-            long startTime;
-            @Override
-            public boolean onTouch(View v, MotionEvent e) {
-                switch(e.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        primaryLayer.getLocationOnScreen(startPosition);
-                        startOffset[0] = e.getX();
-                        startOffset[1] = e.getY();
-                        startTime = SystemClock.uptimeMillis();
-                        pos.setPressed(true);
-                        break;
-                    case MotionEvent.ACTION_MOVE: {
-                        int[] offset = new int[2];
-                        int[] offset2 = new int[2];
-                        primaryLayer.getLocationOnScreen(offset);
-                        frm.getLocationOnScreen(offset2);
-                        primaryLayer.setX(MathUtils.clamp(offset[0] - startOffset[0] + e.getX(), offset2[0], offset2[0] + frm.getWidth() - primaryLayer.getWidth()));
-                        primaryLayer.setY(MathUtils.clamp(offset[1] - startOffset[1] + e.getY(), offset2[1], offset2[1] + frm.getHeight() - primaryLayer.getHeight()));
-                        break;
-                    }
-                    case MotionEvent.ACTION_UP: {
-                        final int[] _pos = new int[2];
-                        primaryLayer.getLocationOnScreen(_pos);
-                        int deltaX = (int) (startOffset[0] - e.getX()) + (startPosition[0] - _pos[0]);
-                        int deltaY = (int) (startOffset[1] - e.getY()) + (startPosition[1] - _pos[1]);
-                        pos.setPressed(false);
-
-                        if (deltaX * deltaX + deltaY * deltaY < touchSlop && SystemClock.uptimeMillis() - startTime <= tapTimeout) {
-                            v.performClick();
-                            return true;
-                        }
-                        break;
-                    }
-                }
-                return true;
-            }
-        });
-    }
-
     void onReceiveConnection() {
         try {
             if (service != null && service.asBinder().isBinderAlive()) {
@@ -951,8 +922,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 clientConnectedStateChanged(true);
                 LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
             }
-//            else
-//                handler.postDelayed(this::tryConnect, 500);
         } catch (Exception e) {
             Log.e(TAG, "Something went wrong while we were establishing connection", e);
             service = null;
@@ -960,95 +929,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             // We should reset the View for the case if we have sent it's surface to the client.
             getLorieView().regenerate();
         }
-    }
-
-    void onPreferencesChanged(String key) {
-        if ("additionalKbdVisible".equals(key))
-            return;
-
-        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
-        LorieView lorieView = getLorieView();
-
-        int mode = Integer.parseInt(p.getString("touchMode", "1"));
-        mInputHandler.setInputMode(mode);
-        mInputHandler.setTapToMove(p.getBoolean("tapToMove", false));
-        mInputHandler.setPreferScancodes(p.getBoolean("preferScancodes", false));
-        mInputHandler.setPointerCaptureEnabled(p.getBoolean("pointerCapture", false));
-        mInputHandler.setApplyDisplayScaleFactorToTouchpad(p.getBoolean("scaleTouchpad", true));
-        if (!p.getBoolean("pointerCapture", false) && lorieView.hasPointerCapture())
-            lorieView.releasePointerCapture();
-
-        SamsungDexUtils.dexMetaKeyCapture(this, p.getBoolean("dexMetaKeyCapture", false));
-
-        setTerminalToolbarView();
-        onWindowFocusChanged(true);
-        LorieView.setClipboardSyncEnabled(p.getBoolean("clipboardSync", true));
-
-        lorieView.triggerCallback();
-
-        filterOutWinKey = false; // p.getBoolean("filterOutWinkey", false);
-        if (p.getBoolean("enableAccessibilityServiceAutomatically", false)) {
-            try {
-                Settings.Secure.putString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, "com.termux.x11/.utils.KeyInterceptor");
-                Settings.Secure.putString(getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED, "1");
-            } catch (SecurityException e) {
-                new AlertDialog.Builder(this)
-                        .setTitle("Permission denied")
-                        .setMessage("Android requires WRITE_SECURE_SETTINGS permission to start accessibility service automatically.\n" +
-                                "Please, launch this command using ADB:\n" +
-                                "adb shell pm grant com.termux.x11 android.permission.WRITE_SECURE_SETTINGS")
-                        .setNegativeButton("OK", null)
-                        .create()
-                        .show();
-
-                SharedPreferences.Editor edit = p.edit();
-                edit.putBoolean("enableAccessibilityServiceAutomatically", false);
-                edit.commit();
-            }
-        } else if (checkSelfPermission(WRITE_SECURE_SETTINGS) == PERMISSION_GRANTED)
-            KeyInterceptor.shutdown();
-
-        int requestedOrientation = p.getBoolean("forceLandscape", false) ?
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
-        if (getRequestedOrientation() != requestedOrientation)
-            setRequestedOrientation(requestedOrientation);
-
-        findViewById(R.id.mouse_buttons).setVisibility(p.getBoolean("showMouseHelper", false) && "1".equals(p.getString("touchMode", "1")) && mClientConnected ? View.VISIBLE : View.GONE);
-        LinearLayout buttons = findViewById(R.id.mouse_helper_visibility);
-        if (p.getBoolean("showStylusClickOverride", false)) {
-            buttons.setVisibility(View.VISIBLE);
-        } else {
-            //Reset default input back to normal
-            TouchInputHandler.STYLUS_INPUT_HELPER_MODE = 1;
-            final float menuUnselectedTrasparency = 0.66f;
-            final float menuSelectedTrasparency = 1.0f;
-            findViewById(R.id.button_left_click).setAlpha(menuSelectedTrasparency);
-            findViewById(R.id.button_right_click).setAlpha(menuUnselectedTrasparency);
-            findViewById(R.id.button_middle_click).setAlpha(menuUnselectedTrasparency);
-            findViewById(R.id.button_visibility).setAlpha(menuUnselectedTrasparency);
-            buttons.setVisibility(View.GONE);
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        setTerminalToolbarView();
-        getWindow().getDecorView().postDelayed(()->{
-            if(!correctMarked){
-                correctMarked = true;
-                try {
-                    checkConfigBeforeExec(mConfiguration, true);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        },1000);
-//        getLorieView().requestFocus();
-        String hexString = Long.toHexString(getWindowId());
-        TAG = "lifecycle " + hexString;
-        Log.v(TAG, String.format("onResume() called: 0x%s", hexString));
-        detectViewRequestFocus();
     }
 
     private void detectViewRequestFocus() {
@@ -1060,22 +940,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public void onTextViewClicked(View view) {
         detectEventEditText.requestFocus();
         detectEventEditText.setFocusableInTouchMode(true);
-//        InputMethodManager inputMgr = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-//        inputMgr.showSoftInput(inputlayout,
-//                InputMethodManager.SHOW_FORCED);
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-//        Log.d(TAG, "onPause: ");
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-//        closeXwindow();
-//        Log.d(TAG, "onStop: ");
     }
 
     public LorieView getLorieView() {
@@ -1145,362 +1009,166 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     public boolean handleKey(KeyEvent e) {
         Log.d(TAG, "handleKey: e:" + e + "");
+        boolean filterOutWinKey = false;
         if (filterOutWinKey && (e.getKeyCode() == KEYCODE_META_LEFT || e.getKeyCode() == KEYCODE_META_RIGHT || e.isMetaPressed()))
             return false;
         mLorieKeyListener.onKey(getLorieView(), e.getKeyCode(), e);
         return true;
     }
 
-    @SuppressLint("ObsoleteSdkInt")
-    Notification buildNotification() {
-        Log.d(TAG, "buildNotification");
-        Intent preferencesIntent = new Intent(this, LoriePreferences.class);
-        preferencesIntent.putExtra("key", "value");
-        preferencesIntent.setAction(Intent.ACTION_MAIN);
 
-        Intent exitIntent = new Intent(ACTION_STOP);
-        exitIntent.setPackage(getPackageName());
-
-        PendingIntent pIntent = PendingIntent.getActivity(this, 0, preferencesIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        PendingIntent pExitIntent = PendingIntent.getBroadcast(this, 0, exitIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        return new NotificationCompat.Builder(this, getNotificationChannel(notificationManager))
-                .setContentTitle("Termux:X11")
-                .setSmallIcon(R.drawable.ic_x11_icon)
-                .setContentText("Pull down to show options")
-                .setContentIntent(pIntent)
-                .setOngoing(true)
-                .setPriority(Notification.PRIORITY_MAX)
-                .setSilent(true)
-                .setShowWhen(false)
-                .setColor(0xFF607D8B)
-                .addAction(0, "Exit", pExitIntent)
-                .addAction(0, "Preferences", pIntent)
-                .build();
-    }
-
-    private String getNotificationChannel(NotificationManager notificationManager){
-        String channelId = getResources().getString(R.string.app_name);
-        String channelName = getResources().getString(R.string.app_name);
-        NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setImportance(NotificationManager.IMPORTANCE_DEFAULT);
-        channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
-        if (SDK_INT >= VERSION_CODES.Q)
-            channel.setAllowBubbles(false);
-        notificationManager.createNotificationChannel(channel);
-        return channelId;
-    }
-
-    int orientation;
-
-    @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        orientation = newConfig.orientation;
-        setTerminalToolbarView();
-        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
-        if(!checkServiceExits()){
-            return;
-        }
-        getWindow().getDecorView().postDelayed(()->{
-            try {
-                checkConfigBeforeExec(newConfig, true);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
-        },300);
-    }
-
-    @SuppressLint("WrongConstant")
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
-        Window window = getWindow();
-        View decorView = window.getDecorView();
-        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + " index:" + mAttribute.getIndex());
-        boolean fullscreen = p.getBoolean("fullscreen", false);
-        boolean reseed = p.getBoolean("Reseed", true);
-        fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
-        int requestedOrientation = p.getBoolean("forceLandscape", false) ?
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
-        if (getRequestedOrientation() != requestedOrientation){
-            setRequestedOrientation(requestedOrientation);
-        }
-        Util.set("fde.click_as_touch", "false");
-        if (hasFocus) {
-            hasFocused = true;
-            if (SDK_INT >= VERSION_CODES.P) {
-                if (p.getBoolean("hideCutout", false))
-                    getWindow().getAttributes().layoutInDisplayCutoutMode = (SDK_INT >= VERSION_CODES.R) ?
-                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS :
-                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-                else
-                    getWindow().getAttributes().layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
-            }
-
-            window.setStatusBarColor(Color.BLACK);
-            window.setNavigationBarColor(Color.BLACK);
-//            setDecorCaptionViewFocuseable(true);
-        }
-        window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
-        if (hasFocus) {
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
-                    FLAG_NOT_TOUCHABLE);
-            showFloatView();
-        } else {
-            stopFloatView();
-        }
-        if (p.getBoolean("keepScreenOn", true))
-            window.addFlags(FLAG_KEEP_SCREEN_ON);
-        else
-            window.clearFlags(FLAG_KEEP_SCREEN_ON);
-//        window.setSoftInputMode((reseed ? SOFT_INPUT_ADJUST_RESIZE : SOFT_INPUT_ADJUST_PAN) | SOFT_INPUT_STATE_HIDDEN);
-//        ((FrameLayout) findViewById(android.R.id.content)).getChildAt(0).setFitsSystemWindows(!fullscreen);
-        SamsungDexUtils.dexMetaKeyCapture(this, hasFocus && p.getBoolean("dexMetaKeyCapture", false));
-        if (hasFocus && mIndex != 0){
-            getLorieView().regenerate();
-            execInWindowManager();
-        }
-        getLorieView().requestFocus();
-        detectViewRequestFocus();
-        getClipText();
-    }
-
-    private void getClipText() {
-        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()
-             && mClipboardManager.getPrimaryClip() != null
-                && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
-            CharSequence content =
-                    mClipboardManager.getPrimaryClip().getItemAt(0).getText();
-            Log.d(TAG, "clip:content:" + content);
-            if(content != null && !TextUtils.isEmpty(content) &&
-                    !TextUtils.equals(content, mClipText) && checkServiceExits()){
-                mClipText = content.toString();
-                Log.d(TAG, "run cliptext:" + mClipText);
+    private final BroadcastReceiver receiver = new BroadcastReceiver() {
+        @SuppressLint("UnspecifiedRegisterReceiverFlag")
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String hexString = Long.toHexString(getWindowId());
+            TAG = "activity_receiver " + hexString;
+            if (ACTION_START.equals(intent.getAction()) && service != null &&!mClientConnected) {
                 try {
-                    service.sendClipText(mClipText);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
+                    Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
+                        service = null;
+                        Xserver.requestConnection();
+                        Log.v(TAG, "Disconnected");
+                        runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
+                    }, 0);
+                    onReceiveConnection();
+                } catch (Exception e) {
+                    Log.e(TAG, "Something went wrong while we extracted connection details from binder.", e);
                 }
+            } else if (ACTION_STOP.equals(intent.getAction())) {
+                finishAffinity();
+            } else if (ACTION_PREFERENCES_CHANGED.equals(intent.getAction())) {
+                Log.v(TAG, "preference: " + intent.getStringExtra("key"));
+            } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
+                    Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
+                    killSelf = true;
+                    finish();
+                    App.getApp().stopingActivityWindow.add(mAttribute.getXID());
+                }
+            } else if (START_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getTaskTo()){
+                    ActivityOptions options = ActivityOptions.makeBasic();
+                    Intent startAct = new Intent(MainActivity.this, MainActivity.MainActivity11.class);
+                    startAct.putExtra(X_WINDOW_ATTRIBUTE, attr);
+                    options.setLaunchBounds(new Rect(100, 100, 200 , 200));
+                    startActivity(startAct, options.toBundle());
+                }
+            } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
+                        && mAttribute.getWindowPtr() == attr.getWindowPtr()
+                        && mProperty!=null && mProperty.getSupportDeleteWindow() == 1
+//                        && App.getApp().stopingActivityWindow.contains(attr.getWindowPtr())
+                ){
+                    Log.d(TAG, "onReceive: " + STOP_WINDOW_FROM_X + ", attr:" + attr + "");
+                    finish();
+                }
+            } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+                if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
+                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+//                            |FLAG_NOT_TOUCHABLE
+                    );
+                    setDecorCaptionViewFocuseable(false);
+                }
+            } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                if(attr != null ){
+                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+//                            |FLAG_NOT_TOUCHABLE
+                    );
+                    setDecorCaptionViewFocuseable(true);
+                }
+            } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
+                long windowId = intent.getLongExtra("window_id", 0);
+                if(mAttribute !=  null && windowId == mAttribute.getXID()){
+//                    Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " mAttribute:" + mAttribute) ;
+                    Bitmap windowIcon = intent.getParcelableExtra("window_icon");
+                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
+                    MainActivity.this.setTaskDescription(description);
+
+                }
+            } else if(CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Log.d(TAG, "onReceive:" + CONFIGURE_ACTIVITY_FROM_X+ "");
+                if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen
+                )
+                {
+                    mConfigureRect = attr.getRect();
+                    if(!mInputHandler.isTouching()){
+                        configureFromX();
+                    }
+//                    Log.d(TAG, "onReceive: mConfigureRect:" + mConfigureRect);
+                }
+            } else if(START_VIEW_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+                long transientfor = Objects.requireNonNull(prop).getTransientfor();
+                Log.d(TAG, "onReceive:" + START_VIEW_FROM_X + " attr:" + attr + " prop:" + prop);
+                if(transientfor == Objects.requireNonNull(mAttribute).getXID()){
+                    addFloatView(attr);
+                }
+            } else if(STOP_VIEW_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+                Log.d(TAG, "onReceive:" + STOP_VIEW_FROM_X + " attr:" + attr + " prop:" + prop);
+                stopFloatView(attr);
             }
         }
-    }
+    };
 
-    protected void execInWindowManager()  {
-        List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
-        for (ActivityManager.RunningTaskInfo info: runningTasks){
-            if(checkServiceExits() && TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
-                Configuration configuration = info.configuration;
+    public class Connection implements ServiceConnection {
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            if(!killSelf){
+                MainActivity.this.service = ICmdEntryInterface.Stub.asInterface(service);
                 try {
-                    checkConfigBeforeExec(configuration, false);
+                    Objects.requireNonNull(MainActivity.this.service).asBinder().linkToDeath(() -> {
+                        MainActivity.this.service = null;
+                    }, 0);
                 } catch (RemoteException e) {
                     e.printStackTrace();
                 }
-                return;
             }
         }
-    }
 
-    private boolean checkServiceExits() {
-        return service != null && mAttribute != null;
-    }
-
-    private void checkConfigBeforeExec(Configuration configuration, boolean newConfig) throws RemoteException{
-        if(configuration == null || !checkServiceExits()){
-            return;
-        }
-        this.mConfiguration = configuration;
-//        Log.d(TAG, "checkConfigBeforeExec: configuration:" + configuration. + ", newConfig:" + newConfig + "");
-        Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
-        Matcher matcher = pattern.matcher(configuration.toString());
-        if(matcher.find()){
-            int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
-            int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
-            int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
-            int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
-            float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
-//            Log.d(TAG, "topMargin: " + topMargin);
-            Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
-            Log.d(TAG, "checkConfigBeforeExec: rect:" + rect + ", newConfig:" + newConfig + "");
-            boolean samePosition = atSamePosition(rect);
-            boolean sameSize = atSameSize(rect);
-            if(service == null){
-                return;
-            }
-            if( newConfig ||  !samePosition || !sameSize ){
-                updateAttribueOnly(rect);
-                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-                        rect.right - rect.left, rect.bottom - rect.top);
-            }
-        }
-        service.raiseWindow(mAttribute.getXID());
-
-        pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
-        matcher = pattern.matcher(configuration.toString());
-        if (matcher.find()) {
-            String windowingMode = matcher.group(1);
-            isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
-            isFreeform = TextUtils.equals(windowingMode, "freeform");
-            Log.d(TAG, "windowingMode: " + windowingMode);
-        }
-        if (isFullscreen) {
-        handler.postDelayed(() -> {
-            try {
-                if(!checkServiceExits()){
-                    return;
-                }
-                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-                        mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
-        },100);
-        }
-    }
-
-    private void updateAttribueOnly(Rect rect) {
-        Log.d(TAG, "updateAttribue: rect:" + rect);
-        mWindowRect.set(rect);
-        mAttribute.setRect(rect);
-        getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
-    }
-
-    private boolean atSameSize(Rect rect) {
-        Rect r = mWindowRect;
-        return ( r.right - r.left ) == ( rect.right - rect.left )
-                && ( r.bottom - r.top ) == ( rect.bottom - rect.top );
-    }
-
-    private boolean atSamePosition(Rect rect) {
-        Rect r = mWindowRect;
-        return r.left == rect.left && r.top == rect.top ;
-    }
-
-
-    public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
-        if(checkServiceExits() && mProperty != null && mProperty.getSupportDeleteWindow() == 1){
-            Log.e(TAG, "onWindowDismissed: ");
-            closeXwindow();
-        } else {
-            Log.e(TAG, "finish: ");
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            showXserverCloseOnDisconnect(MainActivity.this);
             finish();
-            App.getApp().stopingActivityWindow.add(mAttribute.getXID());
         }
-//        showConfirmDialog();
-    }
-
-    private boolean isCaptionShowing() {
-        Window window = getWindow();
-        ViewGroup decor = (ViewGroup)window.getDecorView();
-        DecorCaptionView decorCaptionView = (DecorCaptionView)decor.getChildAt(0);
-        try {
-            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-            Method isCaptionShowing = aClass.getMethod("isCaptionShowing");
-            return (boolean) isCaptionShowing.invoke(decorCaptionView);
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-                 InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void showConfirmDialog() {
-        builder.setContentView(R.layout.dialog_warm_tip)
-                .addCustomAnimation(Gravity.CENTER, false)
-                .setCancelable(true)
-                .setText(R.id.tv_title, getString(R.string.exit_app))
-                .setText(R.id.tv_content, getString(R.string.exit_tip))
-                .setTextColor(R.id.tv_confirm, ContextCompat.getColor(this, R.color.white))
-                .setBackground(R.id.tv_confirm, ContextCompat.getDrawable(this, R.drawable.shape_confirm_bg))
-                .setWidthAndHeight(EasyUtils.dp2px(this, 320), LinearLayout.LayoutParams.WRAP_CONTENT)
-                .setOnClickListener(R.id.tv_cancel, v1 -> {
-                    easyDialog.dismiss();
-                })
-                .setOnClickListener(R.id.tv_confirm, v2 -> {
-//                    Toast.makeText(this, "", Toast.LENGTH_SHORT).show();
-                    easyDialog.dismiss();
-                    if(checkServiceExits()){
-                        closeXwindow();
-                    }
-                    finish();
-                    App.getApp().stopingActivityWindow.add(mAttribute.getXID());
-                })
-                .setOnCancelListener(dialog -> {
-                    easyDialog.dismiss();
-//                    Toast.makeText(this, "", Toast.LENGTH_SHORT).show();
-                })
-                .setOnDismissListener(dialog -> {
-//                    Toast.makeText(this, "", Toast.LENGTH_SHORT).show();
-                });
-        easyDialog = builder.create();
-        easyDialog.show();
-    }
-
-    private void closeXwindow() {
-        if(checkServiceExits()){
-            try {
-                WindowAttribute a = mAttribute;
-                service.windowChanged(null, a.getOffsetX(),
-                        a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
-                        a.getWindowPtr(), a.getXID());
-                service.closeWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public boolean dispatchKeyEvent(KeyEvent event) {
-//        Log.d(TAG, "dispatchKeyEvent: event:" + event + "");
-        return super.dispatchKeyEvent(event);
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-    }
-
-    public static boolean hasPipPermission(@NonNull Context context) {
-        AppOpsManager appOpsManager = (AppOpsManager) context.getSystemService(Context.APP_OPS_SERVICE);
-        if (appOpsManager == null)
-            return false;
-        else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            return appOpsManager.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_PICTURE_IN_PICTURE, android.os.Process.myUid(), context.getPackageName()) == AppOpsManager.MODE_ALLOWED;
-        else
-            return appOpsManager.checkOpNoThrow(AppOpsManager.OPSTR_PICTURE_IN_PICTURE, android.os.Process.myUid(), context.getPackageName()) == AppOpsManager.MODE_ALLOWED;
-    }
-
-    @Override
-    public void onUserLeaveHint() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        if (preferences.getBoolean("PIP", false) && hasPipPermission(this)) {
-            enterPictureInPictureMode();
-        }
-    }
-
-    @Override
-    public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, @NonNull Configuration newConfig) {
-        toggleExtraKeys(!isInPictureInPictureMode, false);
-
-        frm.setPadding(0, 0, 0, 0);
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
-    }
-
-    /** @noinspection NullableProblems*/
-    @SuppressLint("WrongConstant")
-    @Override
-    public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-//        handler.postDelayed(() -> getLorieView().triggerCallback(), 100);
-        return insets;
     }
 
     /**
-     * Manually toggle soft keyboard visibility
-     * @param context calling context
+     *============================================ other activity  ==================================================
      */
+    protected boolean hideDecorCaptionView() {
+        return false;
+    }
+    public static class MainActivity1 extends MainActivity {
+    }
+
+    public static class MainActivity11 extends MainActivity {
+
+        protected int getLayoutID() {
+            return R.layout.main_activity;
+        }
+
+        protected boolean hideDecorCaptionView() {
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            Log.d("TAG", "hideDecorCaptionView");
+            return true;
+        }
+    }
+
     public static void toggleKeyboardVisibility(Context context) {
         InputMethodManager inputMethodManager = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
 //        Log.v(TAG, "Toggling keyboard visibility");
@@ -1526,25 +1194,5 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
             }
         });
-    }
-
-    private void checkXEvents() {
-    }
-
-    public static class MainActivity1 extends MainActivity {
-    }
-
-    public static class MainActivity11 extends MainActivity {
-
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
-        protected boolean hideDecorCaptionView() {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            Log.d("TAG", "hideDecorCaptionView");
-            return true;
-        }
     }
 }

@@ -22,6 +22,7 @@ import androidx.annotation.IntDef;
 import androidx.core.math.MathUtils;
 
 import com.fde.fusionwindowmanager.WindowAttribute;
+import com.termux.x11.LorieView;
 import com.termux.x11.MainActivity;
 
 import java.lang.annotation.Retention;
@@ -41,6 +42,10 @@ public class TouchInputHandler {
 
     public void sendKeyEvent(CharSequence sequence) {
         mInjector.mInjector.sendTextEvent(String.valueOf(sequence).getBytes(UTF_8));
+    }
+
+    public void mouseClick() {
+        mInjector.sendMouseClick(InputStub.BUTTON_LEFT, true);
     }
 
     /** Used to set/store the selected input mode. */

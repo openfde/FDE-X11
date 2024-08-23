@@ -59,7 +59,7 @@ public class WindowManager implements AWindowManagerInterface {
     }
 
     public WindowManager(WeakReference<Context> activityWeakReference) {
-        this.contextReference = activityWeakReference;
+        contextReference = activityWeakReference;
         mThread = new HandlerThread("WM");
         mThread.start();
         mHandler = new TaskHandler(mThread.getLooper());
@@ -97,6 +97,8 @@ public class WindowManager implements AWindowManagerInterface {
 
     public native int closeWindow(long window);
     public native int raiseWindow(long window);
+
+    public native int circulaSubWindows(long window, boolean lowest);
 
     public native int sendClipText(String cliptext);
     public native int disconnect2Server();

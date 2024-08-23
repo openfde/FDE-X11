@@ -86,6 +86,8 @@ public:
     int stoped = False;
     jint sendClipText(const char *pJstring);
 
+    jint circulaSubWindows(jlong window, jboolean lowest);
+
 private:
 
     // Handle to the underlying Xlib Display struct.

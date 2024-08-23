@@ -20,5 +20,7 @@ interface ICmdEntryInterface {
 
     void raiseWindow(long window);
 
+    void circulaSubWindows(long window, boolean lowest);
+
     void sendClipText(String cliptext);
 }

@@ -136,7 +136,7 @@ void android_update_texture_1(Window window) {
 }
 
 void android_update_widget_texture(Widget *widget) {
-    log(ERROR, "android_update_widget_texture window:%x", widget->window);
+//    log(ERROR, "android_update_widget_texture window:%x", widget->window);
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget->pWin);
     renderer_update_widget_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                    pixmap->drawable.height, pixmap->devPrivate.ptr, 0, widget);
@@ -301,12 +301,16 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_UTILITY)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_UTILITY;
+                    break;
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_POPUP)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_POPUP_MENU;
+                    break;
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_MENU)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                    break;
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_TOOLTIP)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_TOOLTIP;
+                    break;
                 }
 
                 const char *atomValue = NameForAtom(atoms[i]);
@@ -318,15 +322,15 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
         } else if (STRING_EQUAL(NameForAtom(name), NET_WINDOW_NAME)) {
             STRCPY;
             pProperty->net_wm_name = atom_value;
-            log(DEBUG, "%s:%s size:%d", NET_WINDOW_NAME, atom_value, pProper->size);
+//            log(DEBUG, "%s:%s size:%d", NET_WINDOW_NAME, atom_value, pProper->size);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)){
             STRCPY;
             pProperty->wm_class = atom_value;
-            log(DEBUG, "%s:%s size:%d", WINDOW_CLASS, atom_value, pProper->size);
+//            log(DEBUG, "%s:%s size:%d", WINDOW_CLASS, atom_value, pProper->size);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             STRCPY;
             pProperty->wm_name = atom_value;
-            log(DEBUG, "%s:%s size:%d", WINDOW_NAME, atom_value, pProper->size);
+//            log(DEBUG, "%s:%s size:%d", WINDOW_NAME, atom_value, pProper->size);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
             int *icon_data = (int *)propData;
             int width = *icon_data;
@@ -349,6 +353,9 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
 }
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
+    if(w < 30 || h < 30 ){
+        return TRUE;
+    }
     log(DEBUG, "check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
         x, y, w, h, x1, y1, w1, h1);
     if (x < x1 || y < y1 || (x + w) > (x1 + w1) || (y + h) > (y1 + h1)) {

@@ -135,6 +135,13 @@ public class XWindowService extends Service {
         }
 
         @Override
+        public void circulaSubWindows(long window, boolean lowest) throws RemoteException {
+            if(wm != null && wm.circulaSubWindows(window, lowest) > 0){
+//                Log.d(TAG, "circulaSubWindows: window:" + window + ", lowest:" + lowest + "");
+            }
+        }
+
+        @Override
         public void sendClipText(String cliptext) throws RemoteException {
             if(wm != null && wm.sendClipText(cliptext) > 0){
 //                Log.d(TAG, "sendClipText: cliptext:" + cliptext + "");

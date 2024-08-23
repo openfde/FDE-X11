@@ -86,7 +86,7 @@ from The Open Group.
 #define unwrap(priv, real, mem) { real->mem = priv->mem; }
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
 
-#define PRINT_LOG 1
+#define PRINT_LOG 0
 #define log(prio, ...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__);\
                 }              \
