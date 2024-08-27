@@ -4,11 +4,8 @@
 #pragma ide diagnostic ignored "OCUnusedMacroInspection"
 #define __USE_GNU
 #ifdef HAVE_DIX_CONFIG_H
-
 #include <dix-config.h>
-
 #endif
-
 #include <jni.h>
 #include <android/log.h>
 #include <android/native_window_jni.h>
@@ -43,9 +40,7 @@ const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
 #define PRINT_LOG 1
-#define log(prio, ...) if(PRINT_LOG){\
-                __android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);\
-                }              \
+#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);}
 
 static int argc = 0;
 static char **argv = NULL;
@@ -85,24 +80,13 @@ int is_valid_utf8(const char *string);
 bool IfRealizedWindow(WindowPtr widget);
 
 
-#define CHECK_WITH_PROP      if(!pWin){\
-        log(ERROR, "LOG_PROPERTIES pWin null");\
-        return;\
-    }\
-    if(!pWin->optional){\
-        log(ERROR, "LOG_PROPERTIES optional null");\
-        return;\
-    }\
-    if(!pWin->optional->userProps){\
-        log(ERROR, "LOG_PROPERTIES userProps null");\
-        return;\
-    }                                  \
+#define CHECK_WITH_PROP      if(!pWin){log(ERROR, "LOG_PROPERTIES pWin null");return;}\
+                             if(!pWin->optional){log(ERROR, "LOG_PROPERTIES optional null");return;}\
+                             if(!pWin->optional->userProps){log(ERROR, "LOG_PROPERTIES userProps null");return;}                                  \
 
-#define CHECK_CHILD     pWin = pWin->firstChild; \
-                        CHECK_WITH_PROP
+#define CHECK_CHILD     pWin = pWin->firstChild; CHECK_WITH_PROP
 
-#define STRCPY             char * atom_value = (char *)calloc(pProper->size + 1, sizeof(char));\
-                           strncpy(atom_value, propData, pProper->size);
+#define STRCPY   char * atom_value = (char *)calloc(pProper->size + 1, sizeof(char));strncpy(atom_value, propData, pProper->size);
 
 #define STRING_EQUAL(str1, str2) (strcmp((str1), (str2)) == 0 ? 1 : 0)
 
@@ -247,7 +231,7 @@ void android_redirect_window(WindowPtr pWin) {
 }
 
 void android_icon_convert_bitmap(int* data, int width, int height, WindProperty * pProp){
-    log(DEBUG, " CONVERT_ICON width:%d height:%d window:%x", width, height, pProp->window);
+    log(DEBUG, "CONVERT_ICON width:%d height:%d window:%x", width, height, pProp->window);
     JNIEnv *JavaEnv = GetJavaEnv();
     jclass bitmapClass = (*JavaEnv)->FindClass(JavaEnv,"android/graphics/Bitmap");
     jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
@@ -289,6 +273,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
     PropertyPtr pProper = pWin->optional->userProps;
     unsigned char *propData = NULL;
     pProperty->window = pWin->drawable.id;
+    bool overrideRedirect = pWin->overrideRedirect;
     while (pProper) {
         ATOM name = pProper->propertyName;
         propData = pProper->data;
@@ -297,20 +282,38 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
             for (int i = 0; i < pProper->size; i++) {
                 if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+                    if(!overrideRedirect){
+                        break;
+                    } else {
+                        pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                    }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG) ) {
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
+                    if(!overrideRedirect){
+                        break;
+                    } else {
+                        pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                    }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_UTILITY)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_UTILITY;
-                    break;
+                    if(overrideRedirect){
+                        break;
+                    }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_POPUP)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_POPUP_MENU;
-                    break;
+                    if(overrideRedirect){
+                        break;
+                    }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_MENU)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
-                    break;
+                    if(overrideRedirect){
+                        break;
+                    }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_TOOLTIP)){
                     pProperty->window_type = _NET_WM_WINDOW_TYPE_TOOLTIP;
-                    break;
+                    if(overrideRedirect){
+                        break;
+                    }
                 }
 
                 const char *atomValue = NameForAtom(atoms[i]);
@@ -353,11 +356,11 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
 }
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
+    log(DEBUG, "check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
+        x, y, w, h, x1, y1, w1, h1);
     if(w < 30 || h < 30 ){
         return TRUE;
     }
-    log(DEBUG, "check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
-        x, y, w, h, x1, y1, w1, h1);
     if (x < x1 || y < y1 || (x + w) > (x1 + w1) || (y + h) > (y1 + h1)) {
         return FALSE;
     }
@@ -379,6 +382,7 @@ bool android_check_bounds(WindowPtr pWin, WindAttribute *attr) {
 void android_redirect_widget(WindowPtr pWin, WindProperty prop,  Window window) {
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
+    log(ERROR, "android_redirect_widget window:%x", window);
     if (attr) {
         GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
                                               pixmap->drawable.width,

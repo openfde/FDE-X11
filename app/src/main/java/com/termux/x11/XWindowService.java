@@ -8,6 +8,7 @@ import static com.termux.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 import android.app.ActivityOptions;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.IBinder;
@@ -21,6 +22,7 @@ import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.termux.x11.utils.FLog;
 import com.termux.x11.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
@@ -50,32 +52,32 @@ public class XWindowService extends Service {
     public static final String ACTION_X_WINDOW_ATTRIBUTE = "action_x_window_attribute";
     public static final String ACTION_X_WINDOW_PROPERTY = "action_x_window_property";
 
-    public static final String CONFIGURE_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_CONFIGURE";
+    public static final String CONFIGURE_ACTIVITY_FROM_X = "com.termux.x11.Xserver.action_configure";
 
     public static final String START_VIEW_FROM_X = "com.termux.x11.Xserver.start_action_view";
     public static final String STOP_VIEW_FROM_X = "com.termux.x11.Xserver.stop_action_view";
 
-    public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_DESTROY";
-    public static final String STOP_WINDOW_FROM_X = "com.termux.x11.Xserver.ACTION_STOP";
+    public static final String DESTROY_ACTIVITY_FROM_X = "com.termux.x11.Xserver.action_destroy";
+    public static final String STOP_WINDOW_FROM_X = "com.termux.x11.Xserver.action_stop";
 
-    public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_start";
+    public static final String START_ACTIVITY_FROM_X = "com.termux.x11.Xserver.action_start";
 
-    public static final String MODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_MODALED";
-    public static final String UNMODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.ACTION_UNMODALED";
+    public static final String MODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.action_modaled";
+    public static final String UNMODALED_ACTION_ACTIVITY_FROM_X = "com.termux.x11.Xserver.action_unmodaled";
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
-    private HashSet<Long> startingWindow = new HashSet<>();
-    private HashSet<Long> stopingWindow = new HashSet<>();
+    private final HashSet<Long> startingWindow = new HashSet<>();
+    private final HashSet<Long> stopingWindow = new HashSet<>();
 
-    private HashMap<Long, Property> propertyHashMap = new HashMap<>();
+    private final HashMap<Long, Property> propertyHashMap = new HashMap<>();
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
         public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long pWin, long XID) throws RemoteException {
-            Log.d(TAG, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
+            FLog.s(TAG, XID, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
             startingWindow.remove(XID);
             Xserver.getInstance().windowChanged(surface, x, y, w, h, index, pWin, XID);
         }
@@ -156,7 +158,6 @@ public class XWindowService extends Service {
         EventBus.getDefault().register(this);
         Xserver.getInstance().registerContext(new WeakReference<>(this));
         Xserver.getInstance().startXserver();
-//        Log.d(TAG, "onCreate: ");
         if(DWM_START_DEFAULT){
             wm = new WindowManager( new WeakReference<>(this));
             wm.startWindowManager(DISPLAY_GLOBAL_PARAM);
@@ -165,7 +166,7 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
-        Log.e(TAG,  message.getType().usefor);
+        FLog.s(TAG,  message.getType().usefor);
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
                 startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
@@ -199,8 +200,8 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastAboutView(WindowAttribute attr, Property property, EventType type) {
-        Log.d(TAG, "sendBroadcastAboutView: attr:" + attr + ", type:" + type + "");
-        String targetPackage = "com.termux.x11";
+        FLog.s(TAG, attr.getXID(), "sendBroadcastAboutView: attr:" + attr + ", type:" + type);
+        String targetPackage = getPackageName();
         Intent intent = new Intent();
         if (Objects.requireNonNull(type) == X_START_VIEW) {
             intent.setAction(START_VIEW_FROM_X);
@@ -214,7 +215,7 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastConfigureWindow(WindowAttribute attr) {
-        String targetPackage = "com.termux.x11";
+        String targetPackage = getPackageName();
         Intent intent = new Intent(CONFIGURE_ACTIVITY_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
@@ -228,7 +229,7 @@ public class XWindowService extends Service {
                 return;
             }
             attr.setFocusable(false);
-            String targetPackage = "com.termux.x11";
+            String targetPackage = getPackageName();
             Intent intent = new Intent( MODALED_ACTION_ACTIVITY_FROM_X);
             intent.setPackage(targetPackage);
             intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
@@ -241,7 +242,7 @@ public class XWindowService extends Service {
                 return;
             }
             attr.setFocusable(true);
-            String targetPackage = "com.termux.x11";
+            String targetPackage = getPackageName();
             Intent intent = new Intent( UNMODALED_ACTION_ACTIVITY_FROM_X);
             intent.setPackage(targetPackage);
             intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
@@ -256,8 +257,8 @@ public class XWindowService extends Service {
             return;
         }
         stopingWindow.add(attr.getXID());
-        Log.d(TAG, "stopActivity: attr:" + attr + "");
-        String targetPackage = "com.termux.x11";
+        FLog.s(TAG, "stopActivity: attr:" + attr + "");
+        String targetPackage = getPackageName();
         Intent intent = new Intent(STOP_WINDOW_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
@@ -269,7 +270,7 @@ public class XWindowService extends Service {
             return;
         }
 //        Log.d(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
-        String targetPackage = "com.termux.x11";
+        String targetPackage = getPackageName();
         Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
@@ -289,9 +290,9 @@ public class XWindowService extends Service {
             return;
         }
         startingWindow.add(attr.getXID());
-        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        FLog.s(TAG, "start act with decor: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         if(attr.getTaskTo() != 0){
-            String targetPackage = "com.termux.x11";
+            String targetPackage = getPackageName();
             Intent intent = new Intent(START_ACTIVITY_FROM_X);
             intent.setPackage(targetPackage);
             intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);

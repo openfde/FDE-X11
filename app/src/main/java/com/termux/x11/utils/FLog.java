@@ -32,18 +32,67 @@ public class FLog {
     public static final int ASSERT = 7;
 
     private static final boolean LogEnable = true;
+    private static final boolean LogAppListEnable = false;
+    private static final boolean LogMainEnable = true;
+    private static final boolean LogServerEnable = true;
 
     //for activity
     public static void a(String tagsuffix, long window, String content, int level){
+        if(!LogMainEnable){
+            return;
+        }
         String hexString = Long.toHexString(window);
         String TAG = "activity" + "_" + tagsuffix + "_"+ hexString;
         normal(TAG, content, level);
     }
 
     public static void a(String tagsuffix, long window, String content){
+        if(!LogMainEnable){
+            return;
+        }
         String hexString = Long.toHexString(window);
         String TAG = "activity" + "_" + tagsuffix + "_"+ hexString;
         normal(TAG, content, DEBUG);
+    }
+
+    //for xserver java
+    public static void s(String tag, long window, String content , int level){
+        if(!LogServerEnable){
+            return;
+        }
+        String hexString = Long.toHexString(window);
+        String TAG = tag + "_" + hexString;
+        normal(TAG, content, level);
+    }
+
+    public static void s(String tag, String content , int level){
+        if(!LogServerEnable){
+            return;
+        }
+        normal(tag, content, level);
+    }
+
+    public static void s(String tag, String content){
+        if(!LogServerEnable){
+            return;
+        }
+        normal(tag, content, DEBUG);
+    }
+
+    public static void s(String tag, long window, String content){
+        if(!LogServerEnable){
+            return;
+        }
+        String hexString = Long.toHexString(window);
+        String TAG = tag + "_" + hexString;
+        normal(TAG, content, DEBUG);
+    }
+
+    //for app list
+    public static void l(String tag, String content){
+        if(LogAppListEnable){
+            normal(tag, content, DEBUG);
+        }
     }
 
     public static void normal(String tag, String content, int level){

@@ -1,5 +1,6 @@
 package com.termux.x11;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -19,9 +20,9 @@ public class RightClickView extends LinearLayout {
 
     private static final String TAG = "RightClickView";
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        Log.d(TAG, "onTouchEvent() called with: event = [" + event + "]");
         return super.onTouchEvent(event);
     }
 
@@ -39,7 +40,6 @@ public class RightClickView extends LinearLayout {
                 listener.onRightClick(false, event);
             }
         }
-        Log.d(TAG, "dispatchTouchEvent() called with: event = [" + event + "]");
         return super.dispatchTouchEvent(event);
     }
 

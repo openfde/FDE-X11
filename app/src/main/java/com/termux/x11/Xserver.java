@@ -34,6 +34,7 @@ import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.termux.x11.utils.FLog;
 import com.termux.x11.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
@@ -52,12 +53,12 @@ import java.util.Arrays;
 
 @Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
 public class Xserver {
-    public static final String ACTION_START = "com.termux.x11.Xserver.ACTION_START";
+    public static final String ACTION_START = "com.termux.x11.Xserver.action_start";
     private final Handler handler = new Handler();
     public static final int PORT = 7892;
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
-    public static final String ACTION_UPDATE_ICON = "UPDATE_ICON";
+    public static final String ACTION_UPDATE_ICON = "update_icon";
     // listen TCP, for remote and local X client
     // private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
 
@@ -77,22 +78,21 @@ public class Xserver {
 
     private static final int ACTION_UNMAP = 1;
     private static final int ACTION_DESTORY = 2;
-
     private static final int ACTION_DISMISS_VIEW = 3;
 
 
-    private static WeakReference<Service> contextRef;
+    private static WeakReference<Service> context;
 
     public void startXserver() {
         if (!start(ARGS_DEFAULT)) {
-//            Log.e(TAG, "startXserver: failed");
+            FLog.s(TAG, "startXserver: failed", FLog.ERROR);
         }
         spawnListeningThread();
         sendBroadcastDelayed();
     }
 
     public void registerContext(WeakReference<Service> context) {
-        contextRef = context;
+        this.context = context;
     }
 
     public native void tellFocusWindow(long window);
@@ -127,14 +127,14 @@ public class Xserver {
                                              int type, String net_name, String wm_class,
                                              int x, int y, int w, int h, int index, long p,
                                              long window, long taskTo, int support_wm_delete, Bitmap bitmap, boolean inbound) {
-        Log.d(TAG, "startOrUpdateActivity: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
+        FLog.s(TAG, aid,"start Activity: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
                 + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
                 + ", window:" + Long.toHexString(window) + ", taskTo:" + Long.toHexString(taskTo) +
-                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +  " inbound:" + inbound);
+                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +  " inbound:" + inbound, FLog.WARN);
         EventMessage message = null;
         if(bitmap != null){
             bitmap = Util.scaleBitmapIfneed(bitmap);
-            Log.d(TAG, "startOrUpdateActivity: " + bitmap.getWidth() + " " + bitmap.getHeight());
+            FLog.s(TAG, "scaled bitmap: " + bitmap.getWidth() + " X " + bitmap.getHeight());
         }
         if( type == _NET_WM_WINDOW_TYPE_NORMAL || type ==  _NET_WM_WINDOW_TYPE_DIALOG ){
             type = convert2AndroidType(type, x, y, w, h);
@@ -170,10 +170,10 @@ public class Xserver {
         //case 1:
         if(type == _NET_WM_WINDOW_TYPE_NORMAL){
             if(w < 400 || h < 250){
-                Log.d(TAG, "change to type:dialog" +  ", w:" + w + ", h:" + h + "");
+                FLog.s(TAG, "change to type:dialog" +  ", w:" + w + ", h:" + h + "");
                 return _NET_WM_WINDOW_TYPE_DIALOG;
             } else {
-                Log.d(TAG, "change to type:normal" +  ", w:" + w + ", h:" + h + "");
+                FLog.s(TAG, "change to type:normal" +  ", w:" + w + ", h:" + h + "");
                 return _NET_WM_WINDOW_TYPE_NORMAL;
             }
         }
@@ -190,9 +190,9 @@ public class Xserver {
      * @param support_wm_delete     close action
      */
     public static void closeOrDestroyWindow(int index, long pWin, long taskTo,long window, int action, int support_wm_delete) {
-        Log.d(TAG, "closeOrDestroyWindow: index:" + index + ", pWin:" + pWin +
+        FLog.s(TAG, window,"close window: index:" + index + ", pWin:" + pWin +
                 ", taskTo:" + Long.toHexString(taskTo) + ", window:" + Long.toHexString(window) +
-                ", action:" + action + ", support_wm_delete:" + support_wm_delete + "");
+                ", action:" + action + ", support_wm_delete:" + support_wm_delete + "", FLog.WARN);
         Property property = new Property();
         property.setSupportDeleteWindow(support_wm_delete);
         property.setTransientfor(taskTo);
@@ -222,9 +222,9 @@ public class Xserver {
      */
     public static void updateXserverCliptext(String text){
 //        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
-        if(contextRef.get() != null && !TextUtils.isEmpty(text)){
+        if(context.get() != null && !TextUtils.isEmpty(text)){
             ClipData mClipData = ClipData.newPlainText("x11", text);
-            android.content.ClipboardManager mClipboardManager = (ClipboardManager) contextRef.get().getSystemService(Context.CLIPBOARD_SERVICE);
+            android.content.ClipboardManager mClipboardManager = (ClipboardManager) context.get().getSystemService(Context.CLIPBOARD_SERVICE);
             mClipboardManager.setPrimaryClip(mClipData);
         }
     }
@@ -236,19 +236,19 @@ public class Xserver {
      * @param window
      */
     public static void  getWindowIconFromManager(Bitmap bitmap, long window){
-        Context context = contextRef.get();
-        if(context == null){
+        Context ctx = context.get();
+        if(ctx == null){
             Log.d(TAG, "context  == null ");
             return;
         }
-        Log.d(TAG, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
+        FLog.s(TAG, window, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
         Bitmap newBitmap = Util.scaleBitmapIfneed(bitmap);
-        String targetPackage = "com.termux.x11";
+        String targetPackage = context.get().getPackageName();
         Intent intent = new Intent(ACTION_UPDATE_ICON);
         intent.setPackage(targetPackage);
         intent.putExtra("window_id", window);
         intent.putExtra("window_icon", newBitmap);
-        context.sendStickyBroadcast(intent);
+        ctx.sendStickyBroadcast(intent);
     }
 
     private void sendBroadcastDelayed() {
@@ -283,13 +283,13 @@ public class Xserver {
     }
 
     private void sendBroadcast() {
-        String   targetPackage = "com.termux.x11";
+        String  targetPackage = context.get().getPackageName();
         Bundle bundle = new Bundle();
         Intent intent = new Intent(ACTION_START);
         intent.putExtra("", bundle);
         intent.setPackage(targetPackage);
-        if(contextRef.get() != null){
-            contextRef.get().sendBroadcast(intent);
+        if(context.get() != null){
+            context.get().sendBroadcast(intent);
         }
     }
 

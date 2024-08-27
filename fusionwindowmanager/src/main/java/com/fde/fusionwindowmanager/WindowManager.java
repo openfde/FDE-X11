@@ -30,7 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class WindowManager implements AWindowManagerInterface {
+public class WindowManager  {
 
     private static final String TAG = "WindowManager";
     public static boolean ALREADY_SET_SCREEN_SIZE;
@@ -103,27 +103,6 @@ public class WindowManager implements AWindowManagerInterface {
     public native int sendClipText(String cliptext);
     public native int disconnect2Server();
 
-    public static void  getWindowIconFromManager(Bitmap bitmap, long window){
-        Log.d(TAG, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
-        Context context = contextReference.get();
-        if(context == null){
-            Log.d(TAG, "context  == null ");
-            return;
-        }
-        Log.d(TAG, "post getWindowIconFromManager: bitmap:" + bitmap.getWidth() + "x" + bitmap.getHeight() + ", window:" + window + "");
-        String targetPackage = "com.termux.x11";
-        Intent intent = new Intent("UPDATE_ICON");
-        intent.setPackage(targetPackage);
-        intent.putExtra("window_id", window);
-        intent.putExtra("window_icon", bitmap);
-        context.sendStickyBroadcast(intent);
-        String path = "/sdcard/Download/bitmap.png";
-        Log.d(TAG, "getWindowIconFromManager: path = " + path);
-        saveBitmapToFile(bitmap, path);
-
-
-    }
-
     //called from native code
     public static void  syncConfigureRequest(int x, int y, int width, int height, long window){
         Log.d(TAG, "syncConfigureRequest: x:" + x + ", y:" + y + ", width:" + width + ", height:" + height + ", window:" + window + "");
@@ -141,7 +120,6 @@ public class WindowManager implements AWindowManagerInterface {
     }
 
 
-    @Override
     public void startActivityForXMainWindow(WindowAttribute attribute, Class activityClass) {
         Log.d(TAG, "startActivityForXMainWindow: attribute:" + attribute + ", activityClass:" + activityClass + "");
         Context context = contextReference.get();
@@ -161,36 +139,6 @@ public class WindowManager implements AWindowManagerInterface {
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent, options.toBundle());
         }
-    }
-
-    @Override
-    public void startActivityForXWindow(WindowAttribute windowAttribute, Class activityClass) {
-
-    }
-
-    @Override
-    public void startDialogForXWindow(WindowAttribute windowAttribute, Class activityClass) {
-
-    }
-
-    @Override
-    public void startViewForXWindow(WindowAttribute windowAttribute, Class activityClass) {
-
-    }
-
-    @Override
-    public void destroyXActivity(Activity activity) {
-
-    }
-
-    @Override
-    public void destroyXDialog(Dialog dialog) {
-
-    }
-
-    @Override
-    public void destroyXView(View view) {
-
     }
 
     private class TaskHandler extends Handler {

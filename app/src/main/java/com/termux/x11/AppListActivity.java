@@ -64,6 +64,7 @@ import com.termux.x11.data.AppListResult;
 import com.termux.x11.data.VncResult;
 import com.termux.x11.utils.AppUtils;
 import com.termux.x11.utils.DimenUtils;
+import com.termux.x11.utils.FLog;
 import com.termux.x11.view.PopupSlideSmall;
 import com.xiaokun.dialogtiplib.dialog_tip.TipLoadDialog;
 import com.xwdz.http.QuietOkHttp;
@@ -132,7 +133,7 @@ public class AppListActivity extends AppCompatActivity {
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
         }},  0);
-        Log.d(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
+        FLog.l(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
         filterView.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
@@ -141,12 +142,12 @@ public class AppListActivity extends AppCompatActivity {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                Log.d(TAG, "onTextChanged: s:" + s + ", start:" + start + ", before:" + before + ", count:" + count + "");
+                FLog.l(TAG, "onTextChanged: s:" + s + ", start:" + start + ", before:" + before + ", count:" + count + "");
             }
 
             @Override
             public void afterTextChanged(Editable s) {
-                Log.d(TAG, "afterTextChanged: s:" + s + "");
+                FLog.l(TAG, "afterTextChanged: s:" + s + "");
                 handler.removeCallbacks(null);
                 handler.postDelayed(new Runnable() {
                     @Override
@@ -162,7 +163,7 @@ public class AppListActivity extends AppCompatActivity {
         if(getIntent() != null && getIntent().getExtras() != null){
             shortcutApp = (String)getIntent().getExtras().get("App");
             shortcuPath = (String)getIntent().getExtras().get("Path");
-            Log.d(TAG, "onCreate() called with: shortcutApp = [" + shortcuPath + "]  shortcutApp = [" + shortcuPath + "]");
+            FLog.l(TAG, "onCreate() called with: shortcutApp = [" + shortcuPath + "]  shortcutApp = [" + shortcuPath + "]");
             fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
         }
     }
@@ -239,7 +240,7 @@ public class AppListActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         mayGetApps();
-        Log.d(TAG, "onResume");
+        FLog.l(TAG, "onResume");
         findViewById(R.id.et_appname).requestFocus();
     }
 
@@ -250,7 +251,7 @@ public class AppListActivity extends AppCompatActivity {
         } else if( screenWidth != globalWidth){
             screenWidth = globalWidth;
             screenHeight = globalHeight;
-            Log.d(TAG, "mayGetApps");
+            FLog.l(TAG, "mayGetApps");
             int count = Math.max(globalWidth / (int) DimenUtils.dpToPx(160.0f), 3);
             if(spanCount != count){
                 initAppList();
@@ -263,7 +264,7 @@ public class AppListActivity extends AppCompatActivity {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         checkConfig(newConfig);
-        Log.d(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
+        FLog.l(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
     }
 
     private void checkConfig(Configuration configuration){
@@ -315,7 +316,7 @@ public class AppListActivity extends AppCompatActivity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
 //        AppUtils.set("fde.click_as_touch", "false");
-        Log.d(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + "");
+        FLog.l(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + "");
         if(hasFocus){
             mayGetApps();
         }
@@ -344,12 +345,12 @@ public class AppListActivity extends AppCompatActivity {
             long nowTime = System.currentTimeMillis();
             if (nowTime - mLastClickTime < TIME_INTERVAL) {
                 // do something
-                Log.d(TAG, "onItemClick() click too quickly");
+                FLog.l(TAG, "onItemClick() click too quickly");
                 mLastClickTime = nowTime;
                 return;
             }
             mLastClickTime = nowTime;
-            Log.d(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
+            FLog.l(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
             if (isRight) {
                 showOptionView(itemView, app, event);
             } else {
@@ -477,7 +478,7 @@ public class AppListActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call call, Exception e) {
                         isLoading = false;
-                        Log.d(TAG, "onFailure() called with: call = [" + call + "], e = [" + e + "]");
+                        FLog.l(TAG, "onFailure() called with: call = [" + call + "], e = [" + e + "]");
                         mRecyclerView.loadMoreFinish(false, false);
                         mRefreshLayout.setRefreshing(false);
                     }
@@ -488,7 +489,7 @@ public class AppListActivity extends AppCompatActivity {
                             tipLoadDialog.dismiss();
                         }
                         isLoading = false;
-                        Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
+                        FLog.l(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
                         List<AppListResult.DataBeanX.DataBean> data = response.getData().getData();
                         if (fromShortcut) {
                             fromShortcut = false;
@@ -540,7 +541,7 @@ public class AppListActivity extends AppCompatActivity {
     }
 
     private void load2Start(AppListResult.DataBeanX.DataBean app, boolean finish) {
-//        Log.d(TAG, "load2Start: app:" + app + "");
+//        FLog.l(TAG, "load2Start: app:" + app + "");
         if (service == null || !service.isBinderAlive()) {
             showXserverReconnect(this);
             startXWindowService();

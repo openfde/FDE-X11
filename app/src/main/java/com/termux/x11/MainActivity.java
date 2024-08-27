@@ -357,7 +357,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onResume() {
         super.onResume();
-        setTerminalToolbarView();
         getWindow().getDecorView().postDelayed(()->{
             if(!correctMarked){
                 correctMarked = true;
@@ -376,7 +375,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        setTerminalToolbarView();
         FLog.a("lifecycle", getWindowId(), "onConfigurationChanged");
         if(!checkServiceExits()){
             return;
@@ -473,9 +471,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        String hexString = Long.toHexString(getWindowId());
         unregisterReceiver(receiver);
         unbindService(connection);
+        stopFloatViews();
         service = null;
         FLog.a("lifecycle", getWindowId(), "onDestroy");
         if(mClipboardManager != null){
@@ -525,7 +523,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if(content != null && !TextUtils.isEmpty(content) &&
                     !TextUtils.equals(content, mClipText) && checkServiceExits()){
                 mClipText = content.toString();
-                Log.d(TAG, "run cliptext:" + mClipText);
+                FLog.a("window", getWindowId(), "getClipText:" + mClipText);
                 try {
                     service.sendClipText(mClipText);
                 } catch (RemoteException e) {
@@ -539,7 +537,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         FLog.a("window", getWindowId(), "execInWindowManager");
         List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
         for (ActivityManager.RunningTaskInfo info: runningTasks){
-            if(checkServiceExits() && TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
+            if(TextUtils.equals(info.topActivity.getClassName(), getClass().getName())
+                    && checkServiceExits()){
                 Configuration configuration = info.configuration;
                 try {
                     checkConfigBeforeExec(configuration, false);
@@ -559,7 +558,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(configuration == null || !checkServiceExits()){
             return;
         }
-        FLog.a("window", getWindowId(), "checkConfigBeforeExec");
+        FLog.a("window", getWindowId(), "start checkConfigBeforeExec");
         this.mConfiguration = configuration;
 //        Log.d(TAG, "checkConfigBeforeExec: configuration:" + configuration. + ", newConfig:" + newConfig + "");
         Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
@@ -572,7 +571,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
 //            Log.d(TAG, "topMargin: " + topMargin);
             Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
-            Log.d(TAG, "checkConfigBeforeExec: rect:" + rect + ", newConfig:" + newConfig + "");
+            FLog.a("window", getWindowId(), "checkConfigBeforeExec configure:" + rect);
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
             if(service == null){
@@ -593,7 +592,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             String windowingMode = matcher.group(1);
             isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
             boolean isFreeform = TextUtils.equals(windowingMode, "freeform");
-            Log.d(TAG, "windowingMode: " + windowingMode);
+            FLog.a("window", getWindowId(), "windowingMode:" + windowingMode);
         }
         if (isFullscreen) {
             handler.postDelayed(() -> {
@@ -612,7 +611,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private void updateAttribueOnly(Rect rect) {
-        FLog.a("window", getWindowId(), "updateAttribueOnly");
+        FLog.a("window", getWindowId(), "updateAttribueOnly rect:" + rect);
         mWindowRect.set(rect);
         mAttribute.setRect(rect);
         getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
@@ -659,7 +658,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private void setDecorCaptionViewFocuseable(boolean focusable) {
-        FLog.a("window", getWindowId(), "setDecorCaptionViewFocuseable");
+        FLog.a("window", getWindowId(), "setDecorCaptionViewFocuseable:" + focusable);
         Window window = getWindow();
         ViewGroup decor = (ViewGroup) window.getDecorView();
         DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
@@ -689,7 +688,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             return;
         }
         if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
-            Log.d(TAG, "X_UNMODAL_ACTIVITY: ");
+            FLog.a("window", getWindowId(), "onReceiveMsg:" + message.getType().usefor);
             getWindow().clearFlags(FLAG_NOT_FOCUSABLE |
                     FLAG_NOT_TOUCHABLE);
         }
@@ -701,17 +700,25 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public synchronized void configureFromX() {
-        FLog.a("window", getWindowId(), "configureFromX");
+        FLog.a("window", getWindowId(), "configureFromX mConfigureRect:" + mConfigureRect);
         if(mConfigureRect != null){
             mAttribute.setRect(mConfigureRect);
             mWindowRect = mConfigureRect;
             Rect rect = mConfigureRect;
             if(isCaptionShowing()){
-                rect.top = mConfigureRect.top - (int)mDecorCaptionViewHeight;
+                rect.top = mConfigureRect.top - mDecorCaptionViewHeight;
             }
+            @SuppressLint("WrongConstant")
             ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
             taskManager.resizeTask(getTaskId(), rect);
             mConfigureRect = null;
+        }
+        if(checkServiceExits()){
+            try {
+                service.raiseWindow(mAttribute.getXID());
+            } catch (RemoteException e) {
+                Log.e(TAG, e.getMessage());
+            }
         }
     }
 
@@ -719,7 +726,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      *============================================ about X floatview ==================================================
      */
     private void addFloatView(WindowAttribute attr) {
-        FLog.a("float", getWindowId(), "addFloatView");
+        FLog.a("float", getWindowId(), "addFloatView attr:" + attr);
         View floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view,null,false);
         WindowManager.LayoutParams floatParams = createLayoutParams();
         floatWindow = createWindow( (int)attr.getOffsetX(),(int)attr.getOffsetY(),
@@ -785,7 +792,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
 
     private void stopFloatView(WindowAttribute attr) {
-        FLog.a("float", getWindowId(), "stopFloatView");
+        FLog.a("float", getWindowId(), "stopFloatView attr:" + attr);
         if(attr == null || mFloatViews.isEmpty()){
             return;
         }
@@ -794,6 +801,19 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             floatWindow.removeView(floatView);
         }
         mFloatViews.remove(floatView);
+    }
+
+    private void stopFloatViews() {
+        FLog.a("float", getWindowId(), "stopFloatViews");
+        for(Map.Entry set: mFloatViews.entrySet()){
+            View floatView = (View) set.getValue();
+            if(floatView.isAttachedToWindow()){
+                if(floatWindow != null){
+                    floatWindow.removeView(floatView);
+                }
+                mFloatViews.remove(floatView);
+            }
+        }
     }
 
 
@@ -808,7 +828,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     /**
-     *============================================ other  ==================================================
+     *============================================ about event  ==================================================
      */
     @SuppressLint("ClickableViewAccessibility")
     private void initStylusAuxButtons() {
@@ -902,7 +922,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     void onReceiveConnection() {
         try {
             if (service != null && service.asBinder().isBinderAlive()) {
-                Log.v("LorieBroadcastReceiver", "Extracting logcat fd.");
+                FLog.a("event", getWindowId(), "Extracting logcat fd.");
                 tryConnect();
             }
         } catch (Exception e) {
@@ -914,7 +934,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if (mClientConnected)
             return;
         try {
-            Log.v("LorieBroadcastReceiver", "Extracting X connection socket.");
+            FLog.a("event", getWindowId(), "tryConnect");
             ParcelFileDescriptor fd = service == null ? null : service.getXConnection();
             if (fd != null) {
                 LorieView.connect(fd.detachFd());
@@ -950,29 +970,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         return findViewById(R.id.terminal_toolbar_view_pager);
     }
 
-    private void setTerminalToolbarView() {
-        final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
-
-        terminalToolbarViewPager.setAdapter(new X11ToolbarViewPager.PageAdapter(this, (v, k, e) -> mInputHandler.sendKeyEvent(getLorieView(), e)));
-        terminalToolbarViewPager.addOnPageChangeListener(new X11ToolbarViewPager.OnPageChangeListener(this, terminalToolbarViewPager));
-
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean enabled = preferences.getBoolean("showAdditionalKbd", true);
-        boolean showNow = enabled && preferences.getBoolean("additionalKbdVisible", true);
-
-        terminalToolbarViewPager.setVisibility(showNow ? View.VISIBLE : View.GONE);
-//        findViewById(R.id.terminal_toolbar_view_pager).requestFocus();
-
-        handler.postDelayed(() -> {
-            if (mExtraKeys != null) {
-                ViewGroup.LayoutParams layoutParams = terminalToolbarViewPager.getLayoutParams();
-                layoutParams.height = Math.round(37.5f * getResources().getDisplayMetrics().density *
-                        (mExtraKeys.getExtraKeysInfo() == null ? 0 : mExtraKeys.getExtraKeysInfo().getMatrix().length));
-                terminalToolbarViewPager.setLayoutParams(layoutParams);
-            }
-        }, 200);
-    }
-
     public void toggleExtraKeys(boolean visible, boolean saveState) {
         runOnUiThread(() -> {
             SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -982,8 +979,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             boolean show = enabled && mClientConnected && visible;
 
             if (show) {
-                setTerminalToolbarView();
-//                getTerminalToolbarViewPager().bringToFront();
+
             } else {
                 parent.removeView(pager);
                 parent.addView(pager, 0);
@@ -995,7 +991,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 edit.commit();
             }
 
-            pager.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+            pager.setVisibility(View.GONE);
 
 //            getLorieView().requestFocus();
         });
@@ -1008,7 +1004,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     public boolean handleKey(KeyEvent e) {
-        Log.d(TAG, "handleKey: e:" + e + "");
+        FLog.a("event", getWindowId(), "handleKey: e:" + e);
         boolean filterOutWinKey = false;
         if (filterOutWinKey && (e.getKeyCode() == KEYCODE_META_LEFT || e.getKeyCode() == KEYCODE_META_RIGHT || e.isMetaPressed()))
             return false;
@@ -1021,14 +1017,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
-            String hexString = Long.toHexString(getWindowId());
-            TAG = "activity_receiver " + hexString;
             if (ACTION_START.equals(intent.getAction()) && service != null &&!mClientConnected) {
                 try {
                     Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
                         service = null;
                         Xserver.requestConnection();
-                        Log.v(TAG, "Disconnected");
+                        FLog.a("event", getWindowId(), "disconnect");
                         runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
                     }, 0);
                     onReceiveConnection();
@@ -1042,7 +1036,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
-                    Log.d(TAG, "onReceive: "  + DESTROY_ACTIVITY_FROM_X  + " attr:" + attr);
+                    FLog.a("event", getWindowId(), "onReceive: "  + "DESTROY_ACTIVITY_FROM_X"  + " attr:" + attr);
                     killSelf = true;
                     finish();
                     App.getApp().stopingActivityWindow.add(mAttribute.getXID());
@@ -1063,14 +1057,16 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                         && mProperty!=null && mProperty.getSupportDeleteWindow() == 1
 //                        && App.getApp().stopingActivityWindow.contains(attr.getWindowPtr())
                 ){
-                    Log.d(TAG, "onReceive: " + STOP_WINDOW_FROM_X + ", attr:" + attr + "");
+                    FLog.a("event", getWindowId(), "onReceive: "  +
+                            "STOP_WINDOW_FROM_X"  + " attr:" + attr);
                     finish();
                 }
             } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
-                    Log.d(TAG, "onReceive: " + MODALED_ACTION_ACTIVITY_FROM_X + ", property:" + property + "");
+                    FLog.a("event", getWindowId(), "onReceive: "  +
+                            "MODALED_ACTION_ACTIVITY_FROM_X"  + " property:" + property);
                     getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
 //                            |FLAG_NOT_TOUCHABLE
                     );
@@ -1079,7 +1075,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(attr != null ){
-                    Log.d(TAG, "onReceive: " + UNMODALED_ACTION_ACTIVITY_FROM_X + ", attr:" + attr + "");
+                    FLog.a("event", getWindowId(), "onReceive: "  +
+                            "UNMODALED_ACTION_ACTIVITY_FROM_X"  + " attr:" + attr);
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
 //                            |FLAG_NOT_TOUCHABLE
                     );
@@ -1096,28 +1093,31 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 }
             } else if(CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                Log.d(TAG, "onReceive:" + CONFIGURE_ACTIVITY_FROM_X+ "");
-                if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen
-                )
+                FLog.a("event", getWindowId(), "onReceive: "  +
+                        "CONFIGURE_ACTIVITY_FROM_X"  + " attr:" + attr);
+                if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen)
                 {
                     mConfigureRect = attr.getRect();
                     if(!mInputHandler.isTouching()){
                         configureFromX();
                     }
-//                    Log.d(TAG, "onReceive: mConfigureRect:" + mConfigureRect);
                 }
             } else if(START_VIEW_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 long transientfor = Objects.requireNonNull(prop).getTransientfor();
-                Log.d(TAG, "onReceive:" + START_VIEW_FROM_X + " attr:" + attr + " prop:" + prop);
-                if(transientfor == Objects.requireNonNull(mAttribute).getXID()){
+                long taskTo = Objects.requireNonNull(attr).getTaskTo();
+                FLog.a("event", getWindowId(), "onReceive: "  +
+                        "START_VIEW_FROM_X"  + " attr:" + attr + " prop:" + prop);
+                if(transientfor == Objects.requireNonNull(mAttribute).getXID()
+                 || taskTo == Objects.requireNonNull(mAttribute).getXID()){
                     addFloatView(attr);
                 }
             } else if(STOP_VIEW_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
-                Log.d(TAG, "onReceive:" + STOP_VIEW_FROM_X + " attr:" + attr + " prop:" + prop);
+                FLog.a("event", getWindowId(), "onReceive: "  +
+                        "STOP_VIEW_FROM_X"  + " attr:" + attr + " prop:" + prop);
                 stopFloatView(attr);
             }
         }
