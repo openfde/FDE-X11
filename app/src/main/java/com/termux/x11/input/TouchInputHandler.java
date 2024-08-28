@@ -317,11 +317,11 @@ public class TouchInputHandler {
 
     /** Moves the cursor to the specified position on the screen. */
     private void moveCursorToScreenPoint(float screenX, float screenY) {
-        if (mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy || mInputStrategy instanceof InputStrategyInterface.SimulatedTouchInputStrategy) {
-            float[] imagePoint = {screenX * mRenderData.scale.x, screenY * mRenderData.scale.y};
-            if (mRenderData.setCursorPosition(imagePoint[0], imagePoint[1]))
-                mInjector.sendCursorMove((int) imagePoint[0], imagePoint[1], false);
-        }
+//        if (mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy || mInputStrategy instanceof InputStrategyInterface.SimulatedTouchInputStrategy) {
+//            float[] imagePoint = {screenX * mRenderData.scale.x, screenY * mRenderData.scale.y};
+//            if (mRenderData.setCursorPosition(imagePoint[0], imagePoint[1]))
+//                mInjector.sendCursorMove((int) imagePoint[0], imagePoint[1], false);
+//        }
     }
 
     /** Processes a (multi-finger) swipe gesture. */

@@ -39,7 +39,7 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-#define PRINT_LOG 1
+#define PRINT_LOG 0
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);}
 
 static int argc = 0;
@@ -734,7 +734,7 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             case EVENT_TOUCH: {
                 double x, y;
                 DDXTouchPointInfoPtr touch = TouchFindByDDXID(lorieTouch, e.touch.id, FALSE);
-
+                log(ERROR, "EVENT_TOUCH ");
                 x = (float) e.touch.x * 0xFFFF /
                     (float) pScreenPtr->GetScreenPixmap(pScreenPtr)->drawable.width;
                 y = (float) e.touch.y * 0xFFFF /
@@ -761,6 +761,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
                                     e.touch.type, e.touch.id, e.touch.x, e.touch.y);
                 valuator_mask_set_double(&mask, 0, x);
                 valuator_mask_set_double(&mask, 1, y);
+//                log(ERROR, "EVENT_TOUCH button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
+//                    e.mouse.y);
                 QueueTouchEvents(lorieTouch, e.touch.type, e.touch.id, 0, &mask);
                 break;
             }

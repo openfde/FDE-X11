@@ -514,20 +514,25 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      */
     private void getClipText() {
         FLog.a("window", getWindowId(), "getClipText");
-        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()
-                && mClipboardManager.getPrimaryClip() != null
-                && mClipboardManager.getPrimaryClip().getItemCount() > 0) {
-            CharSequence content =
-                    mClipboardManager.getPrimaryClip().getItemAt(0).getText();
-            Log.d(TAG, "clip:content:" + content);
-            if(content != null && !TextUtils.isEmpty(content) &&
-                    !TextUtils.equals(content, mClipText) && checkServiceExits()){
-                mClipText = content.toString();
-                FLog.a("window", getWindowId(), "getClipText:" + mClipText);
-                try {
-                    service.sendClipText(mClipText);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
+
+        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()) {
+            ClipData clipData = mClipboardManager.getPrimaryClip();
+            if (clipData != null && clipData.getItemCount() > 0) {
+                ClipData.Item item = clipData.getItemAt(0);
+                if (item != null) {
+                    CharSequence content = item.getText();
+                    Log.d(TAG, "clip:content:" + content);
+
+                    if (content != null && !TextUtils.isEmpty(content) &&
+                            !TextUtils.equals(content, mClipText) && checkServiceExits()) {
+                        mClipText = content.toString();
+                        FLog.a("window", getWindowId(), "getClipText:" + mClipText);
+                        try {
+                            service.sendClipText(mClipText);
+                        } catch (RemoteException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
                 }
             }
         }

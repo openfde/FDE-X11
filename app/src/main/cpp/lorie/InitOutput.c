@@ -87,9 +87,8 @@ from The Open Group.
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
 
 #define PRINT_LOG 0
-#define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__);}              \
-
-#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_InitOutput", __VA_ARGS__);}               \
+#define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__);}
+#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_InitOutput", __VA_ARGS__);}
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 
@@ -119,11 +118,7 @@ typedef struct {
 
 int init_cusor;
 ScreenPtr pScreenPtr;
-WindowPtr separateWindowPtr1;
-WindowPtr separateWindowPtr2;
-PixmapPtr tempPixmap1;
-PixmapPtr tempPixmap2;
-static lorieScreenInfo lorieScreen = { .root.width = 1280, .root.height = 1024 };
+static lorieScreenInfo lorieScreen = { .root.width = 1920, .root.height = 1032 };
 static lorieScreenInfoPtr pvfb = &lorieScreen;
 static char *xstartup = NULL;
 static DevPrivateKeyRec loriePixmapPrivateKeyRec;
@@ -312,7 +307,7 @@ static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, Curs
 
     if (x0 >= 0 && y0 >= 0) {
         init_cusor++;
-        logh("lorieSetCursor x0:%d y0:%d", x0, y0);
+        logh("lorieSetCursor >=0 x0:%d y0:%d", x0, y0);
         if (init_cusor > 1) {
             lorieMoveCursor(NULL, NULL, x0, y0);
         }
