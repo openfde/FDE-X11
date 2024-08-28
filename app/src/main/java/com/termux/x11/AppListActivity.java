@@ -53,6 +53,7 @@ import android.widget.ProgressBar;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.fde.fusionwindowmanager.Property;
@@ -104,9 +105,11 @@ public class AppListActivity extends AppCompatActivity {
     private boolean isLoading;
 
     public IBinder service;
-    private EditText filterView;
 
-    private Handler handler = new Handler();
+    private AppListResult.DataBeanX.DataBean shortcutAppBean;
+
+    private final Handler handler = new Handler();
+    private FilterRunnable runnable;
 
     public interface ItemClickListener {
         void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event);
@@ -119,7 +122,7 @@ public class AppListActivity extends AppCompatActivity {
         com.xiaokun.dialogtiplib.util.AppUtils.init(this);
         loadingView = (ProgressBar) findViewById(R.id.loadingView);
         tipLoadDialog = new TipLoadDialog(this);
-        filterView = (EditText)findViewById(R.id.et_appname);
+        EditText filterView = (EditText) findViewById(R.id.et_appname);
         initAppList();
         Util.copyAssetsToFilesIfNedd(this, "xkb", "xkb");
         startXWindowService();
@@ -137,7 +140,6 @@ public class AppListActivity extends AppCompatActivity {
         filterView.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
             }
 
             @Override
@@ -148,15 +150,9 @@ public class AppListActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable s) {
                 FLog.l(TAG, "afterTextChanged: s:" + s + "");
-                handler.removeCallbacks(null);
-                handler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        if(mAdapter != null){
-                            mAdapter.filterAppName(s.toString());
-                        }
-                    }
-                }, 100);
+                handler.removeCallbacks(runnable);
+                runnable.setFilter(s.toString());
+                handler.postDelayed(runnable, 100);
             }
         });
 
@@ -165,8 +161,31 @@ public class AppListActivity extends AppCompatActivity {
             shortcuPath = (String)getIntent().getExtras().get("Path");
             FLog.l(TAG, "onCreate() called with: shortcutApp = [" + shortcuPath + "]  shortcutApp = [" + shortcuPath + "]");
             fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
+            shortcutAppBean = new AppListResult.DataBeanX.DataBean(shortcutApp, shortcuPath);
         }
     }
+
+    static class FilterRunnable implements Runnable{
+
+        AppAdapter adapter;
+        String filter;
+
+        public FilterRunnable(AppAdapter adapter){
+            this.adapter = adapter;
+        }
+
+        public void setFilter(String filter){
+            this.filter = filter;
+        }
+
+        @Override
+        public void run() {
+            if(adapter != null){
+                adapter.filterAppName(filter);
+            }
+        }
+    }
+
 
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
@@ -203,12 +222,13 @@ public class AppListActivity extends AppCompatActivity {
                     try {
                         Objects.requireNonNull(AppListActivity.this.service).linkToDeath(() -> {
                             AppListActivity.this.service = null;
-                            Log.v(TAG, "Disconnected");
+                            FLog.l(TAG, "Disconnected");
 //                            showXserverDisconnect(AppListActivity.this);
                         }, 0);
                     } catch (RemoteException e) {
                         e.printStackTrace();
                     }
+                    FLog.l(TAG, "onServiceConnected");
                     showXserverStartSuccess(AppListActivity.this);
                 }
 
@@ -300,14 +320,12 @@ public class AppListActivity extends AppCompatActivity {
         mRecyclerView.setLoadMoreListener(mLoadMoreListener); //
         mRecyclerView.setAutoLoadMore(true);
         mAdapter = new AppAdapter(this, mDataList, mItemClickListener);
+        runnable = new FilterRunnable(mAdapter);
         mRecyclerView.setAdapter(mAdapter);
         getAllLinuxApp(true, 1);
-        mRefreshLayout.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                globalWidth = mRefreshLayout.getMeasuredWidth();
-                globalHeight = mRefreshLayout.getMeasuredHeight();
-            }
+        mRefreshLayout.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            globalWidth = mRefreshLayout.getMeasuredWidth();
+            globalHeight = mRefreshLayout.getMeasuredHeight();
         });
     }
 
@@ -322,40 +340,27 @@ public class AppListActivity extends AppCompatActivity {
         }
     }
 
-    private SwipeRefreshLayout.OnRefreshListener mRefreshListener = new SwipeRefreshLayout.OnRefreshListener() {
-        @Override
-        public void onRefresh() {
-            getAllLinuxApp(true, 1);
-        }
-    };
+    private SwipeRefreshLayout.OnRefreshListener mRefreshListener = () -> getAllLinuxApp(true, 1);
 
-    private SwipeRecyclerView.LoadMoreListener mLoadMoreListener = new SwipeRecyclerView.LoadMoreListener() {
-        @Override
-        public void onLoadMore() {
-            getAllLinuxApp(false, mPage + 1);
-        }
-    };
+    private SwipeRecyclerView.LoadMoreListener mLoadMoreListener = () -> getAllLinuxApp(false, mPage + 1);
 
     private long mLastClickTime = 0;
     public static final long TIME_INTERVAL = 300L;
 
-    ItemClickListener mItemClickListener = new ItemClickListener() {
-        @Override
-        public void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event) {
-            long nowTime = System.currentTimeMillis();
-            if (nowTime - mLastClickTime < TIME_INTERVAL) {
-                // do something
-                FLog.l(TAG, "onItemClick() click too quickly");
-                mLastClickTime = nowTime;
-                return;
-            }
+    ItemClickListener mItemClickListener = (itemView, position, app, isRight, event) -> {
+        long nowTime = System.currentTimeMillis();
+        if (nowTime - mLastClickTime < TIME_INTERVAL) {
+            // do something
+            FLog.l(TAG, "onItemClick() click too quickly");
             mLastClickTime = nowTime;
-            FLog.l(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
-            if (isRight) {
-                showOptionView(itemView, app, event);
-            } else {
-                load2Start(app, false);
-            }
+            return;
+        }
+        mLastClickTime = nowTime;
+        FLog.l(TAG, "onItemClick() called with: itemView = [" + itemView + "], position = [" + position + "], app = [" + app + "], isRight = [" + isRight + "]");
+        if (isRight) {
+            showOptionView(itemView, app, event);
+        } else {
+            load2Start(app, false);
         }
     };
 
@@ -493,7 +498,7 @@ public class AppListActivity extends AppCompatActivity {
                         List<AppListResult.DataBeanX.DataBean> data = response.getData().getData();
                         if (fromShortcut) {
                             fromShortcut = false;
-                            gotoShortcutApp(data, true);
+                            startLinuxApp(shortcutAppBean, true);
                             return;
                         }
                         if (forceRefresh) {
@@ -518,7 +523,7 @@ public class AppListActivity extends AppCompatActivity {
             Intent launchIntentForPackage = new Intent(this, AppListActivity.class);
             launchIntentForPackage.setAction(Intent.ACTION_MAIN);
             launchIntentForPackage.putExtra("App", app.getName());
-            launchIntentForPackage.putExtra("Path", app.getName());
+            launchIntentForPackage.putExtra("Path", app.getPath());
             ShortcutInfo pinShortcutInfo = new ShortcutInfo.Builder(this, app.getName())
                     .setShortLabel(app.getName())
                     .setLongLabel(app.getName())
@@ -529,14 +534,6 @@ public class AppListActivity extends AppCompatActivity {
             PendingIntent successCallback = PendingIntent.getBroadcast(this, 0,
                     pinnedShortcutCallbackIntent, PendingIntent.FLAG_IMMUTABLE);
             shortcutManager.requestPinShortcut(pinShortcutInfo, successCallback.getIntentSender());
-        }
-    }
-
-    private void gotoShortcutApp(List<AppListResult.DataBeanX.DataBean> data, boolean finish) {
-        for (AppListResult.DataBeanX.DataBean bean : data){
-            if (TextUtils.equals(shortcutApp, bean.getName())){
-                load2Start(bean, finish);
-            }
         }
     }
 
@@ -557,6 +554,7 @@ public class AppListActivity extends AppCompatActivity {
 
 
     private void startLinuxApp(AppListResult.DataBeanX.DataBean app, boolean finish) {
+        FLog.l(TAG, "startLinuxApp: app:" + app + ", finish:" + finish + "");
         QuietOkHttp.post(BASEURL + URL_STARTAPP_X)
                 .setCallbackToMainUIThread(true)
                 .addParams("App", app.Name)

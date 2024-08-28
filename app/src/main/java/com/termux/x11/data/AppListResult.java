@@ -150,6 +150,11 @@ public class AppListResult implements Serializable {
             public String Name;
             public String ZhName;
 
+            public DataBean(String Name, String Path){
+                this.Name = Name;
+                this.Path = Path;
+            }
+
             @Override
             public String toString() {
                 return "DataBean{" +
