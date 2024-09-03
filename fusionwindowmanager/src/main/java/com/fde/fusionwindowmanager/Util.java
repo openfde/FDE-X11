@@ -43,16 +43,6 @@ public class Util {
         return c;
     }
 
-    public static void startActivityForWindow(long windowPtr) {
-//        Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
-//        Intent intent = new Intent(baseContext, MainActivity1.class);
-//        intent.putExtra("KEY_WindowPtr", windowPtr);
-//        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-//        baseContext.startActivity(intent);
-    }
-
-
-
     public static void copyAssetsToFilesIfNedd(Context context, String sourceDir, String targetDir) {
         AssetManager assetManager = context.getAssets();
         String[] files = null;
@@ -78,8 +68,8 @@ public class Util {
             }
 
             for (String filename : files) {
-                String sourceFile = sourceDir.equals("") ? filename : sourceDir + File.separator + filename;
-                String targetFile = targetDir.equals("") ? filename : targetDir + File.separator + filename;
+                String sourceFile = sourceDir.isEmpty() ? filename : sourceDir + File.separator + filename;
+                String targetFile = targetDir.isEmpty() ? filename : targetDir + File.separator + filename;
 
                 if (isAssetDirectory(assetManager, sourceFile)) {
                     copyAssetsToFilesIfNedd(context, sourceFile, targetFile);

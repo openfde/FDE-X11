@@ -84,7 +84,7 @@ public class Xserver {
     private static WeakReference<Service> context;
 
     public void startXserver() {
-        if (!start(ARGS_DEFAULT)) {
+        if (!start(ARGS_DEFAULT, FLog.LogXserverNativeEnable)) {
             FLog.s(TAG, "startXserver: failed", FLog.ERROR);
         }
         spawnListeningThread();
@@ -157,6 +157,8 @@ public class Xserver {
             case _NET_WM_WINDOW_TYPE_MENU:
             case _NET_WM_WINDOW_TYPE_TOOLTIP:
             case _NET_WM_WINDOW_TYPE_POPUP_MENU:
+            case _NET_WM_WINDOW_TYPE_COMBO:
+            default:
                 message = new EventMessage(EventType.X_START_VIEW,
                         "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, window, taskTo), new Property(aid, transientfor, leader, type, net_name, wm_class, support_wm_delete));
                 break;
@@ -309,7 +311,7 @@ public class Xserver {
         }).start();
     }
 
-    public static native boolean start(String[] args);
+    public static native boolean start(String[] args, boolean logEnable);
 
     public native void windowChanged(Surface surface, float offsetX, float offsetY,
                                      float width, float height, int index, long windPtr, long window);

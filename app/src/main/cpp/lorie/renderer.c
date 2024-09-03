@@ -19,7 +19,8 @@
 #include <globals.h>
 #include "c_interface.h"
 #include <android/log.h>
-#define PRINT_LOG 0
+extern Bool LOG_ENABLE;
+#define PRINT_LOG (1 && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__);}
 
@@ -1005,8 +1006,8 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
-    log("renderer_redraw_traversal eglSurface:%p index:%d width:%f height:%f id:%d", eglSurface,
-        index, width, height, id);
+    log("renderer_redraw_traversal eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+        index, width, height, attr->offset_x, attr->offset_y, id);
     glViewport(0, 0, width, height);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {

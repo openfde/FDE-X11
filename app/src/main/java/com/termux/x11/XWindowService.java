@@ -110,7 +110,7 @@ public class XWindowService extends Service {
         @Override
         public void configureWindow(long winPtr, long window, int x, int y, int w, int h) throws RemoteException {
             if(wm != null && wm.configureWindow(window, x, y, w, h) > 0){
-//                Log.d(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
+                Log.d(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
             }
         }
 

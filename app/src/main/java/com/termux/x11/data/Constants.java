@@ -46,5 +46,5 @@ public class Constants {
     public static final String SURFFIX_SVGZ = ".svgz";
     public static final String SURFFIX_PNG = ".png";
 
-    public static final String APP_TITLE_PREFIX = "Fusion Linux Application";
+    public static final String APP_TITLE_PREFIX = "FDE-X11";
 }

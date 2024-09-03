@@ -33,12 +33,16 @@ mutex WindowManager::wm_detected_mutex_;
 
 WindowManager::WindowManager(Display* display)
         : display_(display),
+          screen_(DefaultScreen(display)),
           root_(DefaultRootWindow(display_)),
           WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
           WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
           stoped(False)
-//          ,cliptext("\0")
-          {
+{
+    back_window = XCreateSimpleWindow(display_, root_, 0, 0, WIDTH, HEIGHT, 0,
+                                      BlackPixel(display, screen_), WhitePixel(display, screen_));
+    XMapWindow(display, back_window);
+    XSetWindowBackground(display, back_window, WhitePixel(display, screen_));
 }
 
 
@@ -296,7 +300,7 @@ void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
 
 void syncConfigureRequest(int x, int y, int w, int h, XID window){
     jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-         "syncConfigureRequest", "(IIIIJ)V");
+                                                    "syncConfigureRequest", "(IIIIJ)V");
     GlobalEnv->CallStaticVoidMethod(staticClass, method, x,y,w,h, window);
 }
 
@@ -618,7 +622,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         ssev.selection = sev->selection;
         ssev.target = sev->target;
         log(" cliptext 0");
-        if(cliptext != nullptr && std::strlen(cliptext) != 0){
+        if(clip_text != nullptr && std::strlen(clip_text) != 0){
 //            log("OnSelectionRequest cliptext:%s", cliptext);
             ssev.property = sev->property;
         } else {
@@ -642,12 +646,12 @@ void WindowManager::OnSelectionRequest(XEvent e) {
             return;
         }
         XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
-                        (unsigned char *)cliptext, strlen(cliptext));
+                        (unsigned char *)clip_text, strlen(clip_text));
         ssev.type = SelectionNotify;
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        if(cliptext != nullptr && std::strlen(cliptext) != 0){
+        if(clip_text != nullptr && std::strlen(clip_text) != 0){
 //            log("change property to cliptext:%s\n", cliptext);
             ssev.property = sev->property;
         } else {
@@ -685,9 +689,9 @@ void WindowManager::OnSelectionClear(XEvent e) {
         if (fmtid == incrid){
             log("Buffer is too large and INCR reading is not implemented yet.\n");
         } else {
-            cliptext = (char*)malloc(strlen(result) + 1);
-            if (cliptext != NULL) {
-                strcpy(cliptext, result);
+            clip_text = (char*)malloc(strlen(result) + 1);
+            if (clip_text != NULL) {
+                strcpy(clip_text, result);
             }
             log("%.*s \n", (int)ressize, result);
         }
@@ -775,9 +779,9 @@ void WindowManager::initCompositor() {
 }
 
 jint WindowManager::sendClipText(const char *string) {
-    cliptext = (char*)malloc(strlen(string) + 1);
-    if (cliptext != NULL) {
-        strcpy(cliptext, string);
+    clip_text = (char*)malloc(strlen(string) + 1);
+    if (clip_text != NULL) {
+        strcpy(clip_text, string);
     }
     return True;
 }

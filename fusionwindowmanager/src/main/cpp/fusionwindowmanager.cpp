@@ -4,7 +4,6 @@
 #include "include/X11/Xlib.h"
 #include <android/log.h>
 #include "include/window_manager.h"
-#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_native", __VA_ARGS__)
 WindowManager *window_manager;
 extern JavaVM *jniVM;
 extern JNIEnv *GlobalEnv;

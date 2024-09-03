@@ -209,6 +209,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 MainActivity.this.setTaskDescription(description);
             }
             setTitle(title);
+            FLog.a("lifecycle",getWindowId(), title);
             App.getApp().windowPropertyMap.put(mAttribute.getXID(), mProperty);
         }
     }
@@ -563,9 +564,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(configuration == null || !checkServiceExits()){
             return;
         }
+        //configuration:{1.0 ?mcc?mnc [zh_CN_#Hans] ldltr sw1080dp w1920dp h1031dp 160dpi xlrg long land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1032) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}, newConfig:true
         FLog.a("window", getWindowId(), "start checkConfigBeforeExec");
         this.mConfiguration = configuration;
-//        Log.d(TAG, "checkConfigBeforeExec: configuration:" + configuration. + ", newConfig:" + newConfig + "");
+        FLog.a("window", getWindowId(), "checkConfigBeforeExec: configuration:" + configuration + ", newConfig:" + newConfig + "");
         Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
         Matcher matcher = pattern.matcher(configuration.toString());
         if(matcher.find()){
@@ -673,7 +675,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             Method method = aClass.getMethod("isCaptionShowing");
             isCaptionShowing = (boolean) method.invoke(decorCaptionView);
             if(isCaptionShowing) {
-//                decorCaptionView.setOperateEnabled(focusable);
+                decorCaptionView.setOperateEnabled(focusable);
             }
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
                  InvocationTargetException e) {
@@ -1132,6 +1134,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            FLog.a("event", getWindowId(), "onServiceConnected");
             if(!killSelf){
                 MainActivity.this.service = ICmdEntryInterface.Stub.asInterface(service);
                 try {
@@ -1146,6 +1149,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            FLog.a("event", getWindowId(), "onServiceDisconnected");
             showXserverCloseOnDisconnect(MainActivity.this);
             finish();
         }

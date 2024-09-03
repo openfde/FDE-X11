@@ -17,6 +17,7 @@
     </queries>
 
     <application
+        android:persistent="true"
         android:name=".App"
         android:allowBackup="false"
         android:hardwareAccelerated="true"
@@ -61,8 +62,11 @@
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="stateHidden|adjustResize">
             <layout
-                android:minHeight="420dp"
-                android:minWidth="560dp" />
+                android:defaultHeight="760dp"
+                android:defaultWidth="920dp"
+                android:minHeight="540dp"
+                android:minWidth="480dp"
+                />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -116,7 +120,6 @@
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
             android:documentLaunchMode="always"
-            android:taskAffinity=".taskx11"
             android:windowSoftInputMode="stateHidden">
             <layout
                 android:minHeight="${MainActivityMinHeight}"
@@ -136,7 +139,6 @@
         </activity>
         <activity
             android:name=".LoriePreferences"
-            android:excludeFromRecents="true"
             android:exported="true"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="false"

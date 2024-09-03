@@ -25,6 +25,8 @@ static JNIEnv *GlobalEnv = NULL;
 static jobject bitmap = NULL;
 static jclass staticClass = NULL;
 
+#define WIDTH  1920
+#define HEIGHT 1080
 #define DECORCATIONVIEW_HEIGHT 42
 #define BASE_EVENT_MASK \
     SubstructureNotifyMask|\
@@ -38,21 +40,12 @@ static jclass staticClass = NULL;
     PropertyChangeMask|\
     ColormapChangeMask
 
-#define PRINT_LOG 0
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__);}              \
-
-#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_wm", __VA_ARGS__);}              \
-
+#define PRINT_LOG 1
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_wm", __VA_ARGS__);}
 #define PRINT_XERROR 0
-
-#define CHECK(condition)  \
-      if(condition){     \
-          log("#condition fatal"); \
-      }
-#define CHECK_EQ(val1, val2)  \
-      if(val1 != val2){     \
-          log("not equal");                \
-      }
+#define CHECK(condition)  if(condition){   log("#condition fatal");}
+#define CHECK_EQ(val1, val2)  if(val1 != val2){  log("not equal"); }
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -94,6 +87,8 @@ private:
     void Frame(Window w, bool was_created_before_window_manager);
     // Unframes a client window.
     void Unframe(Window w);
+    int screen_;
+    Window back_window;
 
     // Event handlers.
     void OnCreateNotify(const XCreateWindowEvent& e);
@@ -145,7 +140,7 @@ private:
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
     Window owner;
     Atom sel, utf8;
-    char * cliptext ="";
+    char * clip_text = "";
 
     // Atom constants.
     const Atom WM_PROTOCOLS;

@@ -5,6 +5,7 @@
 
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:layout_marginVertical="40dp"
         android:id="@+id/refresh_layout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -32,7 +33,7 @@
         android:paddingHorizontal="5dp"
         android:maxLength="18"
         android:inputType="textFilter"
-        android:layout_marginTop="80dp"
+        android:layout_marginTop="20dp"
         android:layout_marginHorizontal="12dp"
         android:layout_gravity="center_horizontal"
         android:drawablePadding="4dp"

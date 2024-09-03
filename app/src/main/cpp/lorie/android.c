@@ -38,8 +38,8 @@ const Atom _NET_WM_WINDOW_TYPE_NORMAL = 273;
 const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
-
-#define PRINT_LOG 0
+Bool LOG_ENABLE;
+#define PRINT_LOG (1 && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);}
 
 static int argc = 0;
@@ -82,19 +82,16 @@ bool IfRealizedWindow(WindowPtr widget);
 
 #define CHECK_WITH_PROP      if(!pWin){log(ERROR, "LOG_PROPERTIES pWin null");return;}\
                              if(!pWin->optional){log(ERROR, "LOG_PROPERTIES optional null");return;}\
-                             if(!pWin->optional->userProps){log(ERROR, "LOG_PROPERTIES userProps null");return;}                                  \
-
+                             if(!pWin->optional->userProps){log(ERROR, "LOG_PROPERTIES userProps null");return;}
 #define CHECK_CHILD     pWin = pWin->firstChild; CHECK_WITH_PROP
-
 #define STRCPY   char * atom_value = (char *)calloc(pProper->size + 1, sizeof(char));strncpy(atom_value, propData, pProper->size);
-
 #define STRING_EQUAL(str1, str2) (strcmp((str1), (str2)) == 0 ? 1 : 0)
 
 bool android_check_bounds(WindowPtr pWindow, WindAttribute *attr);
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1);
 
-void xserver_get_window_property(WindowPtr pWindow, WindProperty *aProperty);
+void xserver_get_window_property(WindowPtr pWindow, WindProperty *prop);
 
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
@@ -140,13 +137,13 @@ void android_destroy_window(Window window) {
         log(DEBUG,"android_destroy_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "destroy widget");
-//        Widget *widget = _surface_find_widget(sfWraper, window);
+        Widget *widget = _surface_find_widget(sfWraper, window);
 //        if(!widget->inbounds){
 //            android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
 //        }
-//        widget->discard = 1;
-//        glDeleteTextures(1, &widget->texture_id);
-//        _surface_remove_widget(sfWraper, window);
+        widget->discard = 1;
+        glDeleteTextures(1, &widget->texture_id);
+        _surface_remove_widget(sfWraper, window);
     }
 }
 
@@ -225,7 +222,7 @@ void android_redirect_window(WindowPtr pWin) {
                 .aProperty = aProperty
         };
         _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
-        android_create_window(windAttribute, aProperty,  0, false);
+        android_create_window(windAttribute, aProperty, 0, false);
         return;
     }
 }
@@ -268,99 +265,115 @@ void android_icon_convert_bitmap(int* data, int width, int height, WindProperty 
  }
 
 
-void xserver_get_window_property(WindowPtr pWin, WindProperty *pProperty) {
+void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
     CHECK_WITH_PROP;
     PropertyPtr pProper = pWin->optional->userProps;
-    unsigned char *propData = NULL;
-    pProperty->window = pWin->drawable.id;
+    unsigned char *propData;
+    prop->window = pWin->drawable.id;
     bool overrideRedirect = pWin->overrideRedirect;
+    log(ERROR, "prop start================================>");
+    log(ERROR, "prop window:%x realized:%d", pWin->drawable.id, pWin->realized);
+    log(ERROR, "prop window:%x overrideRedirect:%d", pWin->drawable.id, overrideRedirect);
     while (pProper) {
         ATOM name = pProper->propertyName;
         propData = pProper->data;
         if (STRING_EQUAL(NameForAtom(name), WINDOW_TYPE)) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
+                char* type = NameForAtom(atoms[i]);
+                log(ERROR, "prop window:%x type:%s", pWin->drawable.id, type);
                 if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
-                    pProperty->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+                    prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
                     if(!overrideRedirect){
                         break;
                     } else {
-                        pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                        prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
                     }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG) ) {
-                    pProperty->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
+                    prop->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
                     if(!overrideRedirect){
                         break;
                     } else {
-                        pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                        prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
                     }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_UTILITY)){
-                    pProperty->window_type = _NET_WM_WINDOW_TYPE_UTILITY;
+                    prop->window_type = _NET_WM_WINDOW_TYPE_UTILITY;
                     if(overrideRedirect){
                         break;
                     }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_POPUP)){
-                    pProperty->window_type = _NET_WM_WINDOW_TYPE_POPUP_MENU;
+                    prop->window_type = _NET_WM_WINDOW_TYPE_POPUP_MENU;
                     if(overrideRedirect){
                         break;
                     }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_MENU)){
-                    pProperty->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                    prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
                     if(overrideRedirect){
                         break;
                     }
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_TOOLTIP)){
-                    pProperty->window_type = _NET_WM_WINDOW_TYPE_TOOLTIP;
+                    prop->window_type = _NET_WM_WINDOW_TYPE_TOOLTIP;
                     if(overrideRedirect){
                         break;
                     }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_COMBO)){
+                    prop->window_type = _NET_WM_WINDOW_TYPE_COMBO;
+                    if(overrideRedirect){
+                        break;
+                    }
+                } else {
+                    prop->window_type = atoms[i];
                 }
-
-                const char *atomValue = NameForAtom(atoms[i]);
             }
-        } else if (STRING_EQUAL(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
-            pProperty->transient = ((Window *) propData)[0];
+        }
+        else if (STRING_EQUAL(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
+            prop->transient = ((Window *) propData)[0];
+            log(ERROR, "prop window:%x transient:%x", pWin->drawable.id, prop->transient);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLIENT_LEADER)) {
-            pProperty->leader = ((Window *) propData)[0];
+            prop->leader = ((Window *) propData)[0];
+            log(ERROR, "prop window:%x leader:%x", pWin->drawable.id, prop->leader);
         } else if (STRING_EQUAL(NameForAtom(name), NET_WINDOW_NAME)) {
             STRCPY;
-            pProperty->net_wm_name = atom_value;
-//            log(DEBUG, "%s:%s size:%d", NET_WINDOW_NAME, atom_value, pProper->size);
+            prop->net_wm_name = atom_value;
+            log(ERROR, "prop window:%x net_wm_name:%s", pWin->drawable.id, prop->net_wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)){
             STRCPY;
-            pProperty->wm_class = atom_value;
-//            log(DEBUG, "%s:%s size:%d", WINDOW_CLASS, atom_value, pProper->size);
+            prop->wm_class = atom_value;
+            log(ERROR, "prop window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             STRCPY;
-            pProperty->wm_name = atom_value;
-//            log(DEBUG, "%s:%s size:%d", WINDOW_NAME, atom_value, pProper->size);
+            prop->wm_name = atom_value;
+            log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
             int *icon_data = (int *)propData;
             int width = *icon_data;
             int height = *(icon_data+1);
             int * imageData = ( int*) (icon_data + 2);
-            android_icon_convert_bitmap(imageData, width, height, pProperty);
+            android_icon_convert_bitmap(imageData, width, height, prop);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_PROTOCOLS)) {
             Atom *atoms = (Atom *)propData;
             for (int i = 0; i < pProper->size; i++) {
                 if(STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_DELETE_WINDOW)){
-                    pProperty->support_wm_delete = TRUE;
+                    prop->support_wm_delete = TRUE;
                 }
+                log(ERROR, "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
             }
         }
         pProper = pProper->next;
     }
-    if(pProperty->window_type == 0){
-        pProperty->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+    if(prop->window_type == 0){
+        prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
     }
+    log(ERROR, "prop end================================>");
+
 }
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
     log(DEBUG, "check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
         x, y, w, h, x1, y1, w1, h1);
-    if(w < 30 || h < 30 ){
-        return TRUE;
-    }
+//    if(w < 30 && h < 30 ){
+//        return TRUE;
+//    }
     if (x < x1 || y < y1 || (x + w) > (x1 + w1) || (y + h) > (y1 + h1)) {
         return FALSE;
     }
@@ -387,7 +400,7 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop,  Window window) 
         GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
                                               pixmap->drawable.width,
                                               pixmap->drawable.height, pixmap->devPrivate.ptr, 0);
-        bool inBound = android_check_bounds(pWin, attr);
+        bool inBound = android_check_bounds(pWin, attr) && prop.window_type != _NET_WM_WINDOW_TYPE_DND;
         Widget widget = {
                 .texture_id = id,
                 .offset_x = pWin->drawable.x,
@@ -559,13 +572,13 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray args) {
+Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray args, jboolean  logEnable) {
     pthread_t t;
     JavaVM *vm = NULL;
     // execv's argv array is a bit incompatible with Java's String[], so we do some converting here...
     argc = (*env)->GetArrayLength(env, args) + 1; // Leading executable path
     argv = (char **) calloc(argc, sizeof(char *));
-
+    LOG_ENABLE = logEnable;
 
     JNIEnv *JavaEnv = env;
     JavaCmdEntryPointClass = (*JavaEnv)->NewGlobalRef(JavaEnv, thiz);
