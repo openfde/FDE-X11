@@ -520,7 +520,7 @@ public class AppListActivity extends AppCompatActivity {
         Icon icon = Icon.createWithBitmap(AppUtils.getScaledBitmap(decode, this));
         ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
         if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported()) {
-            Intent launchIntentForPackage = new Intent(this, AppListActivity.class);
+            Intent launchIntentForPackage = new Intent(this, ShortcutActivity.class);
             launchIntentForPackage.setAction(Intent.ACTION_MAIN);
             launchIntentForPackage.putExtra("App", app.getName());
             launchIntentForPackage.putExtra("Path", app.getPath());

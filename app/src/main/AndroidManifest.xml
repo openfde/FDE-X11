@@ -79,6 +79,21 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <activity android:name=".ShortcutActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:excludeFromRecents="true"
+            android:documentLaunchMode="always">
+            <layout
+                android:defaultHeight="1dp"
+                android:defaultWidth="1dp"
+                android:minHeight="1dp"
+                android:minWidth="1dp"
+                />
+        </activity>
+
+
         <activity
             android:name=".ControlActivity"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
