@@ -17,6 +17,6 @@ click FDE-X11 will show linux app list
 
 or
 
-on android adb: adb shell am startservice -n com.termux.x11/.XWindowService
+on android adb: adb shell am startservice -n com.fde.x11/.XWindowService
 on linux: export DISPLAY=:1000 && firefox
 

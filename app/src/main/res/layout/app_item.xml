@@ -14,7 +14,7 @@
      limitations under the License.
 -->
 
-<com.termux.x11.RightClickView
+<com.fde.x11.RightClickView
     android:id="@+id/entry"
     android:layout_width="@dimen/app_item_width"
     android:layout_height="140dp"
@@ -50,4 +50,4 @@
         />
 
 
-</com.termux.x11.RightClickView>
+</com.fde.x11.RightClickView>

@@ -2,8 +2,6 @@
 // Created by yang on 2024/4/18.
 //
 
-#ifndef TERMUX_X11_WINDOW_MANAGER_H
-#define TERMUX_X11_WINDOW_MANAGER_H
 #include "X11/Xlib.h"
 #include "X11/X.h"
 
@@ -154,4 +152,3 @@ private:
 };
 
 
-#endif //TERMUX_X11_WINDOW_MANAGER_H

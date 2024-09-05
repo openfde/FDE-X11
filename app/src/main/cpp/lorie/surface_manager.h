@@ -2,9 +2,6 @@
 // Created by yang on 2024/5/2.
 //
 
-#ifndef TERMUX_X11_SURFACE_MANAGER_H
-#define TERMUX_X11_SURFACE_MANAGER_H
-
 #include "window.h"
 #include "X11/X.h"
 #include <mutex>
@@ -79,4 +76,3 @@ private:
 };
 
 
-#endif //TERMUX_X11_SURFACE_MANAGER_H

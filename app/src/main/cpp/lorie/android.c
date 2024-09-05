@@ -572,7 +572,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray args, jboolean  logEnable) {
+Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray args, jboolean  logEnable) {
     pthread_t t;
     JavaVM *vm = NULL;
     // execv's argv array is a bit incompatible with Java's String[], so we do some converting here...
@@ -582,7 +582,7 @@ Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray
 
     JNIEnv *JavaEnv = env;
     JavaCmdEntryPointClass = (*JavaEnv)->NewGlobalRef(JavaEnv, thiz);
-    setenv("XKB_CONFIG_ROOT", "/data/data/com.termux.x11/files/xkb/", 1);
+    setenv("XKB_CONFIG_ROOT", "/data/data/com.fde.x11/files/xkb/", 1);
 
 
     argv[0] = (char *) "Xlorie";
@@ -705,7 +705,7 @@ Java_com_termux_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls,
+Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls,
                                           jobject surface, jfloat offsetX, jfloat offsetY,
                                           jfloat width, jfloat height, jint index,
                                           jlong windowPtr, jlong window) {
@@ -899,7 +899,7 @@ static Bool addFd(unused ClientPtr pClient, void *closure) {
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_termux_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
+Java_com_fde_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
     int client[2];
     jclass ParcelFileDescriptorClass = (*env)->FindClass(env, "android/os/ParcelFileDescriptor");
     jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
@@ -920,7 +920,7 @@ void *logcatThread(void *arg) {
 }
 
 JNIEXPORT jobject JNICALL
-Java_com_termux_x11_Xserver_getLogcatOutput(JNIEnv *env, unused jobject cls) {
+Java_com_fde_x11_Xserver_getLogcatOutput(JNIEnv *env, unused jobject cls) {
     jclass ParcelFileDescriptorClass = (*env)->FindClass(env, "android/os/ParcelFileDescriptor");
     jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
                                                   "(I)Landroid/os/ParcelFileDescriptor;");
@@ -937,7 +937,7 @@ Java_com_termux_x11_Xserver_getLogcatOutput(JNIEnv *env, unused jobject cls) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_termux_x11_Xserver_connected(__unused JNIEnv *env, __unused jclass clazz) {
+Java_com_fde_x11_Xserver_connected(__unused JNIEnv *env, __unused jclass clazz) {
     return conn_fd != -1;
 }
 
@@ -949,7 +949,7 @@ static inline void checkConnection(JNIEnv *env) {
 
     if ((retval = recv(conn_fd, &b, 1, MSG_PEEK)) <= 0 && errno != EAGAIN) {
         log(DEBUG, "recv %d %s", retval, strerror(errno));
-        jclass cls = (*env)->FindClass(env, "com/termux/x11/Xserver");
+        jclass cls = (*env)->FindClass(env, "com/fde/x11/Xserver");
         jmethodID method = !cls ? NULL : (*env)->GetStaticMethodID(env, cls, "requestConnection",
                                                                    "()V");
         if (method)
@@ -961,7 +961,7 @@ static inline void checkConnection(JNIEnv *env) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_connect(unused JNIEnv *env, unused jobject cls, jint fd) {
+Java_com_fde_x11_LorieView_connect(unused JNIEnv *env, unused jobject cls, jint fd) {
     conn_fd = fd;
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
     checkConnection(env);
@@ -971,7 +971,7 @@ Java_com_termux_x11_LorieView_connect(unused JNIEnv *env, unused jobject cls, ji
 static char clipboard[1024 * 1024] = {0};
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_handleXEvents(JNIEnv *env, maybe_unused jobject thiz) {
+Java_com_fde_x11_LorieView_handleXEvents(JNIEnv *env, maybe_unused jobject thiz) {
     checkConnection(env);
     if (conn_fd != -1) {
         char none;
@@ -1027,7 +1027,7 @@ Java_com_termux_x11_LorieView_handleXEvents(JNIEnv *env, maybe_unused jobject th
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_startLogcat(JNIEnv *env, unused jobject cls, jint fd) {
+Java_com_fde_x11_LorieView_startLogcat(JNIEnv *env, unused jobject cls, jint fd) {
     log(DEBUG, "Starting logcat with output to given fd");
 
     switch (fork()) {
@@ -1047,7 +1047,7 @@ Java_com_termux_x11_LorieView_startLogcat(JNIEnv *env, unused jobject cls, jint 
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_setClipboardSyncEnabled(unused JNIEnv *env, unused jobject cls,
+Java_com_fde_x11_LorieView_setClipboardSyncEnabled(unused JNIEnv *env, unused jobject cls,
                                                       jboolean enable) {
     if (conn_fd != -1) {
         lorieEvent e = {.clipboardSync = {.t = EVENT_CLIPBOARD_SYNC, .enable = enable}};
@@ -1057,7 +1057,7 @@ Java_com_termux_x11_LorieView_setClipboardSyncEnabled(unused JNIEnv *env, unused
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_sendWindowChange(unused JNIEnv *env, unused jobject cls, jint width,
+Java_com_fde_x11_LorieView_sendWindowChange(unused JNIEnv *env, unused jobject cls, jint width,
                                                jint height, jint framerate) {
     if (conn_fd != -1) {
         lorieEvent e = {.screenSize = {.t = EVENT_SCREEN_SIZE, .width = width, .height = height, .framerate = framerate}};
@@ -1067,7 +1067,7 @@ Java_com_termux_x11_LorieView_sendWindowChange(unused JNIEnv *env, unused jobjec
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls, jfloat x,
+Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls, jfloat x,
                                              jfloat y, jint which_button, jboolean button_down,
                                              jboolean relative, jint index) {
     if (conn_fd != -1) {
@@ -1078,7 +1078,7 @@ Java_com_termux_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject 
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_sendTouchEvent(unused JNIEnv *env, unused jobject cls, jint action,
+Java_com_fde_x11_LorieView_sendTouchEvent(unused JNIEnv *env, unused jobject cls, jint action,
                                              jint id, jint x, jint y) {
     if (conn_fd != -1 && action != -1) {
         lorieEvent e = {.touch = {.t = EVENT_TOUCH, .type = action, .id = id, .x = x, .y = y}};
@@ -1088,7 +1088,7 @@ Java_com_termux_x11_LorieView_sendTouchEvent(unused JNIEnv *env, unused jobject 
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_termux_x11_LorieView_sendKeyEvent(unused JNIEnv *env, unused jobject cls, jint scan_code,
+Java_com_fde_x11_LorieView_sendKeyEvent(unused JNIEnv *env, unused jobject cls, jint scan_code,
                                            jint key_code, jboolean key_down) {
     if (conn_fd != -1) {
         int code = (scan_code) ?: android_to_linux_keycode[key_code];
@@ -1101,7 +1101,7 @@ Java_com_termux_x11_LorieView_sendKeyEvent(unused JNIEnv *env, unused jobject cl
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_sendTextEvent(JNIEnv *env, unused jobject thiz, jbyteArray text) {
+Java_com_fde_x11_LorieView_sendTextEvent(JNIEnv *env, unused jobject thiz, jbyteArray text) {
     if (conn_fd != -1 && text) {
         jsize length = (*env)->GetArrayLength(env, text);
         jbyte *str = (*env)->GetByteArrayElements(env, text, JNI_FALSE);
@@ -1136,7 +1136,7 @@ Java_com_termux_x11_LorieView_sendTextEvent(JNIEnv *env, unused jobject thiz, jb
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_LorieView_sendUnicodeEvent(JNIEnv *env, unused jobject thiz, jint code) {
+Java_com_fde_x11_LorieView_sendUnicodeEvent(JNIEnv *env, unused jobject thiz, jint code) {
     if (conn_fd != -1) {
         log(DEBUG, "Sending unicode event: %lc (U+%X)", code, code);
         lorieEvent e = {.unicode = {.t = EVENT_UNICODE, .code = code}};
@@ -1176,7 +1176,7 @@ static void *stderrToLogcatThread(unused void *cookie) {
 
 __attribute__((constructor)) static void init(void) {
     pthread_t t;
-    if (!strcmp("com.termux.x11", __progname))
+    if (!strcmp("com.fde.x11", __progname))
         pthread_create(&t, NULL, stderrToLogcatThread, NULL);
 }
 
@@ -1185,7 +1185,7 @@ bool IfRealizedWindow(WindowPtr widget) {
 }
 
 JNIEXPORT void JNICALL
-Java_com_termux_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window) {
+Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window) {
     log(DEBUG, "tellFocusWindow window:%lx", window);
     focusWindow = window;
 

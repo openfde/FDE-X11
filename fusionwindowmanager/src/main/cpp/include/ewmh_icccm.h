@@ -2,8 +2,6 @@
 //// Created by yang on 2024/5/11.
 ////
 //
-//#ifndef TERMUX_X11_EWMH_ICCCM_H
-//#define TERMUX_X11_EWMH_ICCCM_H
 //
 //const Atom WM_COMMAND = 34
 //const Atom WM_HINTS = 35

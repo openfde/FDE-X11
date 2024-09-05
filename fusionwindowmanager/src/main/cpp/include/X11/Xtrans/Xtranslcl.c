@@ -213,7 +213,7 @@ TRANS(FillAddrInfo)(XtransConnInfo ciptr,
 #ifndef X11_t
 #define X_STREAMS_DIR	"/dev/X"
 #else
-#define X_STREAMS_DIR	"/data/data/com.termux/files/usr/tmp/.X11-pipe"
+#define X_STREAMS_DIR	"/data/data/com.fde/files/usr/tmp/.X11-pipe"
 #endif
 
 #define DEV_PTMX	"/dev/ptmx"

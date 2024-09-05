@@ -599,10 +599,8 @@ void WindowManager::Run() {
 
 void WindowManager::OnSelectionRequest(XEvent e) {
     XSelectionRequestEvent *sev = (XSelectionRequestEvent*)&e.xselectionrequest;
+    log("OnSelectionRequest start-------->");
     log("OnSelectionRequest owner:%lx requestor:%lx ", sev->owner, sev->requestor);
-//    if(sev->requestor == root_){
-//        return;
-//    }
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
     Atom targets = XInternAtom(display_, "TARGETS", False);
@@ -621,7 +619,6 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        log(" cliptext 0");
         if(clip_text != nullptr && std::strlen(clip_text) != 0){
 //            log("OnSelectionRequest cliptext:%s", cliptext);
             ssev.property = sev->property;
@@ -661,43 +658,44 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
     }
+    log("OnSelectionRequest  end-------->");
 }
 
 void WindowManager::OnSelectionClear(XEvent e) {
+    log("OnSelectionClear start--------->\n");
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
 
     char *result;
     unsigned long ressize, restail;
     int resbits;
-    Atom bufid = XInternAtom(display_, "CLIPBOARD", False),
-            fmtid = XInternAtom(display_, "UTF8_STRING", False),
-            propid = XInternAtom(display_, "XSEL_DATA", False),
+    Atom  propid = XInternAtom(display_, "XSEL_DATA", False),
             incrid = XInternAtom(display_, "INCR", False);
     XEvent event;
-    XConvertSelection(display_, bufid, fmtid, propid, owner, CurrentTime);
+    XConvertSelection(display_, sel, utf8, propid, owner, CurrentTime);
     do {
         XNextEvent(display_, &event);
-        log("OnSelectionClear event.tpe:%d", event.type);
-    } while (event.type != SelectionNotify || event.xselection.selection != bufid);
+        log("OnSelectionClear event.tpe:%d selection:%s", event.type, XGetAtomName(display_, event.xselection.selection));
+    } while (event.type != SelectionNotify || event.xselection.selection != sel);
 
     if (event.xselection.property)
     {
-        log("OnSelectionClear 1");
+        log("OnSelectionClear property:%s", XGetAtomName(display_, event.xselection.property));
         XGetWindowProperty(display_, owner, propid, 0, LONG_MAX/4, False, AnyPropertyType,
-                           &fmtid, &resbits, &ressize, &restail, (unsigned char**)&result);
-        if (fmtid == incrid){
+                           &utf8, &resbits, &ressize, &restail, (unsigned char**)&result);
+        if (utf8 == incrid){
             log("Buffer is too large and INCR reading is not implemented yet.\n");
         } else {
             clip_text = (char*)malloc(strlen(result) + 1);
             if (clip_text != NULL) {
                 strcpy(clip_text, result);
             }
+            log("OnSelectionClear result:%s", result);
             log("%.*s \n", (int)ressize, result);
         }
         XFree(result);
     }
-    log("OnSelectionClear:\n");
+    log("OnSelectionClear  end------->\n");
     XSetSelectionOwner(display_, sel, owner, CurrentTime);
 }
 

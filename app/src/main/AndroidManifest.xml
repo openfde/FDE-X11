@@ -12,10 +12,6 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <queries>
-        <package android:name="com.termux" />
-    </queries>
-
     <application
         android:persistent="true"
         android:name=".App"
@@ -179,29 +175,6 @@
             android:exported="true">
         </service>
 
-        <service
-            android:name=".utils.KeyInterceptor"
-            android:exported="true"
-            android:label="Termux:X11 KeyInterceptor"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service_config" />
-        </service>
-
-        <receiver
-            android:name=".LoriePreferences$Receiver"
-            android:enabled="true"
-            android:exported="true"
-            tools:ignore="ExportedReceiver">
-            <intent-filter>
-                <action android:name="com.termux.x11.CHANGE_PREFERENCE" />
-            </intent-filter>
-        </receiver>
     </application>
 
 </manifest>
