@@ -33,7 +33,7 @@ public class Constants {
 
     public static final String URL_STARTAPP_X = "/api/v1/xserver";
 
-    public static final int DISPLAY_GLOBAL =  1000;
+    public static final int DISPLAY_GLOBAL =  1001;
     public static final String DISPLAY_GLOBAL_PARAM = ":" + DISPLAY_GLOBAL;
 
 

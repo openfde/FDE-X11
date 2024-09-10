@@ -89,7 +89,7 @@ from The Open Group.
 extern Bool LOG_ENABLE;
 #define PRINT_LOG (1 && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__);}
-#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_InitOutput", __VA_ARGS__);}
+#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "huyang_InitOutput", __VA_ARGS__);}
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 
@@ -308,7 +308,7 @@ static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, Curs
 
     if (x0 >= 0 && y0 >= 0) {
         init_cusor++;
-        logh("lorieSetCursor >=0 x0:%d y0:%d", x0, y0);
+//        logh("lorieSetCursor >=0 x0:%d y0:%d", x0, y0);
         if (init_cusor > 1) {
             lorieMoveCursor(NULL, NULL, x0, y0);
         }
@@ -706,8 +706,8 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
         res->pWin = pScreenPtr->root;
     }
     init_cusor = 0;
-    logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
-         pvfb->root.buffer, res->id, surface);
+//    logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
+//         pvfb->root.buffer, res->id, surface);
     renderer_set_window_each(pvfb->env, res, pvfb->root.buffer);
 //    renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
     lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
@@ -851,11 +851,14 @@ static Atom xaCLIPBOARD = 0, xaTARGETS = 0, xaSTRING = 0, xaUTF8_STRING = 0;
 static Bool clipboardEnabled = FALSE;
 
 void lorieEnableClipboardSync(Bool enable) {
+    logh("lorieEnableClipboardSync enable:%d", enable);
     clipboardEnabled = enable;
 }
 
 static void lorieSelectionRequest(Atom selection, Atom target) {
     Selection *pSel;
+    log(DEBUG, "lorieSelectionRequest selection:%s target:%s \n", NameForAtom(selection),
+        NameForAtom(target));
 
     if (clipboardEnabled && dixLookupSelection(&pSel, selection, serverClient, DixGetAttrAccess) == Success) {
         xEvent event = {0};
@@ -933,6 +936,11 @@ static void lorieHandleSelection(Atom target) {
     log(DEBUG, "Selection notification for CLIPBOARD (target %s, type %s)\n", NameForAtom(target), NameForAtom(prop->type));
 
     if (target == xaTARGETS && prop->type == XA_ATOM && prop->format == 32) {
+        Atom *list = (const Atom*)prop->data;
+        for (size_t i = 0; i < prop->size; i++){
+            log(ERROR, "list selection:%s", NameForAtom(list[i]));
+        }
+
         if (lorieHasAtom(xaUTF8_STRING, (const Atom*)prop->data, prop->size))
             lorieSelectionRequest(xaCLIPBOARD, xaUTF8_STRING);
         else if (lorieHasAtom(xaSTRING, (const Atom*)prop->data, prop->size))
@@ -947,7 +955,7 @@ static void lorieHandleSelection(Atom target) {
 
         lorieConvertLF(prop->data,  filtered, prop->size);
         lorieLatin1ToUTF8((unsigned char*) utf8, (unsigned char*) filtered);
-        log(DEBUG, "Sending clipboard to clients (%zu bytes)\n", strlen(utf8));
+        log(DEBUG, "Sending clipboard to clients astring (%zu bytes)\n", strlen(utf8));
         lorieSendClipboardData(utf8);
     } else if (target == xaUTF8_STRING && prop->type == xaUTF8_STRING && prop->format == 8) {
         char filtered[prop->size + 1];
@@ -960,7 +968,7 @@ static void lorieHandleSelection(Atom target) {
         memset(filtered, 0, prop->size + 1);
         lorieConvertLF(prop->data, filtered, prop->size);
 
-        log(DEBUG, "Sending clipboard to clients (%zu bytes)\n", strlen(filtered));
+        log(DEBUG, "Sending clipboard to clients utf8 (%zu bytes) \n", strlen(filtered));
         lorieSendClipboardData(filtered);
     }
 }

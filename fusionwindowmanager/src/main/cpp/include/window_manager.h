@@ -44,6 +44,7 @@ static jclass staticClass = NULL;
 #define PRINT_XERROR 0
 #define CHECK(condition)  if(condition){   log("#condition fatal");}
 #define CHECK_EQ(val1, val2)  if(val1 != val2){  log("not equal"); }
+#define CLIPMANAGER_ENABLE 1
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -138,9 +139,11 @@ private:
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
     Window owner;
     Atom sel, utf8;
-    char * clip_text = "";
+    std::string clip_text;
+    Atom * selection_property_list ;
+    int selection_property_size;
 
-    // Atom constants.
+    // selection_property_size
     const Atom WM_PROTOCOLS;
     const Atom WM_DELETE_WINDOW;
 
@@ -149,6 +152,10 @@ private:
     void OnSelectionClear(XEvent event);
 
     void OnSelectionRequest(XEvent event);
+
+    void ConvertAllTarget();
+
+    void UpdateXserverCliptext(const char *data);
 };
 
 

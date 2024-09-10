@@ -237,6 +237,9 @@ public class LorieView extends SurfaceView implements InputStub {
     public native void sendTextEvent(byte[] text);
     public native void sendUnicodeEvent(int code);
 
+    public native void sendClipText(String cliptext);
+
+
     static {
         System.loadLibrary("Xlorie");
     }

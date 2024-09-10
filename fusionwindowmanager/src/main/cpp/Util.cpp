@@ -26,6 +26,44 @@ using ::std::vector;
 using ::std::pair;
 using ::std::ostringstream;
 
+
+int is_valid_utf8(const char *string) {
+    if (!string)
+        return 0;
+
+    const unsigned char *bytes = (const unsigned char *)string;
+    while (*bytes) {
+        if ((bytes[0] == 0x99) ||
+            (bytes[0] == 0xC0 || bytes[0] == 0xC1) ||
+            (bytes[0] >= 0xF5))
+            return 0;
+
+        // More checks for UTF-8 validity
+        if ((bytes[0] & 0x80) == 0x00) {
+            // ASCII byte
+            bytes += 1;
+        } else if ((bytes[0] & 0xE0) == 0xC0) {
+            // 2-byte sequence
+            if ((bytes[1] & 0xC0) != 0x80)
+                return 0;
+            bytes += 2;
+        } else if ((bytes[0] & 0xF0) == 0xE0) {
+            // 3-byte sequence
+            if ((bytes[1] & 0xC0) != 0x80 || (bytes[2] & 0xC0) != 0x80)
+                return 0;
+            bytes += 3;
+        } else if ((bytes[0] & 0xF8) == 0xF0) {
+            // 4-byte sequence
+            if ((bytes[1] & 0xC0) != 0x80 || (bytes[2] & 0xC0) != 0x80 || (bytes[3] & 0xC0) != 0x80)
+                return 0;
+            bytes += 4;
+        } else {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 string ToString(const XEvent& e) {
     static const char* const X_EVENT_TYPE_NAMES[] = {
             "",

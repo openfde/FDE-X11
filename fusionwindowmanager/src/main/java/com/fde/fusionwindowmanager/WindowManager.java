@@ -3,6 +3,8 @@ package com.fde.fusionwindowmanager;
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -11,6 +13,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 
@@ -108,6 +111,16 @@ public class WindowManager  {
         Log.d(TAG, "syncConfigureRequest: x:" + x + ", y:" + y + ", width:" + width + ", height:" + height + ", window:" + window + "");
         EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
         EventBus.getDefault().post(message);
+    }
+
+    //called from native code
+    public static void updateXserverCliptext(String text){
+        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
+        if(contextReference.get() != null && !TextUtils.isEmpty(text)){
+            ClipData mClipData = ClipData.newPlainText("x11", text);
+            android.content.ClipboardManager mClipboardManager = (ClipboardManager) contextReference.get().getSystemService(Context.CLIPBOARD_SERVICE);
+            mClipboardManager.setPrimaryClip(mClipData);
+        }
     }
 
     public static void saveBitmapToFile(Bitmap bitmap, String filePath) {

@@ -93,6 +93,8 @@ bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1);
 
 void xserver_get_window_property(WindowPtr pWindow, WindProperty *prop);
 
+void updateClipText(const char *text);
+
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
         return NULL;
@@ -522,7 +524,7 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
 }
 
 typedef enum {
-    EVENT_SCREEN_SIZE, EVENT_TOUCH, EVENT_MOUSE, EVENT_KEY, EVENT_UNICODE, EVENT_CLIPBOARD_SYNC
+    EVENT_SCREEN_SIZE, EVENT_TOUCH, EVENT_MOUSE, EVENT_KEY, EVENT_UNICODE, EVENT_CLIPBOARD_SYNC, EVENT_CLIPBOARD_TEXT
 } eventType;
 typedef union {
     uint8_t type;
@@ -552,6 +554,10 @@ typedef union {
         uint8_t t;
         uint8_t enable;
     } clipboardSync;
+    struct {
+        uint8_t t;
+        const char* text;
+    } cliptext;
 } lorieEvent;
 
 
@@ -835,8 +841,14 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             case EVENT_CLIPBOARD_SYNC:
                 lorieEnableClipboardSync(e.clipboardSync.enable);
                 break;
+            case EVENT_CLIPBOARD_TEXT:
+                updateClipText(e.cliptext.text);
+                break;
         }
     }
+}
+
+void updateClipText(const char *text) {
 }
 
 
@@ -1144,6 +1156,20 @@ Java_com_fde_x11_LorieView_sendUnicodeEvent(JNIEnv *env, unused jobject thiz, ji
         checkConnection(env);
     }
 }
+
+
+JNIEXPORT void JNICALL
+Java_com_fde_x11_LorieView_sendClipText(JNIEnv *env, unused jobject thiz, jstring text) {
+    if (conn_fd != -1) {
+        jboolean isCopy = false;
+        const char* content = (*env)->GetStringUTFChars(env, text, &isCopy);
+        log(DEBUG, "Sending text event: %s", content);
+        lorieEvent e = {.cliptext = {.t = EVENT_CLIPBOARD_TEXT, .text = content}};
+        write(conn_fd, &e, sizeof(e));
+        checkConnection(env);
+    }
+}
+
 
 void abort(void) {
     _exit(134);

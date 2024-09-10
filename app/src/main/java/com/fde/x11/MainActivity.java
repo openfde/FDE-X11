@@ -31,6 +31,7 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -516,11 +517,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()) {
             ClipData clipData = mClipboardManager.getPrimaryClip();
             if (clipData != null && clipData.getItemCount() > 0) {
+                String label = clipData.getDescription().getLabel().toString();
                 ClipData.Item item = clipData.getItemAt(0);
                 if (item != null) {
                     CharSequence content = item.getText();
-                    Log.d(TAG, "clip:content:" + content);
-
+                    FLog.a("window", getWindowId(), "clip:content:" + content + " label:" + label);
                     if (content != null && !TextUtils.isEmpty(content) &&
                             !TextUtils.equals(content, mClipText) && checkServiceExits()) {
                         mClipText = content.toString();
@@ -672,7 +673,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             Method method = aClass.getMethod("isCaptionShowing");
             isCaptionShowing = (boolean) method.invoke(decorCaptionView);
             if(isCaptionShowing) {
-                decorCaptionView.setOperateEnabled(focusable);
+//                decorCaptionView.setOperateEnabled(focusable);
             }
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
                  InvocationTargetException e) {
@@ -944,7 +945,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 LorieView.connect(fd.detachFd());
                 getLorieView().triggerCallback();
                 clientConnectedStateChanged(true);
-                LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
+//                LorieView.setClipboardSyncEnabled(true);
+//                LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
             }
         } catch (Exception e) {
             Log.e(TAG, "Something went wrong while we were establishing connection", e);

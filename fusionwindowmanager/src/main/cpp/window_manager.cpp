@@ -21,7 +21,7 @@ mutex WindowManager::wm_detected_mutex_;
     staticClass = cls;
     GlobalEnv = env;
 //    char * display_str= std::strcat(export_display)
-    Display* display = XOpenDisplay("unix:/tmp/.X11-unix/X1000");
+    Display* display = XOpenDisplay("unix:/tmp/.X11-unix/X1001");
     if (display == nullptr) {
         log("Failed to open X display");
         return nullptr;
@@ -523,11 +523,13 @@ void WindowManager::Run() {
     //   e. Ungrab X server.
     XUngrabServer(display_);
 
-    owner = XCreateSimpleWindow(display_, root_, -10, -10, 1, 1, 0, 0, 0);
-    log("owner:%x", owner);
-    sel = XInternAtom(display_, "CLIPBOARD", False);
-//    utf8 = XInternAtom(display_, "UTF8_STRING", False);
-    XSetSelectionOwner(display_, sel, owner, CurrentTime);
+    if(CLIPMANAGER_ENABLE){
+        owner = XCreateSimpleWindow(display_, root_, -10, -10, 1, 1, 0, 0, 0);
+        log("owner:%x", owner);
+        sel = XInternAtom(display_, "CLIPBOARD", False);
+        utf8 = XInternAtom(display_, "UTF8_STRING", False);
+        XSetSelectionOwner(display_, sel, owner, CurrentTime);
+    }
 
     // 2. Main event loop.
     while (!stoped) {
@@ -584,10 +586,14 @@ void WindowManager::Run() {
                 OnPropertyNotify(e);
                 break;
             case SelectionClear:
-                OnSelectionClear(e);
+                if(CLIPMANAGER_ENABLE){
+                    OnSelectionClear(e);
+                }
                 break;
             case SelectionRequest:
-                OnSelectionRequest(e);
+                if(CLIPMANAGER_ENABLE){
+                    OnSelectionRequest(e);
+                }
                 break;
             default:
                 break;
@@ -604,36 +610,38 @@ void WindowManager::OnSelectionRequest(XEvent e) {
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
     Atom targets = XInternAtom(display_, "TARGETS", False);
-    log("OnSelectionRequest target:%s", XGetAtomName(display_, sev->target));
+    log("OnSelectionRequest target:%s property:%s", XGetAtomName(display_, sev->target), XGetAtomName(display_, sev->property));
     if(sev->target == targets){
-        Atom types[2] = { targets, utf8 };
-        XChangeProperty(display_,
-                        sev->requestor,
-                        sev->property,
-                        XA_ATOM,
-                        32, PropModeReplace, (unsigned char *) types,
-                        (int) (sizeof(types) / sizeof(Atom))
-        );
+        if(selection_property_size != 0){
+            XChangeProperty(display_,
+                            sev->requestor,
+                            sev->property,
+                            XA_ATOM,
+                            32, PropModeReplace, (unsigned char *) selection_property_list,
+                            selection_property_size
+            );
+        } else {
+            Atom types[2] = { targets, utf8 };
+            XChangeProperty(display_,
+                            sev->requestor,
+                            sev->property,
+                            XA_ATOM,
+                            32, PropModeReplace, (unsigned char *) types,
+                            (int) (sizeof(types) / sizeof(Atom))
+            );
+        }
         XSelectionEvent ssev;
         ssev.type = SelectionNotify;
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        if(clip_text != nullptr && std::strlen(clip_text) != 0){
-//            log("OnSelectionRequest cliptext:%s", cliptext);
-            ssev.property = sev->property;
-        } else {
-            ssev.property = None;
-        }
+        ssev.property = sev->property;
         ssev.time = sev->time;
         XSendEvent(display_, sev->requestor, 0, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
     } else {
         XSelectionEvent ssev;
-        time_t now_tm;
-        char *now, *an;
-        now_tm = time(NULL);
-        now = ctime(&now_tm);
+        char *an;
         an = XGetAtomName(display_, sev->property);
         log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, an);
         if (!an){
@@ -642,18 +650,29 @@ void WindowManager::OnSelectionRequest(XEvent e) {
             XFlush(display_);
             return;
         }
-        XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
-                        (unsigned char *)clip_text, strlen(clip_text));
+        Atom actual_type;
+        int actual_format;
+        unsigned long nitems, bytes_after;
+        unsigned char *data = NULL;
+        XGetWindowProperty(display_, owner, sev->target, 0, (~0L), False, AnyPropertyType,
+                           &actual_type, &actual_format, &nitems, &bytes_after, &data);
+        log("data :%s actual_format:%d data:%s nitems:%lu",
+            XGetAtomName(display_, sev->target), actual_format, data, nitems);
+        if(selection_property_size == 0 ){
+            unsigned char * text = (unsigned char *)clip_text.c_str();
+            XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
+                            text, clip_text.length());
+        } else {
+            XChangeProperty(display_, sev->requestor, sev->property, actual_type, actual_format,
+                            PropModeReplace,
+                            data, nitems);
+        }
+        log("Sending data to window 0x%lx, data: '%s'\n", sev->requestor, data);
         ssev.type = SelectionNotify;
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        if(clip_text != nullptr && std::strlen(clip_text) != 0){
-//            log("change property to cliptext:%s\n", cliptext);
-            ssev.property = sev->property;
-        } else {
-            ssev.property = None;
-        }
+        ssev.property = sev->property;
         ssev.time = sev->time;
         XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
@@ -661,42 +680,105 @@ void WindowManager::OnSelectionRequest(XEvent e) {
     log("OnSelectionRequest  end-------->");
 }
 
+
 void WindowManager::OnSelectionClear(XEvent e) {
     log("OnSelectionClear start--------->\n");
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
-
-    char *result;
-    unsigned long ressize, restail;
-    int resbits;
-    Atom  propid = XInternAtom(display_, "XSEL_DATA", False),
-            incrid = XInternAtom(display_, "INCR", False);
+    Atom target_name = XInternAtom(display_, "TARGETS", False);
+    Atom manager_prop_name = XInternAtom(display_, "XSEL_DATA", False);
     XEvent event;
-    XConvertSelection(display_, sel, utf8, propid, owner, CurrentTime);
-    do {
-        XNextEvent(display_, &event);
-        log("OnSelectionClear event.tpe:%d selection:%s", event.type, XGetAtomName(display_, event.xselection.selection));
-    } while (event.type != SelectionNotify || event.xselection.selection != sel);
-
-    if (event.xselection.property)
+    XConvertSelection(display_, sel, target_name, manager_prop_name, owner, CurrentTime);
+    XSelectionEvent *sev;
+    for (;;)
     {
-        log("OnSelectionClear property:%s", XGetAtomName(display_, event.xselection.property));
-        XGetWindowProperty(display_, owner, propid, 0, LONG_MAX/4, False, AnyPropertyType,
-                           &utf8, &resbits, &ressize, &restail, (unsigned char**)&result);
-        if (utf8 == incrid){
-            log("Buffer is too large and INCR reading is not implemented yet.\n");
-        } else {
-            clip_text = (char*)malloc(strlen(result) + 1);
-            if (clip_text != NULL) {
-                strcpy(clip_text, result);
-            }
-            log("OnSelectionClear result:%s", result);
-            log("%.*s \n", (int)ressize, result);
+        XNextEvent(display_, &event);
+        switch (event.type)
+        {
+            case SelectionNotify:
+                sev = (XSelectionEvent*)&event.xselection;
+                if (sev->property == None)
+                {
+                    log("Conversion could not be performed.\n");
+                }
+                else
+                {
+                    Atom type, *targets;
+                    int di;
+                    unsigned long nitems, dul;
+                    unsigned char *prop_ret = NULL;
+                    char *an = NULL;
+                    log("show_targets:\n");
+                    XGetWindowProperty(display_, owner, manager_prop_name, 0, 1024 * sizeof (Atom), False, XA_ATOM,
+                                       &type, &di, &nitems, &dul, &prop_ret);
+                    log("Targets:  nitems:%lu \n", nitems);
+                    targets = (Atom *)prop_ret;
+                    selection_property_list = targets;
+                    selection_property_size = nitems;
+                    for(int index = 0; index < selection_property_size ; index ++){
+                        log("type :%s", XGetAtomName(display_, selection_property_list[index]));
+                    }
+                    for (int index = 0; index < nitems; index++)
+                    {
+                        an = XGetAtomName(display_, targets[index]);
+                        log("    '%s'\n", an);
+                        if (an)
+                            XFree(an);
+                    }
+                }
+                break;
+            default:
+                break;
         }
-        XFree(result);
+        break;
     }
-    log("OnSelectionClear  end------->\n");
+    ConvertAllTarget();
     XSetSelectionOwner(display_, sel, owner, CurrentTime);
+    log("OnSelectionClear  end------->\n");
+}
+
+void WindowManager::ConvertAllTarget() {
+    XEvent event;
+    XSelectionEvent *sev;
+    for (int i = 0; i < selection_property_size; i++) {
+        log("show_data:%s\n", XGetAtomName(display_, selection_property_list[i]));
+        XConvertSelection(display_, sel, selection_property_list[i], selection_property_list[i], owner, CurrentTime);
+        for (;;) {
+            XNextEvent(display_, &event);
+            switch (event.type) {
+                case SelectionNotify:
+                    sev = (XSelectionEvent *) &event.xselection;
+                    if (sev->property == None) {
+                        log("Conversion could not be performed.\n");
+                    } else {
+                        Atom actual_type;
+                        int actual_format;
+                        unsigned long nitems, bytes_after;
+                        unsigned char *data = NULL;
+                        XGetWindowProperty(display_, owner, selection_property_list[i], 0, (~0L),
+                                           False, AnyPropertyType,
+                                           &actual_type, &actual_format, &nitems, &bytes_after, &data);
+                        if (actual_format == 8) {  // 字符串类型
+                            log("Content of target: %s\n", data);
+                            if(selection_property_list[i] == utf8){
+                                UpdateXserverCliptext(reinterpret_cast<const char *>(data));
+                            }
+                        } else {
+                            log("Content of target (binary data or non-8-bit format):\n");
+                            for (unsigned long item = 0; item < nitems; item++) {
+                                log("%02x ", data[item]);
+                            }
+                            log("\n");
+                        }
+                        XFree(data);
+                    }
+                    break;
+                default:
+                    break;
+            }
+            break;
+        }
+    }
 }
 
 
@@ -777,9 +859,14 @@ void WindowManager::initCompositor() {
 }
 
 jint WindowManager::sendClipText(const char *string) {
-    clip_text = (char*)malloc(strlen(string) + 1);
-    if (clip_text != NULL) {
-        strcpy(clip_text, string);
+    std::string in_text = string;
+    if (clip_text == in_text) {
+        log("no need update clip text");
+    } else {
+        clip_text = in_text;
+        log("update clip text :%s", clip_text.c_str());
+        selection_property_size = 0;
+
     }
     return True;
 }
@@ -795,6 +882,16 @@ jint WindowManager::circulaSubWindows(jlong window, jboolean lowest) {
     XSync(display_, False);
     return ret;
 }
+
+void WindowManager::UpdateXserverCliptext(const char *text) {
+    if(GlobalEnv && is_valid_utf8(text)){
+        jstring utf = GlobalEnv->NewStringUTF(text);
+        jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                                                        "updateXserverCliptext", "(Ljava/lang/String;)V");
+        GlobalEnv->CallStaticVoidMethod(staticClass, method, utf);
+    }
+}
+
 
 
 
