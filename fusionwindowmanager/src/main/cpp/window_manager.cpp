@@ -849,7 +849,7 @@ int WindowManager::raiseWindow(long window) {
 //    log("raiseWindow %x", window);
     int ret = XRaiseWindow(display_, window);
     XSetInputFocus(display_, window, RevertToPointerRoot, CurrentTime);
-    XSync(display_, False);
+//    XSync(display_, True);
     return ret;
 }
 

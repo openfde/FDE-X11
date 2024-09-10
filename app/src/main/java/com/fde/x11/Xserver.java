@@ -128,8 +128,9 @@ public class Xserver {
 
         if( type == _NET_WM_WINDOW_TYPE_UTILITY || type ==  _NET_WM_WINDOW_TYPE_MENU ||
                 type ==  _NET_WM_WINDOW_TYPE_POPUP_MENU){
-            transientfor = transientfor == 0 ? taskTo:transientfor;
+            transientfor = transientfor == 0 ? taskTo : transientfor;
         }
+//        taskTo = taskTo == 0 ? transientfor : taskTo;
         switch (type) {
             case _NET_WM_WINDOW_TYPE_NORMAL:
                 message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
