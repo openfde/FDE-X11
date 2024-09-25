@@ -566,7 +566,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         FLog.a("window", getWindowId(), "start checkConfigBeforeExec");
         this.mConfiguration = configuration;
         FLog.a("window", getWindowId(), "checkConfigBeforeExec: configuration:" + configuration + ", newConfig:" + newConfig + "");
-        Pattern pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
+        Pattern pattern = Pattern.compile("mAppBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
         Matcher matcher = pattern.matcher(configuration.toString());
         if(matcher.find()){
             int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
