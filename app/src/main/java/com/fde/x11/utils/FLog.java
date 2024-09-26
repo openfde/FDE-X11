@@ -31,12 +31,12 @@ public class FLog {
      */
     public static final int ASSERT = 7;
 
-    private static final boolean LogEnable = false;
+    private static final boolean LogEnable = true;
     private static final boolean LogAppListEnable = true;
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;
 
-    public static final boolean LogXserverNativeEnable = true;
+    public static final boolean LogXserverNativeEnable = false;
 
     //for activity
     public static void a(String tagsuffix, long window, String content, int level){

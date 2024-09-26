@@ -374,7 +374,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        FLog.a("lifecycle", getWindowId(), "onConfigurationChanged");
+        FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
         if(!checkServiceExits()){
             return;
         }
@@ -566,8 +566,22 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         FLog.a("window", getWindowId(), "start checkConfigBeforeExec");
         this.mConfiguration = configuration;
         FLog.a("window", getWindowId(), "checkConfigBeforeExec: configuration:" + configuration + ", newConfig:" + newConfig + "");
-        Pattern pattern = Pattern.compile("mAppBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
+        Pattern pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
         Matcher matcher = pattern.matcher(configuration.toString());
+        if (matcher.find()) {
+            String windowingMode = matcher.group(1);
+            isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
+            boolean isFreeform = TextUtils.equals(windowingMode, "freeform");
+            FLog.a("window", getWindowId(), "windowingMode:" + windowingMode
+                    + " isCaptionShowing:" + isCaptionShowing());
+        }
+        //no reason, when hide View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR must get from ""
+        if(isFullscreen && !isCaptionShowing()){
+            pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
+        } else {
+            pattern = Pattern.compile("mAppBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
+        }
+        matcher = pattern.matcher(configuration.toString());
         if(matcher.find()){
             int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
             int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
@@ -591,14 +605,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
         service.raiseWindow(mAttribute.getXID());
 
-        pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
-        matcher = pattern.matcher(configuration.toString());
-        if (matcher.find()) {
-            String windowingMode = matcher.group(1);
-            isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
-            boolean isFreeform = TextUtils.equals(windowingMode, "freeform");
-            FLog.a("window", getWindowId(), "windowingMode:" + windowingMode);
-        }
         if (isFullscreen) {
             handler.postDelayed(() -> {
                 try {
