@@ -67,6 +67,7 @@ import com.fde.x11.view.PopupSlideSmall;
 import com.xiaokun.dialogtiplib.dialog_tip.TipLoadDialog;
 import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.callback.JsonCallBack;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -78,7 +79,7 @@ import razerdp.basepopup.BasePopupWindow;
 import razerdp.util.animation.AnimationHelper;
 import razerdp.util.animation.ScaleConfig;
 
-public class AppListActivity extends AppCompatActivity {
+public class FakeListActivity extends AppCompatActivity {
 
     private static final String TAG = "AppListActivity";
     private ProgressBar loadingView;
@@ -215,25 +216,28 @@ public class AppListActivity extends AppCompatActivity {
             connection = new ServiceConnection() {
                 @Override
                 public void onServiceConnected(ComponentName name, IBinder service) {
-                    AppListActivity.this.service = service;
-                    try {
-                        Objects.requireNonNull(AppListActivity.this.service).linkToDeath(() -> {
-                            AppListActivity.this.service = null;
-                            FLog.l(TAG, "Disconnected");
-//                            showXserverDisconnect(AppListActivity.this);
-                        }, 0);
-                    } catch (RemoteException e) {
-                        e.printStackTrace();
+                    FakeListActivity.this.service = service;
+                    if(fromShortcut){
+                        startLinuxApp(shortcutAppBean, true);
+                    } else {
+                        try {
+                            Objects.requireNonNull(FakeListActivity.this.service).linkToDeath(() -> {
+                                FakeListActivity.this.service = null;
+                                FLog.l(TAG, "Disconnected");
+                            }, 0);
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+                        FLog.l(TAG, "onServiceConnected");
+                        showXserverStartSuccess(FakeListActivity.this);
                     }
-                    FLog.l(TAG, "onServiceConnected");
-                    showXserverStartSuccess(AppListActivity.this);
                 }
 
                 @Override
                 public void onServiceDisconnected(ComponentName name) {
                     FLog.l(TAG, "onServiceDisconnected");
-                    AppListActivity.this.service = null;
-                    showXserverDisconnect(AppListActivity.this);
+                    FakeListActivity.this.service = null;
+                    showXserverDisconnect(FakeListActivity.this);
                 }
             };
         }
@@ -303,28 +307,28 @@ public class AppListActivity extends AppCompatActivity {
     }
 
     private void initAppList() {
-        isLoading = true;
-        if(globalWidth != 0 && globalHeight != 0){
-            spanCount = globalWidth / (int) DimenUtils.dpToPx(160.0f);
-        } else {
-            spanCount = DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f);
-        }
-        spanCount = Math.max(spanCount, 3);
-        mRefreshLayout = findViewById(R.id.refresh_layout);
-        mRefreshLayout.setOnRefreshListener(mRefreshListener); //
-        mRecyclerView = findViewById(R.id.recycler_view);
-        mRecyclerView.setLayoutManager(new GridLayoutManager(this, spanCount));
-        mRecyclerView.useDefaultLoadMore(); //
-        mRecyclerView.setLoadMoreListener(mLoadMoreListener); //
-        mRecyclerView.setAutoLoadMore(true);
-        mAdapter = new AppAdapter(this, mDataList, mItemClickListener);
-        runnable = new FilterRunnable(mAdapter);
-        mRecyclerView.setAdapter(mAdapter);
-        getAllLinuxApp(true, 1);
-        mRefreshLayout.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-            globalWidth = mRefreshLayout.getMeasuredWidth();
-            globalHeight = mRefreshLayout.getMeasuredHeight();
-        });
+//        isLoading = true;
+//        if(globalWidth != 0 && globalHeight != 0){
+//            spanCount = globalWidth / (int) DimenUtils.dpToPx(160.0f);
+//        } else {
+//            spanCount = DimenUtils.getScreenWidth() / (int) DimenUtils.dpToPx(160.0f);
+//        }
+//        spanCount = Math.max(spanCount, 3);
+//        mRefreshLayout = findViewById(R.id.refresh_layout);
+//        mRefreshLayout.setOnRefreshListener(mRefreshListener); //
+//        mRecyclerView = findViewById(R.id.recycler_view);
+//        mRecyclerView.setLayoutManager(new GridLayoutManager(this, spanCount));
+//        mRecyclerView.useDefaultLoadMore(); //
+//        mRecyclerView.setLoadMoreListener(mLoadMoreListener); //
+//        mRecyclerView.setAutoLoadMore(true);
+//        mAdapter = new AppAdapter(this, mDataList, mItemClickListener);
+//        runnable = new FilterRunnable(mAdapter);
+//        mRecyclerView.setAdapter(mAdapter);
+//        getAllLinuxApp(true, 1);
+//        mRefreshLayout.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+//            globalWidth = mRefreshLayout.getMeasuredWidth();
+//            globalHeight = mRefreshLayout.getMeasuredHeight();
+//        });
     }
 
 
@@ -334,7 +338,7 @@ public class AppListActivity extends AppCompatActivity {
 //        AppUtils.set("fde.click_as_touch", "false");
         FLog.l(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + "");
         if(hasFocus){
-            mayGetApps();
+//            mayGetApps();
         }
     }
 
@@ -505,7 +509,7 @@ public class AppListActivity extends AppCompatActivity {
                         mDataList.addAll(data);
                         mAdapter.notifyDataSetChanged();
                         if (data.size() > 0) {
-                            AppListActivity.this.mPage = page;
+                            FakeListActivity.this.mPage = page;
                         }
                         mRecyclerView.loadMoreFinish(mDataList.size() == 0, response.getData().getPage().getTotal() > mDataList.size());
                         mRefreshLayout.setRefreshing(false);
@@ -518,7 +522,7 @@ public class AppListActivity extends AppCompatActivity {
         Icon icon = Icon.createWithBitmap(AppUtils.getScaledBitmap(decode, this));
         ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
         if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported()) {
-            Intent launchIntentForPackage = new Intent(this, FakeListActivity.class);
+            Intent launchIntentForPackage = new Intent(this, ShortcutActivity.class);
             launchIntentForPackage.setAction(Intent.ACTION_MAIN);
             launchIntentForPackage.putExtra("App", app.getName());
             launchIntentForPackage.putExtra("Path", app.getPath());

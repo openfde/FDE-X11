@@ -39,7 +39,7 @@ public class ShortcutActivity extends AppCompatActivity {
         if(getIntent() != null && getIntent().getExtras() != null){
             shortcutApp = (String)getIntent().getExtras().get("App");
             shortcuPath = (String)getIntent().getExtras().get("Path");
-            FLog.l(TAG, "onCreate() called with: shortcutApp = [" + shortcuPath + "]  shortcutApp = [" + shortcuPath + "]");
+            FLog.l(TAG, "onCreate() called with: shortcuPath = [" + shortcuPath + "]  shortcutApp = [" + shortcutApp + "]");
             fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
             shortcutAppBean = new AppListResult.DataBeanX.DataBean(shortcutApp, shortcuPath);
         }

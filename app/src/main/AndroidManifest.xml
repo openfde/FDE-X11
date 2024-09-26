@@ -89,6 +89,19 @@
                 />
         </activity>
 
+        <activity android:name=".FakeListActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:excludeFromRecents="true"
+            android:documentLaunchMode="always">
+            <layout
+                android:defaultHeight="1dp"
+                android:defaultWidth="1dp"
+                android:minHeight="1dp"
+                android:minWidth="1dp"
+                />
+        </activity>
+
 
         <activity
             android:name=".ControlActivity"

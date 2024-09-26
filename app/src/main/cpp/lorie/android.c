@@ -1183,19 +1183,19 @@ void exit(int code) {
 
 // It is needed to redirect stderr to logcat
 static void *stderrToLogcatThread(unused void *cookie) {
-    FILE *fp;
-    int p[2];
-    size_t len;
-    char *line = NULL;
-    pipe(p);
-
-    fp = fdopen(p[0], "r");
-
-    dup2(p[1], 2);
-    dup2(p[1], 1);
-    while ((getline(&line, &len, fp)) != -1) {
-        log(DEBUG, "%s%s", line, (line[len - 1] == '\n') ? "" : "\n");
-    }
+//    FILE *fp;
+//    int p[2];
+//    size_t len;
+//    char *line = NULL;
+//    pipe(p);
+//
+//    fp = fdopen(p[0], "r");
+//
+//    dup2(p[1], 2);
+//    dup2(p[1], 1);
+//    while ((getline(&line, &len, fp)) != -1) {
+//        log(DEBUG, "%s%s", line, (line[len - 1] == '\n') ? "" : "\n");
+//    }
 
     return NULL;
 }

@@ -69,6 +69,7 @@ public class XWindowService extends Service {
     private WindowManager wm;
     private final HashSet<Long> startingWindow = new HashSet<>();
     private final HashSet<Long> stopingWindow = new HashSet<>();
+    private boolean mBound = false;
 
     private final HashMap<Long, Property> propertyHashMap = new HashMap<>();
 
@@ -151,6 +152,7 @@ public class XWindowService extends Service {
             wm = new WindowManager( new WeakReference<>(this));
             wm.startWindowManager(DISPLAY_GLOBAL_PARAM);
         }
+        FLog.s(TAG, "onCreate");
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
@@ -311,18 +313,36 @@ public class XWindowService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        FLog.s(TAG, "onStartCommand:" + intent);
         return Service.START_STICKY;
     }
 
     @Override
     public IBinder onBind(Intent intent) {
+        FLog.s(TAG, "onBind:" + intent);
+        mBound = true;
         return service;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        mBound = false;
+        FLog.s(TAG, "onUnbind:" + intent);
+        checkIfShouldStopSelf();
+        return true;
+    }
+
+    private void checkIfShouldStopSelf() {
+        if (!mBound) {
+            stopSelf();
+        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        EventBus.getDefault().unregister(this);
+        FLog.s(TAG, "onDestroy");
+//        EventBus.getDefault().unregister(this);
         Util.deleteRecursive(new File("/tmp/fde"));
     }
 }
