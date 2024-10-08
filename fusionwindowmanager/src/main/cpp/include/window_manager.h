@@ -141,7 +141,7 @@ private:
     Atom sel, utf8;
     std::string clip_text;
     Atom * selection_property_list ;
-    int selection_property_size;
+    int selection_property_size = 0;
 
     // selection_property_size
     const Atom WM_PROTOCOLS;

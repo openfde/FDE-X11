@@ -134,8 +134,8 @@ void android_destroy_window(Window window) {
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         attr->discard = 1;
         android_destroy_activity(attr->index, attr->pWin, attr->window, attr->aProperty.support_wm_delete, ACTION_DESTORY);
-        glDeleteTextures(1, &attr->texture_id);
         _surface_delete_window(sfWraper, window);
+        glDeleteTextures(1, &attr->texture_id);
         log(DEBUG,"android_destroy_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "destroy widget");
@@ -157,8 +157,8 @@ void android_unmap_window(Window window){
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         attr->discard = 1;
         android_destroy_activity(attr->index, attr->pWin, attr->window,  attr->aProperty.support_wm_delete, ACTION_UNMAP);
-        glDeleteTextures(1, &attr->texture_id);
         _surface_delete_window(sfWraper, window);
+        glDeleteTextures(1, &attr->texture_id);
         log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget:%0x", window);
@@ -193,8 +193,10 @@ void android_redirect_window(WindowPtr pWin) {
             intransient_bounds = android_check_bounds(pWin, attr);
         }
     }
-    log(DEBUG, "android_redirect_window %x redirect:%d atom:%d transient:%x, taskTo:%x inbounds:%d",
-        pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo, intransient_bounds);
+    log(ERROR, "android_redirect_window %x redirect:%d atom:%d transient:%x, "
+               "taskTo:%x inbounds:%d mapped:%d",
+        pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
+        intransient_bounds, pWin->mapped);
 
     if (redirect){
         if(taskTo == 0){

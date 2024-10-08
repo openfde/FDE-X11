@@ -36,7 +36,9 @@ public class FLog {
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;
 
-    public static final boolean LogXserverNativeEnable = false;
+    public static final boolean LogXserverNativeEnable = true;
+
+    public static final boolean SHOW_DEBUG_TITLE = false;
 
     //for activity
     public static void a(String tagsuffix, long window, String content, int level){

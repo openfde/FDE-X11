@@ -206,7 +206,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
                 MainActivity.this.setTaskDescription(description);
             }
-            setTitle(title);
+            if(FLog.SHOW_DEBUG_TITLE) {
+                String windowid = Long.toHexString(getWindowId());
+                setTitle(title + " id:0x" + windowid);
+            } else {
+                setTitle(title);
+            }
             FLog.a("lifecycle",getWindowId(), title);
             App.getApp().windowPropertyMap.put(mAttribute.getXID(), mProperty);
         }
@@ -425,7 +430,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     FLAG_NOT_TOUCHABLE);
             showFloatView();
         } else {
-            if(mInputHandler != null){
+            if(mInputHandler != null && !mFloatViews.isEmpty()){
                 mInputHandler.mouseClick();
             }
         }
@@ -728,7 +733,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             try {
                 service.raiseWindow(mAttribute.getXID());
             } catch (RemoteException e) {
-                Log.e(TAG, e.getMessage());
+                Log.e(TAG, e.toString());
             }
         }
     }
@@ -1176,6 +1181,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
 
         protected boolean hideDecorCaptionView() {
+            if(FLog.SHOW_DEBUG_TITLE){
+                return false;
+            }
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
             Log.d("TAG", "hideDecorCaptionView");

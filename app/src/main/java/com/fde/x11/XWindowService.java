@@ -260,7 +260,7 @@ public class XWindowService extends Service {
         if(retry == 0){
             return;
         }
-//        Log.d(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
+        Log.d(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
         String targetPackage = getPackageName();
         Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
         intent.setPackage(targetPackage);
@@ -268,7 +268,7 @@ public class XWindowService extends Service {
         sendBroadcast(intent);
         handler.postDelayed(()->{
             destroyActivitySafety(retry - 1, attr);
-        }, 1000);
+        }, 5000);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {

@@ -174,7 +174,7 @@ bool WindowManager::isNormalWindow(long window) {
     Atom type_menu = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_MENU", False);
     Atom type_dialog = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     Atom type_popup = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
-//    log("isNormalWindow ? %lx", window);
+    log("isNormalWindow ? %lx", window);
     if (XGetWindowProperty(display_, window, type, 0, 1024, False, AnyPropertyType,
                            &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
         Success) {
@@ -783,7 +783,7 @@ void WindowManager::ConvertAllTarget() {
 
 
 int WindowManager::moveWindow(long window, int x, int y) {
-//    log("moveWindow %x: x:%d y:%d", window, x, y);
+    log("moveWindow %x: x:%d y:%d", window, x, y);
     int ret = XMoveWindow(display_, window, x, y);
     XSync(display_, False);
     return ret;
@@ -815,7 +815,7 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
 }
 
 int WindowManager::resizeWindow(long window, int w, int h) {
-//    log("resizeWindow %x w:%d h:%d", window, w, h);
+    log("resizeWindow %x w:%d h:%d", window, w, h);
     int  ret = XResizeWindow(display_, window, w, h);
     XSync(display_, False);
     return ret;
@@ -825,10 +825,10 @@ int WindowManager::closeWindow(long window) {
     Atom* supported;
     int num_supported;
     XGetWMProtocols(display_, window, &supported, &num_supported);
-//    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
+    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
     int ret;
     if(supported) {
-//        log("closeWindow supported1");
+        log("closeWindow supported1");
         XEvent msg;
         memset(&msg, 0, sizeof(msg));
         msg.xclient.type = ClientMessage;
@@ -838,7 +838,7 @@ int WindowManager::closeWindow(long window) {
         msg.xclient.data.l[0] = WM_DELETE_WINDOW;
         ret = XSendEvent(display_, window, false, 0, &msg);
     } else {
-//        log("closeWindow not supported");
+        log("closeWindow not supported");
         ret = XKillClient(display_, window);
     }
     XSync(display_, False);
@@ -846,7 +846,7 @@ int WindowManager::closeWindow(long window) {
 }
 
 int WindowManager::raiseWindow(long window) {
-//    log("raiseWindow %x", window);
+    log("raiseWindow %x", window);
     int ret = XRaiseWindow(display_, window);
     XSetInputFocus(display_, window, RevertToPointerRoot, CurrentTime);
 //    XSync(display_, True);
