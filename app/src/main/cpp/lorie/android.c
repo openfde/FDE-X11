@@ -243,7 +243,7 @@ void android_icon_convert_bitmap(int* data, int width, int height, WindProperty 
     jobject bitmap = (*JavaEnv)->CallStaticObjectMethod(JavaEnv,bitmapClass, createBitmapMethod, (int)width, (int)height, bitmapConfig);
     void* bitmapPixels;
     if (AndroidBitmap_lockPixels(JavaEnv, bitmap, &bitmapPixels) < 0) {
-        log(DEBUG, "Failed to lock bitmap pixels\n");
+        log(ERROR, "Failed to lock bitmap pixels\n");
         free(data);
         return;
     }

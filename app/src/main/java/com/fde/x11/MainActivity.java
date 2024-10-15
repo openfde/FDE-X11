@@ -521,7 +521,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
         if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()) {
             ClipData clipData = mClipboardManager.getPrimaryClip();
-            if (clipData != null && clipData.getItemCount() > 0) {
+            if (clipData != null && clipData.getItemCount() > 0
+                    && clipData.getDescription().getLabel() != null) {
                 String label = clipData.getDescription().getLabel().toString();
                 ClipData.Item item = clipData.getItemAt(0);
                 if (item != null) {
@@ -1102,7 +1103,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
                 if(mAttribute !=  null && windowId == mAttribute.getXID()){
-//                    Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " mAttribute:" + mAttribute) ;
+                    Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " " + ACTION_UPDATE_ICON) ;
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
                     ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
                     MainActivity.this.setTaskDescription(description);
