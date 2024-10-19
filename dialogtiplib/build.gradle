@@ -4,7 +4,7 @@ android {
     compileSdkVersion 34
     defaultConfig {
         targetSdkVersion 34
-        minSdkVersion project.getProperties().get("SDK_VERSION")
+        minSdkVersion 26
 //        multiDexEnabled true
     }
     buildTypes {
