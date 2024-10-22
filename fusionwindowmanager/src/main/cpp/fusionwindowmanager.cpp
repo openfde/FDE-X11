@@ -58,7 +58,7 @@ JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
 
 JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display){
     jboolean isCopy = false;
-    const char* export_display = env->GetStringUTFChars(display, &isCopy);
+    char* export_display = const_cast<char *>(env->GetStringUTFChars(display, &isCopy));
     jclass js  = static_cast<jclass>(env->NewGlobalRef(obj));
     setenv("DISPLAY", export_display, 1);
     window_manager = WindowManager::create(export_display, env, js);

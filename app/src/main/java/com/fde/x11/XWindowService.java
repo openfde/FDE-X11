@@ -2,7 +2,7 @@ package com.fde.x11;
 
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
-import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 
 import android.app.ActivityOptions;
 import android.app.Service;
@@ -136,7 +136,7 @@ public class XWindowService extends Service {
         @Override
         public void sendClipText(String cliptext) throws RemoteException {
             if(wm != null && wm.sendClipText(cliptext) > 0){
-//                Log.d(TAG, "sendClipText: cliptext:" + cliptext + "");
+                Log.d(TAG, "sendClipText: cliptext:" + cliptext + "");
             }
         }
     };
@@ -145,12 +145,14 @@ public class XWindowService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        Util.copyAssetsToFiles(this, "xkb", "xkb");
+//        Util.checkX11FdPermission(this);
         EventBus.getDefault().register(this);
         Xserver.getInstance().registerContext(new WeakReference<>(this));
         Xserver.getInstance().startXserver();
         if(DWM_START_DEFAULT){
             wm = new WindowManager( new WeakReference<>(this));
-            wm.startWindowManager(DISPLAY_GLOBAL_PARAM);
+            wm.startWindowManager(DISPLAY_GLOBAL+"");
         }
         FLog.s(TAG, "onCreate");
     }

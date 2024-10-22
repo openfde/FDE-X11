@@ -13,7 +13,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:persistent="true"
+        android:persistent="false"
         android:name=".App"
         android:allowBackup="false"
         android:hardwareAccelerated="true"

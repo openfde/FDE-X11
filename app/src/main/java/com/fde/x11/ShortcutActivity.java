@@ -1,7 +1,7 @@
 package com.fde.x11;
 
 import static com.fde.x11.data.Constants.BASEURL;
-import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 import static com.fde.x11.data.Constants.URL_STARTAPP_X;
 
 import android.content.ComponentName;
@@ -70,7 +70,7 @@ public class ShortcutActivity extends AppCompatActivity {
                 .setCallbackToMainUIThread(true)
                 .addParams("App", app.Name)
                 .addParams("Path", app.Path)
-                .addParams("Display", DISPLAY_GLOBAL_PARAM)
+                .addParams("Display", ":" + DISPLAY_GLOBAL)
                 .execute(new JsonCallBack<VncResult.GetPortResult>() {
                     @Override
                     public void onFailure(Call call, Exception e) {

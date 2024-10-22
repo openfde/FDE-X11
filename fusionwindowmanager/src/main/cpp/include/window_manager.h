@@ -59,7 +59,7 @@ const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
 class WindowManager  {
 public:
-    static ::WindowManager *create(const char *string, JNIEnv *env, jclass cls);
+    static ::WindowManager *create( char *string, JNIEnv *env, jclass cls);
     ~WindowManager();
     WindowManager(Display *display);
     void Run();

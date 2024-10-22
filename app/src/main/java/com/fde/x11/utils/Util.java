@@ -1,5 +1,7 @@
 package com.fde.x11.utils;
 
+import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
@@ -9,6 +11,7 @@ import android.widget.Toast;
 
 import com.fde.x11.MainActivity;
 import com.fde.x11.R;
+import com.fde.x11.XWindowService;
 
 import java.io.Closeable;
 import java.io.File;
@@ -17,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.util.Objects;
 
 public class Util {
@@ -105,12 +109,17 @@ public class Util {
     }
 
     private static void copyAssetFile(AssetManager assetManager, File targetDir, String sourceFile, String targetFile) {
+//        FLog.f(TAG, sourceFile  + " -> " + targetDir + " " + targetFile);
         InputStream in = null;
         OutputStream out = null;
         File outFile = new File(targetDir, targetFile);
+        if(outFile.exists()){
+//            FLog.f(TAG, "NO need to copy " + outFile);
+            return;
+        }
         try {
             in = assetManager.open(sourceFile);
-            out = new FileOutputStream(outFile);
+            out = Files.newOutputStream(outFile.toPath());
             copyFile(in, out);
         } catch (IOException e) {
             e.printStackTrace();
@@ -184,5 +193,36 @@ public class Util {
 
     public static void showXserverReconnect(Context context) {
         Toast.makeText(context, R.string.xserver_reconnect, Toast.LENGTH_SHORT).show();
+    }
+
+    public static void showXApplicationOpenFail(Context context) {
+        Toast.makeText(context, R.string.xserver_application_open_fail, Toast.LENGTH_SHORT).show();
+    }
+
+    public static void checkX11FdPermission(Context context) {
+        File unixFile = new File("/tmp/.X11-unix");
+        File lockFile;
+        if(unixFile.exists() && unixFile.canWrite()){
+            FLog.f(TAG, unixFile.getAbsolutePath() + " can write");
+            unixFile.delete();
+        }
+        while(true) {
+            lockFile = new File("/tmp/.X" + DISPLAY_GLOBAL + "-lock");
+            if (lockFile.exists()) {
+                FLog.f(TAG, lockFile.getAbsolutePath() + " exists");
+                if (lockFile.canWrite()) {
+                    FLog.f(TAG, lockFile.getAbsolutePath() + " can write");
+                    if(lockFile.delete()){
+                        FLog.f(TAG, lockFile.getAbsolutePath() + " delete");
+                        break;
+                    }
+                } else {
+                    DISPLAY_GLOBAL ++;
+                }
+            } else {
+                FLog.f(TAG, lockFile.getAbsolutePath() + " not exists");
+                break;
+            }
+        }
     }
 }

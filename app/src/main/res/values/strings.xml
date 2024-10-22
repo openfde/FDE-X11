@@ -61,4 +61,6 @@
     <string name="xserver_reconnect">xserver reconnect</string>
     <string name="xserver_connect_success">xserver connect success</string>
     <string name="fde_search">Search</string>
+    <string name="xserver_application_open_fail">application start fail</string>
+
 </resources>

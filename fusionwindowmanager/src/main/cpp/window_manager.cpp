@@ -17,11 +17,13 @@ bool WindowManager::support_composite;
 mutex WindowManager::wm_detected_mutex_;
 
 
-::WindowManager *WindowManager::create(const char *export_display, JNIEnv * env, jclass cls) {
+::WindowManager *WindowManager::create(char *export_display, JNIEnv * env, jclass cls) {
     staticClass = cls;
     GlobalEnv = env;
-//    char * display_str= std::strcat(export_display)
-    Display* display = XOpenDisplay("unix:/tmp/.X11-unix/X1001");
+    std::string unixstring = "unix:/tmp/.X11-unix/X";
+    std::string exportstring(export_display);
+    std::string display_str = unixstring + exportstring;
+    Display* display = XOpenDisplay(display_str.c_str());
     if (display == nullptr) {
         log("Failed to open X display");
         return nullptr;

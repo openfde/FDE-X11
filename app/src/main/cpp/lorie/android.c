@@ -61,15 +61,15 @@ extern int ucs2keysym(long ucs);
 
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 
-void android_create_window(WindAttribute attribute, WindProperty  aProperty, Window main_win, bool inbound);
+void android_create_window(WindAttribute attribute, WindProperty  aProperty, Window taskTo, bool inbound);
 
-void android_create_view(Widget widget, WindProperty aProperty, Window main_win, bool inbound);
+void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, bool inbound);
 
 void android_destroy_window(Window window);
 
 void android_unmap_window(Window window);
 
-void android_destroy_activity(int index, WindowPtr windowPtr, Window window, int action, Bool wm_delete);
+void android_destroy_activity(int index, WindowPtr pWin, Window window, int action, Bool wm_delete);
 
 void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window window, int action);
 
@@ -593,7 +593,7 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
     setenv("XKB_CONFIG_ROOT", "/data/data/com.fde.x11/files/xkb/", 1);
 
 
-    argv[0] = (char *) "Xlorie";
+    argv[0] = (char *) "FDEX11";
     for (int i = 1; i < argc; i++) {
         jstring js = (jstring) ((*env)->GetObjectArrayElement(env, args, i - 1));
         const char *pjc = (*env)->GetStringUTFChars(env, js, JNI_FALSE);
@@ -648,9 +648,12 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
             chdir(tmp);
         asprintf(&xtrans_unix_path_x11, "%s/.X11-unix/X", tmp);
         asprintf(&xtrans_unix_dir_x11, "%s/.X11-unix/", tmp);
+
+        log(ERROR, "xtrans_unix_path_x11 = \"%s\"", xtrans_unix_path_x11);
+        log(ERROR, "xtrans_unix_dir_x11 = \"%s\"", xtrans_unix_dir_x11);
     }
 
-    log(VERBOSE, "Using TMPDIR=\"%s\"", getenv("TMPDIR"));
+    log(ERROR, "Using TMPDIR=\"%s\"", getenv("TMPDIR"));
 
     {
         const char *root_dir = dirname(getenv("TMPDIR"));

@@ -1,6 +1,7 @@
 package com.fde.x11;
 
-import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+
+import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 
 import android.annotation.SuppressLint;
 import android.app.Service;
@@ -49,7 +50,7 @@ public class Xserver {
     // private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
 
     // listen unix or tcp socket, only for local X client
-    private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM};
+    private static final String[] ARGS_DEFAULT = { ":" + DISPLAY_GLOBAL};
 
     private  static final int _NET_WM_WINDOW_TYPE = 267;
     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;

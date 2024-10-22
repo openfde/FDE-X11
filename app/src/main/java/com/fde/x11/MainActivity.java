@@ -730,13 +730,13 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             taskManager.resizeTask(getTaskId(), rect);
             mConfigureRect = null;
         }
-        if(checkServiceExits()){
-            try {
-                service.raiseWindow(mAttribute.getXID());
-            } catch (RemoteException e) {
-                Log.e(TAG, e.toString());
-            }
-        }
+//        if(checkServiceExits()){
+//            try {
+//                service.raiseWindow(mAttribute.getXID());
+//            } catch (RemoteException e) {
+//                Log.e(TAG, e.toString());
+//            }
+//        }
     }
 
     /**

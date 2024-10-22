@@ -35,6 +35,7 @@ public class FLog {
     private static final boolean LogAppListEnable = true;
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;
+    private static final boolean LogFileEnable = true;
 
     public static final boolean LogXserverNativeEnable = true;
 
@@ -119,5 +120,9 @@ public class FLog {
     }
 
 
-
+    public static void f(String tag, String content) {
+        if(LogFileEnable){
+            normal(tag, content, DEBUG);
+        }
+    }
 }

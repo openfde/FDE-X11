@@ -12,7 +12,7 @@ import static com.fde.x11.XWindowService.UNMODALED_ACTION_ACTIVITY_FROM_X;
 import static com.fde.x11.Xserver.ACTION_START;
 import static com.fde.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.fde.x11.data.Constants.BASEURL;
-import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
+import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 import static com.fde.x11.data.Constants.URL_GETALLAPP;
 import static com.fde.x11.data.Constants.URL_STARTAPP_X;
 import static com.fde.x11.utils.Util.showXserverDisconnect;
@@ -490,6 +490,7 @@ public class FakeListActivity extends AppCompatActivity {
                         mRefreshLayout.setRefreshing(false);
                     }
 
+                    @SuppressLint("NotifyDataSetChanged")
                     @Override
                     public void onSuccess(Call call, AppListResult response) {
                         if(tipLoadDialog != null){
@@ -508,7 +509,7 @@ public class FakeListActivity extends AppCompatActivity {
                         }
                         mDataList.addAll(data);
                         mAdapter.notifyDataSetChanged();
-                        if (data.size() > 0) {
+                        if (!data.isEmpty()) {
                             FakeListActivity.this.mPage = page;
                         }
                         mRecyclerView.loadMoreFinish(mDataList.size() == 0, response.getData().getPage().getTotal() > mDataList.size());
@@ -561,16 +562,20 @@ public class FakeListActivity extends AppCompatActivity {
                 .setCallbackToMainUIThread(true)
                 .addParams("App", app.Name)
                 .addParams("Path", app.Path)
-                .addParams("Display", DISPLAY_GLOBAL_PARAM)
+                .addParams("Display", ":" + DISPLAY_GLOBAL)
                 .execute(new JsonCallBack<VncResult.GetPortResult>() {
                     @Override
                     public void onFailure(Call call, Exception e) {
-                        tipLoadDialog.dismiss();
+                        if(tipLoadDialog != null && tipLoadDialog.isShowing()){
+                            tipLoadDialog.dismiss();
+                        }
                     }
 
                     @Override
                     public void onSuccess(Call call, VncResult.GetPortResult response) {
-                        tipLoadDialog.dismiss();
+                        if(tipLoadDialog != null && tipLoadDialog.isShowing()){
+                            tipLoadDialog.dismiss();
+                        }
                         if(finish){
                             moveTaskToBack(false);
                         }
