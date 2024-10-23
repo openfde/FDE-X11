@@ -1,6 +1,7 @@
 #pragma once
 
 #include <X11/keysymdef.h>
+#include <jni.h>
 #include "linux/input-event-codes.h"
 #define unused __attribute__((unused))
 
@@ -9,6 +10,7 @@ Bool lorieChangeWindow(ClientPtr pClient, void *closure);
 void lorieConfigureNotify(int width, int height, int framerate);
 void lorieEnableClipboardSync(Bool enable);
 void lorieSendClipboardData(const char* data);
+Bool lorieInitDri3(ScreenPtr pScreen);
 
 
 

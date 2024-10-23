@@ -94,11 +94,10 @@ extern Bool LOG_ENABLE;
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 
 typedef struct {
-    DestroyPixmapProcPtr DestroyPixmap;
     CloseScreenProcPtr CloseScreen;
     CreateScreenResourcesProcPtr CreateScreenResources;
 
-    DamagePtr damage, damage1;
+    DamagePtr damage;
     OsTimerPtr redrawTimer;
     OsTimerPtr fpsTimer;
 
@@ -106,7 +105,7 @@ typedef struct {
     int timerFd;
 
     struct {
-        AHardwareBuffer* buffer, *buffer1, *buffer2;
+        AHardwareBuffer* buffer;
         Bool locked;
         Bool legacyDrawing;
         uint8_t flip;
@@ -115,14 +114,14 @@ typedef struct {
 
     JavaVM* vm;
     JNIEnv* env;
+    Bool dri3;
 } lorieScreenInfo, *lorieScreenInfoPtr;
 
 int init_cusor;
 ScreenPtr pScreenPtr;
-static lorieScreenInfo lorieScreen = { .root.width = 1920, .root.height = 1032 };
+static lorieScreenInfo lorieScreen = { .root.width = 1280, .root.height = 1024, .dri3 = TRUE };
 static lorieScreenInfoPtr pvfb = &lorieScreen;
 static char *xstartup = NULL;
-static DevPrivateKeyRec loriePixmapPrivateKeyRec;
 
 
 static Bool TrueNoop() { return TRUE; }
@@ -210,13 +209,10 @@ void ddxUseMsg(void) {
     ErrorF("-xstartup \"command\"    start `command` after server startup\n");
     ErrorF("-legacy-drawing        use legacy drawing, without using AHardwareBuffers\n");
     ErrorF("-force-bgra            force flipping colours (RGBA->BGRA)\n");
+    ErrorF("-disable-dri3          disabling DRI3 support (to let lavapipe work)\n");
 }
 
 int ddxProcessArgument(unused int argc, unused char *argv[], unused int i) {
-    for(int i =0;i < argc; i++){
-        logh("ddxReady argv %s", argv[i]);
-    }
-
     if (strcmp(argv[i], "-xstartup") == 0) {  /* -xstartup "command" */
         CHECK_FOR_REQUIRED_ARGUMENTS(1);
         xstartup = argv[++i];
@@ -230,6 +226,11 @@ int ddxProcessArgument(unused int argc, unused char *argv[], unused int i) {
 
     if (strcmp(argv[i], "-force-bgra") == 0) {
         pvfb->root.flip = TRUE;
+        return 1;
+    }
+
+    if (strcmp(argv[i], "-disable-dri3") == 0) {
+        pvfb->dri3 = FALSE;
         return 1;
     }
 
@@ -502,26 +503,6 @@ lorieCloseScreen(ScreenPtr pScreen) {
 }
 
 static Bool
-lorieDestroyPixmap(PixmapPtr pPixmap) {
-    Bool ret;
-    void *ptr = NULL;
-    size_t size = 0;
-
-    if (pPixmap->refcnt == 1) {
-        ptr = dixLookupPrivate(&pPixmap->devPrivates, &loriePixmapPrivateKeyRec);
-        size = pPixmap->devKind * pPixmap->drawable.height;
-    }
-
-    unwrap(pvfb, pScreenPtr, DestroyPixmap)
-    ret = (*pScreenPtr->DestroyPixmap) (pPixmap);
-    wrap(pvfb, pScreenPtr, DestroyPixmap, lorieDestroyPixmap)
-
-    if (ptr)
-        munmap(ptr, size);
-    return ret;
-}
-
-static Bool
 lorieRRScreenSetSize(ScreenPtr pScreen, CARD16 width, CARD16 height, unused CARD32 mmWidth, unused CARD32 mmHeight) {
     SetRootClip(pScreen, ROOT_CLIP_NONE);
 //    logh("lorieRRScreenSetSize width:%d height:%d", width, height);
@@ -593,36 +574,6 @@ static Bool resetRootCursor(unused ClientPtr pClient, unused void *closure) {
     return TRUE;
 }
 
-static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *fds, CARD16 width, CARD16 height,
-                                    const CARD32 *strides, const CARD32 *offsets, CARD8 depth, unused CARD8 bpp, CARD64 modifier) {
-    const CARD64 RAW_MMAPPABLE_FD = 1274;
-    PixmapPtr pixmap;
-    void *addr = NULL;
-    if (num_fds != 1 || modifier != RAW_MMAPPABLE_FD) {
-        log(ERROR, "DRI3: More than 1 fd or modifier is not RAW_MMAPPABLE_FD");
-        return NULL;
-    }
-    logh("loriePixmapFromFds");
-
-    addr = mmap(NULL, strides[0] * height, PROT_READ, MAP_SHARED, fds[0], offsets[0]);
-    if (!addr || addr == MAP_FAILED) {
-        log(ERROR, "DRI3: mmap failed");
-        return NULL;
-    }
-
-    pixmap = fbCreatePixmap(screen, 0, 0, depth, 0);
-    if (!pixmap) {
-        log(ERROR, "DRI3: failed to create pixmap");
-        munmap(addr, strides[0] * height);
-        return NULL;
-    }
-
-    dixSetPrivate(&pixmap->devPrivates, &loriePixmapPrivateKeyRec, addr);
-    screen->ModifyPixmapHeader(pixmap, width, height, 0, 0, strides[0], addr);
-
-    return pixmap;
-}
-
 static int lorieGetFormats(unused ScreenPtr screen, CARD32 *num_formats, CARD32 **formats) {
     *num_formats = 0;
     *formats = NULL;
@@ -639,7 +590,6 @@ static Bool
 lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
     static int timerFd = -1;
     pScreenPtr = pScreen;
-    logh("lorieScreenInit");
 
     if (timerFd == -1) {
         struct itimerspec spec = {0};
@@ -653,30 +603,20 @@ lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
     miSetZeroLineBias(pScreen, 0);
     pScreen->blackPixel = 0;
     pScreen->whitePixel = 1;
-    static dri3_screen_info_rec dri3Info = {
-            .version = 2,
-            .fds_from_pixmap = FalseNoop,
-            .pixmap_from_fds = loriePixmapFromFds,
-            .get_formats = lorieGetFormats,
-            .get_modifiers = lorieGetModifiers,
-            .get_drawable_modifiers = FalseNoop
-    };
 
     if (FALSE
-          || !miSetVisualTypesAndMasks(24, ((1 << TrueColor) | (1 << DirectColor)), 8, TrueColor, 0xFF0000, 0x00FF00, 0x0000FF)
-          || !miSetPixmapDepths()
-          || !fbScreenInit(pScreen, NULL, pvfb->root.width, pvfb->root.height, monitorResolution, monitorResolution, 0, 32)
-          || !fbPictureInit(pScreen, 0, 0)
-          || !lorieRandRInit(pScreen)
-          || !miPointerInitialize(pScreen, &loriePointerSpriteFuncs, &loriePointerCursorFuncs, TRUE)
-          || !fbCreateDefColormap(pScreen)
-          || !dri3_screen_init(pScreen, &dri3Info)
-          || !dixRegisterPrivateKey(&loriePixmapPrivateKeyRec, PRIVATE_PIXMAP, 0))
+        || !miSetVisualTypesAndMasks(24, ((1 << TrueColor) | (1 << DirectColor)), 8, TrueColor, 0xFF0000, 0x00FF00, 0x0000FF)
+        || !miSetPixmapDepths()
+        || !fbScreenInit(pScreen, NULL, pvfb->root.width, pvfb->root.height, monitorResolution, monitorResolution, 0, 32)
+        || !(!pvfb->dri3 || lorieInitDri3(pScreen))
+        || !fbPictureInit(pScreen, 0, 0)
+        || !lorieRandRInit(pScreen)
+        || !miPointerInitialize(pScreen, &loriePointerSpriteFuncs, &loriePointerCursorFuncs, TRUE)
+        || !fbCreateDefColormap(pScreen))
         return FALSE;
 
     wrap(pvfb, pScreen, CreateScreenResources, lorieCreateScreenResources)
     wrap(pvfb, pScreen, CloseScreen, lorieCloseScreen)
-    wrap(pvfb, pScreen, DestroyPixmap, lorieDestroyPixmap)
 
     QueueWorkProc(resetRootCursor, NULL, NULL);
     ShmRegisterFbFuncs(pScreen);
