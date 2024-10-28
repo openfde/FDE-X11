@@ -42,6 +42,7 @@ public final class InputEventSender {
     /** Set of pressed keys for which we've sent TextEvent. */
     private final TreeSet<Integer> mPressedTextKeys;
     private String TAG = "InputEventSender";
+    private long mLastEventTime = 0;
 
     public InputEventSender(InputStub injector) {
         if (injector == null)
@@ -92,9 +93,12 @@ public final class InputEventSender {
             x += offsetX;
             y += offsetY;
         }
-        mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
-                lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
-    }
+        if( mLastEventTime != 0 && System.currentTimeMillis() - mLastEventTime > 16) {
+            mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
+                    lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
+        }
+        mLastEventTime = System.currentTimeMillis();
+     }
 
     public void sendMouseWheelEvent(float distanceX, float distanceY) {
         mInjector.sendMouseWheelEvent(distanceX, distanceY);

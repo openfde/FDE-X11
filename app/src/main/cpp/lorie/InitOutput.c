@@ -244,7 +244,7 @@ static RRModePtr lorieCvt(int width, int height, int framerate) {
     RRModePtr mode;
 //    logh("lorieCvt width:%d height:%d framerate:%d", width, height, framerate);
 
-    info = libxcvt_gen_mode_info(width, height, framerate, 0, 0);
+    info = libxcvt_gen_mode_info(width, height, 30, 0, 0);
 
     snprintf(name, sizeof name, "%dx%d", info->hdisplay, info->vdisplay);
     modeinfo.nameLength = strlen(name);
@@ -590,10 +590,10 @@ static Bool
 lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
     static int timerFd = -1;
     pScreenPtr = pScreen;
-
     if (timerFd == -1) {
-        struct itimerspec spec = {0};
+        long nsecs = 1000 * 1000 * 1000 / 30;
         timerFd = timerfd_create(CLOCK_MONOTONIC,  0);
+        struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(timerFd, 0, &spec, NULL);
     }
 
@@ -672,9 +672,8 @@ void lorieConfigureNotify(int width, int height, int framerate) {
         RRCrtcNotify(RRFirstEnabledCrtc(pScreen), mode,0, 0,RR_Rotate_0, NULL, 1, &output);
         RRScreenSizeSet(pScreen, mode->mode.width, mode->mode.height, mmWidth, mmHeight);
     }
-
     if (framerate > 0) {
-        long nsecs = 1000 * 1000 * 1000 / framerate;
+        long nsecs = 1000 * 1000 * 1000 / 30;
         struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(lorieScreen.timerFd, 0, &spec, NULL);
 //        log(VERBOSE, "New framerate is %d", framerate);
