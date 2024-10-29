@@ -275,9 +275,9 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
     unsigned char *propData;
     prop->window = pWin->drawable.id;
     bool overrideRedirect = pWin->overrideRedirect;
-    log(ERROR, "prop start================================>");
-    log(ERROR, "prop window:%x realized:%d", pWin->drawable.id, pWin->realized);
-    log(ERROR, "prop window:%x overrideRedirect:%d", pWin->drawable.id, overrideRedirect);
+//    log(ERROR, "prop start================================>");
+//    log(ERROR, "prop window:%x realized:%d", pWin->drawable.id, pWin->realized);
+//    log(ERROR, "prop window:%x overrideRedirect:%d", pWin->drawable.id, overrideRedirect);
     while (pProper) {
         ATOM name = pProper->propertyName;
         propData = pProper->data;
@@ -285,7 +285,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
                 char* type = NameForAtom(atoms[i]);
-                log(ERROR, "prop window:%x type:%s", pWin->drawable.id, type);
+//                log(ERROR, "prop window:%x type:%s", pWin->drawable.id, type);
                 if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
                     prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
                     if(!overrideRedirect){
@@ -332,22 +332,22 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
         }
         else if (STRING_EQUAL(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
             prop->transient = ((Window *) propData)[0];
-            log(ERROR, "prop window:%x transient:%x", pWin->drawable.id, prop->transient);
+//            log(ERROR, "prop window:%x transient:%x", pWin->drawable.id, prop->transient);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLIENT_LEADER)) {
             prop->leader = ((Window *) propData)[0];
-            log(ERROR, "prop window:%x leader:%x", pWin->drawable.id, prop->leader);
+//            log(ERROR, "prop window:%x leader:%x", pWin->drawable.id, prop->leader);
         } else if (STRING_EQUAL(NameForAtom(name), NET_WINDOW_NAME)) {
             STRCPY;
             prop->net_wm_name = atom_value;
-            log(ERROR, "prop window:%x net_wm_name:%s", pWin->drawable.id, prop->net_wm_name);
+//            log(ERROR, "prop window:%x net_wm_name:%s", pWin->drawable.id, prop->net_wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)){
             STRCPY;
             prop->wm_class = atom_value;
-            log(ERROR, "prop window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
+//            log(ERROR, "prop window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             STRCPY;
             prop->wm_name = atom_value;
-            log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
+//            log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
             int *icon_data = (int *)propData;
             int width = *icon_data;
@@ -360,7 +360,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
                 if(STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_DELETE_WINDOW)){
                     prop->support_wm_delete = TRUE;
                 }
-                log(ERROR, "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
+//                log(ERROR, "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
             }
         }
         pProper = pProper->next;
@@ -368,7 +368,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
     if(prop->window_type == 0){
         prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
     }
-    log(ERROR, "prop end================================>");
+//    log(ERROR, "prop end================================>");
 
 }
 
@@ -467,7 +467,7 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
 }
 
 void android_create_window(WindAttribute attribute, WindProperty aProperty, Window taskTo, bool inbound) {
-    log(DEBUG, "android_create_activity window:%x wm_name:%s net_wm_name:%s ", attribute.window,aProperty.wm_name, aProperty.net_wm_name );
+    log(DEBUG, "android_create_activity window:%x wm_name:%s net_wm_name:%s ptr:%p", attribute.window,aProperty.wm_name, aProperty.net_wm_name, attribute.pWin );
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         log(DEBUG, "ready to create activity");

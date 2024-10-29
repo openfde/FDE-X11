@@ -270,7 +270,7 @@ public class XWindowService extends Service {
         sendBroadcast(intent);
         handler.postDelayed(()->{
             destroyActivitySafety(retry - 1, attr);
-        }, 5000);
+        }, 0);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {

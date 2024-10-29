@@ -151,17 +151,16 @@ void SurfaceManager::traversal_log_window(){
         log("no window for android");
         return;
     }
-    log("traversal_window_attrs--------------->>>>");
+    log("traversal_window_attrs>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
     for (const auto& pair : window_attrs) {
         LogWindAttribute(pair.first, pair.second);
     }
-    log("traversal_window_attrs<<<<<<<---------------");
+    log("traversal_window_attrs<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
 }
 
 void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
-    log("\t traversal_window_attrs window:%x window:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d win:%p s:%p ",
-        window,
+    log("======> this is a window xid:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f  t:%d win:%p s:%p ",
         attr.window,
         attr.index,
         attr.width,
@@ -174,7 +173,7 @@ void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
     if (attr.widget_size != 0) {
         for (int i = 0; i < attr.widget_size; i++) {
             Widget widget = attr.widgets[i];
-            log("\t traversal_window_attrs widget window:%x w:%.0f h:%.0f x:%.0f y:%.0f \n\t\t t:%d  s:%p ",
+            log("==============> this is a widget xid:%x w:%.0f h:%.0f x:%.0f y:%.0f t:%d  s:%p ",
                 widget.window,
                 widget.width,
                 widget.height,

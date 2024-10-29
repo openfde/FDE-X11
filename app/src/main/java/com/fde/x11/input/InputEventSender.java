@@ -93,11 +93,11 @@ public final class InputEventSender {
             x += offsetX;
             y += offsetY;
         }
-        if( mLastEventTime != 0 && System.currentTimeMillis() - mLastEventTime > 16) {
+//        if( mLastEventTime != 0 && System.currentTimeMillis() - mLastEventTime > 16) {
             mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
                     lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
-        }
-        mLastEventTime = System.currentTimeMillis();
+//        }
+//        mLastEventTime = System.currentTimeMillis();
      }
 
     public void sendMouseWheelEvent(float distanceX, float distanceY) {

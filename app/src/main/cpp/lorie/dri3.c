@@ -9,6 +9,7 @@
 #include <android/hardware_buffer.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <fcntl.h>
 #include "screenint.h"
 #include "lorie.h"
 #include "renderer.h"
@@ -439,7 +440,8 @@ static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *
     const CARD64 RAW_MMAPPABLE_FD = 1274;
     PixmapPtr pixmap = NullPixmap;
     LorieAHBPixPrivPtr pPixPriv = NULL;
-    log(ERROR, "DRI3: loriePixmapFromFds num_fds:%d", num_fds);
+    log(ERROR, "DRI3: loriePixmapFromFds num_fds:%d modifier:%d fd:%d width:%d height:%d",
+        num_fds, modifier, fds[0], width, height);
 
     if (num_fds > 1) {
         log(ERROR, "DRI3: More than 1 fd");
@@ -552,13 +554,31 @@ static int lorieGetModifiers(__unused ScreenPtr screen, __unused uint32_t format
     return TRUE;
 }
 
+static int openClient(__unused ClientPtr client,
+                      __unused ScreenPtr screen,
+                      __unused RRProviderPtr provider,
+                      __unused int *fdp) {
+    int fd;
+    fd = open("/dev/dri/renderD128", O_RDWR|O_CLOEXEC);
+    log(ERROR, "openClient fd %d", fd);
+    if (fd < 0) {
+        log(ERROR, "openClient fdp %d", &fdp);
+        return BadAlloc;
+    }
+    log(ERROR, "openClient fd %d", fd);
+    *fdp = fd;
+    return Success;
+//    return BadMatch;
+}
+
 static dri3_screen_info_rec dri3Info = {
         .version = 2,
         .fds_from_pixmap = FalseNoop,
         .pixmap_from_fds = loriePixmapFromFds,
         .get_formats = lorieGetFormats,
         .get_modifiers = lorieGetModifiers,
-        .get_drawable_modifiers = FalseNoop
+        .get_drawable_modifiers = FalseNoop,
+        .open_client = openClient,
 };
 
 Bool lorieInitDri3(ScreenPtr pScreen) {
