@@ -44,7 +44,7 @@ Bool LOG_ENABLE;
 
 static int argc = 0;
 static char **argv = NULL;
-static int conn_fd = -1;
+int conn_fd = -1;
 extern char *__progname; // NOLINT(bugprone-reserved-identifier)
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;

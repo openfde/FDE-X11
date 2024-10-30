@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:background="@android:color/white">
 
     <FrameLayout
         android:id="@+id/frame"
@@ -16,7 +16,7 @@
         android:paddingTop="0dp"
         android:paddingRight="0dp"
         android:paddingBottom="0dp"
-        android:background="@android:color/black">
+        android:background="@android:color/white">
 
         <com.fde.x11.LorieView
             android:id="@+id/lorieView"
@@ -29,7 +29,7 @@
             android:id="@+id/stub"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@android:color/black"
+            android:background="@android:color/white"
             android:gravity="center_horizontal|center_vertical"
             android:orientation="vertical"
             android:visibility="gone">
@@ -196,7 +196,7 @@
                 android:paddingRight="0px"
                 android:paddingBottom="0px"
                 android:text="L"
-                android:textColor="@android:color/black"
+                android:textColor="@android:color/white"
                 android:background="@drawable/mouse_buttons"
                 android:textSize="8sp"
                 tools:ignore="HardcodedText,PxUsage,SmallSp" />
@@ -213,7 +213,7 @@
                 android:paddingRight="0px"
                 android:paddingBottom="0px"
                 android:text="M"
-                android:textColor="@android:color/black"
+                android:textColor="@android:color/white"
                 android:background="@drawable/mouse_buttons"
                 android:textSize="8sp"
                 tools:ignore="HardcodedText,PxUsage,SmallSp" />
@@ -230,7 +230,7 @@
                 android:paddingRight="0px"
                 android:paddingBottom="0px"
                 android:text="R"
-                android:textColor="@android:color/black"
+                android:textColor="@android:color/white"
                 android:background="@drawable/mouse_buttons"
                 android:textSize="8sp"
                 tools:ignore="HardcodedText,PxUsage,SmallSp" />
@@ -255,7 +255,7 @@
         android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="37.5dp"
-        android:background="@android:color/black"
+        android:background="@android:color/white"
         android:layout_gravity="bottom|center"/>
 
     <View

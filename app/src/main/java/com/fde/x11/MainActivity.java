@@ -231,6 +231,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         findViewById(R.id.preferences_button).setOnClickListener((l) -> startActivity(new Intent(this, LoriePreferences.class) {{ setAction(Intent.ACTION_MAIN); }}));
         findViewById(R.id.help_button).setOnClickListener((l) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/termux/termux-x11/blob/master/README.md#running-graphical-applications"))));
         LorieView lorieView = findViewById(R.id.lorieView);
+        lorieView.setZOrderOnTop(true);
         lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
         lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);

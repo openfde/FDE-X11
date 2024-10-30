@@ -644,7 +644,7 @@ ospoll_wait(struct ospoll *ospoll, int timeout)
     struct epoll_event events[MAX_EVENTS];
     int i;
 
-    nready = epoll_wait(ospoll->epoll_fd, events, MAX_EVENTS, 0);
+    nready = epoll_wait(ospoll->epoll_fd, events, MAX_EVENTS, timeout);
 //    logh(ERROR, "epoll_wait fd:%d ospoll->epoll_fd:%d", conn_fd, ospoll->epoll_fd)
 //    if(conn_fd == ospoll->epoll_fd){
 //        logh(ERROR, "ospoll_wait callback nready:%d timeout:%d" , nready, timeout)

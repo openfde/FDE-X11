@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
@@ -49,15 +50,15 @@ public class LorieView extends SurfaceView implements InputStub {
         void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight);
     }
 
-    interface PixelFormat {
-        int BGRA_8888 = 5; // Stands for HAL_PIXEL_FORMAT_BGRA_8888
-    }
+//    interface PixelFormat {
+//        int BGRA_8888 = 5; // Stands for HAL_PIXEL_FORMAT_BGRA_8888
+//    }
 
     private Callback mCallback;
     private final Point p = new Point();
     private final SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback() {
         @Override public void surfaceCreated(@NonNull SurfaceHolder holder) {
-            holder.setFormat(PixelFormat.BGRA_8888);
+            holder.setFormat(PixelFormat.TRANSLUCENT);
 //            Log.d(TAG, "surfaceCreated: holder:" + holder + "");
         }
 
@@ -101,7 +102,7 @@ public class LorieView extends SurfaceView implements InputStub {
     public void regenerate() {
         Callback callback = mCallback;
         mCallback = null;
-        getHolder().setFormat(android.graphics.PixelFormat.RGBA_8888);
+        getHolder().setFormat(android.graphics.PixelFormat.TRANSLUCENT);
         mCallback = callback;
 
         triggerCallback();
@@ -122,7 +123,7 @@ public class LorieView extends SurfaceView implements InputStub {
         });
 
         Rect r = getHolder().getSurfaceFrame();
-        getActivity().runOnUiThread(() -> mSurfaceCallback.surfaceChanged(getHolder(), PixelFormat.BGRA_8888, r.width(), r.height()));
+        getActivity().runOnUiThread(() -> mSurfaceCallback.surfaceChanged(getHolder(), PixelFormat.TRANSLUCENT, r.width(), r.height()));
     }
 
     private Activity getActivity() {
