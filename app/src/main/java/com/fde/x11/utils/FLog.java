@@ -31,7 +31,7 @@ public class FLog {
      */
     public static final int ASSERT = 7;
 
-    private static final boolean LogEnable = true;
+    private static final boolean LogEnable = false;
     private static final boolean LogAppListEnable = true;
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;

@@ -380,7 +380,7 @@ ospoll_add(struct ospoll *ospoll, int fd,
     } else {
         osfd = ospoll->fds[pos];
     }
-    logh(ERROR, "ospoll_add  fd:%d", fd)
+//    logh(ERROR, "ospoll_add  fd:%d", fd)
     osfd->data = data;
     osfd->callback = callback;
     osfd->trigger = trigger;
@@ -664,11 +664,11 @@ ospoll_wait(struct ospoll *ospoll, int timeout)
 
         if (osfd->callback){
             if(conn_fd == osfd->fd){
-                logh(ERROR, "ospoll_wait callback xevents:%d i:%d fd:%d data:%p", xevents, i,
-                     osfd->fd, osfd->data)
+//                logh(ERROR, "ospoll_wait callback xevents:%d i:%d fd:%d data:%p", xevents, i,
+//                     osfd->fd, osfd->data)
             } else {
-                logh(ERROR, "ospoll_wait not event fd xevents:%d i:%d fd:%d data:%p", xevents, i,
-                     osfd->fd, osfd->data)
+//                logh(ERROR, "ospoll_wait not event fd xevents:%d i:%d fd:%d data:%p", xevents, i,
+//                     osfd->fd, osfd->data)
             }
             osfd->callback(osfd->fd, xevents, osfd->data);
         }

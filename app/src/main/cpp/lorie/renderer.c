@@ -20,7 +20,9 @@
 #include "c_interface.h"
 #include <android/log.h>
 extern Bool LOG_ENABLE;
-#define PRINT_LOG (1 && LOG_ENABLE)
+extern Bool GL_CHECK_ERROR;
+
+#define PRINT_LOG (0 && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__);}
 
@@ -85,6 +87,11 @@ static const char *eglErrorLabel(int code) {
 }
 
 static void checkGlError(int line) {
+//    if(!GL_CHECK_ERROR){
+//        log("do not check error")
+//        return;
+//    }
+
     GLenum error;
     char *desc = NULL;
     for (error = glGetError(); error; error = glGetError()) {
@@ -783,7 +790,6 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
     if (display.width != (float) w || display.height != (float) h) {
         display.width = (float) w;
         display.height = (float) h;
-
         glBindTexture(GL_TEXTURE_2D, display.id);
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -794,15 +800,19 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
+        log("renderer_update_root 6");
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
+        log("renderer_update_root 7");
     } else {
         glBindTexture(GL_TEXTURE_2D, display.id);
         checkGlError();
+        log("renderer_update_root 9");
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
                         GL_UNSIGNED_BYTE, data);
         checkGlError();
+        log("renderer_update_root 10");
     }
     log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
         w, h, data, flip, display.width, display.height);

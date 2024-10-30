@@ -66,9 +66,9 @@ public class LorieView extends SurfaceView implements InputStub {
             width = getMeasuredWidth();
             height = getMeasuredHeight();
 
-//            Log.d(TAG, "surfaceChanged: holder:" + holder + ", f:" + f + ", width:" + width + ", height:" + height + "");
+            Log.d(TAG, "surfaceChanged: holder:" + holder + ", f:" + f + ", width:" + width + ", height:" + height + "");
 
-            if (mCallback == null)
+            if (mCallback == null || width == 0 || height == 0)
                 return;
 
             getDimensionsFromSettings();

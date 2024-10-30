@@ -87,7 +87,7 @@ from The Open Group.
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
 
 extern Bool LOG_ENABLE;
-#define PRINT_LOG (1 && LOG_ENABLE)
+#define PRINT_LOG (0 && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__);}
 #define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "huyang_InitOutput", __VA_ARGS__);}
 
@@ -242,7 +242,7 @@ static RRModePtr lorieCvt(int width, int height, int framerate) {
     char name[128];
     xRRModeInfo modeinfo = {0};
     RRModePtr mode;
-//    logh("lorieCvt width:%d height:%d framerate:%d", width, height, framerate);
+    logh("lorieCvt width:%d height:%d framerate:%d", width, height, framerate);
 
     info = libxcvt_gen_mode_info(width, height, 30, 0, 0);
 
@@ -452,7 +452,7 @@ static void lorieTimerCallback(int fd, unused int r, void *arg) {
     char dummy[8];
     read(fd, dummy, 8);
     if (renderer_should_redraw() && RegionNotEmpty(DamageRegion(pvfb->damage))) {
-//        logh("RegionNotEmpty");
+        logh("RegionNotEmpty");
         int redrawn = FALSE;
         ScreenPtr pScreen = (ScreenPtr) arg;
 
@@ -588,10 +588,12 @@ static int lorieGetModifiers(unused ScreenPtr screen, unused uint32_t format, ui
 
 static Bool
 lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
+    logh("lorieScreenInit");
     static int timerFd = -1;
     pScreenPtr = pScreen;
     if (timerFd == -1) {
-        long nsecs = 1000 * 1000 * 1000 / 30;
+        long nsecs = 1000 * 1000 * 1000 / 120;
+//        long nsecs = {0};
         timerFd = timerfd_create(CLOCK_MONOTONIC,  0);
         struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(timerFd, 0, &spec, NULL);
@@ -646,8 +648,8 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
         res->pWin = pScreenPtr->root;
     }
     init_cusor = 0;
-//    logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
-//         pvfb->root.buffer, res->id, surface);
+    logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
+         pvfb->root.buffer, res->id, surface);
     renderer_set_window_each(pvfb->env, res, pvfb->root.buffer);
 //    renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
     lorieSetCursor(NULL, NULL, CursorForDevice(GetMaster(lorieMouse, MASTER_POINTER)), -1, -1);
@@ -661,8 +663,7 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
 void lorieConfigureNotify(int width, int height, int framerate) {
     ScreenPtr pScreen = pScreenPtr;
     RROutputPtr output = RRFirstOutput(pScreen);
-//    logh("lorieConfigureNotify");
-
+    logh("lorieConfigureNotify");
     if (output && width && height && (pScreen->width != width || pScreen->height != height)) {
         CARD32 mmWidth, mmHeight;
         RRModePtr mode = lorieCvt(width, height, framerate);

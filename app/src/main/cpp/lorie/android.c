@@ -39,7 +39,9 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 Bool LOG_ENABLE;
-#define PRINT_LOG (1 && LOG_ENABLE)
+Bool GL_CHECK_ERROR = FALSE;
+
+#define PRINT_LOG (0 && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);}
 
 static int argc = 0;

@@ -397,7 +397,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged");
+        FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged hasFocus:" + hasFocus);
         SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
         Window window = getWindow();
         View decorView = window.getDecorView();
@@ -956,7 +956,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             ParcelFileDescriptor fd = service == null ? null : service.getXConnection();
             if (fd != null) {
                 LorieView.connect(fd.detachFd());
-                getLorieView().triggerCallback();
+//                getLorieView().triggerCallback();
                 clientConnectedStateChanged(true);
 //                LorieView.setClipboardSyncEnabled(true);
 //                LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
