@@ -25,7 +25,8 @@
 #include <iomanip>
 #include <android/log.h>
 extern Bool LOG_ENABLE;
-#define PRINT_LOG (0 && LOG_ENABLE)
+#define SURFACE_LOG_ENABLE 1
+#define PRINT_LOG (SURFACE_LOG_ENABLE && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_sm", __VA_ARGS__);}              \
 
 #define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_sm", __VA_ARGS__);}              \
@@ -47,7 +48,7 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-#define CAPACITY 100
+#define CAPACITY 10000
 
 
 class SurfaceManager {
@@ -72,7 +73,7 @@ private:
     std::map<Window, WindAttribute> window_attrs;
     int get_avilable_index(Atom atom);
     void LogWindAttribute(Window window,WindAttribute attr);
-
+    int index_normal = 0;
 };
 
 

@@ -4,6 +4,8 @@
 
 package com.fde.x11.input;
 
+import com.fde.fusionwindowmanager.WindowAttribute;
+
 /**
  * A set of functions to send client users' activities to remote host machine. This interface
  * represents low level functions without relationships with Android system. Consumers can use
@@ -41,4 +43,6 @@ public interface InputStub {
 
     /** Sends an event, not flushing connection. */
     void sendTouchEvent(int action, int pointerId, int x, int y);
+
+    WindowAttribute getAttribute();
 }

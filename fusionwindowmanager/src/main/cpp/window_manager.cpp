@@ -538,7 +538,7 @@ void WindowManager::Run() {
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
-//        log("------Received event: %s",ToString(e).c_str());
+        log("------Received event: %s",ToString(e).c_str());
 //        log("type:%d", e.type);
         // 2. Dispatch event.
         switch (e.type) {

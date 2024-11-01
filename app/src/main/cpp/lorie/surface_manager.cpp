@@ -190,34 +190,9 @@ SurfaceManager::SurfaceManager() {
 }
 
 int SurfaceManager::get_avilable_index(Atom type) {
-    int pInt[CAPACITY];
-    if(type == _NET_WM_WINDOW_TYPE_NORMAL){
-        auto it = window_attrs.begin();
-        while(it != window_attrs.end()) {
-            pInt[it->second.index] = 1;
-            it ++;
-        }
-        for ( int i = 1; i <= CAPACITY ; i ++ ){
-            if(pInt[i] == 0){
-                log("get_avilable_index normal_type %d", i);
-                return i;
-            }
-        }
-    } else if(type == _NET_WM_WINDOW_TYPE_DIALOG){
-        auto it = window_attrs.begin();
-        while(it != window_attrs.end()) {
-            pInt[it->second.index - CAPACITY] = 1;
-            it ++;
-        }
-        for ( int i = 1; i <= CAPACITY ; i ++ ){
-            if(pInt[i] == 0){
-                log("get_avilable_index dialog_type %d", i + CAPACITY);
-                return i + CAPACITY;
-            }
-        }
-    }
-    log("index out of CAPACITY");
-    return CAPACITY;
+    index_normal ++;
+    index_normal %= CAPACITY;
+    return index_normal;
 }
 
 SurfaceManager::~SurfaceManager() {

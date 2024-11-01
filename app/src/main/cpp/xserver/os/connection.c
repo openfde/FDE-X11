@@ -59,6 +59,9 @@ SOFTWARE.
  *      socket ids aren't small nums (0 - 2^8)
  *
  *****************************************************************/
+#include <jni.h>
+#include <android/log.h>
+#define logh(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_connection", __VA_ARGS__);
 
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
@@ -289,7 +292,7 @@ CreateWellKnownSockets(void)
 
     if (ListenTransCount == 0 && !NoListenAll)
         FatalError
-            ("Cannot establish any listening sockets - Make sure an X server isn't already running");
+                ("Cannot establish any listening sockets - Make sure an X server isn't already running");
 
 #if !defined(WIN32)
     OsSignal(SIGPIPE, SIG_IGN);
@@ -388,30 +391,30 @@ AuthAudit(ClientPtr client, Bool letin,
         strlcpy(addr, "local host", sizeof(addr));
     else
         switch (saddr->sa_family) {
-        case AF_UNSPEC:
+            case AF_UNSPEC:
 #if defined(UNIXCONN) || defined(LOCALCONN)
-        case AF_UNIX:
+            case AF_UNIX:
 #endif
-            strlcpy(addr, "local host", sizeof(addr));
-            break;
+                strlcpy(addr, "local host", sizeof(addr));
+                break;
 #if defined(TCPCONN)
-        case AF_INET:
-            snprintf(addr, sizeof(addr), "IP %s",
-                     inet_ntoa(((struct sockaddr_in *) saddr)->sin_addr));
-            break;
+            case AF_INET:
+                snprintf(addr, sizeof(addr), "IP %s",
+                         inet_ntoa(((struct sockaddr_in *) saddr)->sin_addr));
+                break;
 #if defined(IPv6) && defined(AF_INET6)
-        case AF_INET6:{
-            char ipaddr[INET6_ADDRSTRLEN];
+            case AF_INET6:{
+                char ipaddr[INET6_ADDRSTRLEN];
 
-            inet_ntop(AF_INET6, &((struct sockaddr_in6 *) saddr)->sin6_addr,
-                      ipaddr, sizeof(ipaddr));
-            snprintf(addr, sizeof(addr), "IP %s", ipaddr);
-        }
-            break;
+                inet_ntop(AF_INET6, &((struct sockaddr_in6 *) saddr)->sin6_addr,
+                          ipaddr, sizeof(ipaddr));
+                snprintf(addr, sizeof(addr), "IP %s", ipaddr);
+            }
+                break;
 #endif
 #endif
-        default:
-            strlcpy(addr, "unknown address", sizeof(addr));
+            default:
+                strlcpy(addr, "unknown address", sizeof(addr));
         }
 
     if (GetLocalClientCreds(client, &lcc) != -1) {
@@ -529,8 +532,8 @@ ClientAuthorized(ClientPtr client,
     }
     else {
         auth_id =
-            CheckAuthorization(proto_n, auth_proto, string_n, auth_string,
-                               client, &reason);
+                CheckAuthorization(proto_n, auth_proto, string_n, auth_string,
+                                   client, &reason);
     }
 
     if (auth_id == (XID) ~0L) {
@@ -561,7 +564,7 @@ ClientAuthorized(ClientPtr client,
         }
     }
 #ifdef XSERVER_DTRACE
-    else if ((auditTrailLevel > 1) || XSERVER_CLIENT_AUTH_ENABLED())
+        else if ((auditTrailLevel > 1) || XSERVER_CLIENT_AUTH_ENABLED())
 #else
     else if (auditTrailLevel > 1)
 #endif
@@ -596,7 +599,7 @@ static void
 ClientReady(int fd, int xevents, void *data)
 {
     ClientPtr client = data;
-
+//    logh(ERROR, "ClientReady fd:%d, xevents:%d, data:%p", fd, xevents, data);
     if (xevents & X_NOTIFY_ERROR) {
         CloseDownClient(client);
         return;
@@ -630,6 +633,7 @@ AllocNewConnection(XtransConnInfo trans_conn, int fd, CARD32 conn_time)
         return NullClient;
     }
     client->local = ComputeLocalClient(client);
+//    logh(ERROR, "AllocNewConnection fd:%d", fd);
     ospoll_add(server_poll, fd,
                ospoll_trigger_edge,
                ClientReady,
@@ -781,7 +785,7 @@ CloseDownConnection(ClientPtr client)
         CallCallbacks(&FlushCallback, client);
 
     if (oc->output)
-	FlushClient(client, oc, (char *) NULL, 0);
+        FlushClient(client, oc, (char *) NULL, 0);
     CloseDownFileDescriptor(oc);
     FreeOsBuffers(oc);
     free(client->osPrivate);
@@ -805,6 +809,7 @@ struct notify_fd {
 static void
 HandleNotifyFd(int fd, int xevents, void *data)
 {
+//    logh(ERROR, " HandleNotifyFd");
     struct notify_fd *n = data;
     n->notify(fd, xevents, n->data);
 }
@@ -1037,10 +1042,10 @@ ListenOnOpenFD(int fd, int noxauth)
 
     /* Allocate space to store it */
     ListenTransFds =
-        xnfreallocarray(ListenTransFds, ListenTransCount + 1, sizeof(int));
+            xnfreallocarray(ListenTransFds, ListenTransCount + 1, sizeof(int));
     ListenTransConns =
-        xnfreallocarray(ListenTransConns, ListenTransCount + 1,
-                        sizeof(XtransConnInfo));
+            xnfreallocarray(ListenTransConns, ListenTransCount + 1,
+                            sizeof(XtransConnInfo));
 
     /* Store it */
     ListenTransConns[ListenTransCount] = ciptr;

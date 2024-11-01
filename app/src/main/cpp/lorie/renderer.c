@@ -8,6 +8,7 @@
 #pragma ide diagnostic ignored "misc-no-recursion"
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
+#define RENDERER_LOG_ENABLE 1
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -21,8 +22,8 @@
 #include <android/log.h>
 extern Bool LOG_ENABLE;
 extern Bool GL_CHECK_ERROR;
-
-#define PRINT_LOG (0 && LOG_ENABLE)
+extern Window focusWindow;
+#define PRINT_LOG (RENDERER_LOG_ENABLE && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__);}
 
@@ -1252,6 +1253,8 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     float cursor_y = cursor.y;
     float cursor_xhot = cursor.xhot;
     float cursor_yhot = cursor.yhot;
+    log("mouse draw_cursor cursor_x:%.0f cursor_y:%.0f ", cursor_x, cursor_y);
+
     if (attr) {
         width = attr->width;
         height = attr->height;

@@ -65,6 +65,8 @@ public class XWindowService extends Service {
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
+    private static final int DESTROY_ACTIVITY_RETRY = 5;
+    private static final int DESTROY_ACTIVITY_DELAY = 300;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
     private final HashSet<Long> startingWindow = new HashSet<>();
@@ -87,6 +89,11 @@ public class XWindowService extends Service {
             return Xserver.getInstance().getXConnection();
         }
 
+        @Override
+        public int getConnectedFD() throws RemoteException {
+            return 0;
+        }
+
 
         @Override
         public void closeWindow(int index, long winPtr, long window) throws RemoteException {
@@ -100,7 +107,7 @@ public class XWindowService extends Service {
         @Override
         public void configureWindow(long winPtr, long window, int x, int y, int w, int h) throws RemoteException {
             if(wm != null && wm.configureWindow(window, x, y, w, h) > 0){
-                Log.d(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
+                FLog.s(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
             }
         }
 
@@ -136,8 +143,13 @@ public class XWindowService extends Service {
         @Override
         public void sendClipText(String cliptext) throws RemoteException {
             if(wm != null && wm.sendClipText(cliptext) > 0){
-                Log.d(TAG, "sendClipText: cliptext:" + cliptext + "");
+                FLog.s(TAG, "sendClipText: cliptext:" + cliptext + "");
             }
+        }
+
+        @Override
+        public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
+            Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
     };
     private Handler handler = new Handler();
@@ -172,7 +184,7 @@ public class XWindowService extends Service {
             case X_DESTROY_ACTIVITY:
             case X_UNMAP_WINDOW:
                 if(message.getProperty()!= null && message.getProperty().getSupportDeleteWindow() != 0){
-                    destroyActivitySafety(2, message.getWindowAttribute());
+                    destroyActivitySafety(DESTROY_ACTIVITY_RETRY, message.getWindowAttribute());
                 } else {
                     stopWindow(message.getWindowAttribute());
                 }
@@ -270,7 +282,7 @@ public class XWindowService extends Service {
         sendBroadcast(intent);
         handler.postDelayed(()->{
             destroyActivitySafety(retry - 1, attr);
-        }, 0);
+        }, DESTROY_ACTIVITY_DELAY);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {

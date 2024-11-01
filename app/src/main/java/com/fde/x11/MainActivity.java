@@ -147,6 +147,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private final Map<Long, View> mFloatViews = new HashMap<>();
     private WindowManager floatWindow;
     private final ServiceConnection connection = new Connection();
+    private InputEventSender mWindowInputEventSender;
+    private XserviceInterfaceWrapper mXserviceWrapper;
+
     protected long getWindowId() {
         return WindowCode;
     }
@@ -215,6 +218,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             FLog.a("lifecycle",getWindowId(), title);
             App.getApp().windowPropertyMap.put(mAttribute.getXID(), mProperty);
         }
+        mXserviceWrapper = new XserviceInterfaceWrapper();
+        mXserviceWrapper.mAttribute = mAttribute;
+        mXserviceWrapper.updateCoordinate(mAttribute);
     }
 
     private void initView() {
@@ -235,12 +241,14 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
         lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
+        mWindowInputEventSender = new InputEventSender(lorieView);
+        mWindowInputEventSender.setEventInterface(mXserviceWrapper);
         mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
             @Override
             public void swipeDown() {
                 toggleExtraKeys();
             }
-        }, new InputEventSender(lorieView));
+        }, mWindowInputEventSender);
         mLorieKeyListener = (v, k, e) -> {
             if (k == KEYCODE_VOLUME_DOWN && preferences.getBoolean("hideEKOnVolDown", false)) {
                 if (e.getAction() == ACTION_UP)
@@ -297,7 +305,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
             if(!isCaptionShowing()){
                 getWindow().getDecorView().postDelayed(()->{
-                    execInWindowManager();
+//                    execInWindowManager();
                 }, 200);
             }
         });
@@ -327,13 +335,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
         mClipboardManager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         findViewById(R.id.button).setOnClickListener((v)->{
-            try {
-                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-                        mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
-            } catch (RemoteException e) {
-                throw new RuntimeException(e);
-            }
+            mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                    (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                    mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
         });
     }
 
@@ -365,11 +369,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         getWindow().getDecorView().postDelayed(()->{
             if(!correctMarked){
                 correctMarked = true;
-                try {
-                    checkConfigBeforeExec(mConfiguration, true);
-                } catch (RemoteException e) {
-                    throw new RuntimeException(e);
-                }
+                checkConfigBeforeExec(mConfiguration, true);
             }
         },1000);
 //        getLorieView().requestFocus();
@@ -381,15 +381,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
-        if(!checkServiceExits()){
+        if(mXserviceWrapper == null){
             return;
         }
         getWindow().getDecorView().postDelayed(()->{
-            try {
-                checkConfigBeforeExec(newConfig, true);
-            } catch (RemoteException e) {
-                e.printStackTrace();
-            }
+            checkConfigBeforeExec(newConfig, true);
         },300);
     }
 
@@ -479,7 +475,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         unregisterReceiver(receiver);
         unbindService(connection);
         stopFloatViews();
-        service = null;
+        mXserviceWrapper.disableService();
         FLog.a("lifecycle", getWindowId(), "onDestroy");
         if(mClipboardManager != null){
             mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
@@ -491,7 +487,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
         String hexString = Long.toHexString(getWindowId());
-        if(checkServiceExits() && mProperty != null && mProperty.getSupportDeleteWindow() == 1){
+        if(mXserviceWrapper != null && mProperty != null && mProperty.getSupportDeleteWindow() == 1){
             FLog.a("lifecycle", getWindowId(), "onWindowDismissed");
             closeXWindow();
         } else {
@@ -530,14 +526,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     CharSequence content = item.getText();
                     FLog.a("window", getWindowId(), "clip:content:" + content + " label:" + label);
                     if (content != null && !TextUtils.isEmpty(content) &&
-                            !TextUtils.equals(content, mClipText) && checkServiceExits()) {
+                            !TextUtils.equals(content, mClipText) && mXserviceWrapper != null) {
                         mClipText = content.toString();
                         FLog.a("window", getWindowId(), "getClipText:" + mClipText);
-                        try {
-                            service.sendClipText(mClipText);
-                        } catch (RemoteException e) {
-                            throw new RuntimeException(e);
-                        }
+                        mXserviceWrapper.sendClipText(mClipText);
                     }
                 }
             }
@@ -549,24 +541,17 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
         for (ActivityManager.RunningTaskInfo info: runningTasks){
             if(TextUtils.equals(info.topActivity.getClassName(), getClass().getName())
-                    && checkServiceExits()){
+                    && mXserviceWrapper != null){
                 Configuration configuration = info.configuration;
-                try {
-                    checkConfigBeforeExec(configuration, false);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
-                }
+                checkConfigBeforeExec(configuration, false);
                 return;
             }
         }
     }
 
-    private boolean checkServiceExits() {
-        return service != null && mAttribute != null;
-    }
 
-    private void checkConfigBeforeExec(Configuration configuration, boolean newConfig) throws RemoteException{
-        if(configuration == null || !checkServiceExits()){
+    private void checkConfigBeforeExec(Configuration configuration, boolean newConfig){
+        if(configuration == null || mXserviceWrapper == null){
             return;
         }
         //configuration:{1.0 ?mcc?mnc [zh_CN_#Hans] ldltr sw1080dp w1920dp h1031dp 160dpi xlrg long land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1032) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}, newConfig:true
@@ -600,30 +585,23 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             FLog.a("window", getWindowId(), "checkConfigBeforeExec configure:" + rect);
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
-            if(service == null){
-                return;
-            }
             if( newConfig ||  !samePosition || !sameSize ){
                 updateAttribueOnly(rect);
-                service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
                         rect.right - rect.left, rect.bottom - rect.top);
             }
         }
-        service.raiseWindow(mAttribute.getXID());
+        mXserviceWrapper.raiseWindow(mAttribute.getXID());
 
         if (isFullscreen) {
             handler.postDelayed(() -> {
-                try {
-                    if(!checkServiceExits()){
-                        return;
-                    }
-                    service.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-                            (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-                            mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
-                } catch (RemoteException e) {
-                    e.printStackTrace();
+                if(mXserviceWrapper == null){
+                    return;
                 }
+                mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                        mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
             },100);
         }
     }
@@ -662,16 +640,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void closeXWindow() {
         FLog.a("window", getWindowId(), "closeXWindow");
-        if(checkServiceExits()){
-            try {
-                WindowAttribute a = mAttribute;
-                service.windowChanged(null, a.getOffsetX(),
-                        a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
-                        a.getWindowPtr(), a.getXID());
-                service.closeWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        if(mXserviceWrapper != null){
+            WindowAttribute a = mAttribute;
+            mXserviceWrapper.windowChanged(null, a.getOffsetX(),
+                    a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
+                    a.getWindowPtr(), a.getXID());
+            mXserviceWrapper.closeWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
         }
     }
 
@@ -690,13 +664,14 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
                  InvocationTargetException e) {
-            e.printStackTrace();
+            FLog.e(TAG, e.getMessage());
         }
     }
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) throws RemoteException {
-        if(checkServiceExits()){
-            service.windowChanged(sfc, x, y, w, h, index, pWin, window);
+        if(mXserviceWrapper != null){
+            FLog.a("window", getWindowId(),"serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
+            mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
         }
     }
 
@@ -731,13 +706,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             taskManager.resizeTask(getTaskId(), rect);
             mConfigureRect = null;
         }
-//        if(checkServiceExits()){
-//            try {
-//                service.raiseWindow(mAttribute.getXID());
-//            } catch (RemoteException e) {
-//                Log.e(TAG, e.toString());
-//            }
-//        }
+//        mXserviceWrapper.raiseWindow(mAttribute.getXID());
     }
 
     /**
@@ -939,7 +908,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     void onReceiveConnection() {
         try {
-            if (service != null && service.asBinder().isBinderAlive()) {
+            if (mXserviceWrapper.isAviable()) {
                 FLog.a("event", getWindowId(), "Extracting logcat fd.");
                 tryConnect();
             }
@@ -953,18 +922,18 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             return;
         try {
             FLog.a("event", getWindowId(), "tryConnect");
-            ParcelFileDescriptor fd = service == null ? null : service.getXConnection();
+            ParcelFileDescriptor fd = mXserviceWrapper == null ? null : mXserviceWrapper.getXConnection();
             if (fd != null) {
+                FLog.a("event", getWindowId(), "tryConnect ok fd:" + fd);
                 LorieView.connect(fd.detachFd());
 //                getLorieView().triggerCallback();
-                clientConnectedStateChanged(true);
+//                clientConnectedStateChanged(true);
 //                LorieView.setClipboardSyncEnabled(true);
 //                LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
             }
         } catch (Exception e) {
             Log.e(TAG, "Something went wrong while we were establishing connection", e);
-            service = null;
-
+            mXserviceWrapper.disableService();
             // We should reset the View for the case if we have sent it's surface to the client.
             getLorieView().regenerate();
         }
@@ -1036,10 +1005,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ACTION_START.equals(intent.getAction()) && service != null &&!mClientConnected) {
+            if (ACTION_START.equals(intent.getAction()) && mXserviceWrapper != null &&!mClientConnected) {
                 try {
-                    Objects.requireNonNull(service).asBinder().linkToDeath(() -> {
-                        service = null;
+                    Objects.requireNonNull(mXserviceWrapper.service).asBinder().linkToDeath(() -> {
+                        mXserviceWrapper.disableService();
                         Xserver.requestConnection();
                         FLog.a("event", getWindowId(), "disconnect");
                         runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
@@ -1054,8 +1023,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 Log.v(TAG, "preference: " + intent.getStringExtra("key"));
             } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
-                    FLog.a("event", getWindowId(), "onReceive: "  + "DESTROY_ACTIVITY_FROM_X"  + " attr:" + attr);
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID() && mAttribute.getIndex() == attr.getIndex()){
+                    FLog.a("event", getWindowId(), "onReceive: "  + "DESTROY_ACTIVITY_FROM_X"  + " attr:" + attr  + " mAttribute:" + mAttribute);
                     killSelf = true;
                     finish();
                     App.getApp().stopingActivityWindow.add(mAttribute.getXID());
@@ -1129,7 +1098,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 FLog.a("event", getWindowId(), "onReceive: "  +
                         "START_VIEW_FROM_X"  + " attr:" + attr + " prop:" + prop);
                 if(transientfor == Objects.requireNonNull(mAttribute).getXID()
-                 || taskTo == Objects.requireNonNull(mAttribute).getXID()){
+                        || taskTo == Objects.requireNonNull(mAttribute).getXID()){
                     addFloatView(attr);
                 }
             } else if(STOP_VIEW_FROM_X.equals(intent.getAction())){
@@ -1148,10 +1117,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         public void onServiceConnected(ComponentName name, IBinder service) {
             FLog.a("event", getWindowId(), "onServiceConnected");
             if(!killSelf){
-                MainActivity.this.service = ICmdEntryInterface.Stub.asInterface(service);
+                ICmdEntryInterface s = ICmdEntryInterface.Stub.asInterface(service);
+                mXserviceWrapper.enableService(s);
                 try {
-                    Objects.requireNonNull(MainActivity.this.service).asBinder().linkToDeath(() -> {
-                        MainActivity.this.service = null;
+                    Objects.requireNonNull(mXserviceWrapper.service).asBinder().linkToDeath(() -> {
+                        mXserviceWrapper.disableService();
                     }, 0);
                 } catch (RemoteException e) {
                     e.printStackTrace();

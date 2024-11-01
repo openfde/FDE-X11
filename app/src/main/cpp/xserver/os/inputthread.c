@@ -38,6 +38,9 @@
 #include "inputstr.h"
 #include "opaque.h"
 #include "osdep.h"
+#include <jni.h>
+#include <android/log.h>
+#define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_inputthread", __VA_ARGS__);
 
 #if INPUTTHREAD
 
@@ -196,11 +199,12 @@ InputThreadRegisterDev(int fd,
                        void *readInputArgs)
 {
     InputThreadDevice *dev, *old;
-
+//    log(ERROR, " InputThreadRegisterDev")
     if (!inputThreadInfo)
         return SetNotifyFd(fd, readInputProc, X_NOTIFY_READ, readInputArgs);
 
     input_lock();
+//    log(ERROR, " InputThreadRegisterDev lock")
 
     dev = NULL;
     xorg_list_for_each_entry(old, &inputThreadInfo->devs, node) {
@@ -237,6 +241,7 @@ InputThreadRegisterDev(int fd,
 
     DebugF("input-thread: registered device %d\n", fd);
     InputThreadFillPipe(hotplugPipeWrite);
+//    log(ERROR, " InputThreadRegisterDev unlock")
 
     return 1;
 }
@@ -327,6 +332,7 @@ InputThreadDoWork(void *arg)
 #elif defined(HAVE_PTHREAD_SETNAME_NP_WITHOUT_TID)
     pthread_setname_np ("InputThread");
 #endif
+    log(ERROR, "InputThreadPipeNotify fd:%d", hotplugPipeRead);
 
     ospoll_add(inputThreadInfo->fds, hotplugPipeRead,
                ospoll_trigger_level,
@@ -346,21 +352,22 @@ InputThreadDoWork(void *arg)
             inputThreadInfo->changed = FALSE;
             xorg_list_for_each_entry_safe(dev, tmp, &inputThreadInfo->devs, node) {
                 switch (dev->state) {
-                case device_state_added:
-                    ospoll_add(inputThreadInfo->fds, dev->fd,
-                               ospoll_trigger_level,
-                               InputReady,
-                               dev);
-                    ospoll_listen(inputThreadInfo->fds, dev->fd, X_NOTIFY_READ);
-                    dev->state = device_state_running;
-                    break;
-                case device_state_running:
-                    break;
-                case device_state_removed:
-                    ospoll_remove(inputThreadInfo->fds, dev->fd);
-                    xorg_list_del(&dev->node);
-                    free(dev);
-                    break;
+                    case device_state_added:
+//                        log(ERROR, "inputThreadInfo fd:%d", dev->fd);
+                        ospoll_add(inputThreadInfo->fds, dev->fd,
+                                   ospoll_trigger_level,
+                                   InputReady,
+                                   dev);
+                        ospoll_listen(inputThreadInfo->fds, dev->fd, X_NOTIFY_READ);
+                        dev->state = device_state_running;
+                        break;
+                    case device_state_running:
+                        break;
+                    case device_state_removed:
+                        ospoll_remove(inputThreadInfo->fds, dev->fd);
+                        xorg_list_del(&dev->node);
+                        free(dev);
+                        break;
                 }
             }
             input_unlock();
@@ -405,7 +412,7 @@ InputThreadPreInit(void)
     if (pipe(fds) < 0)
         FatalError("input-thread: could not create pipe");
 
-     if (pipe(hotplugPipe) < 0)
+    if (pipe(hotplugPipe) < 0)
         FatalError("input-thread: could not create pipe");
 
     inputThreadInfo = malloc(sizeof(InputThreadInfo));
@@ -443,7 +450,7 @@ InputThreadPreInit(void)
     hotplugPipeWrite = hotplugPipe[1];
 
 #ifndef __linux__ /* Linux does not deal well with renaming the main thread */
-#if defined(HAVE_PTHREAD_SETNAME_NP_WITH_TID)
+    #if defined(HAVE_PTHREAD_SETNAME_NP_WITH_TID)
     pthread_setname_np (pthread_self(), "MainThread");
 #elif defined(HAVE_PTHREAD_SETNAME_NP_WITHOUT_TID)
     pthread_setname_np ("MainThread");

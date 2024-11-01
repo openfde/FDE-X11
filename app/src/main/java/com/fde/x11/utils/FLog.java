@@ -1,6 +1,9 @@
 package com.fde.x11.utils;
 
+import android.os.Build;
 import android.util.Log;
+
+import com.fde.x11.BuildConfig;
 
 public class FLog {
 
@@ -31,13 +34,13 @@ public class FLog {
      */
     public static final int ASSERT = 7;
 
-    private static final boolean LogEnable = false;
+    private static final boolean LogEnable = false;//BuildConfig.DEBUG;
     private static final boolean LogAppListEnable = true;
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;
     private static final boolean LogFileEnable = true;
 
-    public static final boolean LogXserverNativeEnable = true;
+    public static final boolean LogXserverNativeEnable = LogEnable && true;
 
     public static final boolean SHOW_DEBUG_TITLE = false;
 
@@ -124,5 +127,13 @@ public class FLog {
         if(LogFileEnable){
             normal(tag, content, DEBUG);
         }
+    }
+
+    public static void a(String tag, String string) {
+        normal(tag, string, DEBUG);
+    }
+
+    public static void e(String tag, String string) {
+        normal(tag, string, ERROR);
     }
 }

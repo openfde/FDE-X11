@@ -33,6 +33,7 @@ public final class InputEventSender {
     private static final int XI_TouchEnd = 20;
 
     public final InputStub mInjector;
+    public InputStub mEventInterface;
 
     public boolean tapToMove = false;
     public boolean preferScancodes = false;
@@ -51,25 +52,43 @@ public final class InputEventSender {
         mPressedTextKeys = new TreeSet<>();
     }
 
+    public InputEventSender(InputStub injector, InputStub xEventInterface) {
+        if (injector == null)
+            throw new NullPointerException();
+        mInjector = injector;
+        mEventInterface = xEventInterface;
+        mPressedTextKeys = new TreeSet<>();
+    }
+
+    public void setEventInterface(InputStub xEventInterface){
+        mEventInterface = xEventInterface;
+    }
+
     private static final List<Integer> buttons = List.of(BUTTON_UNDEFINED, BUTTON_LEFT, BUTTON_MIDDLE, BUTTON_RIGHT);
     public void sendMouseEvent(PointF pos, int button, boolean down, boolean relative) {
         if (!buttons.contains(button))
             return;
-        mInjector.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
-                ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
+//        Log.d(TAG, "sendMouseEvent() called with: pos = [" + pos + "], button = [" + button + "], down = [" + down + "], relative = [" + this + "]");
+        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
+                    ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
     }
 
     public void sendMouseDown(int button, boolean relative) {
-        if (!buttons.contains(button)) 
+        if (!buttons.contains(button))
             return;
-        mInjector.sendMouseEvent(0, 0, button, true, relative,
+        Log.d(TAG, "sendMouseDown() called with: button = [" + button + "], relative = [" + this + "]");
+        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        input.sendMouseEvent(0, 0, button, true, relative,
                 ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
     }
 
     public void sendMouseUp(int button, boolean relative) {
         if (!buttons.contains(button))
             return;
-        mInjector.sendMouseEvent(0, 0, button, false, relative,
+//        Log.d(TAG, "sendMouseUp() called with: button = [" + button + "], relative = [" + this + "]");
+        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        input.sendMouseEvent(0, 0, button, false, relative,
                 ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex()  );
     }
 
@@ -77,10 +96,11 @@ public final class InputEventSender {
         if (!buttons.contains(button))
             return;
         LorieView lorieView = (LorieView) mInjector;
-
-        mInjector.sendMouseEvent(0, 0, button, true, relative,
+        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+//        Log.d(TAG, "sendMouseClick() called with: button = [" + button + "], relative = [" + this + "]");
+        input.sendMouseEvent(0, 0, button, true, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
-        mInjector.sendMouseEvent(0, 0, button, false, relative,
+        input.sendMouseEvent(0, 0, button, false, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
     }
 
@@ -93,12 +113,14 @@ public final class InputEventSender {
             x += offsetX;
             y += offsetY;
         }
+//        Log.d(TAG, "sendCursorMove mouse : x = [" + x + "], y = [" + y + "], relative = [" + this + "]");
+        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
 //        if( mLastEventTime != 0 && System.currentTimeMillis() - mLastEventTime > 16) {
-            mInjector.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
-                    lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
-//        }
+        input.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
+                lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
+        //        }
 //        mLastEventTime = System.currentTimeMillis();
-     }
+    }
 
     public void sendMouseWheelEvent(float distanceX, float distanceY) {
         mInjector.sendMouseWheelEvent(distanceX, distanceY);

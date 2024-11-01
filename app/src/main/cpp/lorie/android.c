@@ -40,13 +40,15 @@ const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 Bool LOG_ENABLE;
 Bool GL_CHECK_ERROR = FALSE;
-
-#define PRINT_LOG (0 && LOG_ENABLE)
+#define ANDROID_LOG_ENABLE 1
+#define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);}
 
 static int argc = 0;
 static char **argv = NULL;
 int conn_fd = -1;
+int conn_pair_fd = -1;
+
 extern char *__progname; // NOLINT(bugprone-reserved-identifier)
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
@@ -57,7 +59,7 @@ char *xtrans_unix_dir_x11 = NULL;
 static jclass JavaCmdEntryPointClass;
 static JavaVM *jniVM = NULL;
 extern struct SurfaceManagerWrapper *sfWraper;
-Window focusWindow;
+Window focusWindow = -1;
 
 extern int ucs2keysym(long ucs);
 
@@ -749,11 +751,12 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
         lorieEnableClipboardSync(FALSE);
         return;
     }
-
+//    __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+//                        "handleLorieEvents: %d ", fd);
     if (read(fd, &e, sizeof(e)) == sizeof(e)) {
         switch (e.type) {
             case EVENT_SCREEN_SIZE:
-//                __android_log_print(ANDROID_LOG_ERROR, "tx11-request", "window changed: %d %d", e.screenSize.width, e.screenSize.height);
+                __android_log_print(ANDROID_LOG_ERROR, "tx11-request", "window changed: %d %d", e.screenSize.width, e.screenSize.height);
                 lorieConfigureNotify(e.screenSize.width, e.screenSize.height,
                                      e.screenSize.framerate);
                 break;
@@ -794,8 +797,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             }
             case EVENT_MOUSE: {
                 int flags;
-//                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
-//                    e.mouse.y);
+                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f, mask", e.mouse.detail, e.mouse.x,
+                    e.mouse.y, mask);
                 switch (e.mouse.detail) {
                     case 0: // BUTTON_UNDEFINED
                         if (e.mouse.relative) {
@@ -919,15 +922,21 @@ static Bool addFd(unused ClientPtr pClient, void *closure) {
 
 JNIEXPORT jobject JNICALL
 Java_com_fde_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
-    int client[2];
-    jclass ParcelFileDescriptorClass = (*env)->FindClass(env, "android/os/ParcelFileDescriptor");
-    jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
-                                                  "(I)Landroid/os/ParcelFileDescriptor;");
-    socketpair(AF_UNIX, SOCK_STREAM, 0, client);
-    fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
-    QueueWorkProc(addFd, NULL, (void *) (int64_t) client[1]);
-    return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
-}
+    if(conn_fd == -1){
+        int client[2];
+        jclass ParcelFileDescriptorClass = (*env)->FindClass(env, "android/os/ParcelFileDescriptor");
+        jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
+                                                      "(I)Landroid/os/ParcelFileDescriptor;");
+        socketpair(AF_UNIX, SOCK_STREAM, 0, client);
+        fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
+        __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+                            "getXConnection: conn_fd:%d fd[0]%d fd[1]%d", conn_fd, client[0], client[1]);
+        QueueWorkProc(addFd, NULL, (void *) (int64_t) client[1]);
+        return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
+    } else {
+        return NULL;
+    }
+ }
 
 void *logcatThread(void *arg) {
     char buffer[4096];
@@ -1090,6 +1099,9 @@ Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls
                                              jfloat y, jint which_button, jboolean button_down,
                                              jboolean relative, jint index) {
     if (conn_fd != -1) {
+        __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+                            "sendMouseEvent: x:%.0f ", x);
+        log(ERROR, "Send Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
         lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
         write(conn_fd, &e, sizeof(e));
         checkConnection(env);
@@ -1225,8 +1237,58 @@ Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window
 }
 
 
+JNIEXPORT void JNICALL
+Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,
+                                        jint which_button, jboolean button_down, jboolean relative,
+                                        jint index) {
+    log(ERROR, "binder Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
+    lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
+    ValuatorMask mask;
+    valuator_mask_zero(&mask);
+    int flags;
+    switch (e.mouse.detail) {
+        case 0: // BUTTON_UNDEFINED
+            if (e.mouse.relative) {
+                valuator_mask_set_double(&mask, 0, (double) e.mouse.x);
+                valuator_mask_set_double(&mask, 1, (double) e.mouse.y);
+                QueuePointerEvents(lorieMouseRelative, MotionNotify, 0,
+                                   POINTER_RELATIVE | POINTER_ACCELERATE, &mask);
+            } else {
+                flags = POINTER_ABSOLUTE | POINTER_SCREEN | POINTER_NORAW;
+                valuator_mask_set_double(&mask, 0, (double) e.mouse.x);
+                valuator_mask_set_double(&mask, 1, (double) e.mouse.y);
+                QueuePointerEvents(lorieMouse, MotionNotify, 0, flags, &mask);
+            }
+            break;
+        case 1: // BUTTON_LEFT
+        case 2: // BUTTON_MIDDLE
+        case 3: // BUTTON_RIGHT
+            QueuePointerEvents(e.mouse.relative ? lorieMouseRelative : lorieMouse,
+                               e.mouse.down ? ButtonPress : ButtonRelease,
+                               e.mouse.detail, 0, &mask);
+            break;
+        case 4: // BUTTON_SCROLL
+            if (e.mouse.x) {
+                valuator_mask_zero(&mask);
+                valuator_mask_set_double(&mask, 2, (double) e.mouse.x / 120);
+                QueuePointerEvents(lorieMouseRelative, MotionNotify, 0,
+                                   POINTER_RELATIVE, &mask);
+            }
+            if (e.mouse.y) {
+                valuator_mask_zero(&mask);
+                valuator_mask_set_double(&mask, 3, (double) e.mouse.y / 120);
+                QueuePointerEvents(lorieMouseRelative, MotionNotify, 0,
+                                   POINTER_RELATIVE, &mask);
+            }
+            break;
+        default:
+            break;
+    }
+
+}
 
 #endif
+
 
 
 

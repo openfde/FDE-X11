@@ -306,6 +306,7 @@ public class Xserver {
 
     public native ParcelFileDescriptor getXConnection();
 
+    public native void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index);
 
     public native ParcelFileDescriptor getLogcatOutput();
     public static native boolean connected();

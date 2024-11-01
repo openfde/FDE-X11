@@ -19,9 +19,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
-#include <jni.h>
-#include <android/log.h>
-#define logh(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_ospoll", __VA_ARGS__);
 
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
@@ -34,7 +31,6 @@
 #include "misc.h"               /* for typedef of pointer */
 #include "ospoll.h"
 #include "list.h"
-extern int conn_fd;
 
 #if !HAVE_OSPOLL && defined(HAVE_POLLSET_CREATE)
 #include <sys/pollset.h>
@@ -380,7 +376,6 @@ ospoll_add(struct ospoll *ospoll, int fd,
     } else {
         osfd = ospoll->fds[pos];
     }
-//    logh(ERROR, "ospoll_add  fd:%d", fd)
     osfd->data = data;
     osfd->callback = callback;
     osfd->trigger = trigger;
@@ -576,7 +571,7 @@ ospoll_wait(struct ospoll *ospoll, int timeout)
 {
     int nready;
 #if POLLSET
-#define MAX_EVENTS      256
+    #define MAX_EVENTS      256
     struct pollfd events[MAX_EVENTS];
 
     nready = pollset_poll(ospoll->ps, events, MAX_EVENTS, timeout);
@@ -603,7 +598,7 @@ ospoll_wait(struct ospoll *ospoll, int timeout)
     }
 #endif
 #if PORT
-#define MAX_EVENTS      256
+    #define MAX_EVENTS      256
     port_event_t events[MAX_EVENTS];
     uint_t nget = 1;
     timespec_t port_timeout = {
@@ -645,10 +640,6 @@ ospoll_wait(struct ospoll *ospoll, int timeout)
     int i;
 
     nready = epoll_wait(ospoll->epoll_fd, events, MAX_EVENTS, timeout);
-//    logh(ERROR, "epoll_wait fd:%d ospoll->epoll_fd:%d", conn_fd, ospoll->epoll_fd)
-//    if(conn_fd == ospoll->epoll_fd){
-//        logh(ERROR, "ospoll_wait callback nready:%d timeout:%d" , nready, timeout)
-//    }
     for (i = 0; i < nready; i++) {
         struct epoll_event *ev = &events[i];
         struct ospollfd *osfd = ev->data.ptr;
@@ -662,16 +653,8 @@ ospoll_wait(struct ospoll *ospoll, int timeout)
         if (revents & (~(EPOLLIN|EPOLLOUT)))
             xevents |= X_NOTIFY_ERROR;
 
-        if (osfd->callback){
-            if(conn_fd == osfd->fd){
-//                logh(ERROR, "ospoll_wait callback xevents:%d i:%d fd:%d data:%p", xevents, i,
-//                     osfd->fd, osfd->data)
-            } else {
-//                logh(ERROR, "ospoll_wait not event fd xevents:%d i:%d fd:%d data:%p", xevents, i,
-//                     osfd->fd, osfd->data)
-            }
+        if (osfd->callback)
             osfd->callback(osfd->fd, xevents, osfd->data);
-        }
     }
     ospoll_clean_deleted(ospoll);
 #endif

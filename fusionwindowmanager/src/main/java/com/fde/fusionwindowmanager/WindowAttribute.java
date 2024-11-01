@@ -200,10 +200,10 @@ public class WindowAttribute implements Parcelable {
     public String toString() {
         return " -->" +
                 " x:" + offsetX +
-                " y:" + offsetY +
-                " w:" + width +
-                " h:" + height +
-//                "\n, index=" + index +
+                " , y:" + offsetY +
+                " , w:" + width +
+                " , h:" + height +
+                " , index:" + index +
 //                "\n, windowPtr=" + windowPtr +
                 " XID:" + Long.toHexString(XID) +
                 " taskTo:" + Long.toHexString(taskTo) +

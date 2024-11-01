@@ -85,9 +85,9 @@ from The Open Group.
 #define wrap(priv, real, mem, func) { priv->mem = real->mem; real->mem = func; }
 #define unwrap(priv, real, mem) { real->mem = priv->mem; }
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
-
+#define INITOUTPUT_LOG_ENABLE 1
 extern Bool LOG_ENABLE;
-#define PRINT_LOG (0 && LOG_ENABLE)
+#define PRINT_LOG (INITOUTPUT_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__);}
 #define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "huyang_InitOutput", __VA_ARGS__);}
 
@@ -597,6 +597,8 @@ lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
         timerFd = timerfd_create(CLOCK_MONOTONIC,  0);
         struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(timerFd, 0, &spec, NULL);
+        __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+                            "timerFd: %d ", timerFd);
     }
 
     pvfb->timerFd = timerFd;
@@ -674,7 +676,7 @@ void lorieConfigureNotify(int width, int height, int framerate) {
         RRScreenSizeSet(pScreen, mode->mode.width, mode->mode.height, mmWidth, mmHeight);
     }
     if (framerate > 0) {
-        long nsecs = 1000 * 1000 * 1000 / 30;
+        long nsecs = 1000 * 1000 * 1000 / framerate;
         struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(lorieScreen.timerFd, 0, &spec, NULL);
 //        log(VERBOSE, "New framerate is %d", framerate);
