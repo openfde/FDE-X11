@@ -141,12 +141,19 @@ public class AppUtils {
             try {
                 inputStream = new FileInputStream(file.getAbsolutePath());
                 SVG svg = SVG.getFromInputStream(inputStream);
+                if(svg == null){
+                    Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_x11_icon);
+                    return new BitmapDrawable(bitmap);
+                }
                 Drawable drawable = new PictureDrawable(svg.renderToPicture());
                 return drawable;
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (SVGParseException e) {
                 e.printStackTrace();
+            } catch (NullPointerException e) {
+                Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_x11_icon);
+                return new BitmapDrawable(bitmap);
             }
             return null;
         } else if (Constants.SURFFIX_PNG.equals(iconType)) {

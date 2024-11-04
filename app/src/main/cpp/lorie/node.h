@@ -8,6 +8,8 @@
 #include <window.h>
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
+#define LEVEL_MAX 32536;
+
 /**
  * struct window/attribute/property for x window to android window
  */
@@ -46,6 +48,7 @@ typedef struct {
     int widget_size ;
     int discard;
     WindProperty aProperty;
+    int level;
 } WindAttribute;
 
 typedef struct WindowNode {

@@ -34,7 +34,7 @@ public class FLog {
      */
     public static final int ASSERT = 7;
 
-    private static final boolean LogEnable = false;//BuildConfig.DEBUG;
+    private static final boolean LogEnable = BuildConfig.DEBUG;
     private static final boolean LogAppListEnable = true;
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;
@@ -42,7 +42,7 @@ public class FLog {
 
     public static final boolean LogXserverNativeEnable = LogEnable && true;
 
-    public static final boolean SHOW_DEBUG_TITLE = false;
+    public static final boolean SHOW_DEBUG_TITLE = BuildConfig.DEBUG;
 
     //for activity
     public static void a(String tagsuffix, long window, String content, int level){

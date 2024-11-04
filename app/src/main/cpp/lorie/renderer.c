@@ -23,6 +23,7 @@
 extern Bool LOG_ENABLE;
 extern Bool GL_CHECK_ERROR;
 extern Window focusWindow;
+bool cursor_drawn;
 #define PRINT_LOG (RENDERER_LOG_ENABLE && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__);}
@@ -973,8 +974,10 @@ int renderer_redraw(JNIEnv *env, uint8_t flip) {
     int err_traversal = TRUE;
 //    _surface_log_traversal_window(sfWraper);
     int size;
+    cursor_drawn = false;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
 //    log("renderer_redraw size = %d", size);
+
     int i = 0 ;
     while (i<size) {
         renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window);
@@ -1242,6 +1245,9 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
             return;
         if (cursor.x > attr->offset_x + attr->width || cursor.y > attr->offset_y + attr->height)
             return;
+        if (cursor_drawn)
+            return;
+
     }
 
     if (!cursor.width || !cursor.height)
@@ -1274,4 +1280,5 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     draw(cursor.id, x, y, x + w, y + h, false);
     glDisable(GL_BLEND);
     checkGlError();
+    cursor_drawn = true;
 }

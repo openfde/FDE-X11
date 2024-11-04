@@ -60,6 +60,7 @@ static jclass JavaCmdEntryPointClass;
 static JavaVM *jniVM = NULL;
 extern struct SurfaceManagerWrapper *sfWraper;
 Window focusWindow = -1;
+static int window_top_level = 0;
 
 extern int ucs2keysym(long ucs);
 
@@ -1233,7 +1234,12 @@ JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window) {
     log(DEBUG, "tellFocusWindow window:%lx", window);
     focusWindow = window;
-
+    if(_surface_count_window(sfWraper, window)){
+        WindAttribute *attr = _surface_find_window(sfWraper, window);
+        window_top_level++;
+        window_top_level %= LEVEL_MAX;
+        attr->level = window_top_level;
+    }
 }
 
 

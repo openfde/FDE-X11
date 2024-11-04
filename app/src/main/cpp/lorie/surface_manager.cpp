@@ -98,6 +98,12 @@ Widget* SurfaceManager::find_widget(Window window) {
     return NULL;
 }
 
+int compare_by_level_desc(const void *a, const void *b) {
+    WindAttribute *attrA = (WindAttribute *)a;
+    WindAttribute *attrB = (WindAttribute *)b;
+    return attrB->level - attrA->level;
+}
+
 WindAttribute* SurfaceManager::all_window(int * size){
     *size = window_attrs.size();
     WindAttribute* array = new WindAttribute[window_attrs.size()];
@@ -106,7 +112,10 @@ WindAttribute* SurfaceManager::all_window(int * size){
         array[i] =  pair.second;
         i++;
     }
-    return array;
+    WindAttribute *sorted_attrs = (WindAttribute *)malloc(*size * sizeof(WindAttribute));
+    memcpy(sorted_attrs, array, *size * sizeof(WindAttribute));
+    qsort(sorted_attrs, *size, sizeof(WindAttribute), compare_by_level_desc);
+    return sorted_attrs;
 }
 
 int SurfaceManager::count_window(Window window) {
@@ -160,7 +169,7 @@ void SurfaceManager::traversal_log_window(){
 }
 
 void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
-    log("======> this is a window xid:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f  t:%d win:%p s:%p ",
+    log("======> this is a window xid:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f  t:%d win:%p s:%p level:%d",
         attr.window,
         attr.index,
         attr.width,
@@ -169,7 +178,8 @@ void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
         attr.offset_y,
         attr.texture_id,
         attr.pWin,
-        attr.sfc);
+        attr.sfc,
+        attr.level);
     if (attr.widget_size != 0) {
         for (int i = 0; i < attr.widget_size; i++) {
             Widget widget = attr.widgets[i];

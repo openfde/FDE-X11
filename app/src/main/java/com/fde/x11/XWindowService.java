@@ -305,9 +305,9 @@ public class XWindowService extends Service {
         } else {
             ActivityOptions options = ActivityOptions.makeBasic();
             options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
-                    (int)(attr.getOffsetY()),
+                    (int)(attr.getOffsetY() - decorHeight),
                     (int)(attr.getWidth() + attr.getOffsetX()),
-                    (int)(attr.getHeight() + decorHeight + attr.getOffsetY())));
+                    (int)(attr.getHeight() + attr.getOffsetY())));
             Intent intent = new Intent(this, cls);
             if(attr.getProperty() != null){
                 intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
