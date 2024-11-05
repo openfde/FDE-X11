@@ -4,6 +4,7 @@ package com.fde.x11;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.Service;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -24,6 +25,7 @@ import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.fde.x11.input.InputManager;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
 
@@ -203,6 +205,11 @@ public class Xserver {
             default:
                 break;
         }
+    }
+
+    public static void updateCursor(Bitmap icon, int w, int h){
+        InputManager inputManager = InputManager.create();
+        inputManager.setPointerIcon(icon);
     }
 
 

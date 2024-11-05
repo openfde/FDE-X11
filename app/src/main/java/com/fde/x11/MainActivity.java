@@ -39,6 +39,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.pm.ConfigurationInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -237,6 +238,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         findViewById(R.id.preferences_button).setOnClickListener((l) -> startActivity(new Intent(this, LoriePreferences.class) {{ setAction(Intent.ACTION_MAIN); }}));
         findViewById(R.id.help_button).setOnClickListener((l) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/termux/termux-x11/blob/master/README.md#running-graphical-applications"))));
         LorieView lorieView = findViewById(R.id.lorieView);
+        ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        ConfigurationInfo ci = am.getDeviceConfigurationInfo();
+        FLog.a("lifycycle", getWindowId(), "glversion: " + ci.reqGlEsVersion);
         lorieView.setZOrderOnTop(true);
         lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
@@ -309,7 +313,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 }, 200);
             }
         });
-        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+//        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
         detectEventEditText.setOnKeyListener(mLorieKeyListener);
         detectEventEditText.setInputHandler(mInputHandler);
         EasyDialog.Builder builder = new EasyDialog.Builder(this);
@@ -1185,7 +1189,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if (!connected)
                 tryConnect();
             if (connected && mIndex != 0){
-                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+//                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
             }
         });
     }

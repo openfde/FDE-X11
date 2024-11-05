@@ -236,8 +236,8 @@ void android_redirect_window(WindowPtr pWin) {
     }
 }
 
-void android_icon_convert_bitmap(int* data, int width, int height, WindProperty * pProp){
-    log(DEBUG, "CONVERT_ICON width:%d height:%d window:%x", width, height, pProp->window);
+jobject android_icon_convert_bitmap(int* data, int width, int height){
+//    log(DEBUG, "CONVERT_ICON width:%d height:%d window:%x", width, height, pProp->window);
     JNIEnv *JavaEnv = GetJavaEnv();
     jclass bitmapClass = (*JavaEnv)->FindClass(JavaEnv,"android/graphics/Bitmap");
     jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
@@ -250,7 +250,7 @@ void android_icon_convert_bitmap(int* data, int width, int height, WindProperty 
     if (AndroidBitmap_lockPixels(JavaEnv, bitmap, &bitmapPixels) < 0) {
         log(ERROR, "Failed to lock bitmap pixels\n");
         free(data);
-        return;
+        return NULL;
     }
     uint32_t* src = (uint32_t*)data;
     uint32_t* dst = (uint32_t*)bitmapPixels;
@@ -270,7 +270,7 @@ void android_icon_convert_bitmap(int* data, int width, int height, WindProperty 
     AndroidBitmap_unlockPixels(JavaEnv, bitmap);
     (*JavaEnv)->DeleteLocalRef(JavaEnv,configName);
     (*JavaEnv)->DeleteLocalRef(JavaEnv,bitmapConfigClass);
-    pProp->icon = bitmap;
+    return bitmap;
  }
 
 
@@ -358,7 +358,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
             int width = *icon_data;
             int height = *(icon_data+1);
             int * imageData = ( int*) (icon_data + 2);
-            android_icon_convert_bitmap(imageData, width, height, prop);
+            prop->icon = android_icon_convert_bitmap(imageData, width, height);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_PROTOCOLS)) {
             Atom *atoms = (Atom *)propData;
             for (int i = 0; i < pProper->size; i++) {
@@ -527,6 +527,18 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
                                                          "closeOrDestroyWindow", "(IJJJII)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
                                          (long) pWin, (long)task_to, (long) window, action, 0);
+    }
+}
+
+void android_update_cursor(int w, int h, int xhot, int yhot, void *data){
+    JNIEnv *JavaEnv = GetJavaEnv();
+    (*jniVM)->GetEnv(jniVM, (void **) &JavaEnv, JNI_VERSION_1_6);
+    if(JavaEnv && JavaCmdEntryPointClass){
+        jobject  cursor_icon = android_icon_convert_bitmap(data, w, h);
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                         "updateCursor",
+                                                         "(Landroid/graphics/Bitmap;II)V");
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, cursor_icon, w, h);
     }
 }
 

@@ -9,7 +9,8 @@
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
 #define RENDERER_LOG_ENABLE 1
-
+#include <GLES3/gl3.h>
+#include <GLES3/gl31.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <android/native_window_jni.h>
@@ -23,6 +24,8 @@
 extern Bool LOG_ENABLE;
 extern Bool GL_CHECK_ERROR;
 extern Window focusWindow;
+extern JavaVM *jniVM;
+extern jclass JavaCmdEntryPointClass;
 bool cursor_drawn;
 #define PRINT_LOG (RENDERER_LOG_ENABLE && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);}
@@ -194,7 +197,7 @@ int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
             EGL_NONE
     };
     const EGLint ctxattribs[] = {
-            EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE
+            EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE
     };
 
     if (global_ctx)
@@ -472,7 +475,7 @@ void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
     }
     log("renderer_set_buffer 2");
 
-    renderer_redraw(env, flip);
+    renderer_redraw(env, flip, false);
 
     log("renderer_set_buffer %p %d %d", buffer, desc.width, desc.height);
 }
@@ -959,36 +962,50 @@ void renderer_set_cursor_coordinates(int x, int y) {
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip);
 
-static void draw_cursor_1(int index, Window window);
+static bool draw_cursor_1(int index, Window window);
 
 
 float ia = 0;
+long totel = 0;
+long count =0;
 
 int renderer_should_redraw(void) {
-    int egl_good = sfc != EGL_NO_SURFACE && eglGetCurrentContext() != EGL_NO_CONTEXT;
+//    int egl_good = sfc != EGL_NO_SURFACE && eglGetCurrentContext() != EGL_NO_CONTEXT;
 //    log("renderer_should_redraw egl_good:%d" , egl_good);
     return 1;
 }
 
-int renderer_redraw(JNIEnv *env, uint8_t flip) {
+int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
     int err_traversal = TRUE;
 //    _surface_log_traversal_window(sfWraper);
     int size;
     cursor_drawn = false;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
-//    log("renderer_redraw size = %d", size);
-
-    int i = 0 ;
-    while (i<size) {
-        renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window);
+    log("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    long long millis = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
+    int i = 0, cursor_drawn_innter = false ;
+    while (i < size
+        && (!empty || !cursor_drawn_innter )
+        ) {
+        cursor_drawn_innter = renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
         i++;
     }
+    clock_gettime(CLOCK_REALTIME, &ts);
+    long long millis_end = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
+    if(size >= 8){
+        totel += millis_end - millis;
+        count ++;
+    }
+    log("renderer_redraw end ===>cost (%ld ms) avage (%ld ms) ----------------------------------------------------------------------------------------------", (millis_end - millis), totel/count);
+
     attrs = NULL;
     renderedFrames++;
     return TRUE;
 }
 
-int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window) {
+int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window, bool empty) {
     log("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
@@ -1020,7 +1037,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
-    log("renderer_redraw_traversal eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+    log("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
         index, width, height, attr->offset_x, attr->offset_y, id);
     glViewport(0, 0, width, height);
     checkGlError();
@@ -1028,32 +1045,36 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         log("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-
-    draw(id, -1.f, -1.f, 1.f, 1.f, flip);
-    if(attr->widget_size > 0){
-        for(int i = 0 ; i < attr->widget_size ; i ++){
-            Widget widget = attr->widgets[i];
-            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
-                widget.texture_id);
-            if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
-            || !widget.inbounds || !widget.width || !widget.height
-            || !IfRealizedWindow(widget.pWin)){
-                continue;
-            }
-            android_update_widget_texture(&widget);
-            float x = widget.offset_x;
-            float y = widget.offset_y;
-            float w = widget.width;
-            float h = widget.height;
-            float x0 = (x - attr->offset_x) * 2.0f / width - 1.0f;
-            float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
-            float x1 = x0 + w / width * 2.0f;
-            float y1 = y0 + h / height * 2.0f;
-            draw(widget.texture_id, x0, y0, x1, y1, flip);
+//    if(!empty){
+        draw(id, -1.f, -1.f, 1.f, 1.f, flip);
+        if(attr->widget_size > 0){
+            for(int i = 0 ; i < attr->widget_size ; i ++){
+                Widget widget = attr->widgets[i];
+                log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+                    widget.texture_id);
+                if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
+                   || !widget.inbounds || !widget.width || !widget.height
+                   || !IfRealizedWindow(widget.pWin)){
+                    continue;
+                }
+                log("renderer_redraw_traversal_1 text 1")
+                android_update_widget_texture(&widget);
+                log("renderer_redraw_traversal_1 text 2")
+                float x = widget.offset_x;
+                float y = widget.offset_y;
+                float w = widget.width;
+                float h = widget.height;
+                float x0 = (x - attr->offset_x) * 2.0f / width - 1.0f;
+                float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
+                float x1 = x0 + w / width * 2.0f;
+                float y1 = y0 + h / height * 2.0f;
+                draw(widget.texture_id, x0, y0, x1, y1, flip);
+                log("renderer_redraw_traversal_1 text 3")
 //            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
+            }
         }
-    }
-    draw_cursor_1(index, window);
+//    }
+    bool drawn = draw_cursor_1(index, window);
     if (eglSwapBuffers(global_egl_display, eglSurface) != EGL_TRUE) {
         err = eglGetError();
         eglCheckError(__LINE__);
@@ -1066,21 +1087,23 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             return FALSE;
         }
     }
-    if(attr->widget_size > 0){
-        for(int i = 0 ; i < attr->widget_size ; i ++){
-            Widget widget = attr->widgets[i];
-            if(widget.inbounds){
-                continue;
+//    if(!empty){
+        if(attr->widget_size > 0){
+            for(int i = 0 ; i < attr->widget_size ; i ++){
+                Widget widget = attr->widgets[i];
+                if(widget.inbounds){
+                    continue;
+                }
+                if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
+                   || !widget.width || !widget.height){
+                    continue;
+                }
+                android_update_widget_texture(&widget);
+                renderer_redraw_traversal_inner(env, flip, 0, widget);
             }
-            if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
-                || !widget.width || !widget.height){
-                continue;
-            }
-            android_update_widget_texture(&widget);
-            renderer_redraw_traversal_inner(env, flip, 0, widget);
         }
-    }
-    return TRUE;
+//    }
+    return drawn;
 }
 
 maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int index, Widget widget){
@@ -1231,27 +1254,30 @@ static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip
     checkGlError();
     glEnableVertexAttribArray(c);
     checkGlError();
+    log("glDrawArraysInstancedNV 1")
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+//    glDrawArraysInstanced(GL_TRIANGLES, 0, 4, 1);
+    log("glDrawArraysInstancedNV 2")
     checkGlError();
 }
 
-maybe_unused static void draw_cursor_1(int index, Window window) {
+maybe_unused static bool draw_cursor_1(int index, Window window) {
     float x, y, w, h;
 
 
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (attr) {
         if (cursor.x < attr->offset_x || cursor.y < attr->offset_y)
-            return;
+            return false;
         if (cursor.x > attr->offset_x + attr->width || cursor.y > attr->offset_y + attr->height)
-            return;
+            return false;
         if (cursor_drawn)
-            return;
+            return false;
 
     }
 
     if (!cursor.width || !cursor.height)
-        return;
+        return false;
 
     float width = display.width;
     float height = display.height;
@@ -1259,7 +1285,7 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     float cursor_y = cursor.y;
     float cursor_xhot = cursor.xhot;
     float cursor_yhot = cursor.yhot;
-    log("mouse draw_cursor cursor_x:%.0f cursor_y:%.0f ", cursor_x, cursor_y);
+    log("draw_cursor cursor_x:%.0f cursor_y:%.0f ", cursor_x, cursor_y);
 
     if (attr) {
         width = attr->width;
@@ -1272,7 +1298,7 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     w = 2.f * cursor.width / width;
     h = 2.f * cursor.height / height;
 
-    log("draw_cursor x:%.5f y:%.5f w:%.5f h:%.5f", x, y, x + w, y + h);
+//    log("draw_cursor x:%.5f y:%.5f w:%.5f h:%.5f", x, y, x + w, y + h);
     glEnable(GL_BLEND);
     checkGlError();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1281,4 +1307,5 @@ maybe_unused static void draw_cursor_1(int index, Window window) {
     glDisable(GL_BLEND);
     checkGlError();
     cursor_drawn = true;
+    return cursor_drawn;
 }

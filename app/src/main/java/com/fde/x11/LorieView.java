@@ -15,6 +15,9 @@ import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.opengl.GLES10;
+import android.opengl.GLES20;
+import android.opengl.GLES30;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -60,6 +63,9 @@ public class LorieView extends SurfaceView implements InputStub {
         @Override public void surfaceCreated(@NonNull SurfaceHolder holder) {
             holder.setFormat(PixelFormat.TRANSLUCENT);
 //            Log.d(TAG, "surfaceCreated: holder:" + holder + "");
+            String version = GLES10.glGetString(GLES10.GL_VERSION);
+            Log.d(TAG, "egl version: " + version);
+
         }
 
         @Override public void surfaceChanged(@NonNull SurfaceHolder holder, int f, int width, int height) {

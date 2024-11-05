@@ -92,6 +92,7 @@ extern Bool LOG_ENABLE;
 #define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "huyang_InitOutput", __VA_ARGS__);}
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
+extern void android_update_cursor(int w, int h, int xhot, int yhot, void *data);
 
 typedef struct {
     CloseScreenProcPtr CloseScreen;
@@ -303,9 +304,13 @@ static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, Curs
         CARD32 data[bits->width * bits->height * 4];
 
         lorieConvertCursor(pCurs, data);
-        renderer_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
-    } else
-        renderer_update_cursor(0, 0, 0, 0, NULL);
+        logh("lorieSetCursor: updating cursor w:%d  h:%d xhot:%d yhot:%d \n",
+             bits->width, bits->height, bits->xhot, bits->yhot);
+//        renderer_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
+        android_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
+    } else{
+//        renderer_update_cursor(0, 0, 0, 0, NULL);
+    }
 
     if (x0 >= 0 && y0 >= 0) {
         init_cusor++;
@@ -332,7 +337,7 @@ static miPointerScreenFuncRec loriePointerCursorFuncs = {
 };
 
 static void lorieUpdateBuffer(void) {
-//    logh("lorieUpdateBuffer legacydraw %d", pvfb->root.legacyDrawing);
+    logh("lorieUpdateBuffer legacydraw %d", pvfb->root.legacyDrawing);
     AHardwareBuffer_Desc d0 = {}, d1 = {};
     AHardwareBuffer *new = NULL, *old = pvfb->root.buffer;
     int status, wasLocked = pvfb->root.locked;
@@ -411,7 +416,7 @@ static void lorieUpdateBuffer(void) {
 }
 
 static inline void loriePixmapUnlock(PixmapPtr pixmap) {
-//    logh("loriePixmapUnlock");
+    logh("loriePixmapUnlock");
     if (pvfb->root.legacyDrawing)
         return renderer_update_root(pixmap->drawable.width, pixmap->drawable.height, pixmap->devPrivate.ptr, pvfb->root.flip);
 
@@ -423,7 +428,7 @@ static inline void loriePixmapUnlock(PixmapPtr pixmap) {
 }
 
 static inline Bool loriePixmapLock(PixmapPtr pixmap) {
-//    logh("loriePixmapLock");
+    logh("loriePixmapLock");
     AHardwareBuffer_Desc desc = {};
     void *data;
     int status;
@@ -457,13 +462,15 @@ static void lorieTimerCallback(int fd, unused int r, void *arg) {
         ScreenPtr pScreen = (ScreenPtr) arg;
 
         loriePixmapUnlock(pScreen->GetScreenPixmap(pScreen));
-        redrawn = renderer_redraw(pvfb->env, pvfb->root.flip);
+        redrawn = renderer_redraw(pvfb->env, pvfb->root.flip, false);
         if (loriePixmapLock(pScreen->GetScreenPixmap(pScreen)) && redrawn){
 //            logh("DamageEmpty");
             DamageEmpty(pvfb->damage);
         }
-    } else if (pvfb->cursorMoved)
-        renderer_redraw(pvfb->env, pvfb->root.flip);
+    } else if (pvfb->cursorMoved){
+        logh("RegionEmpty");
+        renderer_redraw(pvfb->env, pvfb->root.flip, true);
+    }
 
     pvfb->cursorMoved = FALSE;
 }
@@ -505,7 +512,7 @@ lorieCloseScreen(ScreenPtr pScreen) {
 static Bool
 lorieRRScreenSetSize(ScreenPtr pScreen, CARD16 width, CARD16 height, unused CARD32 mmWidth, unused CARD32 mmHeight) {
     SetRootClip(pScreen, ROOT_CLIP_NONE);
-//    logh("lorieRRScreenSetSize width:%d height:%d", width, height);
+    logh("lorieRRScreenSetSize width:%d height:%d", width, height);
     pvfb->root.width = pScreen->width = width;
     pvfb->root.height = pScreen->height = height;
     pScreen->mmWidth = ((double) (width)) * 25.4 / monitorResolution;
@@ -658,7 +665,7 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
     renderer_update_root(pScreenPtr->width, pScreenPtr->height,
                              ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
                              pvfb->root.flip);
-    renderer_redraw(pvfb->env, pvfb->root.flip);
+    renderer_redraw(pvfb->env, pvfb->root.flip, false);
     return TRUE;
 }
 
