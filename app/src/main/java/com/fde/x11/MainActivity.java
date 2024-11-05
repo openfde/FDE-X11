@@ -1157,9 +1157,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
 
         protected boolean hideDecorCaptionView() {
-            if(FLog.SHOW_DEBUG_TITLE){
-                return false;
-            }
+//            if(FLog.SHOW_DEBUG_TITLE){
+//                return false;
+//            }
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
             Log.d("TAG", "hideDecorCaptionView");

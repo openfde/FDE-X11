@@ -8,7 +8,7 @@ android {
         minSdkVersion 26
         targetSdkVersion 33
         versionCode 5
-        versionName "1.2.1"
+        versionName "1.2.2"
         buildConfigField "String", "COMMIT", "\"" + ("git rev-parse HEAD\n".execute().getText().trim() ?: (System.getenv('CURRENT_COMMIT') ?: "NO_COMMIT")) + "\""
         manifestPlaceholders = [MainActivityMinHeight: "50dp",
                                 MainActivityMinWidth: "50dp",

@@ -43,7 +43,7 @@ Bool GL_CHECK_ERROR = FALSE;
 #define ANDROID_LOG_ENABLE 1
 #define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);}
-
+#define OBLIQUE_CROSS_WIDTH 7
 static int argc = 0;
 static char **argv = NULL;
 int conn_fd = -1;
@@ -531,6 +531,10 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
 }
 
 void android_update_cursor(int w, int h, int xhot, int yhot, void *data){
+    if(xhot == OBLIQUE_CROSS_WIDTH && yhot == OBLIQUE_CROSS_WIDTH){
+        log(DEBUG, "no need update yhot cursor(oblique cross)")
+        return;
+    }
     JNIEnv *JavaEnv = GetJavaEnv();
     (*jniVM)->GetEnv(jniVM, (void **) &JavaEnv, JNI_VERSION_1_6);
     if(JavaEnv && JavaCmdEntryPointClass){
