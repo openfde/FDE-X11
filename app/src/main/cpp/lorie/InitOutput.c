@@ -469,7 +469,7 @@ static void lorieTimerCallback(int fd, unused int r, void *arg) {
         }
     } else if (pvfb->cursorMoved){
         logh("RegionEmpty");
-        renderer_redraw(pvfb->env, pvfb->root.flip, true);
+//        renderer_redraw(pvfb->env, pvfb->root.flip, true);
     }
 
     pvfb->cursorMoved = FALSE;

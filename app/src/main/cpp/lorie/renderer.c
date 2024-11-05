@@ -970,26 +970,20 @@ long totel = 0;
 long count =0;
 
 int renderer_should_redraw(void) {
-//    int egl_good = sfc != EGL_NO_SURFACE && eglGetCurrentContext() != EGL_NO_CONTEXT;
-//    log("renderer_should_redraw egl_good:%d" , egl_good);
-    return 1;
+    return TRUE;
 }
 
 int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
-    int err_traversal = TRUE;
 //    _surface_log_traversal_window(sfWraper);
     int size;
-    cursor_drawn = false;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
     log("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
     struct timespec ts;
     clock_gettime(CLOCK_REALTIME, &ts);
     long long millis = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
-    int i = 0, cursor_drawn_innter = false ;
-    while (i < size
-        && (!empty || !cursor_drawn_innter )
-        ) {
-        cursor_drawn_innter = renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
+    int i = 0;
+    while (i < size ) {
+         renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
         i++;
     }
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -1074,7 +1068,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             }
         }
 //    }
-    bool drawn = draw_cursor_1(index, window);
+//    bool drawn = draw_cursor_1(index, window);
     if (eglSwapBuffers(global_egl_display, eglSurface) != EGL_TRUE) {
         err = eglGetError();
         eglCheckError(__LINE__);
@@ -1103,7 +1097,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             }
         }
 //    }
-    return drawn;
+    return Success;
 }
 
 maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int index, Widget widget){
@@ -1271,9 +1265,6 @@ maybe_unused static bool draw_cursor_1(int index, Window window) {
             return false;
         if (cursor.x > attr->offset_x + attr->width || cursor.y > attr->offset_y + attr->height)
             return false;
-        if (cursor_drawn)
-            return false;
-
     }
 
     if (!cursor.width || !cursor.height)
@@ -1306,6 +1297,5 @@ maybe_unused static bool draw_cursor_1(int index, Window window) {
     draw(cursor.id, x, y, x + w, y + h, false);
     glDisable(GL_BLEND);
     checkGlError();
-    cursor_drawn = true;
-    return cursor_drawn;
+    return true;
 }
