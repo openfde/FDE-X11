@@ -29,6 +29,14 @@
 #include "misyncstr.h"
 #include "misyncfd.h"
 #include "pixmapstr.h"
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 1
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_misyncfd", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_misyncfd", __VA_ARGS__);}
+
 
 static DevPrivateKeyRec syncFdScreenPrivateKey;
 
@@ -38,8 +46,10 @@ typedef struct _SyncFdScreenPrivate {
 
 static inline SyncFdScreenPrivatePtr sync_fd_screen_priv(ScreenPtr pScreen)
 {
-    if (!dixPrivateKeyRegistered(&syncFdScreenPrivateKey))
+    if (!dixPrivateKeyRegistered(&syncFdScreenPrivateKey)){
+        loge("SyncFdScreenPrivatePtr NULL")
         return NULL;
+    }
     return dixLookupPrivate(&pScreen->devPrivates, &syncFdScreenPrivateKey);
 }
 

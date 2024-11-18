@@ -120,7 +120,7 @@ typedef struct {
 
 int init_cusor;
 ScreenPtr pScreenPtr;
-static lorieScreenInfo lorieScreen = { .root.width = 1920, .root.height = 1080, .dri3 = FALSE };
+static lorieScreenInfo lorieScreen = { .root.width = 1920, .root.height = 1080, .dri3 = TRUE };
 static lorieScreenInfoPtr pvfb = &lorieScreen;
 static char *xstartup = NULL;
 

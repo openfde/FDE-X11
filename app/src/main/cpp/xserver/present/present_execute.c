@@ -21,6 +21,13 @@
  */
 
 #include "present_priv.h"
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 0
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_execute", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_execute", __VA_ARGS__);}
 
 /*
  * Called when the wait fence is triggered; just gets the current msc/ust and
@@ -79,6 +86,7 @@ present_execute_copy(present_vblank_ptr vblank, uint64_t crtc_msc)
         return;
     }
 
+    loge("present_execute_copy")
     present_copy_region(&window->drawable, vblank->pixmap, vblank->update, vblank->x_off, vblank->y_off);
 
     /* present_copy_region sticks the region into a scratch GC,

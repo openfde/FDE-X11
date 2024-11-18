@@ -21,10 +21,18 @@
  */
 
 #include "present_priv.h"
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 0
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_vblank", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_vblank", __VA_ARGS__);}
 
 void
 present_vblank_notify(present_vblank_ptr vblank, CARD8 kind, CARD8 mode, uint64_t ust, uint64_t crtc_msc)
 {
+    loge("present_vblank_notify")
     int n;
 
     if (vblank->window)
@@ -66,6 +74,7 @@ present_vblank_init(present_vblank_ptr vblank,
     present_window_priv_ptr     window_priv = present_get_window_priv(window, TRUE);
     present_screen_priv_ptr     screen_priv = present_screen_priv(screen);
     PresentFlipReason           reason = PRESENT_FLIP_REASON_UNKNOWN;
+    loge("present_vblank_init")
 
     if (target_crtc) {
         screen_priv = present_screen_priv(target_crtc->pScreen);
@@ -140,10 +149,12 @@ present_vblank_init(present_vblank_ptr vblank,
                       vblank->event_id, vblank, target_msc,
                       vblank->pixmap->drawable.id, vblank->window->drawable.id,
                       target_crtc, vblank->flip, vblank->sync_flip, vblank->serial));
+    loge("present_vblank_init true")
     return TRUE;
 
 no_mem:
     vblank->notifies = NULL;
+    loge("present_vblank_init false")
     return FALSE;
 }
 
@@ -166,6 +177,7 @@ present_vblank_create(WindowPtr window,
                       uint64_t crtc_msc)
 {
     present_vblank_ptr vblank = calloc(1, sizeof(present_vblank_rec));
+    loge("present_vblank_create vblank:%p", vblank)
 
     if (!vblank)
         return NULL;
@@ -187,6 +199,7 @@ present_vblank_scrap(present_vblank_ptr vblank)
                   vblank->event_id, vblank, vblank->exec_msc, vblank->target_msc,
                   vblank->pixmap->drawable.id, vblank->window->drawable.id,
                   vblank->crtc));
+    loge("present_vblank_scrap")
 
     present_pixmap_idle(vblank->pixmap, vblank->window, vblank->serial, vblank->idle_fence);
     present_fence_destroy(vblank->idle_fence);
@@ -204,6 +217,7 @@ present_vblank_destroy(present_vblank_ptr vblank)
     xorg_list_del(&vblank->window_list);
     /* Also make sure vblank is removed from event queue (wnmd) */
     xorg_list_del(&vblank->event_queue);
+    loge("present_vblank_destroy")
 
     DebugPresent(("\td %" PRIu64 " %p %" PRIu64 " %" PRIu64 ": %08" PRIx32 " -> %08" PRIx32 "\n",
                   vblank->event_id, vblank, vblank->exec_msc, vblank->target_msc,

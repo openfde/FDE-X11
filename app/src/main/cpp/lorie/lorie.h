@@ -13,7 +13,6 @@ void lorieSendClipboardData(const char* data);
 Bool lorieInitDri3(ScreenPtr pScreen);
 
 
-
 static int android_to_linux_keycode[304] = {
         [ 4   /* ANDROID_KEYCODE_BACK */] = KEY_ESC,
         [ 7   /* ANDROID_KEYCODE_0 */] = KEY_0,

@@ -17,6 +17,10 @@ typedef struct SurfaceRes {
     Window window;
 } SurfaceRes ;
 
+typedef struct {
+    GLuint  texture;
+} TexturePrivRec, *TexturePrivRecPtr;
+
 typedef struct SurfaceResNode {
     SurfaceRes data;
     struct SurfaceRes* next;
@@ -46,7 +50,6 @@ maybe_unused void renderer_message_func(renderer_message_func_type function);
 
 maybe_unused int renderer_init(JNIEnv* env, int* legacy_drawing, uint8_t* flip);
 maybe_unused void renderer_set_buffer(JNIEnv* env, AHardwareBuffer* buffer);
-maybe_unused void renderer_set_window(JNIEnv* env, jobject surface, AHardwareBuffer* buffer);
 maybe_unused void renderer_set_window_each(JNIEnv* env, SurfaceRes* res, AHardwareBuffer* buffer);
 maybe_unused void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* buffer);
 maybe_unused int renderer_should_redraw(void);
@@ -56,10 +59,12 @@ maybe_unused jobject android_icon_convert_bitmap(int* data, int width, int heigh
 maybe_unused void renderer_print_fps(float millis);
 
 maybe_unused void renderer_update_root(int w, int h, void* data, uint8_t flip);
-maybe_unused void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t flip, Window window);
+maybe_unused void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t flip, Window window, GLuint texture_id);
 //maybe_unused void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, Widget * widget);
 maybe_unused GLuint renderer_gen_bind_texture(int x, int y, int w, int h, void* data, uint8_t flip);
 maybe_unused void renderer_update_cursor(int w, int h, int xhot, int yhot, void* data);
 maybe_unused void renderer_set_cursor_coordinates(int x, int y);
+maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 height,
+        const CARD32 *strides, const CARD32 *offsets, CARD8 depth, __unused CARD8 bpp, CARD64 modifier);
 
 #define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5 // Stands to HAL_PIXEL_FORMAT_BGRA_8888

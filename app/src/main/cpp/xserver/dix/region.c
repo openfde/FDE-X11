@@ -84,6 +84,13 @@ Equipment Corporation.
 #include <X11/Xfuncproto.h>
 #include "gc.h"
 #include <pixman.h>
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 0
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_region", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_region", __VA_ARGS__);}
 
 #undef assert
 #ifdef REGION_DEBUG
@@ -276,16 +283,24 @@ RegionPrint(RegionPtr rgn)
     int num, size;
     int i;
     BoxPtr rects;
-
+    loge("RegionPrint  rgn:%p", rgn);
     num = RegionNumRects(rgn);
     size = RegionSize(rgn);
     rects = RegionRects(rgn);
+    loge("[mi] num: %d size: %d\n", num, size);
     ErrorF("[mi] num: %d size: %d\n", num, size);
+    loge("[mi] extents: %d %d %d %d\n",
+         rgn->extents.x1, rgn->extents.y1, rgn->extents.x2, rgn->extents.y2);
     ErrorF("[mi] extents: %d %d %d %d\n",
            rgn->extents.x1, rgn->extents.y1, rgn->extents.x2, rgn->extents.y2);
-    for (i = 0; i < num; i++)
+
+    for (i = 0; i < num; i++) {
+        loge("[mi] %d %d %d %d \n",
+             rects[i].x1, rects[i].y1, rects[i].x2, rects[i].y2);
         ErrorF("[mi] %d %d %d %d \n",
                rects[i].x1, rects[i].y1, rects[i].x2, rects[i].y2);
+    }
+    loge("[mi] \n");
     ErrorF("[mi] \n");
 }
 

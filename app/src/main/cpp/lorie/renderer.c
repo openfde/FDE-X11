@@ -9,11 +9,14 @@
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
 #define RENDERER_LOG_ENABLE 1
-#include <GLES3/gl3.h>
-#include <GLES3/gl31.h>
-#include <EGL/egl.h>
+#include <EGL/egl.h> // requires ndk r5 or newer
+#include <GLES/gl.h>
 #include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <GLES3/gl32.h>
 #include <android/native_window_jni.h>
+#include <fb.h>
 #include "node.h"
 #include <dlfcn.h>
 #include "renderer.h"
@@ -21,12 +24,15 @@
 #include <globals.h>
 #include "c_interface.h"
 #include <android/log.h>
-extern Bool LOG_ENABLE;
+#include <drm_fourcc.h>
+
+extern ScreenPtr pScreenPtr;
 extern Bool GL_CHECK_ERROR;
 extern Window focusWindow;
 extern JavaVM *jniVM;
 extern jclass JavaCmdEntryPointClass;
 bool cursor_drawn;
+extern Bool LOG_ENABLE;
 #define PRINT_LOG (RENDERER_LOG_ENABLE && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__);}
@@ -167,7 +173,7 @@ WindowPtr tempptr = NULL;
 static struct {
     GLuint id;
     float width, height;
-} display;
+} display_rect;
 static struct {
     GLuint id;
     float x, y, width, height, xhot, yhot;
@@ -422,7 +428,7 @@ void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
 
     buffer = buf;
 
-    glBindTexture(GL_TEXTURE_2D, display.id);
+    glBindTexture(GL_TEXTURE_2D, display_rect.id);
     checkGlError();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     checkGlError();
@@ -438,8 +444,8 @@ void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
         AHardwareBuffer_acquire(buffer);
         AHardwareBuffer_describe(buffer, &desc);
         log("renderer_set_buffer width:%d height:%d", desc.width, desc.height);
-        display.width = (float) desc.width;
-        display.height = (float) desc.height;
+        display_rect.width = (float) desc.width;
+        display_rect.height = (float) desc.height;
 
         clientBuffer = eglGetNativeClientBufferANDROID(buffer);
         if (!clientBuffer) {
@@ -458,16 +464,16 @@ void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
                 loge("Binding AHardwareBuffer to an EGLImage failed.");
             }
 
-            display.width = 1;
-            display.height = 1;
+            display_rect.width = 1;
+            display_rect.height = 1;
             uint32_t data = {0};
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data);
             checkGlError();
         }
         checkGlError();
     } else {
-        display.width = 1;
-        display.height = 1;
+        display_rect.width = 1;
+        display_rect.height = 1;
         uint32_t data = {0};
         loge("There is no AHardwareBuffer, nothing to be bound.");
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data);
@@ -505,7 +511,7 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
         checkGlError();
         glActiveTexture(GL_TEXTURE0);
         checkGlError();
-        glGenTextures(1, &display.id);
+        glGenTextures(1, &display_rect.id);
         checkGlError();
         glGenTextures(1, &cursor.id);
         checkGlError();
@@ -517,136 +523,6 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
         glClear(GL_COLOR_BUFFER_BIT);
         checkGlError();
     } else renderer_set_buffer(env, new_buffer);
-}
-
-void renderer_set_window(JNIEnv *env, jobject new_surface, AHardwareBuffer *new_buffer) {
-    EGLNativeWindowType window;
-    log("renderer_set_window begin0 %p", window);
-    if (new_surface && surface && new_surface != surface &&
-        (*env)->IsSameObject(env, new_surface, surface)) {
-        (*env)->DeleteGlobalRef(env, new_surface);
-        new_surface = NULL;
-        return;
-    }
-
-    window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
-    int width = window ? ANativeWindow_getWidth(window) : 0;
-    int height = window ? ANativeWindow_getHeight(window) : 0;
-    log("renderer_set_window begin %p %d %d", window, width, height);
-    if (window && win == window)
-        return;
-
-    if (sfc != EGL_NO_SURFACE) {
-        if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
-            EGL_TRUE) {
-            log("Xlorie: eglMakeCurrent (EGL_NO_SURFACE) failed.\n");
-            eglCheckError(__LINE__);
-            return;
-        }
-        if (eglDestroySurface(global_egl_display, sfc) != EGL_TRUE) {
-            log("Xlorie: eglDestoySurface failed.\n");
-            eglCheckError(__LINE__);
-            return;
-        }
-    }
-    log("renderer_set_window begin1 %p %d %d", window, width, height);
-    sfc = EGL_NO_SURFACE;
-    if (win)
-        ANativeWindow_release(win);
-
-    if (surface) {
-        (*env)->CallVoidMethod(env, surface, Surface_release);
-        (*env)->CallVoidMethod(env, surface, Surface_destroy);
-        (*env)->DeleteGlobalRef(env, surface);
-    }
-    log("renderer_set_window begin2 %p %d %d", window, width, height);
-
-    if (window && (width <= 0 || height <= 0)) {
-        log("Xlorie: We've got invalid surface. Probably it became invalid before we started working with it.\n");
-        ANativeWindow_release(window);
-        window = NULL;
-        if (new_surface) {
-            (*env)->CallVoidMethod(env, new_surface, Surface_release);
-            (*env)->CallVoidMethod(env, new_surface, Surface_destroy);
-            (*env)->DeleteGlobalRef(env, new_surface);
-            new_surface = NULL;
-        }
-    }
-    log("renderer_set_window begin3 %p %d %d", window, width, height);
-
-    win = window;
-    surface = new_surface;
-
-    if (!win)
-        return;
-
-    sfc = eglCreateWindowSurface(global_egl_display, global_config, win, NULL);
-    if (sfc == EGL_NO_SURFACE) {
-        log("Xlorie: eglCreateWindowSurface failed.\n");
-        eglCheckError(__LINE__);
-        return;
-    }
-
-    if (eglMakeCurrent(global_egl_display, sfc, sfc, global_ctx) != EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
-        eglCheckError(__LINE__);
-        return;
-    }
-    log("renderer_set_window begin4 %p %d %d  sfc:%p", window, width, height, sfc);
-
-
-    if (!g_texture_program) {
-        g_texture_program = create_program(vertex_shader, fragment_shader);
-        if (!g_texture_program) {
-            log("Xlorie: GLESv2: Unable to create shader program.\n");
-            eglCheckError(__LINE__);
-            return;
-        }
-
-        g_texture_program_bgra = create_program(vertex_shader, fragment_shader_bgra);
-        if (!g_texture_program_bgra) {
-            log("Xlorie: GLESv2: Unable to create bgra shader program.\n");
-            eglCheckError(__LINE__);
-            return;
-        }
-
-        gv_pos = (GLuint) glGetAttribLocation(g_texture_program, "position");
-        checkGlError();
-        gv_coords = (GLuint) glGetAttribLocation(g_texture_program, "texCoords");
-        checkGlError();
-
-        gv_pos_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "position");
-        checkGlError();
-        gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords");
-        checkGlError();
-
-        glActiveTexture(GL_TEXTURE0);
-        checkGlError();
-        glGenTextures(1, &display.id);
-        checkGlError();
-        glGenTextures(1, &cursor.id);
-        checkGlError();
-    }
-    log("renderer_set_window begin5 %p %d %d", window, width, height);
-
-    return;
-    eglSwapInterval(global_egl_display, 0);
-
-    if (win && global_ctx && ANativeWindow_getWidth(win) > 0 && ANativeWindow_getHeight(win) > 0) {
-        glViewport(0, 0, ANativeWindow_getWidth(win), ANativeWindow_getHeight(win));
-        checkGlError();
-    }
-
-//    log("Xlorie: new surface applied: %p\n", sfc);
-    if (!new_buffer) {
-        glClearColor(0.f, 0.f, 0.f, 0.0f);
-        checkGlError();
-        glClear(GL_COLOR_BUFFER_BIT);
-        checkGlError();
-    } else {
-        renderer_set_buffer(env, new_buffer);
-    }
-    log("renderer_set_window after %p %d %d", window, width, height);
 }
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
@@ -791,11 +667,11 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         return;
     }
     log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-        w, h, data, flip, display.width, display.height );
-    if (display.width != (float) w || display.height != (float) h) {
-        display.width = (float) w;
-        display.height = (float) h;
-        glBindTexture(GL_TEXTURE_2D, display.id);
+        w, h, data, flip, display_rect.width, display_rect.height );
+    if (display_rect.width != (float) w || display_rect.height != (float) h) {
+        display_rect.width = (float) w;
+        display_rect.height = (float) h;
+        glBindTexture(GL_TEXTURE_2D, display_rect.id);
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         checkGlError();
@@ -811,7 +687,7 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         checkGlError();
         log("renderer_update_root 7");
     } else {
-        glBindTexture(GL_TEXTURE_2D, display.id);
+        glBindTexture(GL_TEXTURE_2D, display_rect.id);
         checkGlError();
         log("renderer_update_root 9");
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
@@ -820,20 +696,25 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         log("renderer_update_root 10");
     }
     log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-        w, h, data, flip, display.width, display.height);
+        w, h, data, flip, display_rect.width, display_rect.height);
 
 }
 
-void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t flip, Window window) {
+void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t flip, Window window,
+                             GLuint texture_id) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h ) {
         return;
     }
+    log("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d", x, y, w, h, window,
+        texture_id);
     WindAttribute *attr = (WindAttribute *) _surface_find_window(sfWraper, window);
     attr->offset_x = (float) x;
     attr->offset_y = (float) y;
-//    if (attr->width != (float) w || attr->height != (float) h) {
-        attr->width = (float) w;
-        attr->height = (float) h;
+    attr->width = (float) w;
+    attr->height = (float) h;
+    if (texture_id != 0 ) {
+        attr->texture_id = texture_id;
+    } else {
         if (!attr->texture_id) {
             glGenTextures(1, &attr->texture_id);
             checkGlError();
@@ -851,20 +732,10 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
-//    } else {
-//        glBindTexture(GL_TEXTURE_2D, attr->texture_id);
-//        checkGlError();
-//        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-//                        GL_UNSIGNED_BYTE, data);
-//        checkGlError();
-//    }
-    if (!attr->texture_id) {
-        glGenTextures(1, &attr->texture_id);
-        checkGlError();
     }
 }
 
-void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, Widget *widget) {
+void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, Widget *widget, GLuint texture_id) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
@@ -872,9 +743,11 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
             widget->texture_id);
     widget->offset_x = (float) x;
     widget->offset_y = (float) y;
-//    if (widget->width != (float) w || widget->height != (float) h) {
-        widget->width = (float) w;
-        widget->height = (float) h;
+    widget->width = (float) w;
+    widget->height = (float) h;
+    if (texture_id != 0) {
+        widget->texture_id = texture_id;
+    } else {
         if (!widget->texture_id) {
             glGenTextures(1, &widget->texture_id);
             checkGlError();
@@ -891,16 +764,6 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
         checkGlError();
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
-        checkGlError();
-//    } else {
-//        glBindTexture(GL_TEXTURE_2D, widget->texture_id);
-//        checkGlError();
-//        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-//                        GL_UNSIGNED_BYTE, data);
-//        checkGlError();
-//    }
-    if (!widget->texture_id) {
-        glGenTextures(1, &widget->texture_id);
         checkGlError();
     }
 }
@@ -983,7 +846,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
     long long millis = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
     int i = 0;
     while (i < size ) {
-         renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
+        renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
         i++;
     }
     clock_gettime(CLOCK_REALTIME, &ts);
@@ -1040,33 +903,33 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         eglCheckError(__LINE__);
     }
 //    if(!empty){
-        draw(id, -1.f, -1.f, 1.f, 1.f, flip);
-        if(attr->widget_size > 0){
-            for(int i = 0 ; i < attr->widget_size ; i ++){
-                Widget widget = attr->widgets[i];
-                log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
-                    widget.texture_id);
-                if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
-                   || !widget.inbounds || !widget.width || !widget.height
-                   || !IfRealizedWindow(widget.pWin)){
-                    continue;
-                }
-                log("renderer_redraw_traversal_1 text 1")
-                android_update_widget_texture(&widget);
-                log("renderer_redraw_traversal_1 text 2")
-                float x = widget.offset_x;
-                float y = widget.offset_y;
-                float w = widget.width;
-                float h = widget.height;
-                float x0 = (x - attr->offset_x) * 2.0f / width - 1.0f;
-                float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
-                float x1 = x0 + w / width * 2.0f;
-                float y1 = y0 + h / height * 2.0f;
-                draw(widget.texture_id, x0, y0, x1, y1, flip);
-                log("renderer_redraw_traversal_1 text 3")
-//            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
+    draw(id, -1.f, -1.f, 1.f, 1.f, flip);
+    if(attr->widget_size > 0){
+        for(int i = 0 ; i < attr->widget_size ; i ++){
+            Widget widget = attr->widgets[i];
+            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+                widget.texture_id);
+            if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
+               || !widget.inbounds || !widget.width || !widget.height
+               || !IfRealizedWindow(widget.pWin)){
+                continue;
             }
+            log("renderer_redraw_traversal_1 text 1")
+            android_update_widget_texture(&widget);
+            log("renderer_redraw_traversal_1 text 2")
+            float x = widget.offset_x;
+            float y = widget.offset_y;
+            float w = widget.width;
+            float h = widget.height;
+            float x0 = (x - attr->offset_x) * 2.0f / width - 1.0f;
+            float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
+            float x1 = x0 + w / width * 2.0f;
+            float y1 = y0 + h / height * 2.0f;
+            draw(widget.texture_id, x0, y0, x1, y1, flip);
+            log("renderer_redraw_traversal_1 text 3")
+//            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
         }
+    }
 //    }
 //    bool drawn = draw_cursor_1(index, window);
     if (eglSwapBuffers(global_egl_display, eglSurface) != EGL_TRUE) {
@@ -1082,20 +945,20 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         }
     }
 //    if(!empty){
-        if(attr->widget_size > 0){
-            for(int i = 0 ; i < attr->widget_size ; i ++){
-                Widget widget = attr->widgets[i];
-                if(widget.inbounds){
-                    continue;
-                }
-                if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
-                   || !widget.width || !widget.height){
-                    continue;
-                }
-                android_update_widget_texture(&widget);
-                renderer_redraw_traversal_inner(env, flip, 0, widget);
+    if(attr->widget_size > 0){
+        for(int i = 0 ; i < attr->widget_size ; i ++){
+            Widget widget = attr->widgets[i];
+            if(widget.inbounds){
+                continue;
             }
+            if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
+               || !widget.width || !widget.height){
+                continue;
+            }
+            android_update_widget_texture(&widget);
+            renderer_redraw_traversal_inner(env, flip, 0, widget);
         }
+    }
 //    }
     return Success;
 }
@@ -1270,8 +1133,8 @@ maybe_unused static bool draw_cursor_1(int index, Window window) {
     if (!cursor.width || !cursor.height)
         return false;
 
-    float width = display.width;
-    float height = display.height;
+    float width = display_rect.width;
+    float height = display_rect.height;
     float cursor_x = cursor.x;
     float cursor_y = cursor.y;
     float cursor_xhot = cursor.xhot;
@@ -1299,3 +1162,52 @@ maybe_unused static bool draw_cursor_1(int index, Window window) {
     checkGlError();
     return true;
 }
+
+maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 height,
+                                          const CARD32 *strides, const CARD32 *offsets, CARD8 depth,
+                                          __unused CARD8 bpp, CARD64 modifier) {
+    if (global_ctx == EGL_NO_CONTEXT) {
+        log("egl_no_context")
+    }
+    if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx) !=
+        EGL_TRUE) {
+        log("Xlorie: eglMakeCurrent failed.\n");
+        eglCheckError(__LINE__);
+    }
+    log("renderer_create_image fd:%d width:%ld height:%ld strides:%d offset:%d depth:%d bpp:%d modifier:%d",
+        fd, width, height,
+        strides[0], offsets[0], depth, bpp, modifier)
+    EGLint attrs[] = {
+            EGL_WIDTH, width,                        // 图像的宽度
+            EGL_HEIGHT, height,                      // 图像的高度
+            EGL_LINUX_DRM_FOURCC_EXT,
+            DRM_FORMAT_XRGB8888,        // 图像的格式 (如 DRM_FORMAT_XRGB8888 或 DRM_FORMAT_NV12)
+            EGL_DMA_BUF_PLANE0_FD_EXT, fd,    // DMA-BUF 文件描述符（平面 0）
+            EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,        // 偏移量，通常是 0
+            EGL_DMA_BUF_PLANE0_PITCH_EXT, strides[0], // 每行的字节数
+            EGL_NONE                                 // 结束标记
+    };
+    EGLImage image = eglCreateImageKHR(global_egl_display, EGL_NO_CONTEXT,
+                                       EGL_LINUX_DMA_BUF_EXT,
+                                       NULL, attrs);
+    if (image == NULL) {
+        log("image is NULL")
+    }
+    checkGlError();
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    checkGlError();
+    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    log("renderer_create_image texture:%d", texture)
+    checkGlError();
+    return texture;
+}
+
+
+typedef struct {
+    EGLImage egl_image;
+} LorieEGLPixPrivRec;

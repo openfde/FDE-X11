@@ -22,12 +22,19 @@
 
 #include "present_priv.h"
 #include <gcstruct.h>
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 0
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_present", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_present", __VA_ARGS__);}
 
 uint32_t
 present_query_capabilities(RRCrtcPtr crtc)
 {
     present_screen_priv_ptr screen_priv;
-
+    loge("present_query_capabilities");
     if (!crtc)
         return 0;
 
@@ -48,7 +55,7 @@ present_get_crtc(WindowPtr window)
 
     if (!screen_priv)
         return NULL;
-
+    loge("present_get_crtc");
     crtc = screen_priv->get_crtc(screen_priv, window);
     if (crtc && !present_screen_priv(crtc->pScreen)) {
         crtc = RRFirstEnabledCrtc(screen);
@@ -71,7 +78,6 @@ present_copy_region(DrawablePtr drawable,
 {
     ScreenPtr   screen = drawable->pScreen;
     GCPtr       gc;
-
     gc = GetScratchGC(drawable->depth, screen);
     if (update) {
         ChangeGCVal     changes[2];
@@ -84,6 +90,8 @@ present_copy_region(DrawablePtr drawable,
         (*gc->funcs->ChangeClip)(gc, CT_REGION, update, 0);
     }
     ValidateGC(drawable, gc);
+    loge("present_copy_region drawable:%x pixmap:%x gc:%p, width:%d height:%d x_off:%d y_off:%d",drawable->id, pixmap->drawable.id,
+        gc, pixmap->drawable.width, pixmap->drawable.height, x_off, y_off);
     (*gc->ops->CopyArea)(&pixmap->drawable,
                          drawable,
                          gc,
@@ -116,7 +124,7 @@ present_set_tree_pixmap_visit(WindowPtr window, void *data)
 {
     struct pixmap_visit *visit = data;
     ScreenPtr           screen = window->drawable.pScreen;
-
+    loge("present_set_tree_pixmap_visit");
     if ((*screen->GetWindowPixmap)(window) != visit->old)
         return WT_DONTWALKCHILDREN;
     (*screen->SetWindowPixmap)(window, visit->new);
@@ -130,7 +138,8 @@ present_set_tree_pixmap(WindowPtr window,
 {
     struct pixmap_visit visit;
     ScreenPtr           screen = window->drawable.pScreen;
-
+    loge("present_set_tree_pixmap window:%x expected:%x pixmap:%x", window->drawable.id, expected->drawable.id,
+         pixmap->drawable.id);
     visit.old = (*screen->GetWindowPixmap)(window);
     if (expected && visit.old != expected)
         return;
@@ -239,7 +248,7 @@ present_pixmap(WindowPtr window,
 {
     ScreenPtr                   screen = window->drawable.pScreen;
     present_screen_priv_ptr     screen_priv = present_screen_priv(screen);
-
+    loge("present_pixmap");
     return screen_priv->present_pixmap(window,
                                        pixmap,
                                        serial,
@@ -265,6 +274,7 @@ present_notify_msc(WindowPtr window,
                    uint64_t divisor,
                    uint64_t remainder)
 {
+    loge("present_notify_msc");
     return present_pixmap(window,
                           NULL,
                           serial,

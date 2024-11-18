@@ -27,10 +27,19 @@
 #include "../Xext/syncsdk.h"
 #include <protocol-versions.h>
 #include <drm_fourcc.h>
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 1
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_request", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_request", __VA_ARGS__);}
+
 
 static Bool
 dri3_screen_can_one_point_two(ScreenPtr screen)
 {
+    loge("dri3_screen_can_one_point_two")
     dri3_screen_priv_ptr dri3 = dri3_screen_priv(screen);
 
     if (dri3 && dri3->info && dri3->info->version >= 2 &&
@@ -45,6 +54,7 @@ dri3_screen_can_one_point_two(ScreenPtr screen)
 static int
 proc_dri3_query_version(ClientPtr client)
 {
+    loge("proc_dri3_query_version")
     REQUEST(xDRI3QueryVersionReq);
     xDRI3QueryVersionReply rep = {
         .type = X_Reply,
@@ -97,6 +107,7 @@ proc_dri3_query_version(ClientPtr client)
 int
 dri3_send_open_reply(ClientPtr client, int fd)
 {
+    loge("dri3_send_open_reply fd:%d", fd)
     xDRI3OpenReply rep = {
         .type = X_Reply,
         .nfd = 1,
@@ -122,6 +133,7 @@ dri3_send_open_reply(ClientPtr client, int fd)
 static int
 proc_dri3_open(ClientPtr client)
 {
+    loge("proc_dri3_open")
     REQUEST(xDRI3OpenReq);
     RRProviderPtr provider;
     DrawablePtr drawable;
@@ -176,10 +188,11 @@ proc_dri3_pixmap_from_buffer(ClientPtr client)
     }
 
     if (!stuff->width || !stuff->height) {
+        loge("proc_dri3_pixmap_from_buffer 5")
         client->errorValue = 0;
         return BadValue;
     }
-
+    loge("proc_dri3_pixmap_from_buffer width:%d height:%d", stuff->width, stuff->height)
     if (stuff->width > 32767 || stuff->height > 32767)
         return BadAlloc;
 
@@ -194,13 +207,13 @@ proc_dri3_pixmap_from_buffer(ClientPtr client)
             return BadValue;
         }
     }
-
     fd = ReadFdFromClient(client);
     if (fd < 0)
         return BadValue;
 
     offset = 0;
     stride = stuff->stride;
+    loge("proc_dri3_pixmap_from_buffer fd:%d", fd)
     rc = dri3_pixmap_from_fds(&pixmap,
                               drawable->pScreen, 1, &fd,
                               stuff->width, stuff->height,
@@ -230,6 +243,7 @@ proc_dri3_pixmap_from_buffer(ClientPtr client)
 static int
 proc_dri3_buffer_from_pixmap(ClientPtr client)
 {
+    loge("proc_dri3_buffer_from_pixmap")
     REQUEST(xDRI3BufferFromPixmapReq);
     xDRI3BufferFromPixmapReply rep = {
         .type = X_Reply,
@@ -279,6 +293,7 @@ proc_dri3_buffer_from_pixmap(ClientPtr client)
 static int
 proc_dri3_fence_from_fd(ClientPtr client)
 {
+    loge("proc_dri3_fence_from_fd")
     REQUEST(xDRI3FenceFromFDReq);
     DrawablePtr drawable;
     int fd;
@@ -298,6 +313,7 @@ proc_dri3_fence_from_fd(ClientPtr client)
 
     status = SyncCreateFenceFromFD(client, drawable, stuff->fence,
                                    fd, stuff->initially_triggered);
+    loge("proc_dri3_fence_from_fd fd:%d status:%d", fd, status)
 
     return status;
 }
@@ -305,6 +321,7 @@ proc_dri3_fence_from_fd(ClientPtr client)
 static int
 proc_dri3_fd_from_fence(ClientPtr client)
 {
+    loge("proc_dri3_fd_from_fence")
     REQUEST(xDRI3FDFromFenceReq);
     xDRI3FDFromFenceReply rep = {
         .type = X_Reply,
@@ -345,6 +362,7 @@ proc_dri3_fd_from_fence(ClientPtr client)
 static int
 proc_dri3_get_supported_modifiers(ClientPtr client)
 {
+    loge("proc_dri3_get_supported_modifiers")
     REQUEST(xDRI3GetSupportedModifiersReq);
     xDRI3GetSupportedModifiersReply rep = {
         .type = X_Reply,
@@ -400,6 +418,7 @@ proc_dri3_get_supported_modifiers(ClientPtr client)
 static int
 proc_dri3_pixmap_from_buffers(ClientPtr client)
 {
+    loge("proc_dri3_pixmap_from_buffers")
     REQUEST(xDRI3PixmapFromBuffersReq);
     int fds[4];
     CARD32 strides[4], offsets[4];
@@ -461,7 +480,7 @@ proc_dri3_pixmap_from_buffers(ClientPtr client)
     offsets[1] = stuff->offset1;
     offsets[2] = stuff->offset2;
     offsets[3] = stuff->offset3;
-
+    loge("proc_dri3_pixmap_from_buffers fd_num:%d fd:%d", stuff->num_buffers, fds[0])
     rc = dri3_pixmap_from_fds(&pixmap, screen,
                               stuff->num_buffers, fds,
                               stuff->width, stuff->height,
@@ -494,6 +513,7 @@ proc_dri3_pixmap_from_buffers(ClientPtr client)
 static int
 proc_dri3_buffers_from_pixmap(ClientPtr client)
 {
+    loge("proc_dri3_buffers_from_pixmap")
     REQUEST(xDRI3BuffersFromPixmapReq);
     xDRI3BuffersFromPixmapReply rep = {
         .type = X_Reply,
@@ -569,6 +589,7 @@ int (*proc_dri3_vector[DRI3NumberRequests]) (ClientPtr) = {
 int
 proc_dri3_dispatch(ClientPtr client)
 {
+    loge("proc_dri3_dispatch")
     REQUEST(xReq);
     if (!client->local)
         return BadMatch;

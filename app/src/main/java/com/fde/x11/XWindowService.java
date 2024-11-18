@@ -195,6 +195,7 @@ public class XWindowService extends Service {
                 break;
             case X_START_VIEW:
                 sendBroadcastAboutView(message.getWindowAttribute(), message.getProperty(), X_START_VIEW);
+//   TODO for test             startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
                 break;
             case X_DISMISS_WINDOW:
                 sendBroadcastAboutView(message.getWindowAttribute(),message.getProperty(), X_DISMISS_WINDOW);

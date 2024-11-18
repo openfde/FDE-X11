@@ -21,6 +21,13 @@
  */
 
 #include "present_priv.h"
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 0
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_screen", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_screen", __VA_ARGS__);}
 
 int present_request;
 DevPrivateKeyRec present_screen_private_key;
@@ -188,6 +195,7 @@ present_screen_priv_init(ScreenPtr screen)
 int
 present_screen_init(ScreenPtr screen, present_screen_info_ptr info)
 {
+    loge("present_screen_init")
     if (!present_screen_register_priv_keys())
         return FALSE;
 
@@ -195,7 +203,7 @@ present_screen_init(ScreenPtr screen, present_screen_info_ptr info)
         present_screen_priv_ptr screen_priv = present_screen_priv_init(screen);
         if (!screen_priv)
             return FALSE;
-
+        loge("present_screen_init 1 %p", info)
         screen_priv->info = info;
         present_scmd_init_mode_hooks(screen_priv);
 
@@ -213,6 +221,7 @@ present_extension_init(void)
 {
     ExtensionEntry *extension;
     int i;
+    loge("present_extension_init")
 
 #ifdef PANORAMIX
     if (!noPanoramiXExtension)

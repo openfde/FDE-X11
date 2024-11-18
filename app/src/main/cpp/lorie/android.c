@@ -53,7 +53,7 @@ extern char *__progname; // NOLINT(bugprone-reserved-identifier)
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
 extern void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip,
-                                           Widget *widget);
+                                           Widget *widget, GLuint texture_id);
 char *xtrans_unix_path_x11 = NULL;
 char *xtrans_unix_dir_x11 = NULL;
 static jclass JavaCmdEntryPointClass;
@@ -61,7 +61,8 @@ static JavaVM *jniVM = NULL;
 extern struct SurfaceManagerWrapper *sfWraper;
 Window focusWindow = -1;
 static int window_top_level = 0;
-
+extern DevPrivateKeyRec FDETexturePrivateKey;
+extern DevPrivateKeyRec FDEWindowTexturePrivateKey;
 extern int ucs2keysym(long ucs);
 
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
@@ -116,18 +117,31 @@ void android_update_texture_1(Window window) {
         if(!attr){
             return;
         }
-//        log(ERROR, "android_update_texture_1 window:%x", attr->pWin->drawable.id);
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
+        log(ERROR, "android_update_texture_1 pixmap:%x", pixmap->drawable.id)
+        TexturePrivRecPtr ptr = dixLookupPrivate(&attr->pWin->devPrivates, &FDEWindowTexturePrivateKey);
+        GLuint texture_id = 0;
+        if(ptr){
+            texture_id = ptr->texture;
+            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
+        }
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window);
+                                pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window, texture_id);
     }
 }
 
 void android_update_widget_texture(Widget *widget) {
-//    log(ERROR, "android_update_widget_texture window:%x", widget->window);
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget->pWin);
+    log(ERROR, "android_update_texture_1 pixmap:%x", pixmap->drawable.id)
+    TexturePrivRecPtr ptr = dixLookupPrivate(&widget->pWin->devPrivates, &FDEWindowTexturePrivateKey);
+    GLuint texture_id = 0;
+    if(ptr){
+        texture_id = ptr->texture;
+        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
+    }
+    log(ERROR, "android_update_widget_texture window:%x pixmap:%x", widget->window, pixmap->drawable.id);
     renderer_update_widget_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                   pixmap->drawable.height, pixmap->devPrivate.ptr, 0, widget);
+                                   pixmap->drawable.height, pixmap->devPrivate.ptr, 0, widget, texture_id);
     _surface_log_traversal_window(sfWraper);
 }
 
@@ -197,6 +211,15 @@ void android_redirect_window(WindowPtr pWin) {
             taskTo = attr->window;
             intransient_bounds = android_check_bounds(pWin, attr);
         }
+    }
+
+    PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(pWin);
+//        if(!pixmap->drawable.id){
+//            return;
+//        }
+    TexturePrivRecPtr ptr = dixLookupPrivate(&pixmap->devPrivates, &FDETexturePrivateKey);
+    if(ptr){
+        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
     }
     log(ERROR, "android_redirect_window %x redirect:%d atom:%d transient:%x, "
                "taskTo:%x inbounds:%d mapped:%d",

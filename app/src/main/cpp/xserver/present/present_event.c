@@ -21,6 +21,13 @@
  */
 
 #include "present_priv.h"
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 0
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_vblank", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_vblank", __VA_ARGS__);}
 
 static RESTYPE present_event_type;
 
@@ -147,7 +154,7 @@ void
 present_send_complete_notify(WindowPtr window, CARD8 kind, CARD8 mode, CARD32 serial, uint64_t ust, uint64_t msc)
 {
     present_window_priv_ptr window_priv = present_window_priv(window);
-
+    loge("present_send_complete_notify window:%x", window->drawable.id);
     if (window_priv) {
         xPresentCompleteNotify cn = {
             .type = GenericEvent,

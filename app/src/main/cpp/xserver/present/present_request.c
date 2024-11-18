@@ -23,6 +23,13 @@
 #include "present_priv.h"
 #include "randrstr.h"
 #include <protocol-versions.h>
+#include <android/log.h>
+#include <jni.h>
+extern Bool LOG_ENABLE;
+#define THIS_LOG_ENABLE 0
+#define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_present", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_present", __VA_ARGS__);}
 
 static int
 proc_present_query_version(ClientPtr client)
@@ -142,7 +149,8 @@ proc_present_pixmap(ClientPtr client)
         if (ret != Success)
             return ret;
     }
-
+    loge("present_pixmap windowid:%lx pixmapid:%lx ret:%d update:%p",
+         window->drawable.id, pixmap->drawable.id, ret, update)
     ret = present_pixmap(window, pixmap, stuff->serial, valid, update,
                          stuff->x_off, stuff->y_off, target_crtc,
                          wait_fence, idle_fence, stuff->options,
