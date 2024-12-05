@@ -232,7 +232,7 @@ public class Xserver {
      * @param bitmap
      * @param window
      */
-    public static void  getWindowIconFromManager(Bitmap bitmap, long window){
+    public static void setWindowIconFromManager(Bitmap bitmap, long window){
         Context ctx = context.get();
         if(ctx == null){
             Log.d(TAG, "context  == null ");

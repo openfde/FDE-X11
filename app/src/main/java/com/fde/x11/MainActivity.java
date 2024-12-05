@@ -1045,8 +1045,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
-                        && mAttribute.getWindowPtr() == attr.getWindowPtr()
-                        && mProperty!=null && mProperty.getSupportDeleteWindow() == 1
+//                        && mAttribute.getWindowPtr() == attr.getWindowPtr()
+//                        && mProperty!=null && mProperty.getSupportDeleteWindow() == 1
 //                        && App.getApp().stopingActivityWindow.contains(attr.getWindowPtr())
                 ){
                     FLog.a("event", getWindowId(), "onReceive: "  +

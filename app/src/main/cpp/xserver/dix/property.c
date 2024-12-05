@@ -56,6 +56,14 @@ SOFTWARE.
 #include "dispatch.h"
 #include "swaprep.h"
 #include "xace.h"
+#include <jni.h>
+#include <android/log.h>
+extern Bool LOG_ENABLE;
+#define PROPERTY_LOG_ENABLE 0
+#define PRINT_LOG (PROPERTY_LOG_ENABLE && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_property", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_property", __VA_ARGS__);}
+
 
 /*****************************************************************
  * Property Stuff
@@ -85,6 +93,8 @@ PrintPropertys(WindowPtr pWin)
     }
 }
 #endif
+
+void update_effect_property(WindowPtr pWin, ATOM prop, ClientPtr clientPtr);
 
 int
 dixLookupProperty(PropertyPtr *result, WindowPtr pWin, Atom propertyName,
@@ -245,6 +255,7 @@ ProcChangeProperty(ClientPtr client)
     err = dixChangeWindowProperty(client, pWin, stuff->property, stuff->type,
                                   (int) format, (int) mode, len, &stuff[1],
                                   TRUE);
+    update_effect_property(pWin, stuff->property, client);
     if (err != Success)
         return err;
     else

@@ -76,7 +76,7 @@
 #define DEFAULT_REFRESH_RATE 60  // 默认60Hz
 #define REFRESH_INTERVAL (NSEC_PER_SEC / DEFAULT_REFRESH_RATE)
 extern Bool LOG_ENABLE;
-#define ANDROID_LOG_ENABLE 0
+#define ANDROID_LOG_ENABLE 1
 #define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_dri3", __VA_ARGS__);}
 

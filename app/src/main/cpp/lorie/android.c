@@ -118,12 +118,12 @@ void android_update_texture_1(Window window) {
             return;
         }
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
-        log(ERROR, "android_update_texture_1 pixmap:%x", pixmap->drawable.id)
+//        log(ERROR, "android_update_texture_1 pixmap:%x", pixmap->drawable.id)
         TexturePrivRecPtr ptr = dixLookupPrivate(&attr->pWin->devPrivates, &FDEWindowTexturePrivateKey);
         GLuint texture_id = 0;
         if(ptr){
             texture_id = ptr->texture;
-            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
+//            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
         }
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                 pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window, texture_id);
@@ -152,7 +152,7 @@ void android_destroy_window(Window window) {
         log(DEBUG, "destroy activity");
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         attr->discard = 1;
-        android_destroy_activity(attr->index, attr->pWin, attr->window, attr->aProperty.support_wm_delete, ACTION_DESTORY);
+        android_destroy_activity(attr->index, attr->pWin, attr->window, ACTION_DESTORY, attr->aProperty.support_wm_delete);
         _surface_delete_window(sfWraper, window);
         glDeleteTextures(1, &attr->texture_id);
         log(DEBUG,"android_destroy_window textureId:%d", attr->texture_id);
@@ -175,7 +175,7 @@ void android_unmap_window(Window window){
         log(DEBUG, "unmap activity window:%x", window);
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         attr->discard = 1;
-        android_destroy_activity(attr->index, attr->pWin, attr->window,  attr->aProperty.support_wm_delete, ACTION_UNMAP);
+        android_destroy_activity(attr->index, attr->pWin, attr->window,  ACTION_UNMAP, attr->aProperty.support_wm_delete);
         _surface_delete_window(sfWraper, window);
         glDeleteTextures(1, &attr->texture_id);
         log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
@@ -213,14 +213,14 @@ void android_redirect_window(WindowPtr pWin) {
         }
     }
 
-    PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(pWin);
+//    PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(pWin);
 //        if(!pixmap->drawable.id){
 //            return;
 //        }
-    TexturePrivRecPtr ptr = dixLookupPrivate(&pixmap->devPrivates, &FDETexturePrivateKey);
-    if(ptr){
-        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
-    }
+//    TexturePrivRecPtr ptr = dixLookupPrivate(&pixmap->devPrivates, &FDETexturePrivateKey);
+//    if(ptr){
+//        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
+//    }
     log(ERROR, "android_redirect_window %x redirect:%d atom:%d transient:%x, "
                "taskTo:%x inbounds:%d mapped:%d",
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
@@ -260,7 +260,7 @@ void android_redirect_window(WindowPtr pWin) {
 }
 
 jobject android_icon_convert_bitmap(int* data, int width, int height){
-//    log(DEBUG, "CONVERT_ICON width:%d height:%d window:%x", width, height, pProp->window);
+    log(DEBUG, "CONVERT_ICON width:%d height:%d", width, height);
     JNIEnv *JavaEnv = GetJavaEnv();
     jclass bitmapClass = (*JavaEnv)->FindClass(JavaEnv,"android/graphics/Bitmap");
     jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
@@ -295,6 +295,35 @@ jobject android_icon_convert_bitmap(int* data, int width, int height){
     (*JavaEnv)->DeleteLocalRef(JavaEnv,bitmapConfigClass);
     return bitmap;
  }
+
+ /*
+  * update some effect property and do sth if need , eg. window icon
+  *
+  */
+ void update_effect_property(WindowPtr pWin, Atom prop, ClientPtr client){
+     CHECK_WITH_PROP;
+     if(STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)){
+         PropertyPtr pProp;
+         int rc = dixLookupProperty(&pProp, pWin, prop, client,
+                                DixReadAccess);
+         if(rc == Success){
+             unsigned char *propData = pProp->data;
+             int *icon_data = (int *)propData;
+             int width = *icon_data;
+             int height = *(icon_data+1);
+             int * imageData = ( int*) (icon_data + 2);
+             jobject bitmap = android_icon_convert_bitmap(imageData, width, height);
+             if (bitmap){
+                 JNIEnv *JavaEnv = GetJavaEnv();
+                 if (JavaEnv && JavaCmdEntryPointClass ) {
+                     jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                                      "setWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
+                     (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, bitmap, (long)pWin->drawable.id);
+                 }
+             }
+         }
+     }
+}
 
 
 void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
