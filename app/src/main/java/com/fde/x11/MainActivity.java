@@ -7,6 +7,7 @@ import static android.view.WindowManager.LayoutParams.*;
 import static com.fde.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
 import static com.fde.x11.XWindowService.ACTION_X_WINDOW_PROPERTY;
 import static com.fde.x11.XWindowService.CONFIGURE_ACTIVITY_FROM_X;
+import static com.fde.x11.XWindowService.CONFIGURE_WIDGET_FROM_X;
 import static com.fde.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.fde.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
 import static com.fde.x11.XWindowService.START_ACTIVITY_FROM_X;
@@ -55,6 +56,7 @@ import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
+import android.service.dreams.DreamService;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -108,6 +110,31 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+
+/**
+ * This is an Activity that behaves like a window in XServer. It receives user
+ * events and forwards them to the XServer, and it also receives images from the XServer
+ * and displays them using a SurfaceView. Some pop-up windows are displayed on top of
+ * it using floating views. There are some windows that do not require titles,
+ * and the clipboard content is synchronized with the XServer's clipboard.
+ *
+ * For more detail:
+ *
+ * The Activity functions similarly to a window within an X Server environment.
+ * User interactions are captured by this Asctivity and relayed to the X Server for processing.
+ * Graphics or visual output from the X Server are received by the Activity and presented via a SurfaceView component.
+ * Floating views are utilized to display certain popup windows over this Activity.
+ * Specific windows can be displayed without a title bar if not required.
+ * The Activity ensures that the device's clipboard is kept in sync with the clipboard of the connected X Server.
+ *
+ * begin at {@link #onCreate} all initialization
+ * begin at {@link #onStart} lifecycle
+ * begin at {@link #getClipText} about X window manager
+ * begin at {@link #addFloatView} about X floatview
+ * begin at {@link #initStylusAuxButtons} about event
+ * begin at {@link #hideDecorCaptionView} other activity
+ */
 
 @SuppressLint("ApplySharedPref")
 @SuppressWarnings({"deprecation", "unused"})
@@ -331,6 +358,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
             addAction(CONFIGURE_ACTIVITY_FROM_X);
+            addAction(CONFIGURE_WIDGET_FROM_X);
             addAction(START_VIEW_FROM_X);
             addAction(STOP_VIEW_FROM_X);
         }},  0);
@@ -370,12 +398,12 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onResume() {
         super.onResume();
-        getWindow().getDecorView().postDelayed(()->{
-            if(!correctMarked){
-                correctMarked = true;
-                checkConfigBeforeExec(mConfiguration, true);
-            }
-        },1000);
+//        getWindow().getDecorView().postDelayed(()->{
+//            if(!correctMarked){
+//                correctMarked = true;
+//                checkConfigBeforeExec(mConfiguration, true);
+//            }
+//        },1000);
 //        getLorieView().requestFocus();
         FLog.a("lifecycle", getWindowId(), "onResume");
         detectViewRequestFocus();
@@ -516,6 +544,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     /**
      *============================================ about X Window ==================================================
+     * window manager methods
      */
     private void getClipText() {
         FLog.a("window", getWindowId(), "getClipText");
@@ -1094,7 +1123,21 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                         configureFromX();
                     }
                 }
-            } else if(START_VIEW_FROM_X.equals(intent.getAction())){
+            }  else if(CONFIGURE_WIDGET_FROM_X.equals(intent.getAction())) {
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                FLog.a("event", getWindowId(), "onReceive: "  +
+                        "CONFIGURE_WIDGET_FROM_X"  + " attr:" + attr);
+                if(!mFloatViews.containsKey(attr.getXID())){
+                    return;
+                }
+                View view = mFloatViews.get(attr.getXID());
+                LorieView floatView = view.findViewById(R.id.widget_view);
+                WindowAttribute attribute = floatView.getAttribute();
+                if(!attr.isSameCoordinate(attribute)){
+                    stopFloatView(attr);
+                    addFloatView(attr);
+                }
+            }  else if(START_VIEW_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 long transientfor = Objects.requireNonNull(prop).getTransientfor();

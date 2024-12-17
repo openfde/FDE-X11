@@ -194,6 +194,14 @@ public class WindowAttribute implements Parcelable {
         }
     };
 
+    public boolean isSameCoordinate(WindowAttribute attr){
+        if(attr == null) return false;
+        Rect rect = attr.getRect();
+        Rect r = getRect();
+        return ( r.right - r.left ) == ( rect.right - rect.left )
+                && ( r.bottom - r.top ) == ( rect.bottom - rect.top );
+    }
+
 
     @NonNull
     @Override

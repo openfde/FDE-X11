@@ -1,6 +1,7 @@
 package com.fde.x11.input;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
+import android.util.Log;
 import android.view.InputEvent;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
@@ -14,6 +15,7 @@ public class InputManager {
     public static final int INJECT_INPUT_EVENT_MODE_ASYNC = 0;
     public static final int INJECT_INPUT_EVENT_MODE_WAIT_FOR_RESULT = 1;
     public static final int INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH = 2;
+    private static final String TAG = "InputManager";
 
     private final Object manager;
     private Method injectInputEventMethod;
@@ -32,8 +34,9 @@ public class InputManager {
         }
     }
 
-    public void setPointerIcon(Bitmap bitmap){
-        PointerIcon pointerIcon = PointerIcon.create(bitmap, 0, 0);
+    public void setPointerIcon(Bitmap bitmap, int xhot, int yhot){
+        Log.d(TAG, "setPointerIcon() called with: bitmap = [" + bitmap + "], xhot = [" + xhot + "], yhot = [" + yhot + "]");
+        PointerIcon pointerIcon = PointerIcon.create(bitmap, xhot, yhot);
         try {
             Method setCustomPointerIcon = manager.getClass().getMethod("setCustomPointerIcon", PointerIcon.class);
             setCustomPointerIcon.invoke(manager, pointerIcon);

@@ -113,7 +113,7 @@ public final class InputEventSender {
             x += offsetX;
             y += offsetY;
         }
-//        Log.d(TAG, "sendCursorMove mouse : x = [" + x + "], y = [" + y + "], relative = [" + this + "]");
+        Log.d(TAG, "sendCursorMove mouse : x = [" + x + "], y = [" + y + "], relative = [" + this + "]");
         InputStub input = mEventInterface != null ? mEventInterface: mInjector;
 //        if( mLastEventTime != 0 && System.currentTimeMillis() - mLastEventTime > 16) {
         input.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,

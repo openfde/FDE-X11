@@ -25,6 +25,7 @@ import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.fde.x11.data.Constants;
 import com.fde.x11.input.InputManager;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
@@ -172,6 +173,12 @@ public class Xserver {
         return type;
     }
 
+    public static void configureWidget(long id, int x, int y, int w, int h){
+        FLog.s(TAG, "configureWidget() called with: id = [" + id + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "]");
+        EventMessage message = new EventMessage(EventType.X_CONFIGURE_WIDGET, "configure_window", new WindowAttribute(x, y, w, h, 0, 0, id), null);
+        EventBus.getDefault().post(message);
+    }
+
 
     /**
      * close or destory a activity: call from jni
@@ -207,9 +214,9 @@ public class Xserver {
         }
     }
 
-    public static void updateCursor(Bitmap icon, int w, int h){
+    public static void updateCursor(Bitmap icon, int xhot, int yhot){
         InputManager inputManager = InputManager.create();
-        inputManager.setPointerIcon(icon);
+        inputManager.setPointerIcon(icon, xhot, yhot);
     }
 
 

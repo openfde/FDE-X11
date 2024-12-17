@@ -41,7 +41,7 @@ import java.util.Objects;
  * close activity/dialog,
  * update icon,
  *
- * window manager confiure window and update clipboard
+ * window manager configure window and update clipboard
  */
 public class XWindowService extends Service {
 
@@ -51,6 +51,7 @@ public class XWindowService extends Service {
     public static final String ACTION_X_WINDOW_PROPERTY = "action_x_window_property";
 
     public static final String CONFIGURE_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_configure";
+    public static final String CONFIGURE_WIDGET_FROM_X = "com.fde.x11.Xserver.action_configure_widget";
 
     public static final String START_VIEW_FROM_X = "com.fde.x11.Xserver.start_action_view";
     public static final String STOP_VIEW_FROM_X = "com.fde.x11.Xserver.stop_action_view";
@@ -193,6 +194,9 @@ public class XWindowService extends Service {
             case X_CONFIGURE_WINDOW:
                 sendBroadcastConfigureWindow(message.getWindowAttribute());
                 break;
+            case X_CONFIGURE_WIDGET:
+                sendBroadcastConfigureWidget(message.getWindowAttribute());
+                break;
             case X_START_VIEW:
                 sendBroadcastAboutView(message.getWindowAttribute(), message.getProperty(), X_START_VIEW);
 //   TODO for test             startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
@@ -203,6 +207,14 @@ public class XWindowService extends Service {
             default:
                 break;
         }
+    }
+
+    private void sendBroadcastConfigureWidget(WindowAttribute attr) {
+        String targetPackage = getPackageName();
+        Intent intent = new Intent(CONFIGURE_WIDGET_FROM_X);
+        intent.setPackage(targetPackage);
+        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+        sendBroadcast(intent);
     }
 
     private void sendBroadcastAboutView(WindowAttribute attr, Property property, EventType type) {

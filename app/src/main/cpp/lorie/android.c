@@ -81,6 +81,8 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
 
 void android_redirect_widget(WindowPtr pWindow, WindProperty prop, Window window);
 
+void android_configure_window(WindowPtr pWindow, short x, short y, short w, short h);
+
 int is_valid_utf8(const char *string);
 
 bool IfRealizedWindow(WindowPtr widget);
@@ -294,35 +296,35 @@ jobject android_icon_convert_bitmap(int* data, int width, int height){
     (*JavaEnv)->DeleteLocalRef(JavaEnv,configName);
     (*JavaEnv)->DeleteLocalRef(JavaEnv,bitmapConfigClass);
     return bitmap;
- }
+}
 
- /*
-  * update some effect property and do sth if need , eg. window icon
-  *
-  */
- void update_effect_property(WindowPtr pWin, Atom prop, ClientPtr client){
-     CHECK_WITH_PROP;
-     if(STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)){
-         PropertyPtr pProp;
-         int rc = dixLookupProperty(&pProp, pWin, prop, client,
-                                DixReadAccess);
-         if(rc == Success){
-             unsigned char *propData = pProp->data;
-             int *icon_data = (int *)propData;
-             int width = *icon_data;
-             int height = *(icon_data+1);
-             int * imageData = ( int*) (icon_data + 2);
-             jobject bitmap = android_icon_convert_bitmap(imageData, width, height);
-             if (bitmap){
-                 JNIEnv *JavaEnv = GetJavaEnv();
-                 if (JavaEnv && JavaCmdEntryPointClass ) {
-                     jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                                      "setWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
-                     (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, bitmap, (long)pWin->drawable.id);
-                 }
-             }
-         }
-     }
+/*
+ * update some effect property and do sth if need , eg. window icon
+ *
+ */
+void update_effect_property(WindowPtr pWin, Atom prop, ClientPtr client){
+    CHECK_WITH_PROP;
+    if(STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)){
+        PropertyPtr pProp;
+        int rc = dixLookupProperty(&pProp, pWin, prop, client,
+                                   DixReadAccess);
+        if(rc == Success){
+            unsigned char *propData = pProp->data;
+            int *icon_data = (int *)propData;
+            int width = *icon_data;
+            int height = *(icon_data+1);
+            int * imageData = ( int*) (icon_data + 2);
+            jobject bitmap = android_icon_convert_bitmap(imageData, width, height);
+            if (bitmap){
+                JNIEnv *JavaEnv = GetJavaEnv();
+                if (JavaEnv && JavaCmdEntryPointClass ) {
+                    jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                                     "setWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
+                    (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, bitmap, (long)pWin->drawable.id);
+                }
+            }
+        }
+    }
 }
 
 
@@ -553,12 +555,29 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
                                                          "startOrUpdateActivity",
                                                          "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;Z)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
+                                         (long)aWindow, (long)aTransient, (long)aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
                                          (long) windowPtr, (long) window, (long) taskTo,
                                          aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound);
     }
 }
+
+void android_configure_window(WindowPtr pWin, short x, short y, short w, short h){
+    _surface_log_traversal_window(sfWraper);
+    WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
+    log(DEBUG, "android_configure_window rediret:%d pWin:%x x:%d y:%d w:%d h:%d", pWin->overrideRedirect, pWin->drawable.id, x, y, w, h)
+    if(!pWin->overrideRedirect){
+        return;
+    }
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if (JavaEnv && JavaCmdEntryPointClass) {
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                         "configureWidget", "(JIIII)V");
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, (long)pWin->drawable.id,
+                                         x, y, w, h);
+    }
+}
+
 
 void android_destroy_activity(int index, WindowPtr pWin, Window window, int action, Bool wm_delete) {
     log(DEBUG, "android_destroy_activity index%d pWin:%p window:%x", index, pWin, window);
@@ -594,7 +613,7 @@ void android_update_cursor(int w, int h, int xhot, int yhot, void *data){
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "updateCursor",
                                                          "(Landroid/graphics/Bitmap;II)V");
-        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, cursor_icon, w, h);
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, cursor_icon, xhot, yhot);
     }
 }
 
@@ -790,9 +809,9 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls,
-                                          jobject surface, jfloat offsetX, jfloat offsetY,
-                                          jfloat width, jfloat height, jint index,
-                                          jlong windowPtr, jlong window) {
+                                       jobject surface, jfloat offsetX, jfloat offsetY,
+                                       jfloat width, jfloat height, jint index,
+                                       jlong windowPtr, jlong window) {
     jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
     log(ERROR, "windowChanged index:%d surface:%p", index, sfc);
     SurfaceRes *res = (SurfaceRes *) malloc(sizeof(SurfaceRes));
@@ -1005,7 +1024,7 @@ Java_com_fde_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
     } else {
         return NULL;
     }
- }
+}
 
 void *logcatThread(void *arg) {
     char buffer[4096];
@@ -1145,7 +1164,7 @@ Java_com_fde_x11_LorieView_startLogcat(JNIEnv *env, unused jobject cls, jint fd)
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_LorieView_setClipboardSyncEnabled(unused JNIEnv *env, unused jobject cls,
-                                                      jboolean enable) {
+                                                   jboolean enable) {
     if (conn_fd != -1) {
         lorieEvent e = {.clipboardSync = {.t = EVENT_CLIPBOARD_SYNC, .enable = enable}};
         write(conn_fd, &e, sizeof(e));
@@ -1155,7 +1174,7 @@ Java_com_fde_x11_LorieView_setClipboardSyncEnabled(unused JNIEnv *env, unused jo
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_LorieView_sendWindowChange(unused JNIEnv *env, unused jobject cls, jint width,
-                                               jint height, jint framerate) {
+                                            jint height, jint framerate) {
     if (conn_fd != -1) {
         lorieEvent e = {.screenSize = {.t = EVENT_SCREEN_SIZE, .width = width, .height = height, .framerate = framerate}};
         write(conn_fd, &e, sizeof(e));
@@ -1165,8 +1184,8 @@ Java_com_fde_x11_LorieView_sendWindowChange(unused JNIEnv *env, unused jobject c
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls, jfloat x,
-                                             jfloat y, jint which_button, jboolean button_down,
-                                             jboolean relative, jint index) {
+                                          jfloat y, jint which_button, jboolean button_down,
+                                          jboolean relative, jint index) {
     if (conn_fd != -1) {
         __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
                             "sendMouseEvent: x:%.0f ", x);
@@ -1179,7 +1198,7 @@ Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_LorieView_sendTouchEvent(unused JNIEnv *env, unused jobject cls, jint action,
-                                             jint id, jint x, jint y) {
+                                          jint id, jint x, jint y) {
     if (conn_fd != -1 && action != -1) {
         lorieEvent e = {.touch = {.t = EVENT_TOUCH, .type = action, .id = id, .x = x, .y = y}};
         write(conn_fd, &e, sizeof(e));
@@ -1189,7 +1208,7 @@ Java_com_fde_x11_LorieView_sendTouchEvent(unused JNIEnv *env, unused jobject cls
 
 JNIEXPORT jboolean JNICALL
 Java_com_fde_x11_LorieView_sendKeyEvent(unused JNIEnv *env, unused jobject cls, jint scan_code,
-                                           jint key_code, jboolean key_down) {
+                                        jint key_code, jboolean key_down) {
     if (conn_fd != -1) {
         int code = (scan_code) ?: android_to_linux_keycode[key_code];
         log(DEBUG, "Sending key: %d (%d %d %d)", code + 8, scan_code, key_code, key_down);

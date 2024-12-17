@@ -18,7 +18,8 @@ public enum EventType {
     X_DESTROY_DIALOG("destroy_dialog"),
     X_DESTROY_VIEW("destroy_view"),
 
-    X_CONFIGURE_WINDOW("configure_window");
+    X_CONFIGURE_WINDOW("configure_window"),
+    X_CONFIGURE_WIDGET("configure_widget");
 
     public final String usefor;
     EventType(final String usefor){

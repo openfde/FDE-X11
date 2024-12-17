@@ -166,7 +166,7 @@ public class WindowManager  {
             switch (msg.what) {
                 case MSG_START_WM:
                     isConnected = connect2Server(display) > 0;
-                    Log.d(TAG, "MSG_START_WM isConnected:" + isConnected);
+                    Log.d(TAG, "MSG_START_WM isConnected:" + isConnected + " display:" + display);
                     break;
                 default:
                     break;

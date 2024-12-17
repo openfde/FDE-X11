@@ -80,6 +80,11 @@ extern Bool LOG_ENABLE;
 #define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_dri3", __VA_ARGS__);}
 
+#define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
+#define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
+#define DRI3_DEVICE_PATH_X100 "/dev/dri/card0"
+
+
 // 软件模拟的VBlank状态
 typedef struct {
     uint64_t last_ust;          // 上次更新时间
@@ -570,24 +575,13 @@ static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *
         log(ERROR, "DRI3: failed to create pixmap");
         goto fail;
     }
-    log(ERROR, "loriePixmapFromFds pixmap:%lx pTexturePriv:%p", pixmap->drawable.id, pTexturePriv);
     dixSetPrivate(&pixmap->devPrivates, &FDETexturePrivateKey, pTexturePriv);
     pTexturePriv->texture = texture;
     TexturePrivRecPtr ptr = dixLookupPrivate(&pixmap->devPrivates, &FDETexturePrivateKey);
-    log(ERROR, "loriePixmapFromFds ptr:%p", ptr, pixmap->devPrivate.ptr);
-
     if (!pTexturePriv->texture) {
         log(ERROR, "DRI3: pTexturePriv: get a texture");
         goto fail;
     }
-
-//    AHardwareBuffer_describe(pPixPriv->buffer, &desc);
-//    if (desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM
-//        && desc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM
-//        && desc.format != AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM) {
-//        log(ERROR, "DRI3: AHARDWAREBUFFER_SOCKET_FD: wrong format of AHardwareBuffer. Must be one of: AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM, AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM, AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM (stands for 5).");
-//        goto fail;
-//    }
 
     pixmap->devPrivate.ptr = NULL;
     screen->ModifyPixmapHeader(pixmap, width, height, depth, 0, strides[0] * 4, NULL);
@@ -619,16 +613,14 @@ static int openClient(__unused ClientPtr client,
                       __unused RRProviderPtr provider,
                       __unused int *fdp) {
     int fd;
-    fd = open("/dev/dri/card0", O_RDWR|O_CLOEXEC);
-    log(ERROR, "openClient fd %d", fd);
+    fd = open(DRI3_DEVICE_PATH_KYLIN, O_RDWR|O_CLOEXEC);
     if (fd < 0) {
         log(ERROR, "openClient fdp %d", &fdp);
         return BadAlloc;
     }
-    log(ERROR, "openClient fd %d", fd);
+    log(ERROR, "openClient fd %d success", fd);
     *fdp = fd;
     return Success;
-//    return BadMatch;
 }
 
 static int openDri(__unused ScreenPtr screen,
