@@ -62,5 +62,6 @@
     <string name="xserver_connect_success">xserver connect success</string>
     <string name="fde_search">Search</string>
     <string name="xserver_application_open_fail">application start fail</string>
+    <string name="fde_desc">FDE(suggest)</string>
 
 </resources>

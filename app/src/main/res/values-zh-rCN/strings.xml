@@ -63,5 +63,5 @@
 
     <string name="compatible_config_x_app">兼容配置</string>
     <string name="fde_search">搜索应用(只支持英文)</string>
-
+    <string name="fde_desc">FDE(推荐使用)</string>
 </resources>

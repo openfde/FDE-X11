@@ -57,6 +57,8 @@
             android:exported="true"
             android:resizeableActivity="true"
             android:screenOrientation="unspecified"
+            android:label="@string/fde_desc"
+            android:description="@string/fde_desc"
             android:windowSoftInputMode="stateHidden|adjustResize">
             <layout
                 android:defaultHeight="760dp"
