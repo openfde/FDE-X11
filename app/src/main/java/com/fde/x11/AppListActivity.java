@@ -509,6 +509,27 @@ public class AppListActivity extends AppCompatActivity {
                         }
                         mRecyclerView.loadMoreFinish(mDataList.size() == 0, response.getData().getPage().getTotal() > mDataList.size());
                         mRefreshLayout.setRefreshing(false);
+
+                        if(getIntent() != null && getIntent().getExtras() != null){
+                            shortcutApp = (String)getIntent().getExtras().get("App");
+                            if(mDataList !=null ){
+                                for(int i = 0 ; i < mDataList.size();i++){
+                                    if(shortcutApp.equals(mDataList.get(i).getName())){
+                                        shortcutAppBean = mDataList.get(i);
+                                        shortcuPath = mDataList.get(i).getPath();
+                                        break;
+                                    }
+                                }
+                                fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
+                                load2Start(shortcutAppBean,true);
+                                //startLinuxApp(shortcutAppBean,true);
+                              //  finish();
+                            }
+//                            shortcuPath = (String)getIntent().getExtras().get("Path");
+                            FLog.l(TAG, "onCreate() called with: shortcutApp = [" + shortcuPath + "]  shortcutApp = [" + shortcuPath + "]");
+//                            fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
+//                            shortcutAppBean = new AppListResult.DataBeanX.DataBean(shortcutApp, shortcuPath);
+                        }
                     }
                 });
     }

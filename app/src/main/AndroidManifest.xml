@@ -72,6 +72,12 @@
                 <category android:name="android.intent.category.SECONDARY_HOME" />
             </intent-filter>
 
+            <intent-filter android:scheme="http">
+                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="android.intent.action.VIEW" />
+                <data android:mimeType="application/vnd.desktop" />
+            </intent-filter>
+
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
