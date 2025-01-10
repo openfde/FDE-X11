@@ -526,7 +526,7 @@ public class AppListActivity extends AppCompatActivity {
                               //  finish();
                             }
 //                            shortcuPath = (String)getIntent().getExtras().get("Path");
-                            FLog.l(TAG, "onCreate() called with: shortcutApp = [" + shortcuPath + "]  shortcutApp = [" + shortcuPath + "]");
+                            FLog.l(TAG, "onCreate() called with: shortcutApp = [" + shortcutApp + "]  shortcuPath = [" + shortcuPath + "]");
 //                            fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
 //                            shortcutAppBean = new AppListResult.DataBeanX.DataBean(shortcutApp, shortcuPath);
                         }
