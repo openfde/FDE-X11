@@ -740,7 +740,7 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
         return;
     }
     log("renderer_update_widget_texture x:%d y:%d w:%d h:%d window:%x tid:%d", x, y, w, h, widget->window,
-            widget->texture_id);
+        widget->texture_id);
     widget->offset_x = (float) x;
     widget->offset_y = (float) y;
     widget->width = (float) w;
@@ -1205,6 +1205,71 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
     log("renderer_create_image texture:%d", texture)
     checkGlError();
     return texture;
+}
+
+maybe_unused int renderer_get_format(__unused ScreenPtr screen, CARD32 *num_formats, CARD32 **formats){
+    PFNEGLQUERYDMABUFFORMATSEXTPROC eglQueryDmaBufFormatsEXT = NULL;
+    eglQueryDmaBufFormatsEXT = (PFNEGLQUERYDMABUFFORMATSEXTPROC)eglGetProcAddress("eglQueryDmaBufFormatsEXT");
+    if (!eglQueryDmaBufFormatsEXT) {
+        loge("eglQueryDmaBufFormatsEXT not supported.\n");
+        return BadAlloc;
+    }
+    EGLint max_formats = 64; //
+    EGLint real_formats[max_formats];
+    EGLint real_num_formats;
+    if (global_ctx == EGL_NO_CONTEXT) {
+        loge("egl_no_context")
+    }
+    if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx) !=
+        EGL_TRUE) {
+        loge("Xlorie: eglMakeCurrent failed.\n");
+        eglCheckError(__LINE__);
+    }
+    if (eglQueryDmaBufFormatsEXT(global_egl_display, max_formats, real_formats, &real_num_formats)) {
+        loge("Supported DMA-BUF formats:\n");
+        *num_formats = real_num_formats;
+        *formats = (CARD32 *)malloc(real_num_formats * sizeof(CARD32));
+        for (int i = 0; i < real_num_formats; ++i) {
+            loge("Format %d: 0x%x\n", i, real_formats[i]);
+            (*formats)[i] = (CARD32)real_formats[i];
+        }
+    } else {
+        *num_formats = 0;
+        loge("Failed to query DMA-BUF formats.\n");
+        return FALSE;
+    }
+    return TRUE;
+}
+
+maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint32_t format, uint32_t *num_modifiers, uint64_t **modifiers){
+    PFNEGLQUERYDMABUFMODIFIERSEXTPROC eglQueryDmaBufModifiersEXT = NULL;
+    eglQueryDmaBufModifiersEXT = (PFNEGLQUERYDMABUFMODIFIERSEXTPROC)eglGetProcAddress("eglQueryDmaBufModifiersEXT");
+    if (!eglQueryDmaBufModifiersEXT) {
+        loge("eglQueryDmaBufModifiersEXT not supported.\n");
+        return FALSE;
+    }
+    if (global_ctx == EGL_NO_CONTEXT) {
+        log("egl_no_context")
+    }
+    if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx) !=
+        EGL_TRUE) {
+        loge("Xlorie: eglMakeCurrent failed.\n");
+        eglCheckError(__LINE__);
+    }
+    GLuint num;
+    if (!eglQueryDmaBufModifiersEXT(global_egl_display, format, 0, NULL, NULL, &num)) {
+        loge("Failed to query the number of DMA-BUF modifiers for format 0x%x.\n", format);
+        return FALSE;
+    }
+    loge("query modifier num:%d", num)
+    EGLBoolean external_only[num];
+    *modifiers = calloc(num, sizeof(uint64_t));
+    if (num > 0 && !eglQueryDmaBufModifiersEXT(global_egl_display, format,
+                                               num,  *modifiers, external_only, &num_modifiers)) {
+        loge("Failed to query DMA-BUF modifiers for format 0x%x.\n", format);
+        return FALSE;
+    }
+    return TRUE;
 }
 
 

@@ -82,7 +82,7 @@ extern Bool LOG_ENABLE;
 
 #define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
-#define DRI3_DEVICE_PATH_X100 "/dev/dri/card0"
+#define DRI3_DEVICE_PATH_X100 "/dev/dri/card1"
 
 
 // 软件模拟的VBlank状态
@@ -236,7 +236,7 @@ static void lorieFillSpans(DrawablePtr pDrawable, GCPtr pGC, int nInit, DDXPoint
 }
 
 static void lorieSetSpans(DrawablePtr pDrawable, GCPtr pGC, char * psrc, DDXPointPtr ppt, int * pwidth, int nspans, int fSorted) {
-    log(ERROR, "DRI3: lorieSetSpans");
+//    log(ERROR, "DRI3: lorieSetSpans");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -246,7 +246,7 @@ static void lorieSetSpans(DrawablePtr pDrawable, GCPtr pGC, char * psrc, DDXPoin
 }
 
 static void loriePutImage(DrawablePtr pDrawable, GCPtr pGC, int depth, int x, int y, int w, int h, int leftPad, int format, char * pBits) {
-    log(ERROR, "DRI3: loriePutImage pDrawable id:%x type:%d", pDrawable->id, pDrawable->type);
+//    log(ERROR, "DRI3: loriePutImage pDrawable id:%x type:%d", pDrawable->id, pDrawable->type);
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -312,7 +312,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
 }
 
 static RegionPtr lorieCopyPlane(DrawablePtr pSrcDrawable, DrawablePtr pDstDrawable, GCPtr pGC, int srcx, int srcy, int width, int height, int dstx, int dsty, unsigned long bitPlane) {
-    log(ERROR, "DRI3: lorieCopyPlane");
+//    log(ERROR, "DRI3: lorieCopyPlane");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pSrcDrawable, 0);
     loriePixFromDrawable(pDstDrawable, 1);
@@ -326,7 +326,7 @@ static RegionPtr lorieCopyPlane(DrawablePtr pSrcDrawable, DrawablePtr pDstDrawab
 }
 
 static void loriePolyPoint(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, DDXPointPtr pptInit) {
-    log(ERROR, "DRI3: loriePolyPoint");
+//    log(ERROR, "DRI3: loriePolyPoint");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -336,7 +336,7 @@ static void loriePolyPoint(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, 
 }
 
 static void loriePolylines(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, DDXPointPtr pptInit) {
-    log(ERROR, "DRI3: loriePolylines");
+//    log(ERROR, "DRI3: loriePolylines");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -346,7 +346,7 @@ static void loriePolylines(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, 
 }
 
 static void loriePolySegment(DrawablePtr pDrawable, GCPtr pGC, int nseg, xSegment * pSegs) {
-    log(ERROR, "DRI3: loriePolySegment");
+//    log(ERROR, "DRI3: loriePolySegment");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -356,7 +356,7 @@ static void loriePolySegment(DrawablePtr pDrawable, GCPtr pGC, int nseg, xSegmen
 }
 
 static void loriePolyRectangle(DrawablePtr pDrawable, GCPtr pGC, int nrects, xRectangle * pRects) {
-    log(ERROR, "DRI3: loriePolyRectangle");
+//    log(ERROR, "DRI3: loriePolyRectangle");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -366,7 +366,7 @@ static void loriePolyRectangle(DrawablePtr pDrawable, GCPtr pGC, int nrects, xRe
 }
 
 static void loriePolyArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc * parcs) {
-    log(ERROR, "DRI3: loriePolyArc");
+//    log(ERROR, "DRI3: loriePolyArc");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -376,7 +376,7 @@ static void loriePolyArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc * par
 }
 
 static void lorieFillPolygon(DrawablePtr pDrawable, GCPtr pGC, int shape, int mode, int count, DDXPointPtr pPts) {
-    log(ERROR, "DRI3: lorieFillPolygon");
+//    log(ERROR, "DRI3: lorieFillPolygon");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -386,7 +386,7 @@ static void lorieFillPolygon(DrawablePtr pDrawable, GCPtr pGC, int shape, int mo
 }
 
 static void loriePolyFillRect(DrawablePtr pDrawable, GCPtr pGC, int nrectFill, xRectangle * prectInit) {
-    log(ERROR, "DRI3: loriePolyFillRect");
+//    log(ERROR, "DRI3: loriePolyFillRect");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -396,7 +396,7 @@ static void loriePolyFillRect(DrawablePtr pDrawable, GCPtr pGC, int nrectFill, x
 }
 
 static void loriePolyFillArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc * parcs) {
-    log(ERROR, "DRI3: loriePolyFillArc");
+//    log(ERROR, "DRI3: loriePolyFillArc");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -406,7 +406,7 @@ static void loriePolyFillArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc *
 }
 
 static int loriePolyText8(DrawablePtr pDrawable, GCPtr pGC, int x, int y, int count, char * chars) {
-    log(ERROR, "DRI3: loriePolyText8");
+//    log(ERROR, "DRI3: loriePolyText8");
     LORIE_GC_OP_PROLOGUE(pGC)
     int r = x;
     loriePixFromDrawable(pDrawable, 0);
@@ -418,7 +418,7 @@ static int loriePolyText8(DrawablePtr pDrawable, GCPtr pGC, int x, int y, int co
 }
 
 static int loriePolyText16(DrawablePtr pDrawable, GCPtr pGC, int x, int y, int count, unsigned short * chars) {
-    log(ERROR, "DRI3: loriePolyText8");
+//    log(ERROR, "DRI3: loriePolyText8");
     LORIE_GC_OP_PROLOGUE(pGC)
     int r = x;
     loriePixFromDrawable(pDrawable, 0);
@@ -596,16 +596,16 @@ static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *
 
 static int lorieGetFormats(__unused ScreenPtr screen, CARD32 *num_formats, CARD32 **formats) {
     log(ERROR, "lorieGetFormats");
-    *num_formats = 0;
-    *formats = NULL;
-    return TRUE;
+//    *num_formats = 0;
+//    *formats = NULL;
+    return renderer_get_format(screen, num_formats, formats);
 }
 
 static int lorieGetModifiers(__unused ScreenPtr screen, __unused uint32_t format, uint32_t *num_modifiers, uint64_t **modifiers) {
     log(ERROR, "lorieGetModifiers");
-    *num_modifiers = 0;
-    *modifiers = NULL;
-    return TRUE;
+//    *num_modifiers = 0;
+//    *modifiers = NULL;
+    return renderer_get_modifier(screen, format, num_modifiers, modifiers);
 }
 
 static int openClient(__unused ClientPtr client,

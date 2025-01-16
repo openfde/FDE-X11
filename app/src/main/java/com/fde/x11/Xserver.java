@@ -215,8 +215,12 @@ public class Xserver {
     }
 
     public static void updateCursor(Bitmap icon, int xhot, int yhot){
-        InputManager inputManager = InputManager.create();
-        inputManager.setPointerIcon(icon, xhot, yhot);
+        try {
+            InputManager inputManager = InputManager.create();
+            inputManager.setPointerIcon(icon, xhot, yhot);
+        } catch (Exception e) {
+            Log.e(TAG, "updateCursor e:" + e);
+        }
     }
 
 
