@@ -1059,7 +1059,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (ACTION_START.equals(intent.getAction()) && mXserviceWrapper != null &&!mClientConnected) {
+            if (ACTION_START.equals(intent.getAction())
+                    && mXserviceWrapper != null
+                    && mXserviceWrapper != null
+                    && !mClientConnected) {
                 try {
                     Objects.requireNonNull(mXserviceWrapper.service).asBinder().linkToDeath(() -> {
                         mXserviceWrapper.disableService();

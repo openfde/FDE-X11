@@ -355,7 +355,7 @@ public class XWindowService extends Service {
     public boolean onUnbind(Intent intent) {
         mBound = false;
         FLog.s(TAG, "onUnbind:" + intent);
-        checkIfShouldStopSelf();
+//        checkIfShouldStopSelf();
         return true;
     }
 

@@ -191,8 +191,11 @@
         <service
             android:name=".XWindowService"
             android:enabled="true"
-            android:process=":xserver"
+            android:process="com.fde.x11.xserver"
             android:exported="true">
+            <intent-filter>
+                <action android:name="com.fde.x11.ACTION_X_SERVICE" />
+            </intent-filter>
         </service>
 
     </application>
