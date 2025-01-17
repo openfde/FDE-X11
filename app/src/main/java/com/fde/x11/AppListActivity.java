@@ -30,6 +30,10 @@ import android.content.ServiceConnection;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.Handler;
@@ -535,8 +539,19 @@ public class AppListActivity extends AppCompatActivity {
     }
 
     private void createShortcut(AppListResult.DataBeanX.DataBean app) {
-        byte[] decode = Base64.decode(app.getIcon(), Base64.DEFAULT);
-        Icon icon = Icon.createWithBitmap(AppUtils.getScaledBitmap(decode, this));
+        Drawable image = AppUtils.getImage(app.Icon, app.getIconType(), app.getName(), this);
+        Bitmap bitmap;
+        if(image instanceof BitmapDrawable){
+            bitmap = ((BitmapDrawable)image).getBitmap();
+        } else {
+            bitmap = Bitmap.createBitmap(image.getIntrinsicWidth(),
+                    image.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            image.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+            image.draw(canvas);
+        }
+//        byte[] decode = Base64.decode(app.getIcon(), Base64.DEFAULT);
+        Icon icon = Icon.createWithBitmap(bitmap);
         ShortcutManager shortcutManager = getSystemService(ShortcutManager.class);
         if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported()) {
             Intent launchIntentForPackage = new Intent(this, FakeListActivity.class);

@@ -142,7 +142,7 @@ public class AppUtils {
                 inputStream = new FileInputStream(file.getAbsolutePath());
                 SVG svg = SVG.getFromInputStream(inputStream);
                 if(svg == null){
-                    Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_x11_icon);
+                    Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_launcher);
                     return new BitmapDrawable(bitmap);
                 }
                 Drawable drawable = new PictureDrawable(svg.renderToPicture());
@@ -152,7 +152,7 @@ public class AppUtils {
             } catch (SVGParseException e) {
                 e.printStackTrace();
             } catch (NullPointerException e) {
-                Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_x11_icon);
+                Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_launcher);
                 return new BitmapDrawable(bitmap);
             }
             return null;
@@ -161,13 +161,14 @@ public class AppUtils {
             Bitmap bitmap = BitmapFactory.decodeByteArray(decode, 0, decode.length);
             BitmapDrawable bitmapDrawable = new BitmapDrawable(bitmap);
             if (bitmap == null) {
-                Bitmap defaultBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_x11_icon);
+                Bitmap defaultBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_launcher);
                 return new BitmapDrawable(defaultBitmap);
             } else {
                 return bitmapDrawable;
             }
         } else {
-            Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_x11_icon);
+            Log.d(TAG, "getImage: iconType:" + iconType + " name:" + name);
+            Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_launcher);
             return new BitmapDrawable(bitmap);
         }
     }
