@@ -167,7 +167,7 @@ public class AppUtils {
                 return bitmapDrawable;
             }
         } else {
-            Log.d(TAG, "getImage: iconType:" + iconType + " name:" + name);
+//            Log.d(TAG, "getImage: iconType:" + iconType + " name:" + name);
             Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_launcher);
             return new BitmapDrawable(bitmap);
         }
