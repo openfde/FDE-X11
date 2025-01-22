@@ -69,6 +69,7 @@ public class Xserver {
     private static final int ACTION_UNMAP = 1;
     private static final int ACTION_DESTORY = 2;
     private static final int ACTION_DISMISS_VIEW = 3;
+    public static int X_ClientNum = 0;
 
 
     private static WeakReference<Service> context;
@@ -116,11 +117,13 @@ public class Xserver {
     public static void startOrUpdateActivity(long aid, long transientfor, long leader,
                                              int type, String net_name, String wm_class,
                                              int x, int y, int w, int h, int index, long p,
-                                             long window, long taskTo, int support_wm_delete, Bitmap bitmap, boolean inbound) {
+                                             long window, long taskTo, int support_wm_delete,
+                                             Bitmap bitmap, boolean inbound, int clientNum) {
         FLog.s(TAG, aid,"start Activity: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
                 + ", type:" + type + ", net_name:" + net_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
                 + ", window:" + Long.toHexString(window) + ", taskTo:" + Long.toHexString(taskTo) +
-                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +  " inbound:" + inbound, FLog.WARN);
+                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +  " inbound:" + inbound + " clientNum:" + clientNum, FLog.WARN);
+        X_ClientNum = clientNum;
         EventMessage message = null;
         if(bitmap != null){
             bitmap = Util.scaleBitmapIfneed(bitmap);
@@ -188,10 +191,11 @@ public class Xserver {
      * @param action                action to window
      * @param support_wm_delete     close action
      */
-    public static void closeOrDestroyWindow(int index, long pWin, long taskTo,long window, int action, int support_wm_delete) {
+    public static void closeOrDestroyWindow(int index, long pWin, long taskTo,long window, int action, int support_wm_delete, int clientNum) {
         FLog.s(TAG, window,"close window: index:" + index + ", pWin:" + pWin +
                 ", taskTo:" + Long.toHexString(taskTo) + ", window:" + Long.toHexString(window) +
-                ", action:" + action + ", support_wm_delete:" + support_wm_delete + "", FLog.WARN);
+                ", action:" + action + ", support_wm_delete:" + support_wm_delete + "" + " clientNum:" + clientNum, FLog.WARN);
+        X_ClientNum = clientNum;
         Property property = new Property();
         property.setSupportDeleteWindow(support_wm_delete);
         property.setTransientfor(taskTo);

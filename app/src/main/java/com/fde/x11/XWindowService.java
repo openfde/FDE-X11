@@ -66,6 +66,7 @@ public class XWindowService extends Service {
 
     public static final String ACTION_X_MAIN_WINDOW_SIZE = "action_x_main_window_size";
     public static final String X_MAIN_WINDOW_SIZE = "x_main_window_size";
+    public static final String X_CLIENT_SIZE = "x_client_size";
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
@@ -167,6 +168,7 @@ public class XWindowService extends Service {
         EventBus.getDefault().register(this);
         Xserver.getInstance().registerContext(new WeakReference<>(this));
         Xserver.getInstance().startXserver();
+        Xserver.X_ClientNum = 0;
         if(DWM_START_DEFAULT){
             wm = new WindowManager( new WeakReference<>(this));
             wm.startWindowManager(DISPLAY_GLOBAL+"");
@@ -225,6 +227,7 @@ public class XWindowService extends Service {
         Intent intent = new Intent(ACTION_X_MAIN_WINDOW_SIZE);
 //        intent.setPackage(targetPackage);
         intent.putExtra(X_MAIN_WINDOW_SIZE, size);
+        intent.putExtra(X_CLIENT_SIZE, Xserver.X_ClientNum > 0 ? Xserver.X_ClientNum - 1: 0);
         sendBroadcast(intent);
     }
 
