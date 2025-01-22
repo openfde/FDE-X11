@@ -61,7 +61,9 @@ SOFTWARE.
  *****************************************************************/
 #include <jni.h>
 #include <android/log.h>
-#define logh(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_connection", __VA_ARGS__);
+#define PRINT_LOG 0
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_connection", __VA_ARGS__);}
+
 
 #ifdef HAVE_DIX_CONFIG_H
 #include <dix-config.h>
@@ -126,6 +128,7 @@ SOFTWARE.
 #endif
 
 #include "probes.h"
+extern struct xorg_list saved_ready_clients;
 
 struct ospoll   *server_poll;
 
@@ -140,6 +143,7 @@ Bool PartialNetwork;            /* continue even if unable to bind all addrs */
 static Pid_t ParentProcess;
 
 int GrabInProgress = 0;
+int clientNum = 0;
 
 static void
 EstablishNewConnections(int curconn, int ready, void *data);
@@ -159,6 +163,7 @@ static void ErrorConnMax(XtransConnInfo /* trans_conn */ );
 static XtransConnInfo
 lookup_trans_conn(int fd)
 {
+    loge("lookup_trans_conn fd:%d", fd)
     if (ListenTransFds) {
         int i;
 
@@ -186,6 +191,7 @@ lookup_trans_conn(int fd)
 static void
 InitParentProcess(void)
 {
+    loge("InitParentProcess")
 #if !defined(WIN32)
     OsSigHandlerPtr handler;
 
@@ -201,6 +207,7 @@ void
 NotifyParentProcess(void)
 {
 #if !defined(WIN32)
+    loge("NotifyParentProcess")
     if (displayfd >= 0) {
         if (write(displayfd, display, strlen(display)) != strlen(display))
             FatalError("Cannot write display number to fd %d\n", displayfd);
@@ -228,7 +235,7 @@ static Bool
 TryCreateSocket(int num, int *partial)
 {
     char port[20];
-
+    loge("TryCreateSocket")
     snprintf(port, sizeof(port), "%d", num);
 
     return (_XSERVTransMakeAllCOTSServerListeners(port, partial,
@@ -246,6 +253,7 @@ CreateWellKnownSockets(void)
 {
     int i;
     int partial;
+    loge("CreateWellKnownSockets")
 
     /* display is initialized to "0" by main(). It is then set to the display
      * number if specified on the command line. */
@@ -315,6 +323,7 @@ ResetWellKnownSockets(void)
     int i;
 
     ResetOsBuffers();
+    loge("ResetWellKnownSockets")
 
     for (i = 0; i < ListenTransCount; i++) {
         int status = _XSERVTransResetListener(ListenTransConns[i]);
@@ -361,6 +370,7 @@ void
 CloseWellKnownConnections(void)
 {
     int i;
+    loge("CloseWellKnownConnections")
 
     for (i = 0; i < ListenTransCount; i++) {
         if (ListenTransConns[i] != NULL) {
@@ -647,7 +657,9 @@ AllocNewConnection(XtransConnInfo trans_conn, int fd, CARD32 conn_time)
 #ifdef XSERVER_DTRACE
     XSERVER_CLIENT_CONNECT(client->index, fd);
 #endif
-
+    loge("AllocNewConnection index:%d pid:%d name:%s args:%s", client->index, client->clientIds->pid,
+         client->clientIds->cmdname, client->clientIds->cmdargs)
+    clientNum++;
     return client;
 }
 
@@ -667,6 +679,7 @@ EstablishNewConnections(int curconn, int ready, void *data)
     OsCommPtr oc;
     XtransConnInfo trans_conn, new_trans_conn;
     int status;
+    loge("EstablishNewConnections curconn:%d", curconn)
 
     connect_time = GetTimeInMillis();
     /* kill off stragglers */
@@ -780,7 +793,8 @@ void
 CloseDownConnection(ClientPtr client)
 {
     OsCommPtr oc = (OsCommPtr) client->osPrivate;
-
+    loge("CloseDownConnection index:%d pid:%d name:%s args:%s", client->index, client->clientIds->pid,
+         client->clientIds->cmdname, client->clientIds->cmdargs)
     if (FlushCallback)
         CallCallbacks(&FlushCallback, client);
 
@@ -792,6 +806,7 @@ CloseDownConnection(ClientPtr client)
     client->osPrivate = (void *) NULL;
     if (auditTrailLevel > 1)
         AuditF("client %d disconnected\n", client->index);
+    clientNum--;
 }
 
 struct notify_fd {
@@ -824,6 +839,7 @@ Bool
 SetNotifyFd(int fd, NotifyFdProcPtr notify, int mask, void *data)
 {
     struct notify_fd *n;
+    loge("SetNotifyFd fd:%d", fd)
 
     n = ospoll_data(server_poll, fd);
     if (!n) {
@@ -872,6 +888,7 @@ int
 OnlyListenToOneClient(ClientPtr client)
 {
     int rc;
+    loge("OnlyListenToOneClient")
 
     rc = XaceHook(XACE_SERVER_ACCESS, client, DixGrabAccess);
     if (rc != Success)

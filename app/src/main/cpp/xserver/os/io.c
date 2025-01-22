@@ -77,6 +77,15 @@ SOFTWARE.
 #include "opaque.h"
 #include "dixstruct.h"
 #include "misc.h"
+#include <android/log.h>
+#define PRINT_LOG 0
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "huyang_io", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "huyang_io", __VA_ARGS__);\
+                }
 
 CallbackListPtr ReplyCallback;
 CallbackListPtr FlushCallback;

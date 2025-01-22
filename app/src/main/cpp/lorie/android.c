@@ -64,7 +64,7 @@ static int window_top_level = 0;
 extern DevPrivateKeyRec FDETexturePrivateKey;
 extern DevPrivateKeyRec FDEWindowTexturePrivateKey;
 extern int ucs2keysym(long ucs);
-
+extern int clientNum;
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 
 void android_create_window(WindAttribute attribute, WindProperty  aProperty, Window taskTo, bool inbound);
@@ -224,9 +224,9 @@ void android_redirect_window(WindowPtr pWin) {
 //        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
 //    }
     log(ERROR, "android_redirect_window %x redirect:%d atom:%d transient:%x, "
-               "taskTo:%x inbounds:%d mapped:%d",
+               "taskTo:%x inbounds:%d mapped:%d clientNum:%d" ,
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
-        intransient_bounds, pWin->mapped);
+        intransient_bounds, pWin->mapped, clientNum);
 
     if (redirect){
         if(taskTo == 0){
@@ -553,12 +553,12 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateActivity",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;Z)V");
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZI)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          (long)aWindow, (long)aTransient, (long)aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
                                          (long) windowPtr, (long) window, (long) taskTo,
-                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound);
+                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum);
     }
 }
 
@@ -580,13 +580,13 @@ void android_configure_window(WindowPtr pWin, short x, short y, short w, short h
 
 
 void android_destroy_activity(int index, WindowPtr pWin, Window window, int action, Bool wm_delete) {
-    log(DEBUG, "android_destroy_activity index%d pWin:%p window:%x", index, pWin, window);
+    log(DEBUG, "android_destroy_activity index%d pWin:%p window:%x clientNum:%d", index, pWin, window, clientNum);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "closeOrDestroyWindow", "(IJJJII)V");
+                                                         "closeOrDestroyWindow", "(IJJJIII)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
-                                         (long) pWin, 0L, (long) window, action, wm_delete);
+                                         (long) pWin, 0L, (long) window, action, wm_delete, clientNum);
     }
 }
 
