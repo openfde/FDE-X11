@@ -113,6 +113,8 @@ __stdcall unsigned long GetTickCount(void);
 #include "miinitext.h"
 
 #include "present.h"
+#include <jni.h>
+#include <android/log.h>
 
 Bool noTestExtensions;
 
@@ -227,6 +229,10 @@ OsSignal(int sig, OsSigHandlerPtr handler)
     return oact.sa_handler;
 #endif
 }
+extern Bool LOG_ENABLE;
+#define PRINT_LOG (1 && LOG_ENABLE)
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_utils", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_utils", __VA_ARGS__);}
 
 /*
  * Explicit support for a server lock file like the ones used for UUCP.

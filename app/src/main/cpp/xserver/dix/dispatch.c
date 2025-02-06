@@ -135,7 +135,7 @@ int ProcInitialConnection();
 #include "probes.h"
 #endif
 #include <android/log.h>
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "huyang_dispatch", __VA_ARGS__);\
                 }              \

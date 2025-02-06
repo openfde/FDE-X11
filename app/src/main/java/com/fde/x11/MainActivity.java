@@ -416,7 +416,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
         getWindow().getDecorView().postDelayed(()->{
             checkConfigBeforeExec(newConfig, true);
-        },300);
+        },0);
     }
 
     @SuppressLint("WrongConstant")

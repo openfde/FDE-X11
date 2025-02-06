@@ -2,6 +2,7 @@ package com.fde.x11;
 
 
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
+import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -49,11 +50,11 @@ public class Xserver {
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
     public static final String ACTION_UPDATE_ICON = "update_icon";
-    // listen TCP, for remote and local X client
-    // private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
+//     listen TCP, for remote and local X client
+     private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
 
     // listen unix or tcp socket, only for local X client
-    private static final String[] ARGS_DEFAULT = { ":" + DISPLAY_GLOBAL};
+//    private static final String[] ARGS_DEFAULT = { ":" + DISPLAY_GLOBAL};
 
     private  static final int _NET_WM_WINDOW_TYPE = 267;
     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
