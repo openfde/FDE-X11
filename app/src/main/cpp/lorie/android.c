@@ -516,12 +516,12 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
         Window window = widget.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateActivity",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;Z)V");
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZI)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, 0,
                                          (long) windowPtr, (long) window, (long) taskTo,
-                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound);
+                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum);
     }
 }
 
@@ -595,9 +595,9 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "closeOrDestroyWindow", "(IJJJII)V");
+                                                         "closeOrDestroyWindow", "(IJJJIII)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
-                                         (long) pWin, (long)task_to, (long) window, action, 0);
+                                         (long) pWin, (long)task_to, (long) window, action, 0, clientNum);
     }
 }
 
@@ -713,10 +713,12 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
         sprintf(pid, "%d", getppid());
         execlp("logcat", "logcat", "--pid", pid, NULL);
     }
+    log(ERROR, " 1 tmp dir %s", getenv("TMPDIR"));
 
     // adb sets TMPDIR to /data/local/tmp which is pretty useless.
-    if (!strcmp("/data/local/tmp", getenv("TMPDIR") ?: ""))
+//    if (!strcmp("/data/local/tmp", getenv("TMPDIR") ?: ""))
         unsetenv("TMPDIR");
+    log(ERROR, " 1.1 tmp dir %s", getenv("TMPDIR"));
 
     if (!getenv("TMPDIR")) {
         if (access("/tmp", F_OK) == 0)
@@ -724,6 +726,9 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
         else if (access("/data/data/com.termux/files/usr/tmp", F_OK) == 0)
             setenv("TMPDIR", "/data/data/com.termux/files/usr/tmp", 1);
     }
+
+    log(ERROR, " 2 tmp dir %s", getenv("TMPDIR"));
+
 
     if (!getenv("TMPDIR")) {
         char *error = (char *) "$TMPDIR is not set. Normally it is pointing to /tmp of a container.";
