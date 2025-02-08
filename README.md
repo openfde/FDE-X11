@@ -14,6 +14,8 @@ https://github.com/nwrkbiz/android-xserver
 
 ## About Me
 A X11 server run on Android without termux, activity action as X App window.
+
+
 Know me in this video  【OpenFDE技术解说（三）：突破vnc局限，在Android上解锁linux多窗口自由体验】 https://www.bilibili.com/video/BV11LpMe5EJD/?share_source=copy_web&vd_source=76fa969b8f4d1dfa9c5ce09782a90c28
 
 
