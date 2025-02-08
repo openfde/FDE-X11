@@ -231,8 +231,8 @@ OsSignal(int sig, OsSigHandlerPtr handler)
 }
 extern Bool LOG_ENABLE;
 #define PRINT_LOG (1 && LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_utils", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_utils", __VA_ARGS__);}
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_utils", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_utils", __VA_ARGS__);}
 
 /*
  * Explicit support for a server lock file like the ones used for UUCP.

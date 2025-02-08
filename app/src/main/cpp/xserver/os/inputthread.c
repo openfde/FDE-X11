@@ -40,7 +40,7 @@
 #include "osdep.h"
 #include <jni.h>
 #include <android/log.h>
-#define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "huyang_inputthread", __VA_ARGS__);
+#define log(prio, ...) __android_log_print(ANDROID_LOG_ ## prio, "native_inputthread", __VA_ARGS__);
 
 #if INPUTTHREAD
 

@@ -359,7 +359,7 @@ public class XWindowService extends Service {
             intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent, options.toBundle());
-//            Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+            Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         }
     }
 

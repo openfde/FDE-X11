@@ -61,8 +61,8 @@ SOFTWARE.
 extern Bool LOG_ENABLE;
 #define PROPERTY_LOG_ENABLE 0
 #define PRINT_LOG (PROPERTY_LOG_ENABLE && LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_property", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_property", __VA_ARGS__);}
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_property", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_property", __VA_ARGS__);}
 
 
 /*****************************************************************

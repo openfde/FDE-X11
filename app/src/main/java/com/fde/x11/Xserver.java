@@ -45,16 +45,15 @@ import java.util.Arrays;
 @Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
 public class Xserver {
     public static final String ACTION_START = "com.termux.x11.Xserver.action_start";
-    private final Handler handler = new Handler();
     public static final int PORT = 7892;
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
     public static final String ACTION_UPDATE_ICON = "update_icon";
 //     listen TCP, for remote and local X client
-     private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
+//     private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
 
     // listen unix or tcp socket, only for local X client
-//    private static final String[] ARGS_DEFAULT = { ":" + DISPLAY_GLOBAL};
+    private static final String[] ARGS_DEFAULT = { ":" + DISPLAY_GLOBAL};
 
     private  static final int _NET_WM_WINDOW_TYPE = 267;
     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;

@@ -34,8 +34,8 @@ extern jclass JavaCmdEntryPointClass;
 bool cursor_drawn;
 extern Bool LOG_ENABLE;
 #define PRINT_LOG (RENDERER_LOG_ENABLE && LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_renderer", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_renderer", __VA_ARGS__);}
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_renderer", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_renderer", __VA_ARGS__);}
 
 static GLuint create_program(const char *p_vertex_source, const char *p_fragment_source);
 

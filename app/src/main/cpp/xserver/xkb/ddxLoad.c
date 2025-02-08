@@ -50,8 +50,8 @@ THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #define	POST_ERROR_MSG1 "\"Errors from xkbcomp are not fatal to the X server\""
 #define	POST_ERROR_MSG2 "\"End of messages from xkbcomp\""
 #include <android/log.h>
-#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "huyang_ddxload", __VA_ARGS__)
-#define loge(...) __android_log_print(ANDROID_LOG_ERROR, "huyang_ddxload", __VA_ARGS__)
+#define log(...) __android_log_print(ANDROID_LOG_DEBUG, "native_ddxload", __VA_ARGS__)
+#define loge(...) __android_log_print(ANDROID_LOG_ERROR, "native_ddxload", __VA_ARGS__)
 
 #if defined(WIN32)
 #define PATHSEPARATOR "\\"

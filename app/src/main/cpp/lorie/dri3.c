@@ -78,7 +78,7 @@
 extern Bool LOG_ENABLE;
 #define ANDROID_LOG_ENABLE 1
 #define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
-#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_dri3", __VA_ARGS__);}
+#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_dri3", __VA_ARGS__);}
 
 #define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"

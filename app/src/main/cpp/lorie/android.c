@@ -42,7 +42,7 @@ Bool LOG_ENABLE;
 Bool GL_CHECK_ERROR = FALSE;
 #define ANDROID_LOG_ENABLE 1
 #define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
-#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "huyang_android", __VA_ARGS__);}
+#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_android", __VA_ARGS__);}
 #define OBLIQUE_CROSS_WIDTH 7
 static int argc = 0;
 static char **argv = NULL;
@@ -227,7 +227,7 @@ void android_redirect_window(WindowPtr pWin) {
                "taskTo:%x inbounds:%d mapped:%d clientNum:%d" ,
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
         intransient_bounds, pWin->mapped, clientNum);
-
+    redirect = 0;
     if (redirect){
         if(taskTo == 0){
             taskTo = focusWindow;
@@ -713,12 +713,10 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
         sprintf(pid, "%d", getppid());
         execlp("logcat", "logcat", "--pid", pid, NULL);
     }
-    log(ERROR, " 1 tmp dir %s", getenv("TMPDIR"));
 
     // adb sets TMPDIR to /data/local/tmp which is pretty useless.
 //    if (!strcmp("/data/local/tmp", getenv("TMPDIR") ?: ""))
         unsetenv("TMPDIR");
-    log(ERROR, " 1.1 tmp dir %s", getenv("TMPDIR"));
 
     if (!getenv("TMPDIR")) {
         if (access("/tmp", F_OK) == 0)
@@ -727,7 +725,6 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
             setenv("TMPDIR", "/data/data/com.termux/files/usr/tmp", 1);
     }
 
-    log(ERROR, " 2 tmp dir %s", getenv("TMPDIR"));
 
 
     if (!getenv("TMPDIR")) {
@@ -746,11 +743,8 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
         asprintf(&xtrans_unix_path_x11, "%s/.X11-unix/X", tmp);
         asprintf(&xtrans_unix_dir_x11, "%s/.X11-unix/", tmp);
 
-        log(ERROR, "xtrans_unix_path_x11 = \"%s\"", xtrans_unix_path_x11);
-        log(ERROR, "xtrans_unix_dir_x11 = \"%s\"", xtrans_unix_dir_x11);
     }
 
-    log(ERROR, "Using TMPDIR=\"%s\"", getenv("TMPDIR"));
 
     {
         const char *root_dir = dirname(getenv("TMPDIR"));
@@ -804,7 +798,6 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
     }
 
     char *xkb_root = getenv("XKB_CONFIG_ROOT");
-    log(ERROR, "XKB_CONFIG_ROOT :%s", xkb_root);
 
     (*env)->GetJavaVM(env, &vm);
 
@@ -844,7 +837,7 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
         lorieEnableClipboardSync(FALSE);
         return;
     }
-//    __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+//    __android_log_print(ANDROID_LOG_ERROR, "native_android",
 //                        "handleLorieEvents: %d ", fd);
     if (read(fd, &e, sizeof(e)) == sizeof(e)) {
         switch (e.type) {
@@ -1022,7 +1015,7 @@ Java_com_fde_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
                                                       "(I)Landroid/os/ParcelFileDescriptor;");
         socketpair(AF_UNIX, SOCK_STREAM, 0, client);
         fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
-        __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+        __android_log_print(ANDROID_LOG_ERROR, "native_android",
                             "getXConnection: conn_fd:%d fd[0]%d fd[1]%d", conn_fd, client[0], client[1]);
         QueueWorkProc(addFd, NULL, (void *) (int64_t) client[1]);
         return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
@@ -1192,7 +1185,7 @@ Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls
                                           jfloat y, jint which_button, jboolean button_down,
                                           jboolean relative, jint index) {
     if (conn_fd != -1) {
-        __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+        __android_log_print(ANDROID_LOG_ERROR, "native_android",
                             "sendMouseEvent: x:%.0f ", x);
         log(ERROR, "Send Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
         lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};

@@ -32,8 +32,8 @@
 extern Bool LOG_ENABLE;
 #define THIS_LOG_ENABLE 1
 #define PRINT_LOG (THIS_LOG_ENABLE && LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_dri3_request", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_dri3_request", __VA_ARGS__);}
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_dri3_request", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_dri3_request", __VA_ARGS__);}
 
 
 static Bool

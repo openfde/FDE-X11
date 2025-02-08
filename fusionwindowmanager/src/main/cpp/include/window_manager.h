@@ -39,8 +39,8 @@ static jclass staticClass = NULL;
     ColormapChangeMask
 
 #define PRINT_LOG 1
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_wm", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_wm", __VA_ARGS__);}
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_wm", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "native_wm", __VA_ARGS__);}
 #define PRINT_XERROR 0
 #define CHECK(condition)  if(condition){   log("#condition fatal");}
 #define CHECK_EQ(val1, val2)  if(val1 != val2){  log("not equal"); }

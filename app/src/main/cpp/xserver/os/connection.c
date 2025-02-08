@@ -62,7 +62,7 @@ SOFTWARE.
 #include <jni.h>
 #include <android/log.h>
 #define PRINT_LOG 0
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_connection", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_connection", __VA_ARGS__);}
 
 
 #ifdef HAVE_DIX_CONFIG_H

@@ -119,7 +119,7 @@ import java.util.regex.Pattern;
  * For more detail:
  *
  * The Activity functions similarly to a window within an X Server environment.
- * User interactions are captured by this Asctivity and relayed to the X Server for processing.
+ * User interactions are captured by this Activity and relayed to the X Server for processing.
  * Graphics or visual output from the X Server are received by the Activity and presented via a SurfaceView component.
  * Floating views are utilized to display certain popup windows over this Activity.
  * Specific windows can be displayed without a title bar if not required.

@@ -66,8 +66,8 @@ in this Software without prior written authorization from The Open Group.
 #include   "eventstr.h"
 #include <android/log.h>
 #define PRINT_LOG 0
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_mipointer", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_mipointer", __VA_ARGS__);}
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_mipointer", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_mipointer", __VA_ARGS__);}
 
 typedef struct {
     ScreenPtr pScreen;          /* current screen */

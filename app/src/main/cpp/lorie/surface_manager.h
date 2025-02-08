@@ -27,9 +27,9 @@
 extern Bool LOG_ENABLE;
 #define SURFACE_LOG_ENABLE 1
 #define PRINT_LOG (SURFACE_LOG_ENABLE && LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_sm", __VA_ARGS__);}              \
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_sm", __VA_ARGS__);}              \
 
-#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "huyang_sm", __VA_ARGS__);}              \
+#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "native_sm", __VA_ARGS__);}              \
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;

@@ -85,11 +85,11 @@ from The Open Group.
 #define wrap(priv, real, mem, func) { priv->mem = real->mem; real->mem = func; }
 #define unwrap(priv, real, mem) { real->mem = priv->mem; }
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
-#define INITOUTPUT_LOG_ENABLE 1
+#define INITOUTPUT_LOG_ENABLE 0
 extern Bool LOG_ENABLE;
 #define PRINT_LOG (INITOUTPUT_LOG_ENABLE && LOG_ENABLE)
-#define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "huyang_InitOutput", __VA_ARGS__);}
-#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "huyang_InitOutput", __VA_ARGS__);}
+#define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "native_InitOutput", __VA_ARGS__);}
+#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "native_InitOutput", __VA_ARGS__);}
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern void android_update_cursor(int w, int h, int xhot, int yhot, void *data);
@@ -604,7 +604,7 @@ lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
         timerFd = timerfd_create(CLOCK_MONOTONIC,  0);
         struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(timerFd, 0, &spec, NULL);
-        __android_log_print(ANDROID_LOG_ERROR, "huyang_android",
+        __android_log_print(ANDROID_LOG_ERROR, "native_android",
                             "timerFd: %d ", timerFd);
     }
 

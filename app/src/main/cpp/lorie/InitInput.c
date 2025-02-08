@@ -40,8 +40,8 @@ from The Open Group.
 #define INITINPUT_LOG_ENABLE 1
 extern Bool LOG_ENABLE;
 #define PRINT_LOG (INITINPUT_LOG_ENABLE && LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "huyang_initinput", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "huyang_initinput", __VA_ARGS__);}
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_initinput", __VA_ARGS__);}
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_initinput", __VA_ARGS__);}
 
 #define unused __attribute__((unused))
 
