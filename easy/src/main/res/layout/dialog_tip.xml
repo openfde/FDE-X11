@@ -63,7 +63,7 @@
         app:layout_constraintEnd_toStartOf="@+id/tv_confirm"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/tv_cancel"
-        app:layout_constraintTop_toBottomOf="@+id/view_1" />
+        />
 
     <TextView
         android:id="@+id/tv_confirm"
@@ -78,5 +78,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toEndOf="@+id/view_2"
-        app:layout_constraintTop_toBottomOf="@+id/view_1" />
+        />
 </androidx.constraintlayout.widget.ConstraintLayout>

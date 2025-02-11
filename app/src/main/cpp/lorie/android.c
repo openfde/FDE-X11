@@ -227,7 +227,6 @@ void android_redirect_window(WindowPtr pWin) {
                "taskTo:%x inbounds:%d mapped:%d clientNum:%d" ,
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
         intransient_bounds, pWin->mapped, clientNum);
-    redirect = 0;
     if (redirect){
         if(taskTo == 0){
             taskTo = focusWindow;

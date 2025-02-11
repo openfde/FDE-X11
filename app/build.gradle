@@ -85,14 +85,16 @@ android {
 //        }
 //    }
 
-    android {
-        applicationVariants.all { variant ->
-            variant.outputs.all { output ->
-                def fileName = "fde_x11-${variant.versionName}-${variant.buildType.name}.apk"
-                outputFileName = fileName
-            }
-        }
-    }
+//    android {
+//        applicationVariants.all { variant ->
+//            variant.outputs.all { output ->
+//                if (outputFile != null && outputFileName.endsWith('.apk')) {
+//                    def fileName = "fde_x11-${variant.versionName}-${variant.buildType.name}.apk"
+//                    outputFileName = fileName
+//                }
+//            }
+//        }
+//    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
