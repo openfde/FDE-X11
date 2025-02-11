@@ -683,7 +683,7 @@ void lorieConfigureNotify(int width, int height, int framerate) {
         RRScreenSizeSet(pScreen, mode->mode.width, mode->mode.height, mmWidth, mmHeight);
     }
     if (framerate > 0) {
-        long nsecs = 1000 * 1000 * 1000 / framerate;
+        long nsecs = 1000 * 1000 * 1000 / 30;
         struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(lorieScreen.timerFd, 0, &spec, NULL);
 //        log(VERBOSE, "New framerate is %d", framerate);

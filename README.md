@@ -123,3 +123,57 @@ https://gitlab.freedesktop.org/xorg/test/x11perf
 | 1000000 trep @  0.0283 msec ( 35400.0/sec): 100x10 wide dashed line | 400000 trep @  0.0635 msec ( 15700.0/sec): 100x10 wide dashed line |
 | Running test: -wddline100                                    | Running test: -wddline100                                    |
 | 1000000 trep @  0.0279 msec ( 35800.0/sec): 100x10 wide double-dashed line | 450000 trep @  0.0557 msec ( 18000.0/sec): 100x10 wide double-dashed line |
+
+### glmark2
+
+
+=======================================================
+glmark2 2014.03+git20150611.fa71af2d
+=======================================================
+OpenGL Information
+GL_VENDOR:     X.Org
+GL_RENDERER:   AMD CAICOS (DRM 2.50.0 / 5.4.18-110-generic, LLVM 11.0.0)
+GL_VERSION:    3.1 Mesa 20.0.8
+=======================================================
+[build] use-vbo=false: FPS: 1106 FrameTime: 0.904 ms
+[build] use-vbo=true: FPS: 1299 FrameTime: 0.770 ms
+[texture] texture-filter=nearest: FPS: 1122 FrameTime: 0.891 ms
+[texture] texture-filter=linear: FPS: 1101 FrameTime: 0.908 ms
+[texture] texture-filter=mipmap: FPS: 1174 FrameTime: 0.852 ms
+[shading] shading=gouraud: FPS: 895 FrameTime: 1.117 ms
+[shading] shading=blinn-phong-inf: FPS: 913 FrameTime: 1.095 ms
+[shading] shading=phong: FPS: 940 FrameTime: 1.064 ms
+[shading] shading=cel: FPS: 920 FrameTime: 1.087 ms
+[bump] bump-render=high-poly: FPS: 459 FrameTime: 2.179 ms
+[bump] bump-render=normals: FPS: 1313 FrameTime: 0.762 ms
+[bump] bump-render=height: FPS: 1291 FrameTime: 0.775 ms
+libpng warning: iCCP: known incorrect sRGB profile
+[effect2d] kernel=0,1,0;1,-4,1;0,1,0;: FPS: 671 FrameTime: 1.490 ms
+libpng warning: iCCP: known incorrect sRGB profile
+[effect2d] kernel=1,1,1,1,1;1,1,1,1,1;1,1,1,1,1;: FPS: 316 FrameTime: 3.165 ms
+[pulsar] light=false:quads=5:texture=false: FPS: 923 FrameTime: 1.083 ms
+libpng warning: iCCP: known incorrect sRGB profile
+[desktop] blur-radius=5:effect=blur:passes=1:separable=true:windows=4: FPS: 256 FrameTime: 3.906 ms
+libpng warning: iCCP: known incorrect sRGB profile
+[desktop] effect=shadow:windows=4: FPS: 532 FrameTime: 1.880 ms
+[buffer] columns=200:interleave=false:update-dispersion=0.9:update-fraction=0.5:update-method=map: FPS: 230 FrameTime: 4.348 ms
+[buffer] columns=200:interleave=false:update-dispersion=0.9:update-fraction=0.5:update-method=subdata: FPS: 585 FrameTime: 1.709 ms
+[buffer] columns=200:interleave=true:update-dispersion=0.9:update-fraction=0.5:update-method=map: FPS: 228 FrameTime: 4.386 ms
+[ideas] speed=duration: FPS: 653 FrameTime: 1.531 ms
+[jellyfish] <default>: FPS: 366 FrameTime: 2.732 ms
+[terrain] <default>: FPS: 52 FrameTime: 19.231 ms
+[shadow] <default>: FPS: 248 FrameTime: 4.032 ms
+[refract] <default>: FPS: 63 FrameTime: 15.873 ms
+[conditionals] fragment-steps=0:vertex-steps=0: FPS: 881 FrameTime: 1.135 ms
+[conditionals] fragment-steps=5:vertex-steps=0: FPS: 698 FrameTime: 1.433 ms
+[conditionals] fragment-steps=0:vertex-steps=5: FPS: 715 FrameTime: 1.399 ms
+[function] fragment-complexity=low:fragment-steps=5: FPS: 951 FrameTime: 1.052 ms
+[function] fragment-complexity=medium:fragment-steps=5: FPS: 839 FrameTime: 1.192 ms
+[loop] fragment-loop=false:fragment-steps=5:vertex-steps=5: FPS: 892 FrameTime: 1.121 ms
+[loop] fragment-steps=5:fragment-uniform=false:vertex-steps=5: FPS: 894 FrameTime: 1.119 ms
+[loop] fragment-steps=5:fragment-uniform=true:vertex-steps=5: FPS: 700 FrameTime: 1.429 ms
+=======================================================
+glmark2 Score: 734
+=======================================================
+
+![Screenshot_20250211-155211_FDE-X11.png](app/screenshot/Screenshot_20250211-155211_FDE-X11.png)
