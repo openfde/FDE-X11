@@ -126,15 +126,22 @@ https://gitlab.freedesktop.org/xorg/test/x11perf
 
 ### glmark2
 
+=======================================================
+
+glmark2 2014.03+git20150611.fa71af2d
 
 =======================================================
-glmark2 2014.03+git20150611.fa71af2d
-=======================================================
+
 OpenGL Information
+
 GL_VENDOR:     X.Org
+
 GL_RENDERER:   AMD CAICOS (DRM 2.50.0 / 5.4.18-110-generic, LLVM 11.0.0)
+
 GL_VERSION:    3.1 Mesa 20.0.8
-=======================================================
+
+
+
 [build] use-vbo=false: FPS: 1106 FrameTime: 0.904 ms
 [build] use-vbo=true: FPS: 1299 FrameTime: 0.770 ms
 [texture] texture-filter=nearest: FPS: 1122 FrameTime: 0.891 ms
@@ -171,9 +178,19 @@ libpng warning: iCCP: known incorrect sRGB profile
 [function] fragment-complexity=medium:fragment-steps=5: FPS: 839 FrameTime: 1.192 ms
 [loop] fragment-loop=false:fragment-steps=5:vertex-steps=5: FPS: 892 FrameTime: 1.121 ms
 [loop] fragment-steps=5:fragment-uniform=false:vertex-steps=5: FPS: 894 FrameTime: 1.119 ms
+
 [loop] fragment-steps=5:fragment-uniform=true:vertex-steps=5: FPS: 700 FrameTime: 1.429 ms
+
+
+
 =======================================================
+
 glmark2 Score: 734
+
 =======================================================
+
+
+
+
 
 ![Screenshot_20250211-155211_FDE-X11.png](app/screenshot/Screenshot_20250211-155211_FDE-X11.png)
