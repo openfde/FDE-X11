@@ -16,12 +16,21 @@ android {
                                 MainDialogMinWidth: "50dp"]
     }
 
-//    signingConfigs.debug {
-//        storeFile file('testkey_untrusted.jks')
-//        keyAlias 'alias'
-//        storePassword 'xrj45yWGLbsO7W0v'
-//        keyPassword 'xrj45yWGLbsO7W0v'
-//    }
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def project = "fde_x11"
+            def separator = "-"
+            def buildType = variant.buildType.name
+            def version = variant.versionName
+            def date = new Date()
+            def formattedDate = date.format('yyyyMMdd_HHmm')
+//            fde_x11-${variant.versionName}-${variant.buildType.name}.apk
+            def newApkName =
+                    "${project}${separator}${buildType}${separator}${version}${separator}${formattedDate}.apk"
+
+            output.outputFileName = newApkName
+        }
+    }
 
 
     signingConfigs {
@@ -32,12 +41,12 @@ android {
             storePassword 'android'
         }
 
-//        releaes {
-//            keyAlias 'androiddebugkey'
-//            keyPassword 'android'
-//            storeFile file('plugin.keystore')
-//            storePassword 'android'
-//        }
+        release {
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storeFile file('plugin.keystore')
+            storePassword 'android'
+        }
     }
 
 
@@ -62,14 +71,13 @@ android {
     buildFeatures.aidl true
     buildFeatures.buildConfig true
     buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
 //        release {
 //            minifyEnabled true
 //            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
 //            signingConfig signingConfigs.debug
-//        }
-//        release {
-//            applicationIdSuffix '.release'
-//            minifyEnabled false
 //        }
 //        debug {
 //            applicationIdSuffix '.debug'
@@ -77,21 +85,11 @@ android {
 //        }
     }
 
-//    android.applicationVariants.all { variant ->
-//        variant.outputs.all {
+//    applicationVariants.all { variant ->
+//        variant.outputs.all { output ->
 //            if (outputFile != null && outputFileName.endsWith('.apk')) {
-//                outputFileName = "FDE_X11.apk"
-//            }
-//        }
-//    }
-
-//    android {
-//        applicationVariants.all { variant ->
-//            variant.outputs.all { output ->
-//                if (outputFile != null && outputFileName.endsWith('.apk')) {
-//                    def fileName = "fde_x11-${variant.versionName}-${variant.buildType.name}.apk"
-//                    outputFileName = fileName
-//                }
+//                def fileName = "fde_x11-${variant.versionName}-${variant.buildType.name}.apk"
+//                outputFileName = fileName
 //            }
 //        }
 //    }
@@ -101,6 +99,14 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
+//
+//android.applicationVariants.all { variant ->
+//    variant.outputs.all { output ->
+//        // 设置新的文件名
+//        def fileName = "fde_x11-${variant.versionName}-${variant.buildType.name}.apk"
+//        output.outputFileName = fileName // 使用 outputFileName 属性
+//    }
+//}
 
 gradle.projectsEvaluated {
     tasks.withType(JavaCompile) {
