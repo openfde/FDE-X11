@@ -177,7 +177,7 @@ RunXkbComp(xkbcomp_buffer_callback callback, void *userdata)
     xkbcomp_argv[12] = buf3;
     xkbcomp_argc = 13;
 
-    free(xkbbasedirflag);
+//    free(xkbbasedirflag);
 
     if (!buf) {
         LogMessage(X_ERROR,
@@ -203,7 +203,7 @@ RunXkbComp(xkbcomp_buffer_callback callback, void *userdata)
         {
             if (xkbDebugFlags)
                 DebugF("[xkb] xkb executes: %s\n", buf);
-            free(buf);
+//            free(buf);
 #ifdef WIN32
             unlink(tmpname);
 #endif
@@ -225,7 +225,7 @@ RunXkbComp(xkbcomp_buffer_callback callback, void *userdata)
         LogMessage(X_ERROR, "Could not open file %s\n", tmpname);
 #endif
     }
-    free(buf);
+//    free(buf);
     return NULL;
 }
 

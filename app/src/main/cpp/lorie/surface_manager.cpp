@@ -55,16 +55,13 @@ int SurfaceManager::remove_widget(Window window) {
                 }
             }
             if(update){
-                Widget *filtered_widgets = (Widget *)malloc(50 * sizeof(Widget));
+                Widget *filtered_widgets = (Widget *)malloc(100 * sizeof(Widget));
                 size_t index = 0;
                 for (size_t i = 0; i < pair.second.widget_size; i++) {
                     Widget* widget = &pair.second.widgets[i];
-                    if (widget->window != 0 && widget->width != 0 && widget->height != 0) {
+                    if (!widget->discard && widget->window != 0 && widget->width != 0 && widget->height != 0) {
                         filtered_widgets[index] = *widget;
                         index++;
-                    }
-                    if(widget->discard){
-                        free(widget);
                     }
                 }
                 find_window(pair.first)->widgets = filtered_widgets;

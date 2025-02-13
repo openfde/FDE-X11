@@ -115,16 +115,16 @@ import java.util.regex.Pattern;
  * and displays them using a SurfaceView. Some pop-up windows are displayed on top of
  * it using floating views. There are some windows that do not require titles,
  * and the clipboard content is synchronized with the XServer's clipboard.
- *
+ * <p>
  * For more detail:
- *
+ * <p>
  * The Activity functions similarly to a window within an X Server environment.
  * User interactions are captured by this Activity and relayed to the X Server for processing.
  * Graphics or visual output from the X Server are received by the Activity and presented via a SurfaceView component.
  * Floating views are utilized to display certain popup windows over this Activity.
  * Specific windows can be displayed without a title bar if not required.
  * The Activity ensures that the device's clipboard is kept in sync with the clipboard of the connected X Server.
- *
+ * <p>
  * begin at {@link #onCreate} all initialization
  * begin at {@link #onStart} lifecycle
  * begin at {@link #getClipText} about X window manager
@@ -181,15 +181,16 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
     private boolean killSelf;
     private Rect mConfigureRect;
-    @SuppressLint("StaticFieldLeak")
-    private static MainActivity instance;
-    public MainActivity() {
-        instance = this;
-    }
+//    @SuppressLint("StaticFieldLeak")
+//    private static MainActivity instance;
+//    public MainActivity() {
+//        instance = this;
+//    }
+    private final BroadcastReceiver receiver = new XserverActionReceiver();
 
-    public static MainActivity getInstance() {
-        return instance;
-    }
+//    public static MainActivity getInstance() {
+//        return instance;
+//    }
     protected int getLayoutID(){
         return R.layout.main_activity;
     }
@@ -207,7 +208,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initXParams();
-        Util.setBaseContext(this);
+//        Util.setBaseContext(this);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         initView();
         initEvent();
@@ -363,7 +364,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         EventBus.getDefault().register(this);
         Xserver.requestConnection();
         bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
-        mClipboardManager = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        mClipboardManager = (android.content.ClipboardManager) getApplication().getSystemService(Context.CLIPBOARD_SERVICE);
         findViewById(R.id.button).setOnClickListener((v)->{
             mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                     (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
@@ -509,8 +510,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         FLog.a("lifecycle", getWindowId(), "onDestroy");
         if(mClipboardManager != null){
             mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
-            mClipboardManager = null;
         }
+        mClipboardManager = null;
         mOnPrimaryClipChangedListener = null;
         EventBus.getDefault().unregister(this);
     }
@@ -1054,13 +1055,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         return true;
     }
 
+    public  class XserverActionReceiver extends BroadcastReceiver {
 
-    private final BroadcastReceiver receiver = new BroadcastReceiver() {
-        @SuppressLint("UnspecifiedRegisterReceiverFlag")
         @Override
         public void onReceive(Context context, Intent intent) {
             if (ACTION_START.equals(intent.getAction())
-                    && mXserviceWrapper != null
                     && mXserviceWrapper != null
                     && !mClientConnected) {
                 try {
@@ -1180,7 +1179,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 stopFloatView(attr);
             }
         }
-    };
+    }
 
     public class Connection implements ServiceConnection {
 
@@ -1191,11 +1190,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 ICmdEntryInterface s = ICmdEntryInterface.Stub.asInterface(service);
                 mXserviceWrapper.enableService(s);
                 try {
-                    Objects.requireNonNull(mXserviceWrapper.service).asBinder().linkToDeath(() -> {
-                        mXserviceWrapper.disableService();
-                    }, 0);
+                    IBinder binder = Objects.requireNonNull(mXserviceWrapper.service).asBinder();
+                    binder.linkToDeath(new ConnectionDeathRecipient(), 0);
                 } catch (RemoteException e) {
-                    e.printStackTrace();
+                    FLog.e("connection", e.getMessage());
                 }
             }
         }
@@ -1203,8 +1201,16 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         @Override
         public void onServiceDisconnected(ComponentName name) {
             FLog.a("event", getWindowId(), "onServiceDisconnected");
-            showXserverCloseOnDisconnect(MainActivity.this);
+//            showXserverCloseOnDisconnect(MainActivity.this);
             finish();
+        }
+    }
+
+    public class ConnectionDeathRecipient implements IBinder.DeathRecipient {
+
+        @Override
+        public void binderDied() {
+            mXserviceWrapper.disableService();
         }
     }
 

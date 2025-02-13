@@ -636,7 +636,7 @@ AllocXTestDevice(ClientPtr client, const char *name,
         XIRegisterPropertyHandler(*keybd, DeviceSetXTestProperty, NULL, NULL);
     }
 
-    free(xtestname);
+//    free(xtestname);
 
     return retval;
 }

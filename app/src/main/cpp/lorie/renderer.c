@@ -1116,6 +1116,25 @@ static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip
 //    glDrawArraysInstanced(GL_TRIANGLES, 0, 4, 1);
     log("glDrawArraysInstancedNV 2")
     checkGlError();
+//    GLfloat vVertices[] = {
+//            0.0f,  0.5f, 0.0f,
+//            -0.5f, -0.5f, 0.0f,
+//            0.5f, -0.5f, 0.0f,
+//    };
+//
+//
+//    glClear(GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//    glClearColor(1.0, 1.0, 1.0, 1.0);
+//
+//    // Use the program object
+//    glUseProgram (g_texture_program);
+//
+//    // Load the vertex data
+//    glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, 0, vVertices );
+//    glEnableVertexAttribArray (0);
+//
+//    glDrawArrays (GL_TRIANGLES, 0, 3);
+//    glUseProgram (GL_NONE);
 }
 
 maybe_unused static bool draw_cursor_1(int index, Window window) {

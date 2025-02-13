@@ -1758,7 +1758,7 @@ SetDefaultFontPath(const char *path)
     err = SetFontPathElements(num, newpath, &bad, TRUE);
 
     free(newpath);
-    free(temp_path);
+//    free(temp_path);
 
     return err;
 }

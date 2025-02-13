@@ -180,7 +180,7 @@ void android_unmap_window(Window window){
         android_destroy_activity(attr->index, attr->pWin, attr->window,  ACTION_UNMAP, attr->aProperty.support_wm_delete);
         _surface_delete_window(sfWraper, window);
         glDeleteTextures(1, &attr->texture_id);
-        log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
+//        log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget:%0x", window);
         Widget *widget = _surface_find_widget(sfWraper, window);
@@ -672,8 +672,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 JNIEXPORT jboolean JNICALL
 Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray args, jboolean  logEnable) {
-    pthread_t t;
-    JavaVM *vm = NULL;
+//    JavaVM *vm = NULL;
     // execv's argv array is a bit incompatible with Java's String[], so we do some converting here...
     argc = (*env)->GetArrayLength(env, args) + 1; // Leading executable path
     argv = (char **) calloc(argc, sizeof(char *));
@@ -798,10 +797,22 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 
     char *xkb_root = getenv("XKB_CONFIG_ROOT");
 
-    (*env)->GetJavaVM(env, &vm);
-
-    pthread_create(&t, NULL, startServer, vm);
-    return JNI_TRUE;
+    JavaVM *vm = NULL;
+    pthread_t t = 0;
+    if((*env)->GetJavaVM(env, &vm) != JNI_OK){
+        log(ERROR, "GetJavaVM fail")
+        return JNI_TRUE;
+    }
+    log(DEBUG, "vm address is %p ", vm)
+    if(vm == NULL){
+        log(ERROR, "VM isNULL")
+    }
+    log(DEBUG, "t address is %p ", &t)
+    if(pthread_create(&t, NULL, startServer, vm)!=0){
+        log(DEBUG, "t address is %p ", &t)
+        return JNI_TRUE;
+    }
+    return JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL

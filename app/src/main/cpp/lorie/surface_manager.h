@@ -24,6 +24,7 @@
 #include <sstream>
 #include <iomanip>
 #include <android/log.h>
+#include <vector>
 extern Bool LOG_ENABLE;
 #define SURFACE_LOG_ENABLE 1
 #define PRINT_LOG (SURFACE_LOG_ENABLE && LOG_ENABLE)

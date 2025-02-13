@@ -26,11 +26,11 @@ import java.util.Objects;
 public class Util {
     private static final String TAG = "Util";
     private static final int BITMAP_SIZE_LIMIT = 180;
-    private static Context baseContext;
+//    private static Context baseContext;
 
-    public static void setBaseContext(Context context){
-        baseContext = context;
-    }
+//    public static void setBaseContext(Context context){
+//        baseContext = context;
+//    }
 
     /**
      * Count the number of bits in an integer.
@@ -49,13 +49,13 @@ public class Util {
         return c;
     }
 
-    public static void startActivityForWindow(long windowPtr) {
-        Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
-        Intent intent = new Intent(baseContext, MainActivity.MainActivity1.class);
-        intent.putExtra("KEY_WindowPtr", windowPtr);
-        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
-        baseContext.startActivity(intent);
-    }
+//    public static void startActivityForWindow(long windowPtr) {
+//        Log.d(TAG, "startActivityForWindow() called with: windowPtr = [" + windowPtr + "]");
+//        Intent intent = new Intent(baseContext, MainActivity.MainActivity1.class);
+//        intent.putExtra("KEY_WindowPtr", windowPtr);
+//        intent.setFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT | Intent.FLAG_ACTIVITY_NEW_TASK);
+//        baseContext.startActivity(intent);
+//    }
 
 
     public static void deleteRecursive(File fileOrDirectory) {

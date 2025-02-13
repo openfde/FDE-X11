@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+//apply plugin: 'com.tencent.matrix-plugin'
 
 android {
     namespace 'com.fde.x11'
@@ -14,23 +15,38 @@ android {
                                 MainActivityMinWidth: "50dp",
                                 MainDialogMinHeight: "50dp",
                                 MainDialogMinWidth: "50dp"]
-    }
 
-    applicationVariants.all { variant ->
-        variant.outputs.all { output ->
-            def project = "fde_x11"
-            def separator = "-"
-            def buildType = variant.buildType.name
-            def version = variant.versionName
-            def date = new Date()
-            def formattedDate = date.format('yyyyMMdd_HHmm')
-//            fde_x11-${variant.versionName}-${variant.buildType.name}.apk
-            def newApkName =
-                    "${project}${separator}${buildType}${separator}${version}${separator}${formattedDate}.apk"
-
-            output.outputFileName = newApkName
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_shared"
+                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
+            }
+        }
+        ndk {
+            abiFilters "arm64-v8a"
+            //abiFilters "armeabi-v7a"
         }
     }
+
+    packagingOptions {
+        pickFirst '**/libc++_shared.so'
+    }
+
+//    applicationVariants.all { variant ->
+//        variant.outputs.all { output ->
+//            def project = "fde_x11"
+//            def separator = "-"
+//            def buildType = variant.buildType.name
+//            def version = variant.versionName
+//            def date = new Date()
+//            def formattedDate = date.format('yyyyMMdd_HHmm')
+////            fde_x11-${variant.versionName}-${variant.buildType.name}.apk
+//            def newApkName =
+//                    "${project}${separator}${buildType}${separator}${version}${separator}${formattedDate}.apk"
+//
+//            output.outputFileName = newApkName
+//        }
+//    }
 
 
     signingConfigs {
@@ -74,39 +90,14 @@ android {
         release {
             signingConfig signingConfigs.release
         }
-//        release {
-//            minifyEnabled true
-//            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
-//            signingConfig signingConfigs.debug
-//        }
-//        debug {
-//            applicationIdSuffix '.debug'
-//            minifyEnabled false
-//        }
     }
 
-//    applicationVariants.all { variant ->
-//        variant.outputs.all { output ->
-//            if (outputFile != null && outputFileName.endsWith('.apk')) {
-//                def fileName = "fde_x11-${variant.versionName}-${variant.buildType.name}.apk"
-//                outputFileName = fileName
-//            }
-//        }
-//    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
-//
-//android.applicationVariants.all { variant ->
-//    variant.outputs.all { output ->
-//        // 设置新的文件名
-//        def fileName = "fde_x11-${variant.versionName}-${variant.buildType.name}.apk"
-//        output.outputFileName = fileName // 使用 outputFileName 属性
-//    }
-//}
 
 gradle.projectsEvaluated {
     tasks.withType(JavaCompile) {
@@ -119,6 +110,14 @@ gradle.projectsEvaluated {
         )
     }
 }
+
+//matrix {
+//    trace {
+//        enable = true	//if you don't want to use trace canary, set false
+//        baseMethodMapFile = "${project.buildDir}/matrix_output/Debug.methodmap"
+//        blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
+//    }
+//}
 
 dependencies {
     compileOnly fileTree(include: ['*.jar'], dir: 'libs/compile')
@@ -139,10 +138,25 @@ dependencies {
     implementation 'org.greenrobot:eventbus:3.2.0'
     implementation 'com.github.ChickenHook:RestrictionBypass:2.2'
 
+    implementation "com.kuaishou.koom:koom-native-leak:2.2.2"
+    implementation "com.kuaishou.koom:xhook:2.2.2"
+    implementation "com.kuaishou.koom:koom-monitor-base:2.2.2"
+
+//    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
 
 //    compileOnly project(':shell-loader:stub')
     implementation project(':x_recyclerview')
     implementation project(':fusionwindowmanager')
     implementation project(':dialogtiplib')
     implementation project(':easy')
+
+//    debugImplementation ("com.squareup.leakcanary:leakcanary-android:2.5")
 }

@@ -4,15 +4,26 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+//import com.fde.DynamicConfigImplDemo;
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
 import com.fde.x11.utils.AppUtils;
+import com.kwai.koom.base.DefaultInitTask;
+import com.kwai.koom.base.MonitorManager;
+import com.kwai.koom.nativeoom.leakmonitor.LeakMonitor;
+import com.kwai.koom.nativeoom.leakmonitor.LeakMonitorConfig;
+//import com.tencent.matrix.Matrix;
+//import com.tencent.matrix.iocanary.IOCanaryPlugin;
+//import com.tencent.matrix.iocanary.config.IOConfig;
+import com.kwai.koom.nativeoom.leakmonitor.LeakRecord;
 import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.log.HttpLog;
 import com.xwdz.http.log.HttpLoggingInterceptor;
@@ -45,6 +56,8 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        initMatrix();
+        initKoom();
         AppUtils.init(this);
         HttpLoggingInterceptor logInterceptor = new HttpLoggingInterceptor(new HttpLog("fde"));
         logInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
@@ -115,6 +128,50 @@ public class App extends Application {
                 }
             }
         });
+    }
+
+    private void initKoom() {
+        DefaultInitTask.INSTANCE.init(this);
+        LeakMonitorConfig config = new LeakMonitorConfig.Builder()
+                .setLoopInterval(50000) // 设置轮训的间隔，单位：毫秒
+                .setMonitorThreshold(16) // 设置监听的最小内存值，单位：字节
+                .setNativeHeapAllocatedThreshold(0) // 设置native heap分配的内存达到多少阈值开始监控，单位：字节
+                .setSelectedSoList(new String[]{"libXlorie"}) // 不设置是监控所有， 设置是监听特定的so,  比如监控libcore.so 填写 libcore 不带.so
+//                .setIgnoredSoList(new String[0]) // 设置需要忽略监控的so
+                .setEnableLocalSymbolic(false) // 设置使能本地符号化，仅在 debuggable apk 下有用，release 请关闭
+                .setLeakListener(leaks -> {
+                    if (leaks.isEmpty()) {
+                        return;
+                    }
+                    StringBuilder builder = new StringBuilder();
+                    for (LeakRecord leak : leaks) {
+                        builder.append(leak.toString());
+                    }
+                    Log.d(TAG, "initKoom builder:" + builder);
+                    Toast.makeText(this, builder.toString(), Toast.LENGTH_SHORT).show();
+                }) // 设置泄漏监听器
+                .build();
+        MonitorManager.addMonitorConfig(config);
+        LeakMonitor.INSTANCE.start();
+    }
+
+    private void initMatrix() {
+//        Matrix.Builder builder = new Matrix.Builder(this); // build matrix
+//        builder.pluginListener(new TestPluginListener(this)); // add general pluginListener
+//        DynamicConfigImplDemo dynamicConfig = new DynamicConfigImplDemo(); // dynamic config
+//
+//        // init plugin
+//        IOCanaryPlugin ioCanaryPlugin = new IOCanaryPlugin(new IOConfig.Builder()
+//                .dynamicConfig(dynamicConfig)
+//                .build());
+//        //add to matrix
+//        builder.plugin(ioCanaryPlugin);
+//
+//        //init matrix
+//        Matrix.init(builder.build());
+//
+//        // start plugin
+//        ioCanaryPlugin.start();
     }
 
     public static App getApp(){
