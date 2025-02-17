@@ -8,7 +8,7 @@
 #pragma ide diagnostic ignored "misc-no-recursion"
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
-#define RENDERER_LOG_ENABLE 0
+#define RENDERER_LOG_ENABLE 1
 #include <EGL/egl.h> // requires ndk r5 or newer
 #include <GLES/gl.h>
 #include <EGL/eglext.h>
@@ -681,19 +681,15 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
-        log("renderer_update_root 6");
         glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
-        log("renderer_update_root 7");
     } else {
         glBindTexture(GL_TEXTURE_2D, display_rect.id);
         checkGlError();
-        log("renderer_update_root 9");
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
                         GL_UNSIGNED_BYTE, data);
         checkGlError();
-        log("renderer_update_root 10");
     }
     log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
         w, h, data, flip, display_rect.width, display_rect.height);
@@ -837,27 +833,14 @@ int renderer_should_redraw(void) {
 }
 
 int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
-//    _surface_log_traversal_window(sfWraper);
-    int size;
+    _surface_log_traversal_window(sfWraper);
+    int size, i  =0 ;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
     log("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    long long millis = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
-    int i = 0;
     while (i < size ) {
         renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
         i++;
     }
-    clock_gettime(CLOCK_REALTIME, &ts);
-    long long millis_end = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000LL;
-    if(size >= 8){
-        totel += millis_end - millis;
-        count ++;
-    }
-    log("renderer_redraw end ===>cost (%ld ms) avage (%ld ms) ----------------------------------------------------------------------------------------------", (millis_end - millis), totel/count);
-
-    attrs = NULL;
     renderedFrames++;
     return TRUE;
 }
@@ -1289,6 +1272,24 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
         return FALSE;
     }
     return TRUE;
+}
+
+maybe_unused int renderer_release_window(JNIEnv *env, Window window){
+//    loge("renderer_release_window window:%lx", window)
+//    if(!Surface_release){
+//        return FALSE;
+//    }
+//    if (_surface_count_window(sfWraper, window)) {
+//        WindAttribute *attr = _surface_find_window(sfWraper, window);
+//        (*env)->CallVoidMethod(env, attr->sfc, Surface_release);
+//        return TRUE;
+//    }else if(_surface_count_widget(sfWraper, window)){
+//        Widget *widget = _surface_find_widget(sfWraper, window);
+//        (*env)->CallVoidMethod(env, widget->sfc, Surface_release);
+//        return TRUE;
+//    } else {
+        return FALSE;
+//    }
 }
 
 

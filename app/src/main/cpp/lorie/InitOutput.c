@@ -85,7 +85,7 @@ from The Open Group.
 #define wrap(priv, real, mem, func) { priv->mem = real->mem; real->mem = func; }
 #define unwrap(priv, real, mem) { real->mem = priv->mem; }
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
-#define INITOUTPUT_LOG_ENABLE 0
+#define INITOUTPUT_LOG_ENABLE 1
 extern Bool LOG_ENABLE;
 #define PRINT_LOG (INITOUTPUT_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "native_InitOutput", __VA_ARGS__);}
@@ -120,7 +120,7 @@ typedef struct {
 
 int init_cusor;
 ScreenPtr pScreenPtr;
-static lorieScreenInfo lorieScreen = { .root.width = 1920, .root.height = 1080, .dri3 = FALSE };
+static lorieScreenInfo lorieScreen = { .root.width = 1920, .root.height = 1080, .dri3 = TRUE };
 static lorieScreenInfoPtr pvfb = &lorieScreen;
 static char *xstartup = NULL;
 
@@ -666,6 +666,7 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
                              ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
                              pvfb->root.flip);
     renderer_redraw(pvfb->env, pvfb->root.flip, false);
+    free(res);
     return TRUE;
 }
 

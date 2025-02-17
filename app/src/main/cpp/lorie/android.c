@@ -155,17 +155,15 @@ void android_destroy_window(Window window) {
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         attr->discard = 1;
         android_destroy_activity(attr->index, attr->pWin, attr->window, ACTION_DESTORY, attr->aProperty.support_wm_delete);
+        renderer_release_window( GetJavaEnv(), window);
         _surface_delete_window(sfWraper, window);
         glDeleteTextures(1, &attr->texture_id);
-        log(DEBUG,"android_destroy_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "destroy widget");
         Widget *widget = _surface_find_widget(sfWraper, window);
-//        if(!widget->inbounds){
-//            android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
-//        }
         widget->discard = 1;
         glDeleteTextures(1, &widget->texture_id);
+        renderer_release_window(GetJavaEnv(),window);
         _surface_remove_widget(sfWraper, window);
     }
 }
@@ -178,8 +176,9 @@ void android_unmap_window(Window window){
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         attr->discard = 1;
         android_destroy_activity(attr->index, attr->pWin, attr->window,  ACTION_UNMAP, attr->aProperty.support_wm_delete);
-        _surface_delete_window(sfWraper, window);
         glDeleteTextures(1, &attr->texture_id);
+        renderer_release_window(GetJavaEnv(),window);
+        _surface_delete_window(sfWraper, window);
 //        log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget:%0x", window);
@@ -187,8 +186,9 @@ void android_unmap_window(Window window){
         if(!widget->inbounds){
             android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
         }
-        glDeleteTextures(1, &widget->texture_id);
         widget->discard = 1;
+        glDeleteTextures(1, &widget->texture_id);
+        renderer_release_window(GetJavaEnv(),window);
         _surface_remove_widget(sfWraper, window);
     }
 }
@@ -476,6 +476,10 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop,  Window window) 
         };
         if(!attr->widgets) {
             attr->widgets = malloc(sizeof(Widget) * 50);
+        }
+
+        if(attr->widgets == NULL){
+            log(ERROR, "widget malloc failed")
         }
         attr->widgets[attr->widget_size] = widget;
         attr->widget_size++;

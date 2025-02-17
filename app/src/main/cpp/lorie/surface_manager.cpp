@@ -32,7 +32,7 @@ void SurfaceManager::update_window(Window window, WindAttribute attr) {
 
 int SurfaceManager::remove_widget(Window window) {
     for (auto &pair: window_attrs) {
-        if (pair.second.widget_size == 0 ) {
+        if (pair.second.widget_size == 0) {
             continue;
         } else {
             bool update = false;
@@ -45,6 +45,7 @@ int SurfaceManager::remove_widget(Window window) {
 //                    widget->window = 0;
 //                    widget->texture_id = 0;
                     widget->width = 0;
+                    widget->sfc = NULL;
                     widget->height = 0;
                     widget->offset_x = 0;
                     widget->offset_y = 0;
@@ -55,7 +56,10 @@ int SurfaceManager::remove_widget(Window window) {
                 }
             }
             if(update){
-                Widget *filtered_widgets = (Widget *)malloc(100 * sizeof(Widget));
+                Widget *filtered_widgets = (Widget *)malloc(50 * sizeof(Widget));
+                if(filtered_widgets == NULL){
+                    return FALSE;
+                }
                 size_t index = 0;
                 for (size_t i = 0; i < pair.second.widget_size; i++) {
                     Widget* widget = &pair.second.widgets[i];
@@ -64,6 +68,8 @@ int SurfaceManager::remove_widget(Window window) {
                         index++;
                     }
                 }
+                Widget *old_widget = find_window(pair.first)->widgets;
+                free(old_widget);
                 find_window(pair.first)->widgets = filtered_widgets;
                 find_window(pair.first)->widget_size = index;
             }
@@ -109,10 +115,8 @@ WindAttribute* SurfaceManager::all_window(int * size){
         array[i] =  pair.second;
         i++;
     }
-    WindAttribute *sorted_attrs = (WindAttribute *)malloc(*size * sizeof(WindAttribute));
-    memcpy(sorted_attrs, array, *size * sizeof(WindAttribute));
-    qsort(sorted_attrs, *size, sizeof(WindAttribute), compare_by_level_desc);
-    return sorted_attrs;
+    qsort(array, *size, sizeof(WindAttribute), compare_by_level_desc);
+    return array;
 }
 
 int SurfaceManager::count_window(Window window) {
@@ -134,17 +138,13 @@ int SurfaceManager::count_widget(Window window) {
 
 
 void SurfaceManager::delete_window(Window window) {
-    window_attrs.erase(window);
-//    auto it = window_attrs.begin();
-//    while (it != window_attrs.end()) {
-//        if (it->second.window == 0 && it->second.width == 0
-//        && it->second.height == 0 && it->second.sfc == 0
-//        && it->second.pWin == 0 && it->second.index == 0  ) {
-//            it = window_attrs.erase(it);
-//        } else {
-//            ++it;
-//        }
-//    }
+    WindAttribute *attr = find_window(window);
+    if(attr){
+        if(attr->widget_size){
+            free(attr->widgets);
+        }
+        window_attrs.erase(window);
+    }
 }
 
 

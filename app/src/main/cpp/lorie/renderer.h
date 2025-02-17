@@ -68,5 +68,7 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
                                           const CARD32 *strides, const CARD32 *offsets, CARD8 depth, __unused CARD8 bpp, CARD64 modifier);
 maybe_unused int renderer_get_format(__unused ScreenPtr screen, CARD32 *num_formats, CARD32 **formats);
 maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint32_t format, uint32_t *num_modifiers, uint64_t **modifiers);
+maybe_unused int renderer_release_window(JNIEnv *env, Window window);
+
 
 #define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5 // Stands to HAL_PIXEL_FORMAT_BGRA_8888

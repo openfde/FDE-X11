@@ -136,8 +136,8 @@ public class App extends Application {
                 .setLoopInterval(50000) // 设置轮训的间隔，单位：毫秒
                 .setMonitorThreshold(16) // 设置监听的最小内存值，单位：字节
                 .setNativeHeapAllocatedThreshold(0) // 设置native heap分配的内存达到多少阈值开始监控，单位：字节
-                .setSelectedSoList(new String[]{"libXlorie"}) // 不设置是监控所有， 设置是监听特定的so,  比如监控libcore.so 填写 libcore 不带.so
-//                .setIgnoredSoList(new String[0]) // 设置需要忽略监控的so
+                .setSelectedSoList(new String[0]) // 不设置是监控所有， 设置是监听特定的so,  比如监控libcore.so 填写 libcore 不带.so
+                .setIgnoredSoList(new String[0]) // 设置需要忽略监控的so
                 .setEnableLocalSymbolic(false) // 设置使能本地符号化，仅在 debuggable apk 下有用，release 请关闭
                 .setLeakListener(leaks -> {
                     if (leaks.isEmpty()) {
