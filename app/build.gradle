@@ -32,21 +32,21 @@ android {
 //        pickFirst '**/libc++_shared.so'
 //    }
 
-//    applicationVariants.all { variant ->
-//        variant.outputs.all { output ->
-//            def project = "fde_x11"
-//            def separator = "-"
-//            def buildType = variant.buildType.name
-//            def version = variant.versionName
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def project = "fdex11"
+            def separator = "-"
+            def buildType = variant.buildType.name
+            def version = variant.versionName
 //            def date = new Date()
 //            def formattedDate = date.format('yyyyMMdd_HHmm')
-////            fde_x11-${variant.versionName}-${variant.buildType.name}.apk
-//            def newApkName =
-//                    "${project}${separator}${buildType}${separator}${version}${separator}${formattedDate}.apk"
-//
-//            output.outputFileName = newApkName
-//        }
-//    }
+//            fde_x11-${variant.versionName}-${variant.buildType.name}.apk
+            def newApkName =
+                    "${project}${separator}${buildType}${separator}${version}.apk"
+
+            output.outputFileName = newApkName
+        }
+    }
 
 
     signingConfigs {

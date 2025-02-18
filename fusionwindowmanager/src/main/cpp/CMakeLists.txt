@@ -74,6 +74,9 @@ include_directories(include)
 # Specifies libraries CMake should link to your target library. You
 # can link libraries from various origins, such as libraries defined in this
 # build script, prebuilt third-party libraries, or Android system libraries.
+#target_link_options(fusionwindowmanager PUBLIC "-Wl,--as-needed" "-Wl,--no-undefined" "-fvisibility=hidden")
+#set_target_properties(fusionwindowmanager PROPERTIES LINK_FLAGS -fsanitize=address)
+
 target_link_libraries(${CMAKE_PROJECT_NAME}
         # List libraries link to the target library
         xcb

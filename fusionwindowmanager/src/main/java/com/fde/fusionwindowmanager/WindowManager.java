@@ -3,6 +3,7 @@ package com.fde.fusionwindowmanager;
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.app.Dialog;
+import android.app.Service;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -16,6 +17,7 @@ import android.os.Message;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -66,7 +68,34 @@ public class WindowManager  {
         mThread = new HandlerThread("WM");
         mThread.start();
         mHandler = new TaskHandler(mThread.getLooper());
+//        Context context = contextReference.get();
+//        initKoom(context);
     }
+
+//    private void initKoom(Context context) {
+//        DefaultInitTask.INSTANCE.init(((Service)context).getApplication());
+//        LeakMonitorConfig config = new LeakMonitorConfig.Builder()
+//                .setLoopInterval(10000) // 设置轮训的间隔，单位：毫秒
+//                .setMonitorThreshold(16) // 设置监听的最小内存值，单位：字节
+//                .setNativeHeapAllocatedThreshold(0) // 设置native heap分配的内存达到多少阈值开始监控，单位：字节
+////                .setSelectedSoList(new String[]{}) // 不设置是监控所有， 设置是监听特定的so,  比如监控libcore.so 填写 libcore 不带.so
+////                .setIgnoredSoList(new String[0]) // 设置需要忽略监控的so
+//                .setEnableLocalSymbolic(false) // 设置使能本地符号化，仅在 debuggable apk 下有用，release 请关闭
+//                .setLeakListener(leaks -> {
+//                    if (leaks.isEmpty()) {
+//                        return;
+//                    }
+//                    StringBuilder builder = new StringBuilder();
+//                    for (LeakRecord leak : leaks) {
+//                        builder.append(leak.toString());
+//                    }
+//                    Log.d(TAG, "initKoom builder:" + builder);
+//                    Toast.makeText(context, builder.toString(), Toast.LENGTH_SHORT).show();
+//                }) // 设置泄漏监听器
+//                .build();
+//        MonitorManager.addMonitorConfig(config);
+//        LeakMonitor.INSTANCE.start();
+//    }
 
 
     public void startWindowManager(String displayGlobalParam) {

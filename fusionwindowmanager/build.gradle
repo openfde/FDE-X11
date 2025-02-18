@@ -13,7 +13,8 @@ android {
         consumerProguardFiles "consumer-rules.pro"
         externalNativeBuild {
             cmake {
-                cppFlags ""
+//                arguments "-DANDROID_STL=c++_shared"
+//                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
             }
         }
 
@@ -41,6 +42,20 @@ android {
 }
 
 dependencies {
+
+//    implementation "com.kuaishou.koom:koom-native-leak:2.2.2"
+//    implementation "com.kuaishou.koom:xhook:2.2.2"
+//    implementation "com.kuaishou.koom:koom-monitor-base:2.2.2"
+
+//    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
 
     implementation  'org.greenrobot:eventbus:3.2.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'

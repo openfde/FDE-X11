@@ -50,7 +50,7 @@
 #include "protocol-versions.h"
 #include "extinit.h"
 #include <android/log.h>
-#define PRINT_LOG 1
+#define PRINT_LOG 0
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "native_compext", __VA_ARGS__);\
                 }              \
@@ -108,9 +108,9 @@ ProcCompositeQueryVersion(ClientPtr client)
 {
     CompositeClientPtr pCompositeClient = GetCompositeClient(client);
     xCompositeQueryVersionReply rep = {
-        .type = X_Reply,
-        .sequenceNumber = client->sequence,
-        .length = 0
+            .type = X_Reply,
+            .sequenceNumber = client->sequence,
+            .length = 0
     };
 
     REQUEST(xCompositeQueryVersionReq);
@@ -267,27 +267,18 @@ ProcCompositeNameWindowPixmap(ClientPtr client)
     if (rc != Success)
         return rc;
 
-    ++pPixmap->refcnt;
-
-    if (!AddResource(stuff->pixmap, RT_PIXMAP, (void *) pPixmap))
-        return BadAlloc;
-
-    if (pScreen->NameWindowPixmap) {
-        rc = pScreen->NameWindowPixmap(pWin, pPixmap, stuff->pixmap);
-        if (rc != Success) {
-            FreeResource(stuff->pixmap, RT_NONE);
-            return rc;
-        }
-    }
-//    log("ProcCompositeNameWindowPixmap windowXID:%lu client:%d pWin:%p cw:%p pixmap:%p parent:%p"
-//        " root:%p rootXID:%lu screen_x:%d screen_y:%d width:%d height:%d "
-//        "viewable:%d class:%d screen.width:%d screen.height:%d pWin->redirectDraw:%d overrideRedirect:%d pChild:%x",
-//            pWin->drawable.id,  client->index, pWin, cw, pPixmap, pWin->parent,
-//  pScreen->root, pScreen->root->drawable.id, pWin->drawable.x, pWin->drawable.y, pWin->drawable.width, pWin->drawable.height
-// , pWin->viewable, pWin->drawable.class, pScreen->width, pScreen->height, pWin->redirectDraw, pWin->overrideRedirect, pWin->firstChild->drawable.id
-//              );
-
-
+//    ++pPixmap->refcnt;
+//    log("addresource pixmap %x", stuff->pixmap)
+//    if (!AddResource(stuff->pixmap, RT_PIXMAP, (void *) pPixmap))
+//        return BadAlloc;
+//
+//    if (pScreen->NameWindowPixmap) {
+//        rc = pScreen->NameWindowPixmap(pWin, pPixmap, stuff->pixmap);
+//        if (rc != Success) {
+//            FreeResource(stuff->pixmap, RT_NONE);
+//            return rc;
+//        }
+//    }
     int isTopLevel = pWin->parent == pScreen->root;
     int viewable = pWin->viewable;
     int class = pWin->drawable.class;
@@ -296,26 +287,22 @@ ProcCompositeNameWindowPixmap(ClientPtr client)
     int offsetY = pWin->drawable.y;
     Window nameWindow = pWin->drawable.id;
     Window parentWindow = pWin->parent->drawable.id;
-//    Window nextWindow = pWin->nextSib->drawable.id;
-//    Window prevWindow = pWin->prevSib->drawable.id;
-//    Window firetchild = pWin->firstChild->drawable.id;
-//    Window lastchild = pWin->lastChild->drawable.id;
     log("NameWindow nameWindow:%lx, "
         "parentWindow:%lx, "
 //        "nextWindow:%lx, "
 //        "prevWindow:%lx, "
 //        "firetchild:%lx, "
 //        "lastchild:%lx ",
-        ,nameWindow
-        ,parentWindow
+    ,nameWindow
+    ,parentWindow
 //        ,nextWindow
 //        ,prevWindow
 //        ,firetchild
 //        ,lastchild
-        );
+    );
     log("attribute istop:%d viewable:%d class:%d overrideRedirect:%d offsetx:%d offsety:%d",
         isTopLevel, viewable, class, overrideRedirect, offsetX, offsetY
-        );
+    );
     android_redirect_window(pWin);
     return Success;
 }
@@ -361,10 +348,10 @@ ProcCompositeGetOverlayWindow(ClientPtr client)
     }
 
     rep = (xCompositeGetOverlayWindowReply) {
-        .type = X_Reply,
-        .sequenceNumber = client->sequence,
-        .length = 0,
-        .overlayWin = cs->pOverlayWin->drawable.id
+            .type = X_Reply,
+            .sequenceNumber = client->sequence,
+            .length = 0,
+            .overlayWin = cs->pOverlayWin->drawable.id
     };
 
     if (client->swapped) {
@@ -402,7 +389,7 @@ ProcCompositeReleaseOverlayWindow(ClientPtr client)
 }
 
 static int (*ProcCompositeVector[CompositeNumberRequests]) (ClientPtr) = {
-ProcCompositeQueryVersion,
+        ProcCompositeQueryVersion,
         ProcCompositeRedirectWindow,
         ProcCompositeRedirectSubwindows,
         ProcCompositeUnredirectWindow,
@@ -526,15 +513,15 @@ SProcCompositeReleaseOverlayWindow(ClientPtr client)
 
 static int
 (*SProcCompositeVector[CompositeNumberRequests]) (ClientPtr) = {
-    SProcCompositeQueryVersion,
-    SProcCompositeRedirectWindow,
-    SProcCompositeRedirectSubwindows,
-    SProcCompositeUnredirectWindow,
-    SProcCompositeUnredirectSubwindows,
-    SProcCompositeCreateRegionFromBorderClip,
-    SProcCompositeNameWindowPixmap,
-    SProcCompositeGetOverlayWindow,
-    SProcCompositeReleaseOverlayWindow,
+        SProcCompositeQueryVersion,
+        SProcCompositeRedirectWindow,
+        SProcCompositeRedirectSubwindows,
+        SProcCompositeUnredirectWindow,
+        SProcCompositeUnredirectSubwindows,
+        SProcCompositeCreateRegionFromBorderClip,
+        SProcCompositeNameWindowPixmap,
+        SProcCompositeGetOverlayWindow,
+        SProcCompositeReleaseOverlayWindow,
 };
 
 static int _X_COLD
@@ -599,7 +586,7 @@ CompositeExtensionInit(void)
     }
 
     CompositeClientWindowType = CreateNewResourceType
-        (FreeCompositeClientWindow, "CompositeClientWindow");
+            (FreeCompositeClientWindow, "CompositeClientWindow");
     if (!CompositeClientWindowType)
         return;
 
@@ -607,12 +594,12 @@ CompositeExtensionInit(void)
     SetResourceTypeSizeFunc(RT_WINDOW, GetCompositeWindowBytes);
 
     CompositeClientSubwindowsType = CreateNewResourceType
-        (FreeCompositeClientSubwindows, "CompositeClientSubwindows");
+            (FreeCompositeClientSubwindows, "CompositeClientSubwindows");
     if (!CompositeClientSubwindowsType)
         return;
 
     CompositeClientOverlayType = CreateNewResourceType
-        (FreeCompositeClientOverlay, "CompositeClientOverlay");
+            (FreeCompositeClientOverlay, "CompositeClientOverlay");
     if (!CompositeClientOverlayType)
         return;
 
@@ -895,10 +882,10 @@ PanoramiXCompositeGetOverlayWindow(ClientPtr client)
     cs = GetCompScreen(screenInfo.screens[0]);
 
     rep = (xCompositeGetOverlayWindowReply) {
-        .type = X_Reply,
-        .sequenceNumber = client->sequence,
-        .length = 0,
-        .overlayWin = cs->pOverlayWin->drawable.id
+            .type = X_Reply,
+            .sequenceNumber = client->sequence,
+            .length = 0,
+            .overlayWin = cs->pOverlayWin->drawable.id
     };
 
     if (client->swapped) {
@@ -962,19 +949,19 @@ PanoramiXCompositeInit(void)
      * Stuff in Xinerama aware request processing hooks
      */
     ProcCompositeVector[X_CompositeRedirectWindow] =
-        PanoramiXCompositeRedirectWindow;
+            PanoramiXCompositeRedirectWindow;
     ProcCompositeVector[X_CompositeRedirectSubwindows] =
-        PanoramiXCompositeRedirectSubwindows;
+            PanoramiXCompositeRedirectSubwindows;
     ProcCompositeVector[X_CompositeUnredirectWindow] =
-        PanoramiXCompositeUnredirectWindow;
+            PanoramiXCompositeUnredirectWindow;
     ProcCompositeVector[X_CompositeUnredirectSubwindows] =
-        PanoramiXCompositeUnredirectSubwindows;
+            PanoramiXCompositeUnredirectSubwindows;
     ProcCompositeVector[X_CompositeNameWindowPixmap] =
-        PanoramiXCompositeNameWindowPixmap;
+            PanoramiXCompositeNameWindowPixmap;
     ProcCompositeVector[X_CompositeGetOverlayWindow] =
-        PanoramiXCompositeGetOverlayWindow;
+            PanoramiXCompositeGetOverlayWindow;
     ProcCompositeVector[X_CompositeReleaseOverlayWindow] =
-        PanoramiXCompositeReleaseOverlayWindow;
+            PanoramiXCompositeReleaseOverlayWindow;
 }
 
 void

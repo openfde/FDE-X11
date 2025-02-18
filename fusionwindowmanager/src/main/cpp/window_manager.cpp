@@ -62,6 +62,12 @@ int WindowManager::OnWMDetected(Display* display, XErrorEvent* e) {
 
 WindowManager::~WindowManager() {
     log("~WindowManager");
+    for (auto& pair : clients_) {
+        XDestroyWindow(display_, pair.second);
+    }
+    if (owner) {
+        XDestroyWindow(display_, owner);
+    }
     XCloseDisplay(display_);
 }
 
@@ -216,6 +222,7 @@ void WindowManager::OnCreateNotify(const XCreateWindowEvent& e) {}
 void WindowManager::OnDestroyNotify(const XDestroyWindowEvent& e) {
     frames.erase(e.window);
     window_under_frames.erase(e.window);
+    clients_.erase(e.window);
 }
 
 void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
@@ -223,33 +230,19 @@ void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 void WindowManager::OnMapNotify(const XMapEvent &e) {
     if(e.event == root_ && support_composite){
         XCompositeNameWindowPixmap(display_, e.window);
-        named_windows.insert(e.window);
+//        named_windows.insert(e.window);
         XSync(display_, False);
     }
 }
 
 void WindowManager::OnUnmapNotify(const XUnmapEvent& e) {
-    // If the window is a client window we manage, unframe it upon UnmapNotify. We
-    // need the check because we will receive an UnmapNotify event for a frame
-    // window we just destroyed ourselves.
     if (!clients_.count(e.window)) {
 //        log("Ignore UnmapNotify for non-client window %lu",e.window);
         return;
     }
-    // Ignore event if it is triggered by reparenting a window that was mapped
-    // before the window manager started.
-    //
-    // Since we receive UnmapNotify events from the SubstructureNotify mask, the
-    // event attribute specifies the parent window of the window that was
-    // unmapped. This means that an UnmapNotify event from a normal client window
-    // should have this attribute set to a frame window we maintain. Only an
-    // UnmapNotify event triggered by reparenting a pre-existing window will have
-    // this attribute set to the root window.
     if (e.event == root_) {
-//        log("Ignore UnmapNotify for reparented pre-existing window %lu", e.window);
         return;
     }
-//    Unframe(e.window);
 }
 
 void WindowManager::Unframe(Window w) {

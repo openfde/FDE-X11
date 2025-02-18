@@ -43,6 +43,15 @@ from The Open Group.
 #include "X11/extensions/render.h"
 #include "picturestr.h"
 #include "randrstr.h"
+#include <android/log.h>
+#define PRINT_LOG 0
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "native_pixmap", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "native_pixmap", __VA_ARGS__);\
+                }
 /*
  *  Scratch pixmap management and device independent pixmap allocation
  *  function.
@@ -128,6 +137,7 @@ AllocatePixmap(ScreenPtr pScreen, int pixDataSize)
 void
 FreePixmap(PixmapPtr pPixmap)
 {
+    log("freepixmap %x", pPixmap->drawable.id)
     dixFiniPrivates(pPixmap, PRIVATE_PIXMAP);
     free(pPixmap);
 }
