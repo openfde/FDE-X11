@@ -48,7 +48,6 @@ static int argc = 0;
 static char **argv = NULL;
 int conn_fd = -1;
 int conn_pair_fd = -1;
-
 extern char *__progname; // NOLINT(bugprone-reserved-identifier)
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
@@ -102,6 +101,8 @@ bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1);
 void xserver_get_window_property(WindowPtr pWindow, WindProperty *prop);
 
 void updateClipText(const char *text);
+
+void android_icon_update(int *pInt, int width, int height, long i);
 
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
@@ -203,8 +204,7 @@ void android_redirect_window(WindowPtr pWin) {
      *
      *
      */
-    WindProperty aProperty;
-    memset(&aProperty, 0, sizeof(WindProperty));
+    WindProperty aProperty = {0};
     xserver_get_window_property(pWin, &aProperty);
     Atom win_type = aProperty.window_type;
     if (aProperty.transient != 0) {
@@ -260,42 +260,126 @@ void android_redirect_window(WindowPtr pWin) {
     }
 }
 
-jobject android_icon_convert_bitmap(int* data, int width, int height){
-    log(DEBUG, "CONVERT_ICON width:%d height:%d", width, height);
-    JNIEnv *JavaEnv = GetJavaEnv();
-    jclass bitmapClass = (*JavaEnv)->FindClass(JavaEnv,"android/graphics/Bitmap");
-    jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass, "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    jstring configName = (*JavaEnv)->NewStringUTF(JavaEnv, "ARGB_8888");
-    jclass bitmapConfigClass = (*JavaEnv)->FindClass(JavaEnv,"android/graphics/Bitmap$Config");
-    jmethodID valueOfMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv,bitmapConfigClass, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
-    jobject bitmapConfig = (*JavaEnv)->CallStaticObjectMethod(JavaEnv,bitmapConfigClass, valueOfMethod, configName);
-    jobject bitmap = (*JavaEnv)->CallStaticObjectMethod(JavaEnv,bitmapClass, createBitmapMethod, (int)width, (int)height, bitmapConfig);
-    void* bitmapPixels;
-    if (AndroidBitmap_lockPixels(JavaEnv, bitmap, &bitmapPixels) < 0) {
-        log(ERROR, "Failed to lock bitmap pixels\n");
-        free(data);
+jobject android_icon_convert_bitmap(int* data, int width, int height) {
+    // 参数检查
+    if (!data || width <= 0 || height <= 0) {
+        log(ERROR, "Invalid input parameters: data=%p, width=%d, height=%d", data, width, height);
         return NULL;
     }
+
+    log(DEBUG, "CONVERT_ICON width:%d height:%d", width, height);
+
+    // 获取 Java 环境
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if (!JavaEnv) {
+        log(ERROR, "Failed to get JavaEnv");
+        return NULL;
+    }
+
+    // 查找 Bitmap 类
+    jclass bitmapClass = (*JavaEnv)->FindClass(JavaEnv, "android/graphics/Bitmap");
+    if (!bitmapClass) {
+        log(ERROR, "Failed to find class android/graphics/Bitmap");
+        return NULL;
+    }
+
+    // 获取 createBitmap 方法
+    jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass, "createBitmap",
+                                                                 "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    if (!createBitmapMethod) {
+        log(ERROR, "Failed to get method ID for createBitmap");
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+        return NULL;
+    }
+
+    // 创建 Bitmap.Config 对象
+    jstring configName = (*JavaEnv)->NewStringUTF(JavaEnv, "ARGB_8888");
+    jclass bitmapConfigClass = (*JavaEnv)->FindClass(JavaEnv, "android/graphics/Bitmap$Config");
+    if (!bitmapConfigClass) {
+        log(ERROR, "Failed to find class android/graphics/Bitmap$Config");
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+        return NULL;
+    }
+
+    jmethodID valueOfMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapConfigClass, "valueOf",
+                                                            "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
+    if (!valueOfMethod) {
+        log(ERROR, "Failed to get method ID for valueOf");
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+        return NULL;
+    }
+
+    jobject bitmapConfig = (*JavaEnv)->CallStaticObjectMethod(JavaEnv, bitmapConfigClass, valueOfMethod, configName);
+    if (!bitmapConfig) {
+        log(ERROR, "Failed to create Bitmap$Config object");
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+        return NULL;
+    }
+
+    // 创建 Bitmap 对象
+    jobject bitmap = (*JavaEnv)->CallStaticObjectMethod(JavaEnv, bitmapClass, createBitmapMethod, width, height, bitmapConfig);
+    if (!bitmap) {
+        log(ERROR, "Failed to create Bitmap object");
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+        return NULL;
+    }
+
+    // 锁定 Bitmap 像素
+    void* bitmapPixels;
+    if (AndroidBitmap_lockPixels(JavaEnv, bitmap, &bitmapPixels) < 0) {
+        log(ERROR, "Failed to lock bitmap pixels");
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmap);
+        return NULL;
+    }
+
+    // 确保 bitmapPixels 有效
+    if (!bitmapPixels) {
+        log(ERROR, "Bitmap pixels pointer is NULL");
+        AndroidBitmap_unlockPixels(JavaEnv, bitmap);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+        (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmap);
+        return NULL;
+    }
+
+    // 转换像素数据
     uint32_t* src = (uint32_t*)data;
     uint32_t* dst = (uint32_t*)bitmapPixels;
-    for (unsigned long i = 0; i < width * height; i++) {
+    for (unsigned long i = 0; i < (unsigned long)(width * height); i++) {
         uint32_t pixel = src[i];
         uint8_t alpha = (pixel >> 24) & 0xFF;
         uint8_t red = (pixel >> 16) & 0xFF;
         uint8_t green = (pixel >> 8) & 0xFF;
         uint8_t blue = pixel & 0xFF;
-//        dst[i] = (alpha << 24) | ( red<< 16) | ( green<< 8) | blue;   //argb
-//        dst[i] = (alpha << 24) | ( red<< 16) | ( blue<< 8) | green;   //arbg
-//        dst[i] = (alpha << 24) | ( blue<< 16) | ( red<< 8) | green;   //abrg
-        dst[i] = (alpha << 24) | ( blue << 16) | ( green << 8) | red;   //abgr
-//        dst[i] = (alpha << 24) | ( red<< 16) | ( blue<< 8) | green;   //agbr
-//        dst[i] = (alpha << 24) | ( red<< 16) | ( blue<< 8) | green;   //agrb
+        dst[i] = (alpha << 24) | (blue << 16) | (green << 8) | red;  // ABGR
     }
+
+    // 解锁 Bitmap 像素
     AndroidBitmap_unlockPixels(JavaEnv, bitmap);
-    (*JavaEnv)->DeleteLocalRef(JavaEnv,configName);
-    (*JavaEnv)->DeleteLocalRef(JavaEnv,bitmapConfigClass);
+
+    // 清理局部引用
+    (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
+    (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
+    (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
+    (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
+
     return bitmap;
 }
+
 
 /*
  * update some effect property and do sth if need , eg. window icon
@@ -313,17 +397,50 @@ void update_effect_property(WindowPtr pWin, Atom prop, ClientPtr client){
             int width = *icon_data;
             int height = *(icon_data+1);
             int * imageData = ( int*) (icon_data + 2);
-            jobject bitmap = android_icon_convert_bitmap(imageData, width, height);
-            if (bitmap){
-                JNIEnv *JavaEnv = GetJavaEnv();
-                if (JavaEnv && JavaCmdEntryPointClass ) {
-                    jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                                     "setWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
-                    (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, bitmap, (long)pWin->drawable.id);
-                }
-            }
+            android_icon_update(imageData, width, height, (long)pWin->drawable.id);
+//            jobject bitmap = android_icon_convert_bitmap(imageData, width, height);
+//            if (bitmap){
+//                JNIEnv *JavaEnv = GetJavaEnv();
+//                (*jniVM)->GetEnv(jniVM, (void **) &JavaEnv, JNI_VERSION_1_6);
+//                if (JavaEnv && JavaCmdEntryPointClass ) {
+//                    jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+//                                                                     "setWindowIconFromManager", "(Landroid/graphics/Bitmap;J)V");
+//                    (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, bitmap, (long)pWin->drawable.id);
+//                }
+//            }
         }
     }
+}
+
+void android_icon_update(int *data, int width, int height, long window) {
+    if (!data || width <= 0 || height <= 0) {
+        log(ERROR, "Invalid input parameters: data=%p, width=%d, height=%d", data, width, height);
+        return;
+    }
+    JNIEnv *env = GetJavaEnv();
+    if (!env) {
+        log(ERROR, "Failed to get JavaEnv");
+        return;
+    }
+    int dataLength = width * height;
+    jintArray javaData = (*env)->NewIntArray(env, dataLength);
+    if (!javaData) {
+        log(ERROR, "Failed to create jintArray");
+        return;
+    }
+    (*env)->SetIntArrayRegion(env, javaData, 0, dataLength, data);
+    if (!JavaCmdEntryPointClass) {
+        log(ERROR, "Failed to find class com/example/YourJavaClass");
+        return;
+    }
+    jmethodID mid = (*env)->GetStaticMethodID(env, JavaCmdEntryPointClass, "createBitmapFromNative", "([IIIJ)V");
+    if (!mid) {
+        log(ERROR, "Failed to get method ID for createBitmapFromNative");
+        (*env)->DeleteLocalRef(env, javaData);
+        return;
+    }
+    (*env)->CallStaticVoidMethod(env, JavaCmdEntryPointClass, mid, javaData, width, height, window);
+    (*env)->DeleteLocalRef(env, javaData);
 }
 
 
@@ -342,7 +459,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
         if (STRING_EQUAL(NameForAtom(name), WINDOW_TYPE)) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
-                char* type = NameForAtom(atoms[i]);
+//                char* type = NameForAtom(atoms[i]);
 //                log(ERROR, "prop window:%x type:%s", pWin->drawable.id, type);
                 if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
                     prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
@@ -405,13 +522,13 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             STRCPY;
             prop->wm_name = atom_value;
-//            log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
+            //            log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
-            int *icon_data = (int *)propData;
-            int width = *icon_data;
-            int height = *(icon_data+1);
-            int * imageData = ( int*) (icon_data + 2);
-            prop->icon = android_icon_convert_bitmap(imageData, width, height);
+//            int *icon_data = (int *)propData;
+//            int width = *icon_data;
+//            int height = *(icon_data+1);
+//            int * imageData = ( int*) (icon_data + 2);
+//            prop->icon = android_icon_convert_bitmap(imageData, width, height);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_PROTOCOLS)) {
             Atom *atoms = (Atom *)propData;
             for (int i = 0; i < pProper->size; i++) {
@@ -475,7 +592,7 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop,  Window window) 
                 .inbounds = inBound
         };
         if(!attr->widgets) {
-            attr->widgets = malloc(sizeof(Widget) * 50);
+            attr->widgets = malloc(sizeof(Widget) * 10);
         }
 
         if(attr->widgets == NULL){
@@ -562,6 +679,9 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
                                          offsetX, offsetY, width, height, index,
                                          (long) windowPtr, (long) window, (long) taskTo,
                                          aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum);
+        free(aProperty.net_wm_name);
+        free(aProperty.wm_class);
+        free(aProperty.wm_name);
     }
 }
 
@@ -718,7 +838,7 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 
     // adb sets TMPDIR to /data/local/tmp which is pretty useless.
 //    if (!strcmp("/data/local/tmp", getenv("TMPDIR") ?: ""))
-        unsetenv("TMPDIR");
+    unsetenv("TMPDIR");
 
     if (!getenv("TMPDIR")) {
         if (access("/tmp", F_OK) == 0)

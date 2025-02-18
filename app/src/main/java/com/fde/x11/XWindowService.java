@@ -23,11 +23,6 @@ import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
-import com.kwai.koom.base.DefaultInitTask;
-import com.kwai.koom.base.MonitorManager;
-import com.kwai.koom.nativeoom.leakmonitor.LeakMonitor;
-import com.kwai.koom.nativeoom.leakmonitor.LeakMonitorConfig;
-import com.kwai.koom.nativeoom.leakmonitor.LeakRecord;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -169,7 +164,6 @@ public class XWindowService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        initKoom();
         Util.copyAssetsToFiles(this, "xkb", "xkb");
 //        Util.checkX11FdPermission(this);
         EventBus.getDefault().register(this);
@@ -181,31 +175,6 @@ public class XWindowService extends Service {
             wm.startWindowManager(DISPLAY_GLOBAL+"");
         }
         FLog.s(TAG, "onCreate");
-    }
-
-    private void initKoom() {
-        DefaultInitTask.INSTANCE.init(getApplication());
-        LeakMonitorConfig config = new LeakMonitorConfig.Builder()
-                .setLoopInterval(10000) // 设置轮训的间隔，单位：毫秒
-                .setMonitorThreshold(16) // 设置监听的最小内存值，单位：字节
-                .setNativeHeapAllocatedThreshold(0) // 设置native heap分配的内存达到多少阈值开始监控，单位：字节
-                .setSelectedSoList(new String[0]) // 不设置是监控所有， 设置是监听特定的so,  比如监控libcore.so 填写 libcore 不带.so
-                .setIgnoredSoList(new String[0]) // 设置需要忽略监控的so
-                .setEnableLocalSymbolic(false) // 设置使能本地符号化，仅在 debuggable apk 下有用，release 请关闭
-                .setLeakListener(leaks -> {
-                    if (leaks.isEmpty()) {
-                        return;
-                    }
-                    StringBuilder builder = new StringBuilder();
-                    for (LeakRecord leak : leaks) {
-                        builder.append(leak.toString());
-                    }
-                    Log.d(TAG, "initKoom builder:" + builder);
-                    Toast.makeText(this, builder.toString(), Toast.LENGTH_SHORT).show();
-                }) // 设置泄漏监听器
-                .build();
-        MonitorManager.addMonitorConfig(config);
-        LeakMonitor.INSTANCE.start();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)

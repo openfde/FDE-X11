@@ -50,7 +50,7 @@
 #include "protocol-versions.h"
 #include "extinit.h"
 #include <android/log.h>
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "native_compext", __VA_ARGS__);\
                 }              \

@@ -222,6 +222,7 @@ public class Xserver {
         try {
             InputManager inputManager = InputManager.create();
             inputManager.setPointerIcon(icon, xhot, yhot);
+            icon.recycle();
         } catch (Exception e) {
             Log.e(TAG, "updateCursor e:" + e);
         }
@@ -261,6 +262,26 @@ public class Xserver {
         intent.putExtra("window_id", window);
         intent.putExtra("window_icon", newBitmap);
         ctx.sendStickyBroadcast(intent);
+    }
+
+    // Java 方法，用于从 JNI 调用
+    public static void createBitmapFromNative(int[] data, int width, int height, long window) {
+        // 将 int[] 数据转换为 Bitmap
+        Bitmap bitmap = Bitmap.createBitmap(data, width, height, Bitmap.Config.ARGB_8888);
+        Context ctx = context.get();
+        if(ctx == null){
+            Log.d(TAG, "context  == null ");
+            return;
+        }
+        FLog.s(TAG, window, "createBitmapFromNative: bitmap:" + bitmap + ", window:" + window + "");
+        Bitmap newBitmap = Util.scaleBitmapIfneed(bitmap);
+        String targetPackage = context.get().getPackageName();
+        Intent intent = new Intent(ACTION_UPDATE_ICON);
+        intent.setPackage(targetPackage);
+        intent.putExtra("window_id", window);
+        intent.putExtra("window_icon", newBitmap);
+        ctx.sendStickyBroadcast(intent);
+
     }
 
     private void sendBroadcastDelayed() {

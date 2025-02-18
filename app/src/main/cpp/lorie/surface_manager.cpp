@@ -56,7 +56,7 @@ int SurfaceManager::remove_widget(Window window) {
                 }
             }
             if(update){
-                Widget *filtered_widgets = (Widget *)malloc(50 * sizeof(Widget));
+                Widget *filtered_widgets = (Widget *)malloc(10 * sizeof(Widget));
                 if(filtered_widgets == NULL){
                     return FALSE;
                 }
@@ -143,6 +143,9 @@ void SurfaceManager::delete_window(Window window) {
         if(attr->widget_size){
             free(attr->widgets);
         }
+        attr->pWin = nullptr;
+        attr->texture_id = 0;
+        attr->widgets = nullptr;
         window_attrs.erase(window);
     }
 }
