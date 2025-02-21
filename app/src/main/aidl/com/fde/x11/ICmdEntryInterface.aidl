@@ -9,6 +9,11 @@ interface ICmdEntryInterface {
     int getConnectedFD();
 
     void closeWindow(int index, long p, long window);
+
+    void unmapWindow(int index, long p, long window);
+
+    void mapWindow(int index, long p, long window);
+
 //    ParcelFileDescriptor getLogcatOutput();
 
     void configureWindow(long winPtr, long window, int x, int y, int w, int h);

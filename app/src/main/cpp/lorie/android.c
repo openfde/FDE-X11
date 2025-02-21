@@ -43,7 +43,18 @@ Bool GL_CHECK_ERROR = FALSE;
 #define ANDROID_LOG_ENABLE 1
 #define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_android", __VA_ARGS__);}
+//HARD CODE NOW
 #define OBLIQUE_CROSS_WIDTH 7
+#define CURSOR_MOVE_XHOT_R 20
+#define CURSOR_MOVE_YHOT_R 13
+#define CURSOR_MOVE_XHOT_B 11
+#define CURSOR_MOVE_YHOT_B 20
+#define CURSOR_MOVE_XHOT_T 12
+#define CURSOR_MOVE_YHOT_T 3
+#define CURSOR_MOVE_XHOT_L 2
+#define CURSOR_MOVE_YHOT_L 11
+#define CURSOR_MOVE_WIDTH_WPS 11
+
 static int argc = 0;
 static char **argv = NULL;
 int conn_fd = -1;
@@ -129,7 +140,7 @@ void android_update_texture_1(Window window) {
 //            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
         }
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window, texture_id);
+                                pixmap->drawable.height, pixmap->devPrivate.ptr, 1, window, texture_id);
     }
 }
 
@@ -180,7 +191,6 @@ void android_unmap_window(Window window){
         glDeleteTextures(1, &attr->texture_id);
         renderer_release_window(GetJavaEnv(),window);
         _surface_delete_window(sfWraper, window);
-//        log(DEBUG,"android_unmap_window textureId:%d", attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget:%0x", window);
         Widget *widget = _surface_find_widget(sfWraper, window);
@@ -687,7 +697,7 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
 
 void android_configure_window(WindowPtr pWin, short x, short y, short w, short h){
     _surface_log_traversal_window(sfWraper);
-    WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
+//    WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
     log(DEBUG, "android_configure_window rediret:%d pWin:%x x:%d y:%d w:%d h:%d", pWin->overrideRedirect, pWin->drawable.id, x, y, w, h)
     if(!pWin->overrideRedirect){
         return;
@@ -703,7 +713,7 @@ void android_configure_window(WindowPtr pWin, short x, short y, short w, short h
 
 
 void android_destroy_activity(int index, WindowPtr pWin, Window window, int action, Bool wm_delete) {
-    log(DEBUG, "android_destroy_activity index%d pWin:%p window:%x clientNum:%d", index, pWin, window, clientNum);
+    log(DEBUG, "android_destroy_activity index%d action:%d window:%x clientNum:%d", index, action, window, clientNum);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
@@ -727,6 +737,18 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
 void android_update_cursor(int w, int h, int xhot, int yhot, void *data){
     if(xhot == OBLIQUE_CROSS_WIDTH && yhot == OBLIQUE_CROSS_WIDTH){
         log(DEBUG, "no need update yhot cursor(oblique cross)")
+        return;
+    }
+    if(xhot == CURSOR_MOVE_WIDTH_WPS && yhot == CURSOR_MOVE_WIDTH_WPS){
+        log(DEBUG, "no need update yhot cursor(move shape WPS)")
+        return;
+    }
+    if( (xhot == CURSOR_MOVE_XHOT_R && yhot == CURSOR_MOVE_YHOT_R)
+    || (xhot == CURSOR_MOVE_XHOT_L && yhot == CURSOR_MOVE_YHOT_L)
+    || (xhot == CURSOR_MOVE_XHOT_T && yhot == CURSOR_MOVE_YHOT_T)
+    || (xhot == CURSOR_MOVE_XHOT_B && yhot == CURSOR_MOVE_YHOT_B)
+    ){
+        log(DEBUG, "no need update  cursor(move shape)")
         return;
     }
     JNIEnv *JavaEnv = GetJavaEnv();

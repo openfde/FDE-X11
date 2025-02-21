@@ -235,6 +235,12 @@ string ToString(const XEvent& e) {
             properties.emplace_back(
                     "keycode", ToString(e.xkey.keycode));
             break;
+        case ClientMessage:
+            properties.emplace_back(
+                    "window", ToHexString(e.xclient.window));
+            properties.emplace_back(
+                    "messagetype", ToString(e.xclient.message_type));
+            break;
         default:
             // No properties are printed for unused events.
             break;

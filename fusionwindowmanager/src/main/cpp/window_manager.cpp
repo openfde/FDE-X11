@@ -590,6 +590,9 @@ void WindowManager::Run() {
                     OnSelectionRequest(e);
                 }
                 break;
+            case ClientMessage:
+                HandleClientMessage(e);
+                break;
             default:
                 break;
 //                log("Ignored event");
@@ -597,6 +600,77 @@ void WindowManager::Run() {
     }
 }
 
+void WindowManager::HandleClientMessage(XEvent e) {
+    log("HandleClientMessage ---------------------------------type:%s", XGetAtomName(display_, e.xclient.message_type));
+    int wm_action = WINDOW_ACTION_UNDEFINED;
+    if (e.xclient.message_type == XInternAtom(display_, "WM_CHANGE_STATE", False)) {
+        long target_state = e.xclient.data.l[0];
+        if (target_state == NormalState) {
+            wm_action = WINDOW_ACTION_MINIMIZE_REMOVE;
+            log("HandleClientMessage WM_CHANGE_STATE: Restore window to normal state.\n");
+        } else if (target_state == IconicState) {
+            wm_action = WINDOW_ACTION_MINIMIZE;
+            log("HandleClientMessage WM_CHANGE_STATE: Minimize (iconify) window.\n");
+        } else {
+            log("HandleClientMessage WM_CHANGE_STATE with unknown state: %ld\n", target_state);
+        }
+    } else if (e.xclient.message_type == XInternAtom(display_, "WM_PROTOCOLS", False)) {
+        Atom wm_delete_window = XInternAtom(display_, "WM_DELETE_WINDOW", False);
+        wm_action = WINDOW_ACTION_DELETE;
+        if (e.xclient.data.l[0] == wm_delete_window) {
+            log("HandleClientMessage WM_PROTOCOLS: Window close request.\n");
+        } else {
+            log("HandleClientMessage WM_PROTOCOLS with unknown protocol.\n");
+        }
+    } else if (e.xclient.message_type == XInternAtom(display_, "_NET_WM_STATE", False)) {
+        long action = e.xclient.data.l[0];
+        long state1 = e.xclient.data.l[1];
+        long state2 = e.xclient.data.l[2];
+        if (action == _NET_WM_STATE_ADD) {
+            if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False) ||
+                state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False)) {
+                log("HandleClientMessage Maximize Vertically requested.\n");
+                wm_action |= WINDOW_ACTION_MAXIMIZED_VERT;
+            }
+            if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False) ||
+                state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False)) {
+                log("HandleClientMessage Maximize Horizontally requested.\n");
+                wm_action |= WINDOW_ACTION_MAXIMIZED_HORZ;
+            }
+            if(wm_action == WINDOW_ACTION_MAXIMIZED_HORZ + WINDOW_ACTION_MAXIMIZED_VERT){
+                wm_action = WINDOW_ACTION_MAXIMIZED;
+            }
+            if (state1 == XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False) ||
+                state2 == XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False)) {
+                log("HandleClientMessage Minimize requested.\n");
+            }
+        } else if (action == _NET_WM_STATE_REMOVE) {
+            if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False) ||
+                state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False)) {
+                log("HandleClientMessage Maximize Vertically removed.\n");
+                wm_action |= WINDOW_ACTION_MAXIMIZED_VERT;
+            }
+            if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False) ||
+                state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False)) {
+                log("HandleClientMessage Maximize Horizontally removed.\n");
+                wm_action |= WINDOW_ACTION_MAXIMIZED_HORZ;
+            }
+            if(wm_action == WINDOW_ACTION_MAXIMIZED_HORZ + WINDOW_ACTION_MAXIMIZED_VERT){
+                wm_action = WINDOW_ACTION_MAXIMIZED_REMOVE;
+            }
+            log("HandleClientMessage Remove state1:%s state2:%s", XGetAtomName(display_, state1),  XGetAtomName(display_, state2));
+        } else if (action == _NET_WM_STATE_TOGGLE) {
+            log("HandleClientMessage Toggle state1:%s state2:%s", XGetAtomName(display_, state1),  XGetAtomName(display_, state2));
+        }
+    } else if(e.xclient.message_type == XInternAtom(display_, "_NET_ACTIVE_WINDOW", False)){
+//        Window active_window = e.xclient.data.l[0];
+//        log("HandleClientMessage w1:%lx w2:%s w3:%lx", e.xclient.data.l[0], XGetAtomName(display_, e.xclient.data.l[1] ), e.xclient.data.l[2]);
+    }
+    log("HandleClientMessage final wm_action:%d window:%lx", wm_action, e.xclient.window);
+    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                                                    "updateWmStateClient", "(IJ)V");
+    GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, e.xclient.window);
+}
 
 void WindowManager::OnSelectionRequest(XEvent e) {
     XSelectionRequestEvent *sev = (XSelectionRequestEvent*)&e.xselectionrequest;
@@ -816,27 +890,52 @@ int WindowManager::resizeWindow(long window, int w, int h) {
     return ret;
 }
 
+int WindowManager::unmapWindow(long window){
+    int ret = False;
+    ret = XUnmapWindow(display_, window);
+    XSync(display_, False);
+    return ret;
+}
+
+int WindowManager::mapWindow(long window){
+    int ret = False;
+    ret = XMapWindow(display_, window);
+    XSync(display_, False);
+    return ret;
+}
+
 int WindowManager::closeWindow(long window) {
-    Atom* supported;
-    int num_supported;
-    XGetWMProtocols(display_, window, &supported, &num_supported);
-    log("closeWindow window:%x supported:%d num_supported:%d", window, supported, num_supported);
-    int ret;
-    if(supported) {
-        log("closeWindow supported1");
+    Atom* supported = nullptr;
+    int num_supported = 0;
+    if (!XGetWMProtocols(display_, window, &supported, &num_supported)) {
+        log("closeWindow failed to get protocols for window:%x", window);
+        return -1; // 返回错误
+    }
+
+    log("closeWindow window:%x num_supported:%d", window, num_supported);
+    for (int i = 0; i < num_supported; ++i) {
+        log("  Supported protocol: %s", XGetAtomName(display_, supported[i]));
+    }
+
+    int ret = -1;
+    if (num_supported > 0 && supported[0] == XInternAtom(display_, "WM_DELETE_WINDOW", False)) {
+        log("closeWindow supported WM_DELETE_WINDOW");
         XEvent msg;
         memset(&msg, 0, sizeof(msg));
         msg.xclient.type = ClientMessage;
-        msg.xclient.message_type = WM_PROTOCOLS;
+        msg.xclient.message_type = XInternAtom(display_, "WM_PROTOCOLS", False);
         msg.xclient.window = window;
         msg.xclient.format = 32;
-        msg.xclient.data.l[0] = WM_DELETE_WINDOW;
+        msg.xclient.data.l[0] = XInternAtom(display_, "WM_DELETE_WINDOW", False);
+        msg.xclient.data.l[1] = CurrentTime;
         ret = XSendEvent(display_, window, false, 0, &msg);
     } else {
-        log("closeWindow not supported");
+        log("closeWindow not supported, killing client");
         ret = XKillClient(display_, window);
     }
+
     XSync(display_, False);
+    XFree(supported); // 释放支持的协议列表
     return ret;
 }
 
@@ -886,6 +985,7 @@ void WindowManager::UpdateXserverCliptext(const char *text) {
         GlobalEnv->CallStaticVoidMethod(staticClass, method, utf);
     }
 }
+
 
 
 

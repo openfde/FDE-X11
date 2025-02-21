@@ -1288,7 +1288,7 @@ maybe_unused int renderer_release_window(JNIEnv *env, Window window){
 //        (*env)->CallVoidMethod(env, widget->sfc, Surface_release);
 //        return TRUE;
 //    } else {
-        return FALSE;
+    return FALSE;
 //    }
 }
 

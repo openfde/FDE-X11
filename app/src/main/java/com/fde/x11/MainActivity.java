@@ -4,6 +4,10 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_KEY_WINDOWID;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_ACTION;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MINIMIZE_ACTION;
 import static com.fde.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
 import static com.fde.x11.XWindowService.ACTION_X_WINDOW_PROPERTY;
 import static com.fde.x11.XWindowService.CONFIGURE_ACTIVITY_FROM_X;
@@ -78,6 +82,7 @@ import androidx.annotation.NonNull;
 import androidx.core.math.MathUtils;
 import androidx.viewpager.widget.ViewPager;
 
+import com.android.internal.policy.DecorView;
 import com.android.internal.widget.DecorCaptionView;
 import com.easy.view.dialog.EasyDialog;
 import com.fde.fusionwindowmanager.Property;
@@ -93,6 +98,7 @@ import com.fde.x11.utils.AppUtils;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.SamsungDexUtils;
 import com.fde.x11.utils.TermuxX11ExtraKeys;
+import com.fde.x11.utils.ThreadPoolManager;
 import com.fde.x11.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
@@ -138,8 +144,9 @@ import java.util.regex.Pattern;
 public class MainActivity extends Activity implements View.OnApplyWindowInsetsListener {
     static final String ACTION_STOP = "com.fde.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
-    public static Handler handler = new Handler();
+    public  Handler handler = new Handler();
     FrameLayout frm;
+    int mTaskID = -1;
     public DetectEventEditText detectEventEditText;
     private TouchInputHandler mInputHandler;
     public ICmdEntryInterface service;
@@ -181,14 +188,14 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
     private boolean killSelf;
     private Rect mConfigureRect;
-//    @SuppressLint("StaticFieldLeak")
+    //    @SuppressLint("StaticFieldLeak")
 //    private static MainActivity instance;
 //    public MainActivity() {
 //        instance = this;
 //    }
     private final BroadcastReceiver receiver = new XserverActionReceiver();
 
-//    public static MainActivity getInstance() {
+    //    public static MainActivity getInstance() {
 //        return instance;
 //    }
     protected int getLayoutID(){
@@ -360,6 +367,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(CONFIGURE_WIDGET_FROM_X);
             addAction(START_VIEW_FROM_X);
             addAction(STOP_VIEW_FROM_X);
+            addAction(WINDOW_ACTION_MAXIMIZED_ACTION);
+            addAction(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION);
+            addAction(WINDOW_ACTION_MINIMIZE_ACTION);
         }},  0);
         EventBus.getDefault().register(this);
         Xserver.requestConnection();
@@ -397,14 +407,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onResume() {
         super.onResume();
-//        getWindow().getDecorView().postDelayed(()->{
-//            if(!correctMarked){
-//                correctMarked = true;
-//                checkConfigBeforeExec(mConfiguration, true);
-//            }
-//        },1000);
-//        getLorieView().requestFocus();
         FLog.a("lifecycle", getWindowId(), "onResume");
+//        mapXWindow();
         detectViewRequestFocus();
     }
 
@@ -425,55 +429,43 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged hasFocus:" + hasFocus);
-        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
-        Window window = getWindow();
-        View decorView = window.getDecorView();
-        boolean fullscreen = p.getBoolean("fullscreen", false);
-        boolean reseed = p.getBoolean("Reseed", true);
-        fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
-        int requestedOrientation = p.getBoolean("forceLandscape", false) ?
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
-        if (getRequestedOrientation() != requestedOrientation){
-            setRequestedOrientation(requestedOrientation);
-        }
         Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
         if (hasFocus) {
-            boolean hasFocused = true;
-            if (SDK_INT >= VERSION_CODES.P) {
-                if (p.getBoolean("hideCutout", false))
-                    getWindow().getAttributes().layoutInDisplayCutoutMode = (SDK_INT >= VERSION_CODES.R) ?
-                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS :
-                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-                else
-                    getWindow().getAttributes().layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
-            }
-
-            window.setStatusBarColor(Color.BLACK);
-            window.setNavigationBarColor(Color.BLACK);
             setDecorCaptionViewFocuseable(true);
-        }
-        window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
-        if (hasFocus) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                     FLAG_NOT_TOUCHABLE);
             showFloatView();
+            getLorieView().regenerate();
+            execInWindowManager();
+            getLorieView().requestFocus();
+            detectViewRequestFocus();
+            ThreadPoolManager.getInstance().execute(this::getClipText);
+            configureWindowDelayWithOffsetY(1, 50);
+            configureWindowDelayWithOffsetY(0, 500);
         } else {
             if(mInputHandler != null && !mFloatViews.isEmpty()){
                 mInputHandler.mouseClick();
             }
         }
-        if (p.getBoolean("keepScreenOn", true))
-            window.addFlags(FLAG_KEEP_SCREEN_ON);
-        else
-            window.clearFlags(FLAG_KEEP_SCREEN_ON);
-        SamsungDexUtils.dexMetaKeyCapture(this, hasFocus && p.getBoolean("dexMetaKeyCapture", false));
-        if (hasFocus && mIndex != 0){
-            getLorieView().regenerate();
-            execInWindowManager();
-        }
-        getLorieView().requestFocus();
-        detectViewRequestFocus();
-        getClipText();
+    }
+
+    private boolean isWindowMaximized() {
+        DecorView decorView = (DecorView)getWindow().getDecorView();
+        return decorView.isWindowMaximized();
+    }
+
+    private void configureWindowDelayWithOffsetY(int y, long delay){
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if(mXserviceWrapper == null){
+                    return;
+                }
+                mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                        mWindowRect.right - mWindowRect.left + y, mWindowRect.bottom - mWindowRect.top);
+            }
+        }, delay);
     }
 
     @Override
@@ -492,6 +484,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     protected void onStop() {
         super.onStop();
         FLog.a("lifecycle", getWindowId(), "onStop");
+//        unmapXWindow();
     }
 
     @Override
@@ -503,6 +496,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        closeXWindow();
         unregisterReceiver(receiver);
         unbindService(connection);
         stopFloatViews();
@@ -546,8 +540,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      * window manager methods
      */
     private void getClipText() {
-        FLog.a("window", getWindowId(), "getClipText");
-
+        FLog.a("window", getWindowId(), "getClipText ");
         if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()) {
             ClipData clipData = mClipboardManager.getPrimaryClip();
             if (clipData != null && clipData.getItemCount() > 0
@@ -566,14 +559,15 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 }
             }
         }
+        FLog.a("window", getWindowId(), "getClipText end");
     }
 
     protected void execInWindowManager()  {
         FLog.a("window", getWindowId(), "execInWindowManager");
         List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
         for (ActivityManager.RunningTaskInfo info: runningTasks){
-            if(TextUtils.equals(info.topActivity.getClassName(), getClass().getName())
-                    && mXserviceWrapper != null){
+            if(TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
+                mTaskID = info.id;
                 Configuration configuration = info.configuration;
                 checkConfigBeforeExec(configuration, false);
                 return;
@@ -634,7 +628,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
                         mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
-            },100);
+            },200);
         }
     }
 
@@ -667,6 +661,26 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
                  InvocationTargetException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+
+    private void unmapXWindow() {
+        FLog.a("window", getWindowId(), "unmapXWindow");
+        if(mXserviceWrapper != null){
+            WindowAttribute a = mAttribute;
+            mXserviceWrapper.windowChanged(null, a.getOffsetX(),
+                    a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
+                    a.getWindowPtr(), a.getXID());
+            mXserviceWrapper.unmapWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
+        }
+    }
+
+    private void mapXWindow() {
+        FLog.a("window", getWindowId(), "unmapXWindow");
+        if(mXserviceWrapper != null){
+            WindowAttribute a = mAttribute;
+            mXserviceWrapper.mapWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
         }
     }
 
@@ -736,9 +750,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             @SuppressLint("WrongConstant")
             ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
             taskManager.resizeTask(getTaskId(), rect);
+            mXserviceWrapper.raiseWindow(mAttribute.getXID());
             mConfigureRect = null;
         }
-//        mXserviceWrapper.raiseWindow(mAttribute.getXID());
     }
 
     /**
@@ -981,10 +995,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if (fd != null) {
                 FLog.a("event", getWindowId(), "tryConnect ok fd:" + fd);
                 LorieView.connect(fd.detachFd());
-//                getLorieView().triggerCallback();
-//                clientConnectedStateChanged(true);
-//                LorieView.setClipboardSyncEnabled(true);
-//                LorieView.setClipboardSyncEnabled(PreferenceManager.getDefaultSharedPreferences(this).getBoolean("clipboardSync", true));
             }
         } catch (Exception e) {
             Log.e(TAG, "Something went wrong while we were establishing connection", e);
@@ -1177,8 +1187,51 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 FLog.a("event", getWindowId(), "onReceive: "  +
                         "STOP_VIEW_FROM_X"  + " attr:" + attr + " prop:" + prop);
                 stopFloatView(attr);
+            } else if(WINDOW_ACTION_MAXIMIZED_ACTION.equals(intent.getAction())
+                    || WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(intent.getAction())){
+                long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
+                FLog.a("event", getWindowId(), "onReceive: "  +
+                        "WINDOW_ACTION_MAXIMIZED change"  + " windowID:" + windowID );
+                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                    updateWmStateInner(intent.getAction());
+                }
+            } else if(WINDOW_ACTION_MINIMIZE_ACTION.equals(intent.getAction())){
+                long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
+                FLog.a("event", getWindowId(), "onReceive: "  +
+                        "WINDOW_ACTION_MINIMIZE_ACTION"  + " windowID:" + windowID );
+                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                    moveTaskToBack(true);
+//                    ((ActivityManager)getSystemService(Context.ACTIVITY_SERVICE)).moveTaskToBack(true, mTaskID);
+                }
             }
         }
+    }
+
+    private void updateWmStateInner(String action) {
+        if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && !isWindowMaximized()){
+            return;
+        }
+
+        if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(action) && isWindowMaximized()) {
+            return;
+        }
+        DecorCaptionView captionView = getCaptionView();
+        if(captionView == null){
+            return;
+        }
+        captionView.exitFullScreenWindow();
+        captionView.toggleFreeformWindowingMode();
+    }
+
+    private DecorCaptionView getCaptionView() {
+        DecorView decorView = (DecorView) getWindow().getDecorView();
+        if(decorView.getChildCount() > 0){
+            View childAt = decorView.getChildAt(0);
+            if(childAt instanceof DecorCaptionView){
+                return (DecorCaptionView)childAt;
+            }
+        }
+        return null;
     }
 
     public class Connection implements ServiceConnection {
@@ -1261,9 +1314,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             // We should recover connection in the case if file descriptor for some reason was broken...
             if (!connected)
                 tryConnect();
-            if (connected && mIndex != 0){
-//                getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
-            }
         });
     }
 }

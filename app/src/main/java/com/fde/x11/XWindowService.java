@@ -1,5 +1,8 @@
 package com.fde.x11;
 
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MINIMIZE;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MINIMIZE_ACTION;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
@@ -112,6 +115,20 @@ public class XWindowService extends Service {
         }
 
         @Override
+        public void unmapWindow(int index, long p, long window) throws RemoteException {
+            if(wm != null && wm.unmapWindow(window) > 0){
+//                Log.d(TAG, "unmapWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
+            }
+        }
+
+        @Override
+        public void mapWindow(int index, long p, long window) throws RemoteException {
+            if(wm != null && wm.mapWindow(window) > 0){
+//                Log.d(TAG, "unmapWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
+            }
+        }
+
+        @Override
         public void configureWindow(long winPtr, long window, int x, int y, int w, int h) throws RemoteException {
             if(wm != null && wm.configureWindow(window, x, y, w, h) > 0){
                 FLog.s(TAG, "configureWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + "");
@@ -200,6 +217,10 @@ public class XWindowService extends Service {
                 }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
+//            case X_UNMAP_WINDOW:
+//                WindowManager.updateWmStateClient(WINDOW_ACTION_MINIMIZE,
+//                        message.getWindowAttribute().getXID());
+//                break;
             case X_CONFIGURE_WINDOW:
                 sendBroadcastConfigureWindow(message.getWindowAttribute());
                 break;

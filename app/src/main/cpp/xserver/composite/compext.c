@@ -287,14 +287,20 @@ ProcCompositeNameWindowPixmap(ClientPtr client)
     int offsetY = pWin->drawable.y;
     Window nameWindow = pWin->drawable.id;
     Window parentWindow = pWin->parent->drawable.id;
+    int windGravity = pWin->winGravity;
+    int bitGravity = pWin->bitGravity;
     log("NameWindow nameWindow:%lx, "
         "parentWindow:%lx, "
+        "gravity:%d, "
+        "bitgravity:%d"
 //        "nextWindow:%lx, "
 //        "prevWindow:%lx, "
 //        "firetchild:%lx, "
 //        "lastchild:%lx ",
     ,nameWindow
     ,parentWindow
+    ,windGravity
+    ,bitGravity
 //        ,nextWindow
 //        ,prevWindow
 //        ,firetchild

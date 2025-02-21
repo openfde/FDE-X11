@@ -102,6 +102,22 @@ JNIEXPORT jint JNICALL closeWindow(JNIEnv * env, jobject obj, jlong xid){
     return window_manager->closeWindow(xid);
 }
 
+JNIEXPORT jint JNICALL unmapWindow(JNIEnv * env, jobject obj, jlong xid){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    return window_manager->unmapWindow(xid);
+}
+
+JNIEXPORT jint JNICALL mapWindow(JNIEnv * env, jobject obj, jlong xid){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    return window_manager->mapWindow(xid);
+}
+
 JNIEXPORT jint JNICALL raiseWindow(JNIEnv * env, jobject obj, jlong ptr){
     if(!window_manager){
         log("Failed to initialize window manager.");
@@ -146,6 +162,8 @@ static JNINativeMethod method_table[] = {
         {"configureWindow","(JIIII)I", (void *) configureWindow},
         {"resizeWindow","(JII)I", (void *) resizeWindow},
         {"closeWindow","(J)I", (void *) closeWindow},
+        {"unmapWindow","(J)I", (void *) unmapWindow},
+        {"mapWindow","(J)I", (void *) mapWindow},
         {"raiseWindow","(J)I", (void *) raiseWindow},
         {"circulaSubWindows","(JZ)I", (void *) circulaSubWindows},
         {"sendClipText","(Ljava/lang/String;)I", (void *) sendClipText},

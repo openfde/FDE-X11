@@ -45,6 +45,24 @@ static jclass staticClass = NULL;
 #define CHECK(condition)  if(condition){   log("#condition fatal");}
 #define CHECK_EQ(val1, val2)  if(val1 != val2){  log("not equal"); }
 #define CLIPMANAGER_ENABLE 1
+#define _NET_WM_STATE_REMOVE 0
+#define _NET_WM_STATE_ADD 1
+#define _NET_WM_STATE_TOGGLE 2
+
+#define _NET_WM_STATE_FULLSCREEN 1
+#define _NET_WM_STATE_ABOVE 3
+#define _NET_WM_STATE_BELOW 4
+#define _NET_WM_STATE_DEMANDS_ATTENTION 5
+
+#define WINDOW_ACTION_UNDEFINED 0
+#define WINDOW_ACTION_MAXIMIZED 1000
+#define WINDOW_ACTION_MAXIMIZED_REMOVE 1001
+#define WINDOW_ACTION_MINIMIZE 1003
+#define WINDOW_ACTION_MINIMIZE_REMOVE 1004
+#define WINDOW_ACTION_MAXIMIZED_HORZ 1
+#define WINDOW_ACTION_MAXIMIZED_VERT 2
+#define WINDOW_ACTION_DELETE 1007
+
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -57,6 +75,9 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
+
+
+
 class WindowManager  {
 public:
     static ::WindowManager *create( char *string, JNIEnv *env, jclass cls);
@@ -67,6 +88,8 @@ public:
     int moveWindow(long window, int x, int y);
     int resizeWindow(long window, int x, int y);
     int closeWindow(long window);
+    int unmapWindow(long window);
+    int mapWindow(long window);
     int raiseWindow(long window);
     bool isNormalWindow(long window);
     bool isInFrameMap(long window);
@@ -156,6 +179,8 @@ private:
     void ConvertAllTarget();
 
     void UpdateXserverCliptext(const char *data);
+
+    void HandleClientMessage(XEvent event);
 };
 
 

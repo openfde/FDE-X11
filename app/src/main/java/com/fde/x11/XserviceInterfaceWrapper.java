@@ -86,6 +86,22 @@ public class XserviceInterfaceWrapper implements InputStub {
         }
     }
 
+    public void unmapWindow(int index, long p, long window){
+        try {
+            if(isAviable()){service.unmapWindow(index, p, window);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "closeWindow failed" + e.getMessage());
+        }
+    }
+
+    public void mapWindow(int index, long p, long window){
+        try {
+            if(isAviable()){service.mapWindow(index, p, window);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "closeWindow failed" + e.getMessage());
+        }
+    }
+
     //    ParcelFileDescriptor getLogcatOutput();
     public void configureWindow(long p, long window,
                                 int x, int y, int w, int h) {

@@ -57,6 +57,24 @@ public class WindowManager  {
     public static Set<Long> WINDOW_XIDS = new HashSet<>();
     private String display;
 
+    public static final int WINDOW_ACTION_UNDEFINED = 0;
+    public static final int WINDOW_ACTION_MAXIMIZED = 1000;
+    public static final String WINDOW_ACTION_MAXIMIZED_ACTION =
+            "com.fdex.x11.Xserver.action.maximized";
+    public static final int WINDOW_ACTION_MAXIMIZED_REMOVE = 1001;
+    public static final String WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION =
+            "com.fdex.x11.Xserver.action.maximized_remove";
+    public static final int WINDOW_ACTION_MINIMIZE = 1003;
+    public static final String WINDOW_ACTION_MINIMIZE_ACTION =
+            "com.fdex.x11.Xserver.action.minize";
+    public static final int WINDOW_ACTION_MINIMIZE_REMOVE = 1004;
+    public static final String WINDOW_ACTION_MINIMIZE_REMOVE_ACTION =
+            "com.fdex.x11.Xserver.action.minize_remove";
+    public static final int WINDOW_ACTION_MAXIMIZED_HORZ = 1;
+    public static final int WINDOW_ACTION_MAXIMIZED_VERT = 2;
+    public static final int WINDOW_ACTION_DELETE = 1007;
+    public static final String WINDOW_ACTION_KEY_WINDOWID = "window_id";
+
     public WindowManager() {
         mThread = new HandlerThread("WM");
         mThread.start();
@@ -68,35 +86,7 @@ public class WindowManager  {
         mThread = new HandlerThread("WM");
         mThread.start();
         mHandler = new TaskHandler(mThread.getLooper());
-//        Context context = contextReference.get();
-//        initKoom(context);
     }
-
-//    private void initKoom(Context context) {
-//        DefaultInitTask.INSTANCE.init(((Service)context).getApplication());
-//        LeakMonitorConfig config = new LeakMonitorConfig.Builder()
-//                .setLoopInterval(10000) // 设置轮训的间隔，单位：毫秒
-//                .setMonitorThreshold(16) // 设置监听的最小内存值，单位：字节
-//                .setNativeHeapAllocatedThreshold(0) // 设置native heap分配的内存达到多少阈值开始监控，单位：字节
-////                .setSelectedSoList(new String[]{}) // 不设置是监控所有， 设置是监听特定的so,  比如监控libcore.so 填写 libcore 不带.so
-////                .setIgnoredSoList(new String[0]) // 设置需要忽略监控的so
-//                .setEnableLocalSymbolic(false) // 设置使能本地符号化，仅在 debuggable apk 下有用，release 请关闭
-//                .setLeakListener(leaks -> {
-//                    if (leaks.isEmpty()) {
-//                        return;
-//                    }
-//                    StringBuilder builder = new StringBuilder();
-//                    for (LeakRecord leak : leaks) {
-//                        builder.append(leak.toString());
-//                    }
-//                    Log.d(TAG, "initKoom builder:" + builder);
-//                    Toast.makeText(context, builder.toString(), Toast.LENGTH_SHORT).show();
-//                }) // 设置泄漏监听器
-//                .build();
-//        MonitorManager.addMonitorConfig(config);
-//        LeakMonitor.INSTANCE.start();
-//    }
-
 
     public void startWindowManager(String displayGlobalParam) {
         this.display = displayGlobalParam;
@@ -128,6 +118,8 @@ public class WindowManager  {
     public native int resizeWindow(long window, int width, int height);
 
     public native int closeWindow(long window);
+    public native int unmapWindow(long window);
+    public native int mapWindow(long window);
     public native int raiseWindow(long window);
 
     public native int circulaSubWindows(long window, boolean lowest);
@@ -140,6 +132,40 @@ public class WindowManager  {
         Log.d(TAG, "syncConfigureRequest: x:" + x + ", y:" + y + ", width:" + width + ", height:" + height + ", window:" + window + "");
         EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
         EventBus.getDefault().post(message);
+    }
+
+    //called from native code
+    public static void updateWmStateClient(int action, long window){
+        Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
+        Context context = contextReference.get();
+        if(context == null){
+            return;
+        }
+        switch (action){
+            case WINDOW_ACTION_MAXIMIZED:
+                sendBroadcastWmState(WINDOW_ACTION_MAXIMIZED_ACTION, window, context);
+                break;
+            case WINDOW_ACTION_MAXIMIZED_REMOVE:
+                sendBroadcastWmState(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION, window, context);
+                break;
+            case WINDOW_ACTION_MINIMIZE:
+                sendBroadcastWmState(WINDOW_ACTION_MINIMIZE_ACTION, window, context);
+                break;
+            case WINDOW_ACTION_MINIMIZE_REMOVE:
+                break;
+            case WINDOW_ACTION_DELETE:
+                break;
+            default:
+                break;
+        }
+    }
+
+    public static void sendBroadcastWmState(String action, long window, Context context) {
+        String targetPackage = context.getPackageName();
+        Intent intent = new Intent(action);
+        intent.setPackage(targetPackage);
+        intent.putExtra(WINDOW_ACTION_KEY_WINDOWID, window);
+        context.sendBroadcast(intent);
     }
 
     //called from native code
