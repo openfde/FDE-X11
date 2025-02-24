@@ -93,6 +93,7 @@ import com.fde.x11.utils.AppUtils;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.SamsungDexUtils;
 import com.fde.x11.utils.TermuxX11ExtraKeys;
+import com.fde.x11.utils.ThreadPoolManager;
 import com.fde.x11.utils.Util;
 
 import org.greenrobot.eventbus.EventBus;
@@ -425,34 +426,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged hasFocus:" + hasFocus);
-        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
-        Window window = getWindow();
-        View decorView = window.getDecorView();
-        boolean fullscreen = p.getBoolean("fullscreen", false);
-        boolean reseed = p.getBoolean("Reseed", true);
-        fullscreen = fullscreen || getIntent().getBooleanExtra(REQUEST_LAUNCH_EXTERNAL_DISPLAY, false);
-        int requestedOrientation = p.getBoolean("forceLandscape", false) ?
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE : ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
-        if (getRequestedOrientation() != requestedOrientation){
-            setRequestedOrientation(requestedOrientation);
-        }
         Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
-        if (hasFocus) {
-            boolean hasFocused = true;
-            if (SDK_INT >= VERSION_CODES.P) {
-                if (p.getBoolean("hideCutout", false))
-                    getWindow().getAttributes().layoutInDisplayCutoutMode = (SDK_INT >= VERSION_CODES.R) ?
-                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS :
-                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-                else
-                    getWindow().getAttributes().layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
-            }
-
-            window.setStatusBarColor(Color.BLACK);
-            window.setNavigationBarColor(Color.BLACK);
-            setDecorCaptionViewFocuseable(true);
-        }
-        window.setFlags(FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS | FLAG_KEEP_SCREEN_ON | FLAG_TRANSLUCENT_STATUS, 0);
         if (hasFocus) {
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
                     FLAG_NOT_TOUCHABLE);
@@ -462,18 +436,29 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 mInputHandler.mouseClick();
             }
         }
-        if (p.getBoolean("keepScreenOn", true))
-            window.addFlags(FLAG_KEEP_SCREEN_ON);
-        else
-            window.clearFlags(FLAG_KEEP_SCREEN_ON);
-        SamsungDexUtils.dexMetaKeyCapture(this, hasFocus && p.getBoolean("dexMetaKeyCapture", false));
         if (hasFocus && mIndex != 0){
             getLorieView().regenerate();
             execInWindowManager();
+            getLorieView().requestFocus();
+            detectViewRequestFocus();
+            ThreadPoolManager.getInstance().execute(this::getClipText);
+            configureWindowDelayWithOffsetY(1, 50);
+            configureWindowDelayWithOffsetY(0, 500);
         }
-        getLorieView().requestFocus();
-        detectViewRequestFocus();
-        getClipText();
+    }
+
+    private void configureWindowDelayWithOffsetY(int y, long delay){
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if(mXserviceWrapper == null){
+                    return;
+                }
+                mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                        mWindowRect.right - mWindowRect.left + y, mWindowRect.bottom - mWindowRect.top);
+            }
+        }, delay);
     }
 
     @Override
@@ -503,6 +488,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        closeXWindow();
         unregisterReceiver(receiver);
         unbindService(connection);
         stopFloatViews();
