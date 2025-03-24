@@ -85,7 +85,7 @@ from The Open Group.
 #define wrap(priv, real, mem, func) { priv->mem = real->mem; real->mem = func; }
 #define unwrap(priv, real, mem) { real->mem = priv->mem; }
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
-#define INITOUTPUT_LOG_ENABLE 1
+#define INITOUTPUT_LOG_ENABLE 0
 extern Bool LOG_ENABLE;
 #define PRINT_LOG (INITOUTPUT_LOG_ENABLE && LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "native_InitOutput", __VA_ARGS__);}

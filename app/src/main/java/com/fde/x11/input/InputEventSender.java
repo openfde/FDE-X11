@@ -18,6 +18,7 @@ import android.view.View;
 
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.x11.LorieView;
+import com.fde.x11.utils.FLog;
 
 import java.util.Arrays;
 import java.util.List;
@@ -68,16 +69,24 @@ public final class InputEventSender {
     public void sendMouseEvent(PointF pos, int button, boolean down, boolean relative) {
         if (!buttons.contains(button))
             return;
-//        Log.d(TAG, "sendMouseEvent() called with: pos = [" + pos + "], button = [" + button + "], down = [" + down + "], relative = [" + this + "]");
-        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
-        input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
+        FLog.event(TAG, "sendMouseEvent() called with: pos = [" + pos + "], button = [" + button + "], down = [" + down + "], relative = [" + this + "]");
+        if(button == 3 && down){
+            InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+            input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
                     ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
+            input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, false, relative,
+                    ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
+        } else {
+            InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+            input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
+                    ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
+        }
     }
 
     public void sendMouseDown(int button, boolean relative) {
         if (!buttons.contains(button))
             return;
-        Log.d(TAG, "sendMouseDown() called with: button = [" + button + "], relative = [" + this + "]");
+        FLog.event(TAG, "sendMouseDown() called with: button = [" + button + "], relative = [" + this + "]");
         InputStub input = mEventInterface != null ? mEventInterface: mInjector;
         input.sendMouseEvent(0, 0, button, true, relative,
                 ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
@@ -86,7 +95,7 @@ public final class InputEventSender {
     public void sendMouseUp(int button, boolean relative) {
         if (!buttons.contains(button))
             return;
-//        Log.d(TAG, "sendMouseUp() called with: button = [" + button + "], relative = [" + this + "]");
+        FLog.event(TAG, "sendMouseUp() called with: button = [" + button + "], relative = [" + this + "]");
         InputStub input = mEventInterface != null ? mEventInterface: mInjector;
         input.sendMouseEvent(0, 0, button, false, relative,
                 ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex()  );
@@ -97,7 +106,7 @@ public final class InputEventSender {
             return;
         LorieView lorieView = (LorieView) mInjector;
         InputStub input = mEventInterface != null ? mEventInterface: mInjector;
-//        Log.d(TAG, "sendMouseClick() called with: button = [" + button + "], relative = [" + this + "]");
+        FLog.event(TAG, "sendMouseClick() called with: button = [" + button + "], relative = [" + this + "]");
         input.sendMouseEvent(0, 0, button, true, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
         input.sendMouseEvent(0, 0, button, false, relative,
@@ -113,7 +122,7 @@ public final class InputEventSender {
             x += offsetX;
             y += offsetY;
         }
-//        Log.d(TAG, "sendCursorMove mouse : x = [" + x + "], y = [" + y + "], relative = [" + this + "]");
+        FLog.event(TAG, "sendCursorMove mouse : x = [" + x + "], y = [" + y + "], relative = [" + this + "]");
         InputStub input = mEventInterface != null ? mEventInterface: mInjector;
 //        if( mLastEventTime != 0 && System.currentTimeMillis() - mLastEventTime > 16) {
         input.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
@@ -136,6 +145,7 @@ public final class InputEventSender {
      *              function.
      */
     public void sendTouchEvent(MotionEvent event, RenderData renderData) {
+        FLog.event(TAG, "sendTouchEvent() called with: event = [" + event + "], renderData = [" + renderData + "]");
         int action = event.getActionMasked();
 
         if (action == ACTION_MOVE || action == ACTION_HOVER_MOVE || action == ACTION_HOVER_ENTER || action == ACTION_HOVER_EXIT) {
@@ -181,6 +191,7 @@ public final class InputEventSender {
      * avoids sending a key-up event for a key that was previously injected as a text-event.
      */
     public boolean sendKeyEvent(View v, KeyEvent e) {
+        FLog.event(TAG, "sendKeyEvent() called with: v = [" + v + "], e = [" + e + "]");
         int keyCode = e.getKeyCode();
         boolean pressed = e.getAction() == KeyEvent.ACTION_DOWN;
 
@@ -193,13 +204,13 @@ public final class InputEventSender {
         // acts as if it is connected to the remote host.
         if (e.getAction() == ACTION_MULTIPLE) {
             if (e.getCharacters() != null){
-                Log.d(TAG, "sendKeyEvent1: unicode:" + Arrays.toString(e.getCharacters().getBytes(UTF_8)) + ", e:" + e + "");
+                FLog.event(TAG, "sendKeyEvent1: unicode:" + Arrays.toString(e.getCharacters().getBytes(UTF_8)) + ", e:" + e + "");
                 mInjector.sendTextEvent(e.getCharacters().getBytes(UTF_8));
             }
             else if (e.getUnicodeChar() != 0){
 //                i++;
 //                char c = testartist.charAt(i);
-//                Log.d(TAG, "sendKeyEvent2: unicode:" + c + ", e:" + e + "");
+//                FLog.event(TAG, "sendKeyEvent2: unicode:" + c + ", e:" + e + "");
 //                mInjector.sendTextEvent(String.valueOf((c)).getBytes(UTF_8));
                 mInjector.sendTextEvent(String.valueOf((char)e.getUnicodeChar()).getBytes(UTF_8));
             }
@@ -220,7 +231,7 @@ public final class InputEventSender {
                     mInjector.sendKeyEvent(0, KEYCODE_ALT_RIGHT, false); // For layouts with AltGr
 //                i++;
 //                char c = testartist.charAt(i%(testartist.length()-1));
-//                Log.d(TAG, "sendKeyEvent3: c:" + c + ", e:" + e + "");
+//                FLog.event(TAG, "sendKeyEvent3: c:" + c + ", e:" + e + "");
 //                mInjector.sendTextEvent(String.valueOf(c).getBytes(UTF_8));
                 mInjector.sendTextEvent(String.valueOf(unicode).getBytes(UTF_8));
                 if ((e.getMetaState() & META_ALT_RIGHT_ON) != 0)

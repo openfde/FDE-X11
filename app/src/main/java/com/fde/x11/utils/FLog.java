@@ -136,4 +136,8 @@ public class FLog {
     public static void e(String tag, String string) {
         normal(tag, string, ERROR);
     }
+
+    public static void event(String tag, String s) {
+        normal("==event==" + tag, s, DEBUG);
+    }
 }

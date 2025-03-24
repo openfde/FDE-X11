@@ -140,22 +140,22 @@ void android_update_texture_1(Window window) {
 //            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
         }
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                pixmap->drawable.height, pixmap->devPrivate.ptr, 1, window, texture_id);
+                                pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window, texture_id);
     }
 }
 
 void android_update_widget_texture(Widget *widget) {
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget->pWin);
-    log(ERROR, "android_update_texture_1 pixmap:%x", pixmap->drawable.id)
+//    log(ERROR, "android_update_texture_1 pixmap:%x", pixmap->drawable.id)
     TexturePrivRecPtr ptr = dixLookupPrivate(&widget->pWin->devPrivates, &FDEWindowTexturePrivateKey);
     GLuint texture_id = 0;
     if(ptr){
         texture_id = ptr->texture;
-        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
+//        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
     }
-    log(ERROR, "android_update_widget_texture window:%x pixmap:%x", widget->window, pixmap->drawable.id);
+//    log(ERROR, "android_update_widget_texture window:%x pixmap:%x", widget->window, pixmap->drawable.id);
     renderer_update_widget_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
-                                   pixmap->drawable.height, pixmap->devPrivate.ptr, 0, widget, texture_id);
+                                   pixmap->drawable.height, pixmap->devPrivate.ptr, 1, widget, texture_id);
     _surface_log_traversal_window(sfWraper);
 }
 
@@ -1039,8 +1039,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             }
             case EVENT_MOUSE: {
                 int flags;
-                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f, mask", e.mouse.detail, e.mouse.x,
-                    e.mouse.y, mask);
+                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f, down:%d", e.mouse.detail, e.mouse.x,
+                    e.mouse.y, e.mouse.down);
                 switch (e.mouse.detail) {
                     case 0: // BUTTON_UNDEFINED
                         if (e.mouse.relative) {
@@ -1342,8 +1342,8 @@ Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls
                                           jboolean relative, jint index) {
     if (conn_fd != -1) {
         __android_log_print(ANDROID_LOG_ERROR, "native_android",
-                            "sendMouseEvent: x:%.0f ", x);
-        log(ERROR, "Send Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
+                            "lorieview sendmouseevent: x:%.0f y:%.0f", x, y);
+        log(ERROR, "lorieview sendmouseevent x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
         lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
         write(conn_fd, &e, sizeof(e));
         checkConnection(env);
@@ -1488,7 +1488,7 @@ JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,
                                         jint which_button, jboolean button_down, jboolean relative,
                                         jint index) {
-//    log(ERROR, "binder Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
+    log(ERROR, "binder Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
     lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
     ValuatorMask mask;
     valuator_mask_zero(&mask);

@@ -429,7 +429,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged hasFocus:" + hasFocus);
-        Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
+//        Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
         if (hasFocus) {
             setDecorCaptionViewFocuseable(true);
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
@@ -440,8 +440,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             getLorieView().requestFocus();
             detectViewRequestFocus();
             ThreadPoolManager.getInstance().execute(this::getClipText);
-            configureWindowDelayWithOffsetY(1, 50);
-            configureWindowDelayWithOffsetY(0, 500);
+//            configureWindowDelayWithOffsetY(1, 50);
+//            configureWindowDelayWithOffsetY(0, 500);
         } else {
             if(mInputHandler != null && !mFloatViews.isEmpty()){
                 mInputHandler.mouseClick();
@@ -759,38 +759,40 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      *============================================ about X floatview ==================================================
      */
     private void addFloatView(WindowAttribute attr) {
-        synchronized (mFloatViewSync) {
-            FLog.a("float", getWindowId(), "addFloatView attr:" + attr);
-            View floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view,null,false);
-            WindowManager.LayoutParams floatParams = createLayoutParams();
-            floatWindow = createWindow( (int)attr.getOffsetX(),(int)attr.getOffsetY(),
-                    (int)attr.getWidth(),
-                    (int) attr.getHeight(),
-                    floatView, floatParams);
-            floatWindow.updateViewLayout(floatView,floatParams);
-            LorieView widgetView = floatView.findViewById(R.id.widget_view);
-            widgetView.updateCoordinate(attr);
-            widgetView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) ->{
-                try {
-                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
-                } catch (Exception e) {
-                    Log.e(TAG, "serviceWindowChange Exception:" + e);
-                }
-            });
-            TouchInputHandler inputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
-                @Override
-                public void swipeDown() {
-                    toggleExtraKeys();
-                }
-            }, new InputEventSender(widgetView));
-            floatView.setOnTouchListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
-            floatView.setOnHoverListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
-            floatView.setOnGenericMotionListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
-            widgetView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
-            floatView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
-            widgetView.setOnKeyListener(mLorieKeyListener);
-            mFloatViews.put(attr.getXID(), floatView);
-        }
+//        synchronized (mFloatViewSync) {
+        FLog.a("float", getWindowId(), "addFloatView attr:" + attr);
+        View floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view,null,false);
+        WindowManager.LayoutParams floatParams = createLayoutParams();
+        floatWindow = createWindow( (int)attr.getOffsetX(),(int)attr.getOffsetY(),
+                (int)attr.getWidth(),
+                (int) attr.getHeight(),
+                floatView, floatParams);
+        floatWindow.updateViewLayout(floatView,floatParams);
+        LorieView widgetView = floatView.findViewById(R.id.widget_view);
+        widgetView.updateCoordinate(attr);
+        widgetView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) ->{
+            try {
+                serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+            } catch (Exception e) {
+                Log.e(TAG, "serviceWindowChange Exception:" + e);
+            }
+        });
+        InputEventSender inputEventSender = new InputEventSender(widgetView);
+        inputEventSender.setEventInterface(mXserviceWrapper);
+        TouchInputHandler inputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
+            @Override
+            public void swipeDown() {
+                toggleExtraKeys();
+            }
+        }, inputEventSender);
+        floatView.setOnTouchListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        floatView.setOnHoverListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        floatView.setOnGenericMotionListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        widgetView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
+        floatView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
+        widgetView.setOnKeyListener(mLorieKeyListener);
+        mFloatViews.put(attr.getXID(), floatView);
+//        }
     }
 
     public WindowManager createWindow(int x, int y, int width, int height, View view,
@@ -802,7 +804,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         params.height = height;
         params.x = x;
         params.y = y;
-        params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         params.gravity = Gravity.TOP | Gravity.START;
         windowManager.addView(view,params);
         return windowManager;
@@ -817,59 +818,59 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
         if (Build.VERSION.SDK_INT >= 26) {
-            params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+            params.type = 2024; //WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
         } else {
             params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
         }
+        params.setFitInsetsTypes(0);
         params.format = PixelFormat.RGBA_8888;
         return params;
     }
 
 
     private void stopFloatView(WindowAttribute attr) {
-        synchronized (mFloatViewSync){
-            FLog.a("float", getWindowId(), "stopFloatView attr:" + attr);
-            if(attr == null || mFloatViews.isEmpty()){
-                return;
-            }
-            View floatView = mFloatViews.get(attr.getXID());
-            if(floatWindow != null && floatView != null && floatView.isAttachedToWindow()){
-                floatWindow.removeView(floatView);
-            }
-            mFloatViews.remove(floatView);
+//        synchronized (mFloatViewSync){
+        FLog.a("float", getWindowId(), "stopFloatView attr:" + attr);
+        if(attr == null || mFloatViews.isEmpty()){
+            return;
         }
+        View floatView = mFloatViews.get(attr.getXID());
+        if(floatWindow != null && floatView != null && floatView.isAttachedToWindow()){
+            floatWindow.removeView(floatView);
+        }
+        mFloatViews.remove(attr.getXID());
+//        }
     }
 
     private void updateFloatView(WindowAttribute attr, View floatView) {
-        synchronized (mFloatViewSync){
-            if(floatWindow != null && floatView != null && floatView.isAttachedToWindow()){
-                WindowManager.LayoutParams params = createLayoutParams();
-                params.width = (int) attr.getWidth();
-                params.height = (int) attr.getHeight();
-                params.x = (int) attr.getOffsetX();
-                params.y = (int) attr.getOffsetY();
-                params.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-                params.gravity = Gravity.TOP | Gravity.START;
-                LorieView widgetView = floatView.findViewById(R.id.widget_view);
-                widgetView.updateCoordinate(attr);
-                floatWindow.updateViewLayout(floatView, params);
-            }
+//        synchronized (mFloatViewSync){
+        if(floatWindow != null && floatView != null && floatView.isAttachedToWindow()){
+            WindowManager.LayoutParams params = createLayoutParams();
+            params.width = (int) attr.getWidth();
+            params.height = (int) attr.getHeight();
+            params.x = (int) attr.getOffsetX();
+            params.y = (int) attr.getOffsetY();
+            params.gravity = Gravity.TOP | Gravity.START;
+            LorieView widgetView = floatView.findViewById(R.id.widget_view);
+            widgetView.updateCoordinate(attr);
+            floatWindow.updateViewLayout(floatView, params);
         }
+//        }
     }
 
     private void stopFloatViews() {
-        synchronized (mFloatViewSync){
-            FLog.a("float", getWindowId(), "stopFloatViews");
-            for(Map.Entry set: mFloatViews.entrySet()){
-                View floatView = (View) set.getValue();
-                if(floatView.isAttachedToWindow()){
-                    if(floatWindow != null){
-                        floatWindow.removeView(floatView);
-                    }
-                    mFloatViews.remove(floatView);
+//        synchronized (mFloatViewSync){
+        FLog.a("float", getWindowId(), "stopFloatViews");
+        for(Map.Entry set: mFloatViews.entrySet()){
+            View floatView = (View) set.getValue();
+            if(floatView.isAttachedToWindow()){
+                if(floatWindow != null){
+                    floatWindow.removeView(floatView);
                 }
+                mFloatViews.remove(set.getKey());
             }
         }
+//        }
     }
 
 
