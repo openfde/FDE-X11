@@ -216,7 +216,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         super.onCreate(savedInstanceState);
         initXParams();
 //        Util.setBaseContext(this);
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
+//        requestWindowFeature(Window.FEATURE_NO_TITLE);
         initView();
         initEvent();
     }
@@ -651,17 +651,18 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private boolean isCaptionShowing() {
-        Window window = getWindow();
-        ViewGroup decor = (ViewGroup)window.getDecorView();
-        DecorCaptionView decorCaptionView = (DecorCaptionView)decor.getChildAt(0);
-        try {
-            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-            Method isCaptionShowing = aClass.getMethod("isCaptionShowing");
-            return (boolean) isCaptionShowing.invoke(decorCaptionView);
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-                 InvocationTargetException e) {
-            throw new RuntimeException(e);
-        }
+        return true;
+//        Window window = getWindow();
+//        ViewGroup decor = (ViewGroup)window.getDecorView();
+//        DecorCaptionView decorCaptionView = (DecorCaptionView)decor.getChildAt(0);
+//        try {
+//            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+//            Method isCaptionShowing = aClass.getMethod("isCaptionShowing");
+//            return (boolean) isCaptionShowing.invoke(decorCaptionView);
+//        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+//                 InvocationTargetException e) {
+//            throw new RuntimeException(e);
+//        }
     }
 
 
@@ -697,21 +698,21 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void setDecorCaptionViewFocuseable(boolean focusable) {
         FLog.a("window", getWindowId(), "setDecorCaptionViewFocuseable:" + focusable);
-        Window window = getWindow();
-        ViewGroup decor = (ViewGroup) window.getDecorView();
-        DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
-        boolean isCaptionShowing = true;
-        try {
-            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-            Method method = aClass.getMethod("isCaptionShowing");
-            isCaptionShowing = (boolean) method.invoke(decorCaptionView);
-            if(isCaptionShowing) {
-//                decorCaptionView.setOperateEnabled(focusable);
-            }
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-                 InvocationTargetException e) {
-            FLog.e(TAG, e.getMessage());
-        }
+//        Window window = getWindow();
+//        ViewGroup decor = (ViewGroup) window.getDecorView();
+//        DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
+//        boolean isCaptionShowing = true;
+//        try {
+//            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+//            Method method = aClass.getMethod("isCaptionShowing");
+//            isCaptionShowing = (boolean) method.invoke(decorCaptionView);
+//            if(isCaptionShowing) {
+////                decorCaptionView.setOperateEnabled(focusable);
+//            }
+//        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+//                 InvocationTargetException e) {
+//            FLog.e(TAG, e.getMessage());
+//        }
     }
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) throws RemoteException {
