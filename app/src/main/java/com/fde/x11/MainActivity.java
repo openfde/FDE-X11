@@ -238,8 +238,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(mProperty != null){
             String wmClass = mProperty.getWm_class();
             String netName = mProperty.getNet_name();
-            this.title  = TextUtils.isEmpty(wmClass) ? (TextUtils.isEmpty(netName) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ netName) : APP_TITLE_PREFIX + ": "+ wmClass;
-            if(mProperty.getIcon() != null){
+            this.title  = TextUtils.isEmpty(netName) ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ wmClass) : APP_TITLE_PREFIX + ": "+ netName;
+            if(mProperty.getIcon() != null) {
                 ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
                 MainActivity.this.setTaskDescription(description);
             }
@@ -450,8 +450,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private boolean isWindowMaximized() {
-        DecorView decorView = (DecorView)getWindow().getDecorView();
-        return decorView.isWindowMaximized();
+        return true;
+//        DecorView decorView = (DecorView)getWindow().getDecorView();
+//        return decorView.isWindowMaximized();
     }
 
     private void configureWindowDelayWithOffsetY(int y, long delay){
@@ -1142,9 +1143,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
                 if(mAttribute !=  null && windowId == mAttribute.getXID()){
-                    Log.d(TAG, "onReceive: " + title + ", windowId:" + windowId + " " + ACTION_UPDATE_ICON) ;
+                    Log.d(TAG, "onReceive: " + getTitle() + ", windowId:" + windowId + " " + ACTION_UPDATE_ICON) ;
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
-                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
+                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(getTitle().toString() , windowIcon, 0);
                     MainActivity.this.setTaskDescription(description);
 
                 }
@@ -1221,8 +1222,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(captionView == null){
             return;
         }
-        captionView.exitFullScreenWindow();
-        captionView.toggleFreeformWindowingMode();
+//        captionView.exitFullScreenWindow();
+//        captionView.toggleFreeformWindowingMode();
     }
 
     private DecorCaptionView getCaptionView() {
@@ -1285,12 +1286,18 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         }
 
         protected boolean hideDecorCaptionView() {
-//            if(FLog.SHOW_DEBUG_TITLE){
-//                return false;
-//            }
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                    WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            if(FLog.SHOW_DEBUG_TITLE){
+                return false;
+            }
             Log.d("TAG", "hideDecorCaptionView");
+            //Android 11
+            if(Build.VERSION.SDK_INT == Build.VERSION_CODES.R  ){
+                getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                        WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            }
+            if(Build.VERSION.SDK_INT == 34  ){
+                setWindowDecorationStatus(1);
+            }
             return true;
         }
     }

@@ -40,7 +40,7 @@ public class FLog {
     private static final boolean LogServerEnable = true;
     private static final boolean LogFileEnable = true;
 
-    public static final boolean LogXserverNativeEnable = LogEnable && true;
+    public static final boolean LogXserverNativeEnable = LogEnable && false;
 
     public static final boolean SHOW_DEBUG_TITLE = BuildConfig.DEBUG;
 

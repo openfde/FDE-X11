@@ -371,6 +371,9 @@ public class XWindowService extends Service {
             Intent intent = new Intent(this, cls);
             if(attr.getProperty() != null){
                 intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
+                Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
+                Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
+                intent.putExtra("X11_titile", attr.getProperty().getNet_name());
             }
             try {
                 Method method = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);

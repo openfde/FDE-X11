@@ -528,11 +528,11 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)){
             STRCPY;
             prop->wm_class = atom_value;
-//            log(ERROR, "prop window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
+            log(ERROR, "prop window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             STRCPY;
             prop->wm_name = atom_value;
-            //            log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
+            log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
 //            int *icon_data = (int *)propData;
 //            int width = *icon_data;
@@ -648,7 +648,7 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
                                                          "startOrUpdateActivity",
                                                          "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZI)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         aWindow, aTransient, aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
+                                         aWindow, aTransient, aLeader, aType, wm_class, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, 0,
                                          (long) windowPtr, (long) window, (long) taskTo,
                                          aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum);
@@ -685,7 +685,7 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
                                                          "startOrUpdateActivity",
                                                          "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZI)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         (long)aWindow, (long)aTransient, (long)aLeader, aType, NULL, net_wm_name == NULL ? wm_name: net_wm_name,
+                                         (long)aWindow, (long)aTransient, (long)aLeader, aType, wm_class, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
                                          (long) windowPtr, (long) window, (long) taskTo,
                                          aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum);
@@ -744,10 +744,10 @@ void android_update_cursor(int w, int h, int xhot, int yhot, void *data){
         return;
     }
     if( (xhot == CURSOR_MOVE_XHOT_R && yhot == CURSOR_MOVE_YHOT_R)
-    || (xhot == CURSOR_MOVE_XHOT_L && yhot == CURSOR_MOVE_YHOT_L)
-    || (xhot == CURSOR_MOVE_XHOT_T && yhot == CURSOR_MOVE_YHOT_T)
-    || (xhot == CURSOR_MOVE_XHOT_B && yhot == CURSOR_MOVE_YHOT_B)
-    ){
+        || (xhot == CURSOR_MOVE_XHOT_L && yhot == CURSOR_MOVE_YHOT_L)
+        || (xhot == CURSOR_MOVE_XHOT_T && yhot == CURSOR_MOVE_YHOT_T)
+        || (xhot == CURSOR_MOVE_XHOT_B && yhot == CURSOR_MOVE_YHOT_B)
+            ){
         log(DEBUG, "no need update  cursor(move shape)")
         return;
     }
