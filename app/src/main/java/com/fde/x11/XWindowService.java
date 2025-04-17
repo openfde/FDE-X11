@@ -9,12 +9,15 @@ import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 
 import android.app.ActivityOptions;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
+import android.os.UserHandle;
+import android.os.UserManager;
 import android.util.Log;
 import android.view.Surface;
 import android.widget.Toast;
@@ -36,6 +39,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 
 
@@ -277,10 +281,14 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastConfigureWindow(WindowAttribute attr) {
+//        UserManager userManager = (UserManager) getSystemService(Context.USER_SERVICE);
+//        List<UserHandle> userProfiles = userManager.getUserProfiles();
         String targetPackage = getPackageName();
         Intent intent = new Intent(CONFIGURE_ACTIVITY_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+//        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
+//        sendBroadcastAsUser(intent, userProfiles.get(0));
         sendBroadcast(intent);
     }
 

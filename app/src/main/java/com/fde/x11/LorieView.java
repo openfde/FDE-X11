@@ -18,6 +18,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.opengl.GLES10;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
+import android.os.Build;
 import android.preference.PreferenceManager;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -51,6 +52,9 @@ public class LorieView extends SurfaceView implements InputStub {
 
     interface Callback {
         void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight);
+
+        void realSizeChanged(Surface sfc, int width, int height);
+
     }
 
 //    interface PixelFormat {
@@ -78,8 +82,12 @@ public class LorieView extends SurfaceView implements InputStub {
                 return;
 
             getDimensionsFromSettings();
-            mCallback.changed(holder.getSurface(), GLOBAL_SCREEN_WIDTH,
-                    CONTENT_HEIGHT, GLOBAL_SCREEN_WIDTH , CONTENT_HEIGHT);
+            if(Build.VERSION.SDK_INT == 34){
+                mCallback.realSizeChanged(holder.getSurface(), width, height);
+            } else {
+                mCallback.changed(holder.getSurface(), GLOBAL_SCREEN_WIDTH,
+                        CONTENT_HEIGHT, GLOBAL_SCREEN_WIDTH , CONTENT_HEIGHT);
+            }
         }
 
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
@@ -188,8 +196,8 @@ public class LorieView extends SurfaceView implements InputStub {
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
         if (preferences.getBoolean("displayStretch", false)
-              || "native".equals(preferences.getString("displayResolutionMode", "native"))
-              || "scaled".equals(preferences.getString("displayResolutionMode", "native"))) {
+                || "native".equals(preferences.getString("displayResolutionMode", "native"))
+                || "scaled".equals(preferences.getString("displayResolutionMode", "native"))) {
             getHolder().setSizeFromLayout();
             return;
         }

@@ -209,11 +209,7 @@ void android_redirect_window(WindowPtr pWin) {
     int redirect = pWin->overrideRedirect;
     bool intransient_bounds = false;
     Window taskTo = 0;
-    /**
-     * get real property (name leader transient)
-     *
-     *
-     */
+    // get real property (name leader transient)
     WindProperty aProperty = {0};
     xserver_get_window_property(pWin, &aProperty);
     Atom win_type = aProperty.window_type;
@@ -224,15 +220,6 @@ void android_redirect_window(WindowPtr pWin) {
             intransient_bounds = android_check_bounds(pWin, attr);
         }
     }
-
-//    PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(pWin);
-//        if(!pixmap->drawable.id){
-//            return;
-//        }
-//    TexturePrivRecPtr ptr = dixLookupPrivate(&pixmap->devPrivates, &FDETexturePrivateKey);
-//    if(ptr){
-//        log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
-//    }
     log(ERROR, "android_redirect_window %x redirect:%d atom:%d transient:%x, "
                "taskTo:%x inbounds:%d mapped:%d clientNum:%d" ,
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
@@ -735,22 +722,22 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
 }
 
 void android_update_cursor(int w, int h, int xhot, int yhot, void *data){
-    if(xhot == OBLIQUE_CROSS_WIDTH && yhot == OBLIQUE_CROSS_WIDTH){
-        log(DEBUG, "no need update yhot cursor(oblique cross)")
-        return;
-    }
-    if(xhot == CURSOR_MOVE_WIDTH_WPS && yhot == CURSOR_MOVE_WIDTH_WPS){
-        log(DEBUG, "no need update yhot cursor(move shape WPS)")
-        return;
-    }
-    if( (xhot == CURSOR_MOVE_XHOT_R && yhot == CURSOR_MOVE_YHOT_R)
-        || (xhot == CURSOR_MOVE_XHOT_L && yhot == CURSOR_MOVE_YHOT_L)
-        || (xhot == CURSOR_MOVE_XHOT_T && yhot == CURSOR_MOVE_YHOT_T)
-        || (xhot == CURSOR_MOVE_XHOT_B && yhot == CURSOR_MOVE_YHOT_B)
-            ){
-        log(DEBUG, "no need update  cursor(move shape)")
-        return;
-    }
+//    if(xhot == OBLIQUE_CROSS_WIDTH && yhot == OBLIQUE_CROSS_WIDTH){
+//        log(DEBUG, "no need update yhot cursor(oblique cross)")
+//        return;
+//    }
+//    if(xhot == CURSOR_MOVE_WIDTH_WPS && yhot == CURSOR_MOVE_WIDTH_WPS){
+//        log(DEBUG, "no need update yhot cursor(move shape WPS)")
+//        return;
+//    }
+//    if( (xhot == CURSOR_MOVE_XHOT_R && yhot == CURSOR_MOVE_YHOT_R)
+//        || (xhot == CURSOR_MOVE_XHOT_L && yhot == CURSOR_MOVE_YHOT_L)
+//        || (xhot == CURSOR_MOVE_XHOT_T && yhot == CURSOR_MOVE_YHOT_T)
+//        || (xhot == CURSOR_MOVE_XHOT_B && yhot == CURSOR_MOVE_YHOT_B)
+//            ){
+//        log(DEBUG, "no need update  cursor(move shape)")
+//        return;
+//    }
     JNIEnv *JavaEnv = GetJavaEnv();
     (*jniVM)->GetEnv(jniVM, (void **) &JavaEnv, JNI_VERSION_1_6);
     if(JavaEnv && JavaCmdEntryPointClass){

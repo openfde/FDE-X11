@@ -36,13 +36,14 @@ public class FLog {
 
     private static final boolean LogEnable = BuildConfig.DEBUG;
     private static final boolean LogAppListEnable = true;
+    private static final boolean LogEventEnable = false;
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;
     private static final boolean LogFileEnable = true;
 
     public static final boolean LogXserverNativeEnable = LogEnable && false;
 
-    public static final boolean SHOW_DEBUG_TITLE = BuildConfig.DEBUG;
+    public static final boolean SHOW_DEBUG_TITLE = false ;//BuildConfig.DEBUG;
 
     //for activity
     public static void a(String tagsuffix, long window, String content, int level){
@@ -138,6 +139,9 @@ public class FLog {
     }
 
     public static void event(String tag, String s) {
-        normal("==event==" + tag, s, DEBUG);
+        if(!LogEventEnable){
+            return;
+        }
+        normal("==event==", tag+ ":" + s, DEBUG);
     }
 }

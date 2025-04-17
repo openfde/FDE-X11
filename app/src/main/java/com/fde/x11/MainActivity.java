@@ -182,6 +182,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private final ServiceConnection connection = new Connection();
     private InputEventSender mWindowInputEventSender;
     private XserviceInterfaceWrapper mXserviceWrapper;
+    protected boolean captionShowing;
+    private boolean needSurface;
 
     protected long getWindowId() {
         return WindowCode;
@@ -273,7 +275,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         LorieView lorieView = findViewById(R.id.lorieView);
         ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         ConfigurationInfo ci = am.getDeviceConfigurationInfo();
-        FLog.a("lifycycle", getWindowId(), "glversion: " + ci.reqGlEsVersion);
+        FLog.a("lifecycle", getWindowId(), "glversion: " + ci.reqGlEsVersion);
         lorieView.setZOrderOnTop(true);
         lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
@@ -316,34 +318,64 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         lorieView.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
         lorieParent.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
         lorieView.setOnKeyListener(mLorieKeyListener);
-        lorieView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) -> {
-            int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
-            mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
-            mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
-            LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
-            WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
-            if (!killSelf) {
-                try {
-                    if(attribute == null){
-                        serviceWindowChange(sfc, 0, 0, AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT,
-                                0, 1000, 1000);
-                    } else {
-                        if (surfaceWidth == 0 || surfaceHeight == 0) {
-                            serviceWindowChange(sfc, 0, 0,0, 0, attribute.getIndex(),attribute.getWindowPtr(), attribute.getXID());
+        lorieView.setCallback(new LorieView.Callback() {
+            @Override
+            public void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight) {
+                int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
+                mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
+                mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
+                LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
+                WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
+                if (!killSelf) {
+                    try {
+                        if(attribute == null){
+                            serviceWindowChange(sfc, 0, 0, AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT,
+                                    0, 1000, 1000);
                         } else {
-                            serviceWindowChange(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
-                                    attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
-                                    attribute.getWindowPtr(), attribute.getXID());
+                            if (surfaceWidth == 0 || surfaceHeight == 0) {
+                                serviceWindowChange(sfc, 0, 0,0, 0, attribute.getIndex(),attribute.getWindowPtr(), attribute.getXID());
+                            } else {
+                                serviceWindowChange(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
+                                        attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
+                                        attribute.getWindowPtr(), attribute.getXID());
+                            }
                         }
+                    } catch (Exception e) {
+                        Log.e(TAG, "serviceWindowChange Exception: " + e);
                     }
-                } catch (Exception e) {
-                    Log.e(TAG, "serviceWindowChange Exception: " + e);
                 }
             }
-            if(!isCaptionShowing()){
-                getWindow().getDecorView().postDelayed(()->{
-//                    execInWindowManager();
-                }, 200);
+
+            @Override
+            public void realSizeChanged(Surface sfc, int width, int height) {
+                int framerate = (int) ((lorieView.getDisplay() != null) ? lorieView.getDisplay().getRefreshRate() : 30);
+                mInputHandler.handleHostSizeChanged(width, height);
+                mInputHandler.handleClientSizeChanged(width, height);
+                LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
+                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+                WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
+                if(attribute != null && width != 0 && height !=0 ){
+                    if(isFullscreen){
+                        onSurfaceRealSizeChanged(sfc, width, height);
+                    } else {
+                        try {
+                            if(attribute == null){
+                                serviceWindowChange(sfc, 0, 0, AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT,
+                                        0, 1000, 1000);
+                            } else {
+                                if (width == 0 || width == 0) {
+                                    serviceWindowChange(sfc, 0, 0,0, 0, attribute.getIndex(),attribute.getWindowPtr(), attribute.getXID());
+                                } else {
+                                    serviceWindowChange(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
+                                            attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
+                                            attribute.getWindowPtr(), attribute.getXID());
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "serviceWindowChange Exception: " + e);
+                        }
+                    }
+                }
             }
         });
 //        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
@@ -352,6 +384,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         EasyDialog.Builder builder = new EasyDialog.Builder(this);
         initStylusAuxButtons();
     }
+
 
     private void initEvent() {
         registerReceiver(receiver, new IntentFilter(ACTION_START) {{
@@ -370,7 +403,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(WINDOW_ACTION_MAXIMIZED_ACTION);
             addAction(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION);
             addAction(WINDOW_ACTION_MINIMIZE_ACTION);
-        }},  0);
+        }},  Context.RECEIVER_NOT_EXPORTED);
         EventBus.getDefault().register(this);
         Xserver.requestConnection();
         bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
@@ -407,6 +440,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onResume() {
         super.onResume();
+        needSurface = true;
         FLog.a("lifecycle", getWindowId(), "onResume");
 //        mapXWindow();
         detectViewRequestFocus();
@@ -429,7 +463,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged hasFocus:" + hasFocus);
-//        Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
+        Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
         if (hasFocus) {
             setDecorCaptionViewFocuseable(true);
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
@@ -594,6 +628,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             FLog.a("window", getWindowId(), "windowingMode:" + windowingMode
                     + " isCaptionShowing:" + isCaptionShowing());
         }
+        //Android 14
+        if (Build.VERSION.SDK_INT == 34 && isFullscreen) {
+            return;
+        }
         //no reason, when hide View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR must get from ""
         if(isFullscreen && !isCaptionShowing()){
             pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
@@ -652,18 +690,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private boolean isCaptionShowing() {
-        return true;
-//        Window window = getWindow();
-//        ViewGroup decor = (ViewGroup)window.getDecorView();
-//        DecorCaptionView decorCaptionView = (DecorCaptionView)decor.getChildAt(0);
-//        try {
-//            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-//            Method isCaptionShowing = aClass.getMethod("isCaptionShowing");
-//            return (boolean) isCaptionShowing.invoke(decorCaptionView);
-//        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-//                 InvocationTargetException e) {
-//            throw new RuntimeException(e);
-//        }
+        return captionShowing;
     }
 
 
@@ -699,24 +726,79 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void setDecorCaptionViewFocuseable(boolean focusable) {
         FLog.a("window", getWindowId(), "setDecorCaptionViewFocuseable:" + focusable);
-//        Window window = getWindow();
-//        ViewGroup decor = (ViewGroup) window.getDecorView();
-//        DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
-//        boolean isCaptionShowing = true;
-//        try {
-//            Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-//            Method method = aClass.getMethod("isCaptionShowing");
-//            isCaptionShowing = (boolean) method.invoke(decorCaptionView);
-//            if(isCaptionShowing) {
-////                decorCaptionView.setOperateEnabled(focusable);
-//            }
-//        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-//                 InvocationTargetException e) {
-//            FLog.e(TAG, e.getMessage());
-//        }
+        if(Build.VERSION.SDK_INT == 30){
+            Window window = getWindow();
+            ViewGroup decor = (ViewGroup) window.getDecorView();
+            DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
+            boolean isCaptionShowing = true;
+            try {
+                Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+                Method method = aClass.getMethod("isCaptionShowing");
+                isCaptionShowing = (boolean) method.invoke(decorCaptionView);
+                if(isCaptionShowing) {
+//                    decorCaptionView.setOperateEnabled(focusable);
+                }
+            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+                     InvocationTargetException e) {
+                FLog.e(TAG, e.getMessage());
+            }
+        }
     }
 
-    private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) throws RemoteException {
+    /**
+     * when android 14 in fullscreen mode, configure window only when surface size changed
+     * @param sfc
+     * @param width
+     * @param height
+     */
+    private void onSurfaceRealSizeChanged(Surface sfc, int width, int height) {
+        final int screenWidth = AppUtils.GLOBAL_SCREEN_WIDTH;
+        final int screenHeight = AppUtils.GLOBAL_SCREEN_HEIGHT;
+        final int statusBarHeight = AppUtils.STATUSBAR_HEIGHT_U;
+        final int navBarHeight = AppUtils.NAVIGATION_BAR_HEIGHT_U;
+        final int captionHeight = isCaptionShowing() ? AppUtils.DECOR_CAPTION_HEIGHT : 0;
+        final int MAXIMIZE_HEIGHT = screenHeight - statusBarHeight - captionHeight - navBarHeight;
+        if (height != MAXIMIZE_HEIGHT && height != screenHeight) {
+            return;
+        }
+        Rect rect;
+        if (height == MAXIMIZE_HEIGHT) {
+            int top = statusBarHeight + captionHeight;
+            int bottom = screenHeight - navBarHeight;
+            rect = new Rect(0, top, screenWidth, bottom);
+            FLog.a("window", getWindowId(), "in MAXIMIZE_HEIGHT rect:" + rect);
+        } else {
+            rect = new Rect(0, 0, screenWidth, screenHeight);
+            FLog.a("window", getWindowId(), "in FULLSCREEN_HEIGHT rect:" + rect);
+        }
+        updateAttribueOnly(rect);
+        if (mXserviceWrapper != null) {
+            mXserviceWrapper.configureWindow(
+                    mAttribute.getWindowPtr(),
+                    mAttribute.getXID(),
+                    (int) mAttribute.getOffsetX(),
+                    (int) mAttribute.getOffsetY(),
+                    rect.width(),
+                    rect.height()
+            );
+            mXserviceWrapper.raiseWindow(mAttribute.getXID());
+            if (needSurface) {
+                serviceWindowChange(
+                        sfc,
+                        mAttribute.getOffsetX(),
+                        mAttribute.getOffsetY(),
+                        mAttribute.getWidth(),
+                        mAttribute.getHeight(),
+                        mAttribute.getIndex(),
+                        mAttribute.getWindowPtr(),
+                        mAttribute.getXID()
+                );
+                needSurface = false;
+            }
+        }
+    }
+
+    private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
         if(mXserviceWrapper != null){
             FLog.a("window", getWindowId(),"serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
             mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
@@ -772,11 +854,19 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         floatWindow.updateViewLayout(floatView,floatParams);
         LorieView widgetView = floatView.findViewById(R.id.widget_view);
         widgetView.updateCoordinate(attr);
-        widgetView.setCallback((sfc, surfaceWidth, surfaceHeight, screenWidth, screenHeight) ->{
-            try {
-                serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
-            } catch (Exception e) {
-                Log.e(TAG, "serviceWindowChange Exception:" + e);
+        widgetView.setCallback(new LorieView.Callback() {
+            @Override
+            public void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight) {
+                try {
+                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+                } catch (Exception e) {
+                    Log.e(TAG, "serviceWindowChange Exception:" + e);
+                }
+            }
+
+            @Override
+            public void realSizeChanged(Surface sfc, int width, int height) {
+                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
             }
         });
         InputEventSender inputEventSender = new InputEventSender(widgetView);
@@ -1274,6 +1364,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      *============================================ other activity  ==================================================
      */
     protected boolean hideDecorCaptionView() {
+        this.captionShowing = true;
         return false;
     }
     public static class MainActivity1 extends MainActivity {
@@ -1295,7 +1386,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                         WindowManager.LayoutParams.FLAG_FULLSCREEN);
             }
-            if(Build.VERSION.SDK_INT == 34  ){
+            //Android 14
+            if(Build.VERSION.SDK_INT == 34 ){
+                captionShowing = false;
                 setWindowDecorationStatus(1);
             }
             return true;
