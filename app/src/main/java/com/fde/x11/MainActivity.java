@@ -158,7 +158,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private View.OnKeyListener mLorieKeyListener;
     private static final int KEY_BACK = 158;
     private EasyDialog easyDialog;
-    private String TAG = "lifecycle ";
+    private final String TAG = "lifecycle ";
     private boolean correctMarked = false;
     protected long WindowCode = 0;
     protected int mIndex = 0;
@@ -914,7 +914,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         } else {
             params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
         }
-        params.setFitInsetsTypes(0);
+        if (SDK_INT >= VERSION_CODES.R) {
+            params.setFitInsetsTypes(0);
+        }
         params.format = PixelFormat.RGBA_8888;
         return params;
     }
@@ -1312,8 +1314,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(captionView == null){
             return;
         }
-//        captionView.exitFullScreenWindow();
-//        captionView.toggleFreeformWindowingMode();
+        if(Build.VERSION.SDK_INT == 30 ){
+//            captionView.exitFullScreenWindow();
+//            captionView.toggleFreeformWindowingMode();
+        }
     }
 
     private DecorCaptionView getCaptionView() {
