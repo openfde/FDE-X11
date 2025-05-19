@@ -867,6 +867,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             @Override
             public void realSizeChanged(Surface sfc, int width, int height) {
                 Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+                try {
+                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+                } catch (Exception e) {
+                    Log.e(TAG, "serviceWindowChange Exception:" + e);
+                }
             }
         });
         InputEventSender inputEventSender = new InputEventSender(widgetView);
@@ -1251,6 +1256,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     if(!mInputHandler.isTouching()){
                         configureFromX();
                     }
+                } else if(isFullscreen && mAttribute != null && mAttribute.getXID() == attr.getXID()
+                        && mXserviceWrapper != null){
+                    mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                            (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                            mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
                 }
             }  else if(CONFIGURE_WIDGET_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);

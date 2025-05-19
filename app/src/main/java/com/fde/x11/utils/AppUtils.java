@@ -56,8 +56,8 @@ public class AppUtils {
 
     public static int GLOBAL_SCREEN_WIDTH = 1920;
     public static int GLOBAL_SCREEN_HEIGHT = 1080;
-    public static final int DECOR_CAPTION_HEIGHT = 42;
-    public static final int STATUSBAR_HEIGHT_U = 24; //android 14
+    public static final int DECOR_CAPTION_HEIGHT = 44;
+    public static final int STATUSBAR_HEIGHT_U = 25; //android 14
     public static final int STATUSBAR_HEIGHT_R = 0; //android 14
 
     public static final int NAVIGATION_BAR_HEIGHT_U = 68;
