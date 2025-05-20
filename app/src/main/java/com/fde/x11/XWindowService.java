@@ -6,6 +6,7 @@ import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MINIMIZE_A
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
+import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
 
 import android.app.ActivityOptions;
 import android.app.Service;
@@ -205,7 +206,7 @@ public class XWindowService extends Service {
         FLog.s(TAG, "before: size:" + windowSize);
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
-                startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
+                startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, DECOR_CAPTION_HEIGHT);
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_START_ACTIVITY_WINDOW:

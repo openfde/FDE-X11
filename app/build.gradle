@@ -78,24 +78,47 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    flavorDimensions "systemv"
+
+    productFlavors {
+        versionu {
+            dimension "systemv"
+            buildConfigField "String", "system_verstion", "\"versionu\""
+        }
+
+        versionr {
+            dimension "systemv"
+            buildConfigField "String", "system_verstion", "\"versionr\""
+        }
+    }
+
+    sourceSets {
+        versionu.java.srcDirs = ['src/versionu/java']
+        versionr.java.srcDirs = ['src/versionr/java']
+    }
+
+
 }
 
-gradle.projectsEvaluated {
-    tasks.withType(JavaCompile) {
-        Set<File> fileSet = options.bootstrapClasspath.getFiles()
-        List<File> newFileList =  new ArrayList<>();
-        newFileList.add(new File("libs/framework.jar"))
-        newFileList.addAll(fileSet)
-        options.bootstrapClasspath = files(
-                newFileList.toArray()
-        )
+android.applicationVariants.all { variant ->
+    variant.javaCompileProvider.configure { javaCompile ->
+        def flavorName = variant.flavorName
+        def frameworkJar = file("libs/${flavorName}/framework.jar")
+
+        // 更新 bootstrapClasspath
+        def originalBootstrap = javaCompile.options.bootstrapClasspath?.files ?: [] as Set
+        javaCompile.options.bootstrapClasspath = files(frameworkJar) + files(originalBootstrap)
     }
 }
 
 dependencies {
     compileOnly fileTree(include: ['*.jar'], dir: 'libs/compile')
     implementation fileTree(include: ['*.jar'], dir: 'libs/impl')
-    compileOnly files('libs/framework.jar')
+    versionuCompileOnly files('libs/versionu/framework.jar')
+    versionrCompileOnly files('libs/versionr/framework.jar')
+
+//    compileOnly files('libs/framework.jar')
     //noinspection DifferentStdlibGradleVersion
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.0'
     implementation 'androidx.preference:preference:1.2.1'

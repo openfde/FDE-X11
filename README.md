@@ -2,15 +2,10 @@
 ### Idea form
 
 ``
-https://github.com/termux/termux-x11``
-
-``
-https://github.com/pelya/xserver-xsdl``
-
-``
+https://github.com/termux/termux-x11
+https://github.com/pelya/xserver-xsdl
 https://github.com/nwrkbiz/android-xserver
 ``
-
 
 ## About Me
 A X11 server run on Android without termux, activity action as X App window.
@@ -19,16 +14,32 @@ https://openfde.atlassian.net/wiki/spaces/OpenFDE1/pages/139264024/OpenFDE+linux
 Know me in this video  【OpenFDE技术解说（三）：突破vnc局限，在Android上解锁linux多窗口自由体验】 https://www.bilibili.com/video/BV11LpMe5EJD/?share_source=copy_web&vd_source=76fa969b8f4d1dfa9c5ce09782a90c28
 
 
+## Build 
+
+This project only support linux host now.
+
+``
+sudo apt update && sudo apt install -y libarchive-tools binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf gcc bison``
+
+build for openfde11
+``
+./gradlew assembleVersionrRelease
+./gradlew assembleVersionrDebug
+``
+build for openfde14
+``
+./gradlew assembleVersionuRelease
+./gradlew assembleVersionuDebug
+``
 
 ## How to use
 
-click FDE-X11 will show linux app list
+Which been preintalled on OpenFDE, click linux icon on FDE desktop to launch a linux app.
 
 or
 
-on android adb: adb shell am startservice -n com.fde.x11/.XWindowService
-on linux: export DISPLAY=:1000 && firefox
-
+adb shell am startservice -n com.fde.x11/.XWindowService
+on linux: export DISPLAY=:1001 && firefox
 
 
 ## Test Result

@@ -85,6 +85,8 @@ import androidx.viewpager.widget.ViewPager;
 import com.android.internal.policy.DecorView;
 import com.android.internal.widget.DecorCaptionView;
 import com.easy.view.dialog.EasyDialog;
+import com.fde.FrameworkFactory;
+import com.fde.FrameworkOperations;
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
@@ -203,8 +205,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     protected int getLayoutID(){
         return R.layout.main_activity;
     }
-
-
+    FrameworkOperations mFrameworkOperations;
     /**
      * ============================================ oncreate ==================================================
      * @param savedInstanceState If the activity is being re-initialized after
@@ -216,6 +217,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mFrameworkOperations = FrameworkFactory.create();
         initXParams();
 //        Util.setBaseContext(this);
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -403,7 +405,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(WINDOW_ACTION_MAXIMIZED_ACTION);
             addAction(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION);
             addAction(WINDOW_ACTION_MINIMIZE_ACTION);
-        }},  Context.RECEIVER_NOT_EXPORTED);
+        }},  0x4);
         EventBus.getDefault().register(this);
         Xserver.requestConnection();
         bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
@@ -726,23 +728,27 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void setDecorCaptionViewFocuseable(boolean focusable) {
         FLog.a("window", getWindowId(), "setDecorCaptionViewFocuseable:" + focusable);
-        if(Build.VERSION.SDK_INT == 30){
-            Window window = getWindow();
-            ViewGroup decor = (ViewGroup) window.getDecorView();
-            DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
-            boolean isCaptionShowing = true;
-            try {
-                Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-                Method method = aClass.getMethod("isCaptionShowing");
-                isCaptionShowing = (boolean) method.invoke(decorCaptionView);
-                if(isCaptionShowing) {
-//                    decorCaptionView.setOperateEnabled(focusable);
-                }
-            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-                     InvocationTargetException e) {
-                FLog.e(TAG, e.getMessage());
-            }
+        if(mFrameworkOperations != null) {
+            mFrameworkOperations.setDecorCaptionViewFocuseable(this, focusable);
         }
+
+//        if(Build.VERSION.SDK_INT == 30){
+//            Window window = getWindow();
+//            ViewGroup decor = (ViewGroup) window.getDecorView();
+//            DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
+//            boolean isCaptionShowing = true;
+//            try {
+//                Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
+//                Method method = aClass.getMethod("isCaptionShowing");
+//                isCaptionShowing = (boolean) method.invoke(decorCaptionView);
+//                if(isCaptionShowing) {
+////                    decorCaptionView.setOperateEnabled(focusable);
+//                }
+//            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
+//                     InvocationTargetException e) {
+//                FLog.e(TAG, e.getMessage());
+//            }
+//        }
     }
 
     /**
@@ -1320,14 +1326,18 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(action) && isWindowMaximized()) {
             return;
         }
-        DecorCaptionView captionView = getCaptionView();
-        if(captionView == null){
-            return;
+
+        if(mFrameworkOperations != null) {
+            mFrameworkOperations.exitFullScreenWindow(this);
         }
-        if(Build.VERSION.SDK_INT == 30 ){
+//        DecorCaptionView captionView = getCaptionView();
+//        if(captionView == null){
+//            return;
+//        }
+//        if(Build.VERSION.SDK_INT == 30 ){
 //            captionView.exitFullScreenWindow();
 //            captionView.toggleFreeformWindowingMode();
-        }
+//        }
     }
 
     private DecorCaptionView getCaptionView() {
@@ -1395,15 +1405,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 return false;
             }
             Log.d("TAG", "hideDecorCaptionView");
-            //Android 11
-            if(Build.VERSION.SDK_INT == Build.VERSION_CODES.R  ){
-                getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                        WindowManager.LayoutParams.FLAG_FULLSCREEN);
-            }
-            //Android 14
-            if(Build.VERSION.SDK_INT == 34 ){
+            if(mFrameworkOperations != null ){
+                mFrameworkOperations.hideDecorCaptionView(this);
                 captionShowing = false;
-                setWindowDecorationStatus(1);
             }
             return true;
         }
