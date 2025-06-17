@@ -182,7 +182,7 @@ bool WindowManager::isNormalWindow(long window) {
     Atom type_menu = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_MENU", False);
     Atom type_dialog = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_DIALOG", False);
     Atom type_popup = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
-    log("isNormalWindow ? %lx", window);
+//    log("isNormalWindow ? %lx", window);
     if (XGetWindowProperty(display_, window, type, 0, 1024, False, AnyPropertyType,
                            &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
         Success) {
@@ -662,14 +662,37 @@ void WindowManager::HandleClientMessage(XEvent e) {
         } else if (action == _NET_WM_STATE_TOGGLE) {
             log("HandleClientMessage Toggle state1:%s state2:%s", XGetAtomName(display_, state1),  XGetAtomName(display_, state2));
         }
+        if(wm_action == WINDOW_ACTION_MAXIMIZED) {
+            setMaximizedState(e.xclient.window, true);
+        } else if(wm_action == WINDOW_ACTION_MAXIMIZED_REMOVE){
+            setMaximizedState(e.xclient.window, false);
+        }
+
     } else if(e.xclient.message_type == XInternAtom(display_, "_NET_ACTIVE_WINDOW", False)){
-//        Window active_window = e.xclient.data.l[0];
-//        log("HandleClientMessage w1:%lx w2:%s w3:%lx", e.xclient.data.l[0], XGetAtomName(display_, e.xclient.data.l[1] ), e.xclient.data.l[2]);
+        Window active_window = e.xclient.data.l[0];
+        log("HandleClientMessage w1:%lx w2:%s w3:%lx", e.xclient.data.l[0], XGetAtomName(display_, e.xclient.data.l[1] ), e.xclient.data.l[2]);
     }
     log("HandleClientMessage final wm_action:%d window:%lx", wm_action, e.xclient.window);
     jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                     "updateWmStateClient", "(IJ)V");
     GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, e.xclient.window);
+}
+
+void WindowManager::setMaximizedState(Window window, Bool maximized)
+{
+    Atom net_wm_state = XInternAtom(display_, "_NET_WM_STATE", False);
+    Atom vert_max = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+    Atom horz_max = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    Atom atoms[2];
+    int count = 0;
+    if (maximized) {
+        atoms[count++] = vert_max;
+        atoms[count++] = horz_max;
+    }
+    XChangeProperty(display_, window, net_wm_state,
+                    XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)atoms, count);
+    XFlush(display_);
 }
 
 void WindowManager::OnSelectionRequest(XEvent e) {

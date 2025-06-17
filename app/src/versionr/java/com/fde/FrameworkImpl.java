@@ -18,6 +18,13 @@ import java.lang.reflect.Method;
 public class FrameworkImpl implements FrameworkOperations{
     private static final String TAG = "FrameworkImpl30";
 
+    private Activity activity;
+
+    public FrameworkImpl(Activity activity) {
+        this.activity = activity;
+    }
+
+
     @Override
     public void hideDecorCaptionView(Activity activity) {
         Log.d(TAG, "hideDecorCaptionView() called with: activity = [" + activity + "]");
@@ -58,6 +65,19 @@ public class FrameworkImpl implements FrameworkOperations{
         captionView.toggleFreeformWindowingMode();
     }
 
+    @Override
+    public void startFullScreenWindow(Activity activity) {
+        DecorCaptionView captionView = getCaptionView(activity);
+        if(captionView == null){
+            return;
+        }
+        if(Build.VERSION.SDK_INT == 30 ){
+            captionView.exitFullScreenWindow();
+            captionView.toggleFreeformWindowingMode();
+        }
+        Log.d(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
+    }
+
 
     private DecorCaptionView getCaptionView(Activity activity) {
         DecorView decorView = (DecorView) activity.getWindow().getDecorView();
@@ -68,5 +88,11 @@ public class FrameworkImpl implements FrameworkOperations{
             }
         }
         return null;
+    }
+
+    @Override
+    public boolean isWindowMaximized() {
+        DecorView decorView = (DecorView)activity.getWindow().getDecorView();
+        return decorView.isWindowMaximized();
     }
 }

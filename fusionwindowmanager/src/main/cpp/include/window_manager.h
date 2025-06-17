@@ -181,6 +181,8 @@ private:
     void UpdateXserverCliptext(const char *data);
 
     void HandleClientMessage(XEvent event);
+
+    void setMaximizedState(Window window, int maximized);
 };
 
 

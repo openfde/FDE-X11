@@ -850,13 +850,14 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     log("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
-    int id;
+    int id, dri_id;
     float width, height;
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (attr && window != 0) {
         android_update_texture_1(window);
         eglSurface = attr->sfc;
         id = attr->texture_id;
+        dri_id = attr->dri_texture_id;
         width = attr->width;
         height = attr->height;
     }
@@ -878,16 +879,48 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
-    log("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
-        index, width, height, attr->offset_x, attr->offset_y, id);
-    glViewport(0, 0, width, height);
+    // log("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+        // index, width, height, attr->offset_x, attr->offset_y, id);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         log("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
 //    if(!empty){
-    draw(id, -1.f, -1.f, 1.f, 1.f, flip);
+    if(id){
+        glViewport(0, 0, width, height);
+        loge("renderer_redraw_traversal_1 id:%d", id);
+        draw(id, -1.f, -1.f, 1.f, 1.f, flip);
+    }
+    if(dri_id && attr->dri_pWin){
+        int window_offsetx = (int)attr->offset_x;
+        int window_offsety = (int)attr->offset_y;
+
+        WindowPtr dri_pWin = attr->dri_pWin;
+        int window_drioffsetx = dri_pWin->drawable.x;
+        int window_drioffsety = dri_pWin->drawable.y;
+        int relative_x = attr->dri_x;
+        int relative_y = attr->dri_y;
+
+// (window_drioffsety - window_offsety) * 2
+        int viewport_y = height - (dri_pWin->drawable.height +  window_drioffsety - window_offsety + relative_y);
+        int viewport_x = width - (dri_pWin->drawable.width +  window_drioffsetx - window_offsetx + relative_x);
+        // glViewport(viewport_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
+        glViewport(relative_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
+
+        log("renderer_redraw_traversal_1 relative_y:%d", relative_y);
+        log("renderer_redraw_traversal_1 relative_x:%d", relative_x);
+        log("renderer_redraw_traversal_1 dri_height:%d", dri_pWin->drawable.height);
+        log("renderer_redraw_traversal_1 dri_width:%d", dri_pWin->drawable.width);
+        log("renderer_redraw_traversal_1 window_offsetx:%d", window_offsetx);
+        log("renderer_redraw_traversal_1 window_offsety:%d", window_offsety);
+        log("renderer_redraw_traversal_1 window_drioffsetx:%d", window_drioffsetx);
+        log("renderer_redraw_traversal_1 window_drioffsety:%d", window_drioffsety);
+
+        draw(dri_id, -1.f, -1.f, 1.f, 1.f, flip);
+    }
+
+    glViewport(0, 0, width, height);
     if(attr->widget_size > 0){
         for(int i = 0 ; i < attr->widget_size ; i ++){
             Widget widget = attr->widgets[i];
@@ -1070,6 +1103,7 @@ static GLuint create_program(const char *p_vertex_source, const char *p_fragment
 }
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip) {
+    // log(ERROR, "draw textureid:%d x0:%.0f y0:%.0f x1:%.0f y1:%.0f flip:%d", id, x0, y0, x1, y1, flip);
     float coords[20] = {
 
             x0, -y0, 0.f, 0.f, 0.f,

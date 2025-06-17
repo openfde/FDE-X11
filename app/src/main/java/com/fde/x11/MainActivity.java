@@ -80,6 +80,9 @@ import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.core.math.MathUtils;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.viewpager.widget.ViewPager;
 
 import com.android.internal.policy.DecorView;
@@ -93,6 +96,7 @@ import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
 import com.fde.x11.input.DetectEventEditText;
 import com.fde.x11.input.InputEventSender;
+import com.fde.x11.input.InputManager;
 import com.fde.x11.input.InputStub;
 import com.fde.x11.input.TouchInputHandler.RenderStub;
 import com.fde.x11.input.TouchInputHandler;
@@ -171,6 +175,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private String title;
     private Configuration mConfiguration;
     private boolean isFullscreen = false;
+    private int mSystemInsetTop = AppUtils.DECOR_CAPTION_HEIGHT;
+
     private int mDecorCaptionViewHeight = 42;
 
     // Used to set the contents of the clipboard.
@@ -217,7 +223,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mFrameworkOperations = FrameworkFactory.create();
+        mFrameworkOperations = FrameworkFactory.create(this);
         initXParams();
 //        Util.setBaseContext(this);
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -385,6 +391,19 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         detectEventEditText.setInputHandler(mInputHandler);
         EasyDialog.Builder builder = new EasyDialog.Builder(this);
         initStylusAuxButtons();
+
+        ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), new OnApplyWindowInsetsListener() {
+            @NonNull
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+//                androidx.core.graphics.Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars());
+//                androidx.core.graphics.Insets naviInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+                androidx.core.graphics.Insets systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+//                androidx.core.graphics.Insets captionInsets = insets.getInsets(WindowInsetsCompat.Type.captionBar());
+                mSystemInsetTop = systemInsets.top;
+                return insets;
+            }
+        });
     }
 
 
@@ -486,9 +505,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private boolean isWindowMaximized() {
-        return true;
-//        DecorView decorView = (DecorView)getWindow().getDecorView();
-//        return decorView.isWindowMaximized();
+        return (isFullscreen && mSystemInsetTop == 0 )
+                || mFrameworkOperations.isWindowMaximized();
     }
 
     private void configureWindowDelayWithOffsetY(int y, long delay){
@@ -660,6 +678,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         }
         mXserviceWrapper.raiseWindow(mAttribute.getXID());
+        InputManager.getInstance().setFocusView(getLorieView());
 
         if (isFullscreen) {
             handler.postDelayed(() -> {
@@ -788,6 +807,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     rect.height()
             );
             mXserviceWrapper.raiseWindow(mAttribute.getXID());
+            InputManager.getInstance().setFocusView(getLorieView());
             if (needSurface) {
                 serviceWindowChange(
                         sfc,
@@ -841,6 +861,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
             taskManager.resizeTask(getTaskId(), rect);
             mXserviceWrapper.raiseWindow(mAttribute.getXID());
+            InputManager.getInstance().setFocusView(getLorieView());
             mConfigureRect = null;
         }
     }
@@ -1205,10 +1226,26 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getTaskTo()){
                     ActivityOptions options = ActivityOptions.makeBasic();
-                    Intent startAct = new Intent(MainActivity.this, MainActivity.MainActivity11.class);
-                    startAct.putExtra(X_WINDOW_ATTRIBUTE, attr);
-                    options.setLaunchBounds(new Rect(100, 100, 200 , 200));
-                    startActivity(startAct, options.toBundle());
+                    options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
+                            (int)(attr.getOffsetY() ),
+                            (int)(attr.getWidth() + attr.getOffsetX()),
+                            (int)(attr.getHeight() + attr.getOffsetY())));
+                    Intent actIntent = new Intent(MainActivity.this, MainActivity.MainActivity11.class);
+                    if(attr.getProperty() != null){
+                        actIntent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
+                        Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
+                        Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
+                        actIntent.putExtra("X11_titile", attr.getProperty().getNet_name());
+                    }
+                    try {
+                        Method method = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);
+                        method.invoke(options, 5); // change to freeform mode
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    actIntent.putExtra(X_WINDOW_ATTRIBUTE, attr);
+                    actIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(actIntent, options.toBundle());
                 }
             } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
@@ -1248,7 +1285,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 if(mAttribute !=  null && windowId == mAttribute.getXID()){
                     Log.d(TAG, "onReceive: " + getTitle() + ", windowId:" + windowId + " " + ACTION_UPDATE_ICON) ;
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
-                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(getTitle().toString() , windowIcon, 0);
+                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
                     MainActivity.this.setTaskDescription(description);
 
                 }
@@ -1327,17 +1364,13 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             return;
         }
 
-        if(mFrameworkOperations != null) {
+        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {
             mFrameworkOperations.exitFullScreenWindow(this);
         }
-//        DecorCaptionView captionView = getCaptionView();
-//        if(captionView == null){
-//            return;
-//        }
-//        if(Build.VERSION.SDK_INT == 30 ){
-//            captionView.exitFullScreenWindow();
-//            captionView.toggleFreeformWindowingMode();
-//        }
+
+        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
+            mFrameworkOperations.startFullScreenWindow(this);
+        }
     }
 
     private DecorCaptionView getCaptionView() {

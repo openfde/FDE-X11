@@ -19,10 +19,11 @@ typedef struct {
     Window leader;              //WM_CLIENT_LEADER          WINDOW
     Atom window_type;           //_NET_WM_WINDOW_TYPE       ATOM
     const char * net_wm_name;   //_NET_WM_NAME              UTF8_STRING
-    const char * wm_name;       //WM_NAME                  STRING
-    const char * wm_class;       //WM_CLASS                  STRING
-    Bool support_wm_delete;     //WM_PROTOCOLS      WM_DELETE_WINDOW
+    const char * wm_name;       //WM_NAME                   STRING
+    const char * wm_class;      //WM_CLASS                 STRING
+    Bool support_wm_delete;     //WM_PROTOCOLS              WM_DELETE_WINDOW
     jobject icon;               //_NET_WM_ICON
+    unsigned long pid;          //_NET_WM_PID               CARDINAL
 } WindProperty;
 
 typedef struct {
@@ -38,11 +39,15 @@ typedef struct {
 
 typedef struct {
     GLuint texture_id;
+    GLuint dri_texture_id;
     float width, height;
     float offset_x, offset_y;
+    int dri_w, dri_h;
+    int dri_x, dri_y;
     int index;
     Window window, child;
     WindowPtr pWin;
+    WindowPtr dri_pWin;
     EGLSurface sfc;
     Widget widget , *widgets;
     int widget_size ;

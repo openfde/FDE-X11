@@ -71,18 +71,20 @@
 #include "present_priv.h"
 #include <present.h>
 #include "lorie.h"
+#include "c_interface.h"
 
 #define NSEC_PER_SEC 1000000000ULL
 #define DEFAULT_REFRESH_RATE 60  // 默认60Hz
 #define REFRESH_INTERVAL (NSEC_PER_SEC / DEFAULT_REFRESH_RATE)
 extern Bool LOG_ENABLE;
 #define ANDROID_LOG_ENABLE 1
-#define PRINT_LOG (ANDROID_LOG_ENABLE && LOG_ENABLE)
+#define PRINT_LOG (ANDROID_LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_dri3", __VA_ARGS__);}
 
 #define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_X100 "/dev/dri/card1"
+extern struct SurfaceManagerWrapper *sfWraper;
 
 
 // 软件模拟的VBlank状态
@@ -299,9 +301,43 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
             TexturePrivRecPtr pTexturePriv = calloc(1, sizeof(TexturePrivRec));
             pTexturePriv->texture = ptr->texture;
             dixSetPrivate(&pWin->devPrivates, &FDEWindowTexturePrivateKey, pTexturePriv);
-
             log(ERROR, "GetWindowPixmap pixmap:%x", pixmap->drawable.id);
             log(ERROR, "dixLookupPrivate pixmap:%x tid:%d window:%x", pPixmap->drawable.id, ptr->texture, pWin->drawable.id);
+            int size;
+            WindAttribute * attrs = _surface_all_window(sfWraper, &size);
+            if(size == 1){
+                pWin = attrs[0].pWin;
+            } else {
+                while(1){
+                    if(pWin->parent){
+                        pWin = pWin->parent;
+                    } else {
+                        break;
+                    }
+                    if(_surface_count_window(sfWraper, pWin->drawable.id)){
+                        break;
+                    }
+                }
+            }
+            log(ERROR, "lorieCopyArea set dri_texture_id:%d", ptr->texture);
+            WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
+            if(attr){
+                attr->dri_pWin = pDst;
+                attr->dri_texture_id = ptr->texture;
+            }
+            return NULL;
+        }
+        return fde_gc_copy_area(pSrc, pDst, pGC, srcx, srcy, w, h, dstx, dsty);
+    } else if(pSrc->type == DRAWABLE_WINDOW && pDst->type == DRAWABLE_WINDOW) {
+        WindowPtr pSrcWin = (WindowPtr)pSrc;
+        WindowPtr pDstWin = (WindowPtr)pDst;
+        WindAttribute *attr = _surface_find_window(sfWraper, pDstWin->drawable.id);
+        TexturePrivRecPtr ptr = dixLookupPrivate(&pSrcWin->devPrivates, &FDEWindowTexturePrivateKey);
+        if(attr && ptr){
+            log(ERROR, "lorieCopyArea set dstx:%d dsty:%d", dstx, dsty);
+            attr->dri_pWin = pSrc;
+            attr->dri_x = dstx;
+            attr->dri_y = dsty;
             return NULL;
         }
         return fde_gc_copy_area(pSrc, pDst, pGC, srcx, srcy, w, h, dstx, dsty);

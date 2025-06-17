@@ -5,6 +5,10 @@ import android.util.Log;
 import android.view.InputEvent;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
+import android.view.View;
+
+import com.fde.x11.LorieView;
+import com.fde.x11.Xserver;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -22,6 +26,20 @@ public class InputManager {
 
     private static Method setDisplayIdMethod;
     private static Method setActionButtonMethod;
+    private View focusView;
+
+    public void setFocusView(View focusView) {
+        this.focusView = focusView;
+    }
+
+    private static class SingletonHolder {
+        private static final InputManager INSTANCE = create();
+    }
+
+    public static InputManager getInstance() {
+        return InputManager.SingletonHolder.INSTANCE;
+    }
+
 
     public static InputManager create() {
         try {
@@ -37,17 +55,20 @@ public class InputManager {
     public void setPointerIcon(Bitmap bitmap, int xhot, int yhot){
         Log.d(TAG, "setPointerIcon() called with: bitmap = [" + bitmap + "], xhot = [" + xhot + "], yhot = [" + yhot + "]");
         PointerIcon pointerIcon = PointerIcon.create(bitmap, xhot, yhot);
-        try {
-            Method setCustomPointerIcon = manager.getClass().getMethod("setCustomPointerIcon", PointerIcon.class);
-            setCustomPointerIcon.invoke(manager, pointerIcon);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        } catch (InvocationTargetException e) {
-            throw new RuntimeException(e);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+        if(focusView != null){
+            focusView.setPointerIcon(pointerIcon);
+        } else {
+            try {
+                Method setCustomPointerIcon = manager.getClass().getMethod("setCustomPointerIcon", PointerIcon.class);
+                setCustomPointerIcon.invoke(manager, pointerIcon);
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException(e);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
         }
-
     }
 
     private static Class<?> getInputManagerClass() {

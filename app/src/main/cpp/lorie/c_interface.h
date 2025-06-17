@@ -23,6 +23,7 @@
 #define WINDOW_ICON                     "_NET_WM_ICON"
 #define WINDOW_PROTOCOLS                "WM_PROTOCOLS"
 #define WINDOW_DELETE_WINDOW            "WM_DELETE_WINDOW"
+#define WINDOW_X11_PID                  "_NET_WM_PID"
 
 #define ACTION_UNMAP 1
 #define ACTION_DESTORY 2

@@ -28,6 +28,7 @@ import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.fde.x11.input.InputManager;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
 
@@ -79,7 +80,7 @@ public class XWindowService extends Service {
 
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
-    private static final int DESTROY_ACTIVITY_RETRY = 5;
+    private static final int DESTROY_ACTIVITY_RETRY = 1;
     private static final int DESTROY_ACTIVITY_DELAY = 300;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
@@ -93,7 +94,7 @@ public class XWindowService extends Service {
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
         public void windowChanged(Surface surface, float x, float y, float w, float h, int index, long pWin, long XID) throws RemoteException {
-            FLog.s(TAG, XID, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + XID + "");
+            FLog.s(TAG, XID, "windowChanged: surface:" + surface + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", pWin:" + pWin + ", XID:" + Long.toHexString(XID) + "");
             startingWindow.remove(XID);
             Xserver.getInstance().windowChanged(surface, x, y, w, h, index, pWin, XID);
         }
@@ -201,9 +202,9 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
-        FLog.s(TAG,  message.getType().usefor);
+        FLog.s(TAG,  message.getType().usefor +" ID:" + Long.toHexString(message.getWindowAttribute().getXID()));
         int windowSize = runningMainWindow.size();
-        FLog.s(TAG, "before: size:" + windowSize);
+//        FLog.s(TAG, "before: size:" + windowSize);
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
                 startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, DECOR_CAPTION_HEIGHT);
@@ -243,7 +244,7 @@ public class XWindowService extends Service {
                 break;
         }
         int size = runningMainWindow.size();
-        FLog.s(TAG, "after: size:" + size);
+//        FLog.s(TAG, "after: size:" + size);
         if(windowSize != size){
             sendBroadcastSize(size);
         }
@@ -365,13 +366,13 @@ public class XWindowService extends Service {
         runningMainWindow.add(attr.getXID());
         startingWindow.add(attr.getXID());
         FLog.s(TAG, "start act with decor: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
-        if(attr.getTaskTo() != 0){
-            String targetPackage = getPackageName();
-            Intent intent = new Intent(START_ACTIVITY_FROM_X);
-            intent.setPackage(targetPackage);
-            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
-            sendBroadcast(intent);
-        } else {
+//        if(attr.getTaskTo() != 0){
+//            String targetPackage = getPackageName();
+//            Intent intent = new Intent(START_ACTIVITY_FROM_X);
+//            intent.setPackage(targetPackage);
+//            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+//            sendBroadcast(intent);
+//        } else {
             ActivityOptions options = ActivityOptions.makeBasic();
             options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
                     (int)(attr.getOffsetY() - decorHeight),
@@ -394,7 +395,7 @@ public class XWindowService extends Service {
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent, options.toBundle());
             Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
-        }
+//        }
     }
 
     @Override

@@ -114,11 +114,11 @@ public class Xserver {
      * @param taskTo                in which activity task
      * @param support_wm_delete     close action
      */
-    public static void startOrUpdateActivity(long aid, long transientfor, long leader,
-                                             int type, String wm_name, String wm_class,
-                                             int x, int y, int w, int h, int index, long p,
-                                             long window, long taskTo, int support_wm_delete,
-                                             Bitmap bitmap, boolean inbound, int clientNum) {
+    public static void startOrUpdateWindow(long aid, long transientfor, long leader,
+                                           int type, String wm_name, String wm_class,
+                                           int x, int y, int w, int h, int index, long p,
+                                           long window, long taskTo, int support_wm_delete,
+                                           Bitmap bitmap, boolean inbound, int clientNum, boolean isActivity) {
         FLog.s(TAG, aid,"start Activity: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
                 + ", type:" + type + ", wm_name:" + wm_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
                 + ", window:" + Long.toHexString(window) + ", taskTo:" + Long.toHexString(taskTo) +
@@ -133,30 +133,43 @@ public class Xserver {
             type = convert2AndroidType(type, x, y, w, h);
         }
 
+        if(type == _NET_WM_WINDOW_TYPE_DIALOG &&  inbound){
+            type = _NET_WM_WINDOW_TYPE_MENU;
+        }
+
         if( type == _NET_WM_WINDOW_TYPE_UTILITY || type ==  _NET_WM_WINDOW_TYPE_MENU ||
                 type ==  _NET_WM_WINDOW_TYPE_POPUP_MENU){
             transientfor = transientfor == 0 ? taskTo : transientfor;
         }
 //        taskTo = taskTo == 0 ? transientfor : taskTo;
-        switch (type) {
-            case _NET_WM_WINDOW_TYPE_NORMAL:
-                message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                        "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, bitmap)));
-                break;
-            case _NET_WM_WINDOW_TYPE_DIALOG:
-                message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
-                        "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete)));
-                break;
-            case _NET_WM_WINDOW_TYPE_UTILITY:
-            case _NET_WM_WINDOW_TYPE_MENU:
-            case _NET_WM_WINDOW_TYPE_TOOLTIP:
-            case _NET_WM_WINDOW_TYPE_POPUP_MENU:
-            case _NET_WM_WINDOW_TYPE_COMBO:
-            default:
-                message = new EventMessage(EventType.X_START_VIEW,
-                        "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, window, taskTo), new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete));
-                break;
+        FLog.s(TAG, aid,"final windowtype:" + type);
+        if(isActivity){
+            switch (type) {
+                case _NET_WM_WINDOW_TYPE_NORMAL:
+                    message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
+                            "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, bitmap)));
+                    break;
+                case _NET_WM_WINDOW_TYPE_DIALOG:
+                    message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
+                            "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete)));
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            switch (type) {
+                case _NET_WM_WINDOW_TYPE_UTILITY:
+                case _NET_WM_WINDOW_TYPE_MENU:
+                case _NET_WM_WINDOW_TYPE_TOOLTIP:
+                case _NET_WM_WINDOW_TYPE_POPUP_MENU:
+                case _NET_WM_WINDOW_TYPE_COMBO:
+                default:
+                    message = new EventMessage(EventType.X_START_VIEW,
+                            "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, window, taskTo), new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete));
+                    break;
+            }
         }
+
         if (message != null) {
             EventBus.getDefault().post(message);
         }

@@ -9,6 +9,7 @@ public interface FrameworkOperations {
     void setDecorCaptionViewFocuseable(Activity activity, boolean focusable);
 
     void exitFullScreenWindow(Activity activity);
+    void startFullScreenWindow(Activity activity);
 
-
+    boolean isWindowMaximized();
 }
