@@ -188,7 +188,7 @@ private:
 
     void setMaximizedState(Window window, int maximized);
 
-    void mokeSelectionNotify();
+    void UpdateXserverClipFile(const char *data);
 };
 
 

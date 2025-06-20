@@ -1,5 +1,6 @@
 package com.fde.fusionwindowmanager;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityOptions;
 import android.app.Dialog;
@@ -8,18 +9,23 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.FileProvider;
 
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
@@ -29,7 +35,12 @@ import org.greenrobot.eventbus.EventBus;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -180,6 +191,20 @@ public class WindowManager  {
         }
     }
 
+    //called from native code
+    public static void updateXserverClipFile(String text){
+        Log.d(TAG, "updateXserverClipFile: text:" + text + "");
+        if(contextReference.get() != null && !TextUtils.isEmpty(text)){
+            try {
+                String decodedPath = URLDecoder.decode(text, StandardCharsets.UTF_8.toString());
+                Log.d(TAG, "updateXserverClipFile: " + decodedPath);
+                Util.copyFileUriToClipboard(contextReference.get(), decodedPath);
+            } catch (UnsupportedEncodingException e) {
+                Log.e(TAG, "updateXserverClipFile: " + e );
+            }
+        }
+    }
+
     public static void saveBitmapToFile(Bitmap bitmap, String filePath) {
         File file = new File(filePath);
         try (FileOutputStream out = new FileOutputStream(file)) {
@@ -223,9 +248,12 @@ public class WindowManager  {
             switch (msg.what) {
                 case MSG_START_WM:
                     Context context = contextReference.get();
-                    ClipboardManager clipboardManager = (android.content.ClipboardManager) context.getApplicationContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                    ClipboardManager clipboardManager = (ClipboardManager) context.getApplicationContext().getSystemService(Context.CLIPBOARD_SERVICE);
                     String filePath = Util.getClipFilePath(clipboardManager, context);
                     String clipText = Util.getClipText(clipboardManager, context);
+                    if(!TextUtils.isEmpty(filePath)){
+                        filePath = filePath.replace(" ", "%20");
+                    }
                     isConnected = connect2Server(display, clipText, filePath) > 0;
                     Log.d(TAG, "MSG_START_WM isConnected:" + isConnected + " display:" + display);
                     break;

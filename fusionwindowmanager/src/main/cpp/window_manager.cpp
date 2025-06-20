@@ -695,15 +695,6 @@ void WindowManager::setMaximizedState(Window window, Bool maximized)
     XFlush(display_);
 }
 
-void WindowManager::mokeSelectionNotify(){
-    Atom targets = XInternAtom(display_, "TARGETS", False);
-    Atom type_qt = XInternAtom(display_, "peony-qt/encoded-uris", False);
-    Atom type_texturi = XInternAtom(display_, "text/uri-list", False);
-    Atom type_plain = XInternAtom(display_, "text/plain", False);
-    Atom type_text = XInternAtom(display_, "TEXT", False);
-    Atom type_string = XInternAtom(display_, "STRING", False);
-}
-
 void WindowManager::OnSelectionRequest(XEvent e) {
     XSelectionRequestEvent *sev = (XSelectionRequestEvent*)&e.xselectionrequest;
     log("OnSelectionRequest start-------->");
@@ -726,7 +717,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
                             32, PropModeReplace, (unsigned char *) selection_property_list,
                             selection_property_size
             );
-            log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
+            log("Sending linux data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
             for(int i = 0; i < selection_property_size; i ++ ){
                 log("   property:%s", XGetAtomName(display_, selection_property_list[i]));
             }
@@ -739,7 +730,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
                             32, PropModeReplace, (unsigned char *) types,
                             (int) (sizeof(types) / sizeof(Atom))
             );
-            log("Sending data to window 0x%lx, property '%s' targets & uft8 \n", sev->requestor, XGetAtomName(display_, sev->property));
+            log("Sending clip text data to window 0x%lx, property '%s' targets & uft8 \n", sev->requestor, XGetAtomName(display_, sev->property));
         } else if (!file_path.empty()){
             Atom types[6] = { type_qt, type_texturi, type_plain, type_text, type_string, utf8};
             XChangeProperty(display_,
@@ -749,7 +740,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
                             32, PropModeReplace, (unsigned char *) types,
                             (int) (sizeof(types) / sizeof(Atom))
             );
-            log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
+            log("Sending clip file data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
             for(int i = 0; i < (int) (sizeof(types) / sizeof(Atom)); i ++ ){
                 log("   property:%s", XGetAtomName(display_, types[i]));
             }
@@ -889,7 +880,9 @@ void WindowManager::OnSelectionClear(XEvent e) {
 void WindowManager::ConvertAllTarget() {
     XEvent event;
     XSelectionEvent *sev;
-//    file_path.clear();
+    bool isText = false;
+    bool isFile = false;
+    unsigned char *text_data, *file_data = nullptr;
     for (int i = 0; i < selection_property_size; i++) {
         log("show_data:%s\n", XGetAtomName(display_, selection_property_list[i]));
         XConvertSelection(display_, sel, selection_property_list[i], selection_property_list[i], owner, CurrentTime);
@@ -904,16 +897,22 @@ void WindowManager::ConvertAllTarget() {
                         Atom actual_type;
                         int actual_format;
                         unsigned long nitems, bytes_after;
-                        unsigned char *data = NULL;
+                        unsigned char *data = nullptr;
                         XGetWindowProperty(display_, owner, selection_property_list[i], 0, (~0L),
                                            False, AnyPropertyType,
                                            &actual_type, &actual_format, &nitems, &bytes_after, &data);
                         if (actual_format == 8) {  // 字符串类型
-                            log("Content of target: %s\n", data);
+                            log("actual_type :%s Content of target: %s\n", XGetAtomName(display_, actual_type), data);
                             if(selection_property_list[i] == utf8){
-                                UpdateXserverCliptext(reinterpret_cast<const char *>(data));
+                                isText = true;
+                                text_data = data;
+                            }else if(selection_property_list[i] == XInternAtom(display_, "text/uri-list", False)
+                                     || selection_property_list[i] == XInternAtom(display_, "peony-qt/encoded-uris", False)
+                                    ){
+                                isFile = true;
+                                file_data = data;
                             }
-                        } else {
+                        }  else {
                             log("Content of target (binary data or non-8-bit format):\n");
                             for (unsigned long item = 0; item < nitems; item++) {
                                 log("%02x ", data[item]);
@@ -928,6 +927,11 @@ void WindowManager::ConvertAllTarget() {
             }
             break;
         }
+    }
+    if(isFile) {
+        UpdateXserverClipFile(reinterpret_cast<const char *>(file_data));
+    } else if(isText){
+        UpdateXserverCliptext(reinterpret_cast<const char *>(text_data));
     }
 }
 
@@ -1043,7 +1047,7 @@ jint WindowManager::sendClipText(const char *string) {
     }
     selection_property_size = 0;
     file_path.clear();
-    XSetSelectionOwner(display_, sel, None, CurrentTime);
+    XSetSelectionOwner(display_, sel, owner, CurrentTime);
     XFlush(display_);
     return True;
 }
@@ -1068,7 +1072,7 @@ jint WindowManager::sendClipFile(const char *string) {
     }
     selection_property_size = 0;
     clip_text.clear();
-    XSetSelectionOwner(display_, sel, None, CurrentTime);
+    XSetSelectionOwner(display_, sel, owner, CurrentTime);
     XFlush(display_);
     return True;
 }
@@ -1090,6 +1094,15 @@ void WindowManager::UpdateXserverCliptext(const char *text) {
         jstring utf = GlobalEnv->NewStringUTF(text);
         jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                         "updateXserverCliptext", "(Ljava/lang/String;)V");
+        GlobalEnv->CallStaticVoidMethod(staticClass, method, utf);
+    }
+}
+
+void WindowManager::UpdateXserverClipFile(const char *text){
+    if(GlobalEnv && is_valid_utf8(text)){
+        jstring utf = GlobalEnv->NewStringUTF(text);
+        jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                                                        "updateXserverClipFile", "(Ljava/lang/String;)V");
         GlobalEnv->CallStaticVoidMethod(staticClass, method, utf);
     }
 }

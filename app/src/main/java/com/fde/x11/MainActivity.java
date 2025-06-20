@@ -112,8 +112,11 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -600,7 +603,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         String filePath = com.fde.fusionwindowmanager.Util.getClipFilePath(mClipboardManager, this);
         String clipText = com.fde.fusionwindowmanager.Util.getClipText(mClipboardManager, this);
         if(!TextUtils.isEmpty(filePath)){
-            mXserviceWrapper.sendClipFile(filePath);
+            String replace = filePath.replace(" ", "%20");
+            Log.d(TAG, "getClipText: " + replace);
+            mXserviceWrapper.sendClipFile(replace);
         } else if(!TextUtils.isEmpty(clipText)){
             mClipText = clipText;
             mXserviceWrapper.sendClipText(mClipText);

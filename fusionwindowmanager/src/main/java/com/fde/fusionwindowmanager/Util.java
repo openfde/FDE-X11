@@ -1,14 +1,21 @@
 package com.fde.fusionwindowmanager;
 
+import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
 import android.provider.DocumentsContract;
+import android.provider.MediaStore;
 import android.util.Log;
 
+
+import androidx.core.content.FileProvider;
 
 import java.io.Closeable;
 import java.io.File;
@@ -28,7 +35,7 @@ public class Util {
     private static final String TAG = "Util";
     private static Context baseContext;
 
-    public static void setBaseContext(Context context){
+    public static void setBaseContext(Context context) {
         baseContext = context;
     }
 
@@ -61,7 +68,7 @@ public class Util {
 
         if (files != null && files.length > 0) {
             File dir = new File(context.getFilesDir(), targetDir);
-            if(dir.exists()){
+            if (dir.exists()) {
                 Log.d(TAG, "copyAssetsToFiles: exists, return");
                 return;
             }
@@ -146,13 +153,13 @@ public class Util {
             if (clipData != null && clipData.getItemCount() > 0
                     && clipData.getDescription().getLabel() != null) {
                 int itemCount = clipData.getItemCount();
-                for(int i = 0 ; i < itemCount ; i++){
+                for (int i = 0; i < itemCount; i++) {
                     ClipData.Item item = clipData.getItemAt(i);
                     Uri uri = item.getUri();
-                    if(uri != null ){
+                    if (uri != null) {
                         try {
                             String pathSuffix = uri.getPath().split(":")[1];
-                            return "file:///home/huyang/openfde/" + pathSuffix;
+                            return "file:///home/"+  LinuxRootFileUtils.getUserName(context)  + "/openfde/" + pathSuffix;
                         } catch (Exception e) {
                             Log.e(TAG, "getClipText: " + e.getMessage());
                         }
@@ -169,15 +176,73 @@ public class Util {
             if (clipData != null && clipData.getItemCount() > 0
                     && clipData.getDescription().getLabel() != null) {
                 int itemCount = clipData.getItemCount();
-                for(int i = 0 ; i < itemCount ; i++){
+                for (int i = 0; i < itemCount; i++) {
                     ClipData.Item item = clipData.getItemAt(i);
                     CharSequence content = item.getText();
-                    if(content != null){
+                    if (content != null) {
                         return content.toString();
                     }
                 }
             }
         }
         return null;
+    }
+
+    public static void copyFileUriToClipboard(Context context, String fileUrl) {
+        Log.d(TAG, "copyFileUriToClipboard: " + fileUrl);
+        String filePath = fileUrl.substring(7);
+        String sdCardPath = convertToSdCardPath(filePath, context);
+        copyFileToClipboard(context, sdCardPath);
+    }
+
+    private static String convertToSdCardPath(String originalPath, Context context) {
+        String internalStoragePath = Environment.getExternalStorageDirectory().getAbsolutePath();
+        String userName = LinuxRootFileUtils.getUserName(context);
+        Log.d(TAG, "convertToSdCardPath() originalPath = [" + originalPath + "], userName = [" + userName + "]");
+        if (originalPath.startsWith("/home/" + userName + "/openfde")) {
+            Log.d(TAG, "convertToSdCardPath: contains");
+            return originalPath.replace("/home/" + userName  + "/openfde", internalStoragePath);
+        }
+        Log.d(TAG, "convertToSdCardPath: not contains");
+        return originalPath;
+    }
+
+    public static void copyFileToClipboard(Context context, String path) {
+        Log.d(TAG, "copyFileToClipboard: path:" + path);
+        // 获取文件的 URI
+        Uri fileUri;
+        File file = new File(path.trim());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            // 使用 FileProvider 获取安全的 URI
+            fileUri = FileProvider.getUriForFile(
+                    context,
+                    context.getApplicationContext().getPackageName() + ".provider",
+                    file
+            );
+        } else {
+            fileUri = Uri.fromFile(file);
+        }
+
+        // 创建 ClipData
+        ClipData clipData = ClipData.newUri(context.getContentResolver(), "File", fileUri);
+
+        // 设置 ClipData 的 Intent（可选，提供更多信息）
+        Intent clipIntent = new Intent();
+        clipIntent.setData(fileUri);
+        clipIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+//        clipData.getDescription().setExtras(clipIntent.getExtras());
+
+        // 获取剪贴板服务并设置 ClipData
+        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(clipData);
+
+            // 或者授予所有应用临时权限（不推荐）
+            context.grantUriPermission(
+                    "*",
+                    fileUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+        }
     }
 }
