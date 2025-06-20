@@ -601,7 +601,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         String clipText = com.fde.fusionwindowmanager.Util.getClipText(mClipboardManager, this);
         if(!TextUtils.isEmpty(filePath)){
             mXserviceWrapper.sendClipFile(filePath);
-        } else if(!TextUtils.isEmpty(clipText) && !TextUtils.equals(clipText, mClipText)){
+        } else if(!TextUtils.isEmpty(clipText)){
             mClipText = clipText;
             mXserviceWrapper.sendClipText(mClipText);
         }
@@ -620,7 +620,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         }
     }
-
 
     private void checkConfigBeforeExec(Configuration configuration, boolean newConfig){
         if(configuration == null || mXserviceWrapper == null){

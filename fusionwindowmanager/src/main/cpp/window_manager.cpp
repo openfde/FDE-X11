@@ -54,7 +54,7 @@ int WindowManager::OnWMDetected(Display* display, XErrorEvent* e) {
     // other errors.
     CHECK_EQ(static_cast<int>(e->error_code), BadAccess);
     // Set flag.
-    wm_detected_ = true;
+//    wm_detected_ = true;
     // The return value is ignored.
     return 0;
 }
@@ -695,6 +695,15 @@ void WindowManager::setMaximizedState(Window window, Bool maximized)
     XFlush(display_);
 }
 
+void WindowManager::mokeSelectionNotify(){
+    Atom targets = XInternAtom(display_, "TARGETS", False);
+    Atom type_qt = XInternAtom(display_, "peony-qt/encoded-uris", False);
+    Atom type_texturi = XInternAtom(display_, "text/uri-list", False);
+    Atom type_plain = XInternAtom(display_, "text/plain", False);
+    Atom type_text = XInternAtom(display_, "TEXT", False);
+    Atom type_string = XInternAtom(display_, "STRING", False);
+}
+
 void WindowManager::OnSelectionRequest(XEvent e) {
     XSelectionRequestEvent *sev = (XSelectionRequestEvent*)&e.xselectionrequest;
     log("OnSelectionRequest start-------->");
@@ -774,7 +783,7 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         log("data :%s actual_format:%d data:%s nitems:%lu actual_type:%s",
             XGetAtomName(display_, sev->target), actual_format, data, nitems, XGetAtomName(display_, actual_type));
         log("send property :%s clip_text:%s file_path:%s selection_property_size:%d", XGetAtomName(display_, sev->target), clip_text.c_str()
-            , file_path.c_str(), selection_property_size)
+        , file_path.c_str(), selection_property_size)
         if(selection_property_size == 0 ){
             if(!clip_text.empty()){
                 unsigned char * text = (unsigned char *)clip_text.c_str();
@@ -782,12 +791,16 @@ void WindowManager::OnSelectionRequest(XEvent e) {
                                 text, clip_text.length());
             } else if(!file_path.empty()){
                 if(type_qt == sev->target || type_texturi == sev->target || type_plain == sev->target
-              || type_text == sev->target  || type_string == sev->target  || utf8 == sev->target
-             ){
+                   || type_text == sev->target  || type_string == sev->target  || utf8 == sev->target
+                        ){
                     unsigned char * text = (unsigned char *)file_path.c_str();
                     XChangeProperty(display_, sev->requestor, sev->property, sev->target, 8,
                                     PropModeReplace,
                                     text, file_path.length());
+                } else if(sev->target == XInternAtom(display_, "peony-qt/is-cut", False)){
+                    XChangeProperty(display_, sev->requestor, sev->property, sev->target, 8,
+                                    PropModeReplace,
+                                    reinterpret_cast<const unsigned char *>((char *) "false"), 5);
                 }
             }
         }  else {
@@ -817,7 +830,8 @@ void WindowManager::OnSelectionRequest(XEvent e) {
 
 
 void WindowManager::OnSelectionClear(XEvent e) {
-    log("OnSelectionClear start--------->\n");
+    Window request = e.xclient.window;
+    log("OnSelectionClear start--------- request:0x:%x>\n", request);
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
     Atom target_name = XInternAtom(display_, "TARGETS", False);
@@ -1029,6 +1043,8 @@ jint WindowManager::sendClipText(const char *string) {
     }
     selection_property_size = 0;
     file_path.clear();
+    XSetSelectionOwner(display_, sel, None, CurrentTime);
+    XFlush(display_);
     return True;
 }
 
@@ -1052,6 +1068,8 @@ jint WindowManager::sendClipFile(const char *string) {
     }
     selection_property_size = 0;
     clip_text.clear();
+    XSetSelectionOwner(display_, sel, None, CurrentTime);
+    XFlush(display_);
     return True;
 }
 

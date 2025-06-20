@@ -149,13 +149,11 @@ public class Util {
                 for(int i = 0 ; i < itemCount ; i++){
                     ClipData.Item item = clipData.getItemAt(i);
                     Uri uri = item.getUri();
-                    if(uri != null && context.getContentResolver().getType(uri) != null && context.getContentResolver().getType(uri).contains("image")){
+                    if(uri != null ){
                         try {
-                            DocumentsContract.Path documentPath = DocumentsContract.findDocumentPath(context.getContentResolver(), uri);
-                            List<String> path = documentPath.getPath();
-                            String pathSuffix = path.get(path.size() -1).split(":")[1];
+                            String pathSuffix = uri.getPath().split(":")[1];
                             return "file:///home/huyang/openfde/" + pathSuffix;
-                        } catch (FileNotFoundException e) {
+                        } catch (Exception e) {
                             Log.e(TAG, "getClipText: " + e.getMessage());
                         }
                     }

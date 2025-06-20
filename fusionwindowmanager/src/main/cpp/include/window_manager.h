@@ -187,6 +187,8 @@ private:
     void HandleClientMessage(XEvent event);
 
     void setMaximizedState(Window window, int maximized);
+
+    void mokeSelectionNotify();
 };
 
 
