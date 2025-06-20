@@ -96,8 +96,11 @@ public:
     void initCompositor();
     int stoped = False;
     jint sendClipText(const char *pJstring);
+    jint sendClipFile(const char *pJstring);
 
     jint circulaSubWindows(jlong window, jboolean lowest);
+
+    void setClipData(char *text, char *path);
 
 private:
 
@@ -163,6 +166,7 @@ private:
     Window owner;
     Atom sel, utf8;
     std::string clip_text;
+    std::string file_path;
     Atom * selection_property_list ;
     int selection_property_size = 0;
 

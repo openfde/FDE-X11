@@ -25,7 +25,6 @@ import static com.fde.x11.Xserver.ACTION_START;
 import static com.fde.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.fde.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.fde.x11.data.Constants.APP_TITLE_PREFIX;
-import static com.fde.x11.utils.Util.showXserverCloseOnDisconnect;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -59,6 +58,7 @@ import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
+import android.provider.DocumentsContract;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -111,6 +111,7 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.io.FileNotFoundException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -596,23 +597,13 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      */
     private void getClipText() {
         FLog.a("window", getWindowId(), "getClipText ");
-        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()) {
-            ClipData clipData = mClipboardManager.getPrimaryClip();
-            if (clipData != null && clipData.getItemCount() > 0
-                    && clipData.getDescription().getLabel() != null) {
-                String label = clipData.getDescription().getLabel().toString();
-                ClipData.Item item = clipData.getItemAt(0);
-                if (item != null) {
-                    CharSequence content = item.getText();
-                    FLog.a("window", getWindowId(), "clip:content:" + content + " label:" + label);
-                    if (content != null && !TextUtils.isEmpty(content) &&
-                            !TextUtils.equals(content, mClipText) && mXserviceWrapper != null) {
-                        mClipText = content.toString();
-                        FLog.a("window", getWindowId(), "getClipText:" + mClipText);
-                        mXserviceWrapper.sendClipText(mClipText);
-                    }
-                }
-            }
+        String filePath = com.fde.fusionwindowmanager.Util.getClipFilePath(mClipboardManager, this);
+        String clipText = com.fde.fusionwindowmanager.Util.getClipText(mClipboardManager, this);
+        if(!TextUtils.isEmpty(filePath)){
+            mXserviceWrapper.sendClipFile(filePath);
+        } else if(!TextUtils.isEmpty(clipText) && !TextUtils.equals(clipText, mClipText)){
+            mClipText = clipText;
+            mXserviceWrapper.sendClipText(mClipText);
         }
         FLog.a("window", getWindowId(), "getClipText end");
     }

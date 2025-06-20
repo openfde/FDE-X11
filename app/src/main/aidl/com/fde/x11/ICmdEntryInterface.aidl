@@ -28,5 +28,7 @@ interface ICmdEntryInterface {
 
     void sendClipText(String cliptext);
 
+    void sendClipFile(String file);
+
     void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index);
 }

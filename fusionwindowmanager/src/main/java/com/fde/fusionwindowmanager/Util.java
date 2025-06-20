@@ -1,17 +1,23 @@
 package com.fde.fusionwindowmanager;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
+import android.net.Uri;
+import android.provider.DocumentsContract;
 import android.util.Log;
 
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.List;
 
 public class Util {
 
@@ -131,5 +137,49 @@ public class Util {
             e.printStackTrace();
         }
         return xwindowActivityClass;
+    }
+
+
+    public static String getClipFilePath(ClipboardManager mClipboardManager, Context context) {
+        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()) {
+            ClipData clipData = mClipboardManager.getPrimaryClip();
+            if (clipData != null && clipData.getItemCount() > 0
+                    && clipData.getDescription().getLabel() != null) {
+                int itemCount = clipData.getItemCount();
+                for(int i = 0 ; i < itemCount ; i++){
+                    ClipData.Item item = clipData.getItemAt(i);
+                    Uri uri = item.getUri();
+                    if(uri != null && context.getContentResolver().getType(uri) != null && context.getContentResolver().getType(uri).contains("image")){
+                        try {
+                            DocumentsContract.Path documentPath = DocumentsContract.findDocumentPath(context.getContentResolver(), uri);
+                            List<String> path = documentPath.getPath();
+                            String pathSuffix = path.get(path.size() -1).split(":")[1];
+                            return "file:///home/huyang/openfde/" + pathSuffix;
+                        } catch (FileNotFoundException e) {
+                            Log.e(TAG, "getClipText: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    public static String getClipText(ClipboardManager mClipboardManager, Context context) {
+        if (mClipboardManager != null && mClipboardManager.hasPrimaryClip()) {
+            ClipData clipData = mClipboardManager.getPrimaryClip();
+            if (clipData != null && clipData.getItemCount() > 0
+                    && clipData.getDescription().getLabel() != null) {
+                int itemCount = clipData.getItemCount();
+                for(int i = 0 ; i < itemCount ; i++){
+                    ClipData.Item item = clipData.getItemAt(i);
+                    CharSequence content = item.getText();
+                    if(content != null){
+                        return content.toString();
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

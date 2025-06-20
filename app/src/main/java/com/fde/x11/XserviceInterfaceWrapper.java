@@ -173,4 +173,12 @@ public class XserviceInterfaceWrapper implements InputStub {
     public void sendTouchEvent(int action, int pointerId, int x, int y) {
 
     }
+
+    public void sendClipFile(String imagePath) {
+        try {
+            if(isAviable()){service.sendClipFile(imagePath);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "sendClipText failed" + e.getMessage());
+        }
+    }
 }

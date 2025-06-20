@@ -531,7 +531,7 @@ void WindowManager::Run() {
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
-        log("------Received event: %s",ToString(e).c_str());
+//        log("------Received event: %s",ToString(e).c_str());
 //        log("type:%d", e.type);
         // 2. Dispatch event.
         switch (e.type) {
@@ -601,26 +601,26 @@ void WindowManager::Run() {
 }
 
 void WindowManager::HandleClientMessage(XEvent e) {
-    log("HandleClientMessage ---------------------------------type:%s", XGetAtomName(display_, e.xclient.message_type));
+//    log("HandleClientMessage ---------------------------------type:%s", XGetAtomName(display_, e.xclient.message_type));
     int wm_action = WINDOW_ACTION_UNDEFINED;
     if (e.xclient.message_type == XInternAtom(display_, "WM_CHANGE_STATE", False)) {
         long target_state = e.xclient.data.l[0];
         if (target_state == NormalState) {
             wm_action = WINDOW_ACTION_MINIMIZE_REMOVE;
-            log("HandleClientMessage WM_CHANGE_STATE: Restore window to normal state.\n");
+//            log("HandleClientMessage WM_CHANGE_STATE: Restore window to normal state.\n");
         } else if (target_state == IconicState) {
             wm_action = WINDOW_ACTION_MINIMIZE;
-            log("HandleClientMessage WM_CHANGE_STATE: Minimize (iconify) window.\n");
+//            log("HandleClientMessage WM_CHANGE_STATE: Minimize (iconify) window.\n");
         } else {
-            log("HandleClientMessage WM_CHANGE_STATE with unknown state: %ld\n", target_state);
+//            log("HandleClientMessage WM_CHANGE_STATE with unknown state: %ld\n", target_state);
         }
     } else if (e.xclient.message_type == XInternAtom(display_, "WM_PROTOCOLS", False)) {
         Atom wm_delete_window = XInternAtom(display_, "WM_DELETE_WINDOW", False);
         wm_action = WINDOW_ACTION_DELETE;
         if (e.xclient.data.l[0] == wm_delete_window) {
-            log("HandleClientMessage WM_PROTOCOLS: Window close request.\n");
+//            log("HandleClientMessage WM_PROTOCOLS: Window close request.\n");
         } else {
-            log("HandleClientMessage WM_PROTOCOLS with unknown protocol.\n");
+//            log("HandleClientMessage WM_PROTOCOLS with unknown protocol.\n");
         }
     } else if (e.xclient.message_type == XInternAtom(display_, "_NET_WM_STATE", False)) {
         long action = e.xclient.data.l[0];
@@ -629,12 +629,12 @@ void WindowManager::HandleClientMessage(XEvent e) {
         if (action == _NET_WM_STATE_ADD) {
             if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False) ||
                 state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False)) {
-                log("HandleClientMessage Maximize Vertically requested.\n");
+//                log("HandleClientMessage Maximize Vertically requested.\n");
                 wm_action |= WINDOW_ACTION_MAXIMIZED_VERT;
             }
             if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False) ||
                 state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False)) {
-                log("HandleClientMessage Maximize Horizontally requested.\n");
+//                log("HandleClientMessage Maximize Horizontally requested.\n");
                 wm_action |= WINDOW_ACTION_MAXIMIZED_HORZ;
             }
             if(wm_action == WINDOW_ACTION_MAXIMIZED_HORZ + WINDOW_ACTION_MAXIMIZED_VERT){
@@ -642,25 +642,25 @@ void WindowManager::HandleClientMessage(XEvent e) {
             }
             if (state1 == XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False) ||
                 state2 == XInternAtom(display_, "_NET_WM_STATE_HIDDEN", False)) {
-                log("HandleClientMessage Minimize requested.\n");
+//                log("HandleClientMessage Minimize requested.\n");
             }
         } else if (action == _NET_WM_STATE_REMOVE) {
             if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False) ||
                 state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False)) {
-                log("HandleClientMessage Maximize Vertically removed.\n");
+//                log("HandleClientMessage Maximize Vertically removed.\n");
                 wm_action |= WINDOW_ACTION_MAXIMIZED_VERT;
             }
             if (state1 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False) ||
                 state2 == XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False)) {
-                log("HandleClientMessage Maximize Horizontally removed.\n");
+//                log("HandleClientMessage Maximize Horizontally removed.\n");
                 wm_action |= WINDOW_ACTION_MAXIMIZED_HORZ;
             }
             if(wm_action == WINDOW_ACTION_MAXIMIZED_HORZ + WINDOW_ACTION_MAXIMIZED_VERT){
                 wm_action = WINDOW_ACTION_MAXIMIZED_REMOVE;
             }
-            log("HandleClientMessage Remove state1:%s state2:%s", XGetAtomName(display_, state1),  XGetAtomName(display_, state2));
+//            log("HandleClientMessage Remove state1:%s state2:%s", XGetAtomName(display_, state1),  XGetAtomName(display_, state2));
         } else if (action == _NET_WM_STATE_TOGGLE) {
-            log("HandleClientMessage Toggle state1:%s state2:%s", XGetAtomName(display_, state1),  XGetAtomName(display_, state2));
+//            log("HandleClientMessage Toggle state1:%s state2:%s", XGetAtomName(display_, state1),  XGetAtomName(display_, state2));
         }
         if(wm_action == WINDOW_ACTION_MAXIMIZED) {
             setMaximizedState(e.xclient.window, true);
@@ -670,9 +670,9 @@ void WindowManager::HandleClientMessage(XEvent e) {
 
     } else if(e.xclient.message_type == XInternAtom(display_, "_NET_ACTIVE_WINDOW", False)){
         Window active_window = e.xclient.data.l[0];
-        log("HandleClientMessage w1:%lx w2:%s w3:%lx", e.xclient.data.l[0], XGetAtomName(display_, e.xclient.data.l[1] ), e.xclient.data.l[2]);
+//        log("HandleClientMessage w1:%lx w2:%s w3:%lx", e.xclient.data.l[0], XGetAtomName(display_, e.xclient.data.l[1] ), e.xclient.data.l[2]);
     }
-    log("HandleClientMessage final wm_action:%d window:%lx", wm_action, e.xclient.window);
+//    log("HandleClientMessage final wm_action:%d window:%lx", wm_action, e.xclient.window);
     jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                     "updateWmStateClient", "(IJ)V");
     GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, e.xclient.window);
@@ -702,6 +702,11 @@ void WindowManager::OnSelectionRequest(XEvent e) {
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
     Atom targets = XInternAtom(display_, "TARGETS", False);
+    Atom type_qt = XInternAtom(display_, "peony-qt/encoded-uris", False);
+    Atom type_texturi = XInternAtom(display_, "text/uri-list", False);
+    Atom type_plain = XInternAtom(display_, "text/plain", False);
+    Atom type_text = XInternAtom(display_, "TEXT", False);
+    Atom type_string = XInternAtom(display_, "STRING", False);
     log("OnSelectionRequest target:%s property:%s", XGetAtomName(display_, sev->target), XGetAtomName(display_, sev->property));
     if(sev->target == targets){
         if(selection_property_size != 0){
@@ -712,7 +717,11 @@ void WindowManager::OnSelectionRequest(XEvent e) {
                             32, PropModeReplace, (unsigned char *) selection_property_list,
                             selection_property_size
             );
-        } else {
+            log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
+            for(int i = 0; i < selection_property_size; i ++ ){
+                log("   property:%s", XGetAtomName(display_, selection_property_list[i]));
+            }
+        } else if(!clip_text.empty()){
             Atom types[2] = { targets, utf8 };
             XChangeProperty(display_,
                             sev->requestor,
@@ -721,6 +730,20 @@ void WindowManager::OnSelectionRequest(XEvent e) {
                             32, PropModeReplace, (unsigned char *) types,
                             (int) (sizeof(types) / sizeof(Atom))
             );
+            log("Sending data to window 0x%lx, property '%s' targets & uft8 \n", sev->requestor, XGetAtomName(display_, sev->property));
+        } else if (!file_path.empty()){
+            Atom types[6] = { type_qt, type_texturi, type_plain, type_text, type_string, utf8};
+            XChangeProperty(display_,
+                            sev->requestor,
+                            sev->property,
+                            XA_ATOM,
+                            32, PropModeReplace, (unsigned char *) types,
+                            (int) (sizeof(types) / sizeof(Atom))
+            );
+            log("Sending data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
+            for(int i = 0; i < (int) (sizeof(types) / sizeof(Atom)); i ++ ){
+                log("   property:%s", XGetAtomName(display_, types[i]));
+            }
         }
         XSelectionEvent ssev;
         ssev.type = SelectionNotify;
@@ -748,16 +771,36 @@ void WindowManager::OnSelectionRequest(XEvent e) {
         unsigned char *data = NULL;
         XGetWindowProperty(display_, owner, sev->target, 0, (~0L), False, AnyPropertyType,
                            &actual_type, &actual_format, &nitems, &bytes_after, &data);
-        log("data :%s actual_format:%d data:%s nitems:%lu",
-            XGetAtomName(display_, sev->target), actual_format, data, nitems);
+        log("data :%s actual_format:%d data:%s nitems:%lu actual_type:%s",
+            XGetAtomName(display_, sev->target), actual_format, data, nitems, XGetAtomName(display_, actual_type));
+        log("send property :%s clip_text:%s file_path:%s selection_property_size:%d", XGetAtomName(display_, sev->target), clip_text.c_str()
+            , file_path.c_str(), selection_property_size)
         if(selection_property_size == 0 ){
-            unsigned char * text = (unsigned char *)clip_text.c_str();
-            XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
-                            text, clip_text.length());
-        } else {
+            if(!clip_text.empty()){
+                unsigned char * text = (unsigned char *)clip_text.c_str();
+                XChangeProperty(display_, sev->requestor, sev->property, utf8, 8, PropModeReplace,
+                                text, clip_text.length());
+            } else if(!file_path.empty()){
+                if(type_qt == sev->target || type_texturi == sev->target || type_plain == sev->target
+              || type_text == sev->target  || type_string == sev->target  || utf8 == sev->target
+             ){
+                    unsigned char * text = (unsigned char *)file_path.c_str();
+                    XChangeProperty(display_, sev->requestor, sev->property, sev->target, 8,
+                                    PropModeReplace,
+                                    text, file_path.length());
+                }
+            }
+        }  else {
             XChangeProperty(display_, sev->requestor, sev->property, actual_type, actual_format,
                             PropModeReplace,
                             data, nitems);
+            log("change data to window 0x%lx, property:%s actual_type:%s actual_format:%d data:%s nitems:%d",
+                sev->requestor,
+                XGetAtomName(display_, sev->property),
+                XGetAtomName(display_, actual_type),
+                actual_format,
+                data,
+                nitems)
         }
         log("Sending data to window 0x%lx, data: '%s'\n", sev->requestor, data);
         ssev.type = SelectionNotify;
@@ -813,7 +856,7 @@ void WindowManager::OnSelectionClear(XEvent e) {
                     for (int index = 0; index < nitems; index++)
                     {
                         an = XGetAtomName(display_, targets[index]);
-                        log("    '%s'\n", an);
+//                        log("    '%s'\n", an);
                         if (an)
                             XFree(an);
                     }
@@ -832,6 +875,7 @@ void WindowManager::OnSelectionClear(XEvent e) {
 void WindowManager::ConvertAllTarget() {
     XEvent event;
     XSelectionEvent *sev;
+//    file_path.clear();
     for (int i = 0; i < selection_property_size; i++) {
         log("show_data:%s\n", XGetAtomName(display_, selection_property_list[i]));
         XConvertSelection(display_, sel, selection_property_list[i], selection_property_list[i], owner, CurrentTime);
@@ -982,9 +1026,32 @@ jint WindowManager::sendClipText(const char *string) {
     } else {
         clip_text = in_text;
         log("update clip text :%s", clip_text.c_str());
-        selection_property_size = 0;
-
     }
+    selection_property_size = 0;
+    file_path.clear();
+    return True;
+}
+
+
+void WindowManager::setClipData(char *text, char *path) {
+    if(strlen(text)){
+        sendClipText(text);
+    } else if(strlen(path)){
+        sendClipFile(path);
+    }
+}
+
+
+jint WindowManager::sendClipFile(const char *string) {
+    std::string in_text = string;
+    if (file_path == in_text) {
+        log("no need update clip file")
+    } else {
+        file_path = in_text;
+        log("update clip file :%s", file_path.c_str())
+    }
+    selection_property_size = 0;
+    clip_text.clear();
     return True;
 }
 

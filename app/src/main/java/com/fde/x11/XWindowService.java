@@ -178,6 +178,13 @@ public class XWindowService extends Service {
         }
 
         @Override
+        public void sendClipFile(String file) throws RemoteException {
+            if(wm != null && wm.sendClipFile(file) > 0){
+                FLog.s(TAG, "sendClipFile: file:" + file + "");
+            }
+        }
+
+        @Override
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }

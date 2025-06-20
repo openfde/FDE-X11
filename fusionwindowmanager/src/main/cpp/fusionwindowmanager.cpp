@@ -56,12 +56,28 @@ JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
     }
 }
 
-JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display){
+JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display, jstring cliptext, jstring filepath){
     jboolean isCopy = false;
     char* export_display = const_cast<char *>(env->GetStringUTFChars(display, &isCopy));
     jclass js  = static_cast<jclass>(env->NewGlobalRef(obj));
     setenv("DISPLAY", export_display, 1);
     window_manager = WindowManager::create(export_display, env, js);
+    jsize length = 0;
+    if(cliptext != NULL){
+        length = env->GetStringLength(cliptext);
+    }
+    if (length != 0) {
+        char* text = const_cast<char *>(env->GetStringUTFChars(cliptext, &isCopy));
+        window_manager->sendClipText(text);
+    }
+    length = 0;
+    if(filepath != NULL){
+        length = env->GetStringLength(filepath);
+    }
+    if (length != 0) {
+        char* file = const_cast<char *>(env->GetStringUTFChars(filepath, &isCopy));
+        window_manager->sendClipFile(file);
+    }
     if(!window_manager){
         log("Failed to initialize window manager.");
         return False;
@@ -145,6 +161,16 @@ JNIEXPORT jint JNICALL sendClipText(JNIEnv * env, jobject obj, jstring string){
     return window_manager->sendClipText(cliptext);
 }
 
+JNIEXPORT jint JNICALL sendClipFile(JNIEnv * env, jobject obj, jstring string){
+    if(!window_manager){
+        log("Failed to initialize window manager.");
+        return False;
+    }
+    jboolean isCopy = false;
+    const char* clipfile = env->GetStringUTFChars(string, &isCopy);
+    return window_manager->sendClipFile(clipfile);
+}
+
 JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
     if(window_manager){
         log("disconnect2Server");
@@ -157,7 +183,7 @@ JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
 
 static JNINativeMethod method_table[] = {
         {"createXWindow","()V", (void *) createXWindow},
-        {"connect2Server", "(Ljava/lang/String;)I", (void *) connect2Server},
+        {"connect2Server", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I", (void *) connect2Server},
         {"moveWindow","(JII)I", (void *) moveWindow},
         {"configureWindow","(JIIII)I", (void *) configureWindow},
         {"resizeWindow","(JII)I", (void *) resizeWindow},
@@ -167,6 +193,7 @@ static JNINativeMethod method_table[] = {
         {"raiseWindow","(J)I", (void *) raiseWindow},
         {"circulaSubWindows","(JZ)I", (void *) circulaSubWindows},
         {"sendClipText","(Ljava/lang/String;)I", (void *) sendClipText},
+        {"sendClipFile","(Ljava/lang/String;)I", (void *) sendClipFile},
         {"disconnect2Server","()I", (void *) disconnect2Server},
 };
 

@@ -109,7 +109,7 @@ public class WindowManager  {
      */
     public native void createXWindow();
 
-    public static native int connect2Server(String display);
+    public static native int connect2Server(String display, String cliptext, String filepath);
 
     public native int configureWindow(long window, int x, int y, int width, int height);
 
@@ -125,6 +125,8 @@ public class WindowManager  {
     public native int circulaSubWindows(long window, boolean lowest);
 
     public native int sendClipText(String cliptext);
+
+    public native int sendClipFile(String file);
     public native int disconnect2Server();
 
     //called from native code
@@ -220,7 +222,11 @@ public class WindowManager  {
             super.handleMessage(msg);
             switch (msg.what) {
                 case MSG_START_WM:
-                    isConnected = connect2Server(display) > 0;
+                    Context context = contextReference.get();
+                    ClipboardManager clipboardManager = (android.content.ClipboardManager) context.getApplicationContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                    String filePath = Util.getClipFilePath(clipboardManager, context);
+                    String clipText = Util.getClipText(clipboardManager, context);
+                    isConnected = connect2Server(display, clipText, filePath) > 0;
                     Log.d(TAG, "MSG_START_WM isConnected:" + isConnected + " display:" + display);
                     break;
                 default:
