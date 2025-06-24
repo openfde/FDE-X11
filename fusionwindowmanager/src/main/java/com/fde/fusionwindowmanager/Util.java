@@ -2,6 +2,7 @@ package com.fde.fusionwindowmanager;
 
 import android.annotation.SuppressLint;
 import android.content.ClipData;
+import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
@@ -10,6 +11,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.os.PersistableBundle;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -193,6 +195,7 @@ public class Util {
         String filePath = fileUrl.substring(7);
         String sdCardPath = convertToSdCardPath(filePath, context);
         copyFileToClipboard(context, sdCardPath);
+        MediaStoreUriHelper.copyMediaUriToClipboard(context, sdCardPath);
     }
 
     private static String convertToSdCardPath(String originalPath, Context context) {
@@ -222,14 +225,18 @@ public class Util {
         } else {
             fileUri = Uri.fromFile(file);
         }
-
-        // 创建 ClipData
-        ClipData clipData = ClipData.newUri(context.getContentResolver(), "File", fileUri);
-
+        PersistableBundle bundle = new PersistableBundle();
+        bundle.putInt("clipper:opType", 1);
+        ClipDescription description = new ClipDescription("", new String[]{"image/png"});
+        description.setExtras(bundle);
+        ClipData clipData = new ClipData(description, new ClipData.Item(fileUri));
+                // 创建 ClipData
+//        ClipData clipData = ClipData.newUri(context.getContentResolver(), "File", fileUri);
+//        ClipData clipData = new ClipData("Label", new String[]{"image/png"}, new ClipData.Item(fileUri));
         // 设置 ClipData 的 Intent（可选，提供更多信息）
-        Intent clipIntent = new Intent();
-        clipIntent.setData(fileUri);
-        clipIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+//        Intent clipIntent = new Intent();
+//        clipIntent.setData(fileUri);
+//        clipIntent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 //        clipData.getDescription().setExtras(clipIntent.getExtras());
 
         // 获取剪贴板服务并设置 ClipData
