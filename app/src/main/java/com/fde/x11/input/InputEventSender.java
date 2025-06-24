@@ -113,6 +113,13 @@ public final class InputEventSender {
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
     }
 
+    public void sendCursorMove(MotionEvent e, boolean relative) {
+        LorieView lorieView = (LorieView) mInjector;
+        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        input.sendMouseEvent(e.getRawX(), e.getRawY(), BUTTON_UNDEFINED, false, relative,
+                lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
+    }
+
     public void sendCursorMove(float x, float y, boolean relative) {
         LorieView lorieView = (LorieView) mInjector;
         if(lorieView.getAttribute() != null){

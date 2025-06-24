@@ -1291,9 +1291,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen)
                 {
                     mConfigureRect = attr.getRect();
-                    if(!mInputHandler.isTouching()){
+//                    if(!mInputHandler.isTouching()){
                         configureFromX();
-                    }
+//                    }
                 } else if(isFullscreen && mAttribute != null && mAttribute.getXID() == attr.getXID()
                         && mXserviceWrapper != null){
                     mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
@@ -1387,6 +1387,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if(!killSelf){
                 ICmdEntryInterface s = ICmdEntryInterface.Stub.asInterface(service);
                 mXserviceWrapper.enableService(s);
+                tryConnect();
                 try {
                     IBinder binder = Objects.requireNonNull(mXserviceWrapper.service).asBinder();
                     binder.linkToDeath(new ConnectionDeathRecipient(), 0);

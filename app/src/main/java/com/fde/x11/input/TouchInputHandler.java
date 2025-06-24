@@ -525,9 +525,11 @@ public class TouchInputHandler {
                 float scaledX = e.getX() * mRenderData.scale.x, scaledY = e.getY() * mRenderData.scale.y;
 
                 if (mRenderData.setCursorPosition(scaledX, scaledY)){
-                    mInjector.sendCursorMove(scaledX, scaledY, false);
+                    mInjector.sendCursorMove(e, false);
+//                    mInjector.sendCursorMove(scaledX, scaledY, false);
                 } else if(v.getId() == R.id.widget_view){
-                    mInjector.sendCursorMove(e.getX(), e.getY(), false);
+                    mInjector.sendCursorMove(e, false);
+//                    mInjector.sendCursorMove(e.getX(), e.getY(), false);
                 }
             }  else if (e.getAction() == MotionEvent.ACTION_MOVE && e.getPointerCount() == 1){
                 if (e.getDevice().getMotionRange(MotionEvent.AXIS_RELATIVE_X) != null) {

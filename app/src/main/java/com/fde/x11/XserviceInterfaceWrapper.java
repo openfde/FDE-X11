@@ -11,7 +11,7 @@ public class XserviceInterfaceWrapper implements InputStub {
     ICmdEntryInterface service;
     WindowAttribute mAttribute;
     private boolean isAlive = false;
-
+    private int eventFd = -1;
     public WindowAttribute getAttribute() {
         return mCoordinate;
     }

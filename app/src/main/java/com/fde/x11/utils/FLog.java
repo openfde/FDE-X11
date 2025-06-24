@@ -36,7 +36,7 @@ public class FLog {
 
     private static final boolean LogEnable = BuildConfig.DEBUG;
     private static final boolean LogAppListEnable = true;
-    private static final boolean LogEventEnable = false;
+    private static final boolean LogEventEnable = true;
     private static final boolean LogMainEnable = true;
     private static final boolean LogServerEnable = true;
     private static final boolean LogFileEnable = true;

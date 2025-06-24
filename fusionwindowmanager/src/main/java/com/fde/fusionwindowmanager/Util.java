@@ -194,7 +194,7 @@ public class Util {
         Log.d(TAG, "copyFileUriToClipboard: " + fileUrl);
         String filePath = fileUrl.substring(7);
         String sdCardPath = convertToSdCardPath(filePath, context);
-        copyFileToClipboard(context, sdCardPath);
+//        copyFileToClipboard(context, sdCardPath);
         MediaStoreUriHelper.copyMediaUriToClipboard(context, sdCardPath);
     }
 
