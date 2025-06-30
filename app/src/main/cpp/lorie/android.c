@@ -387,6 +387,7 @@ void update_effect_property(WindowPtr pWin, Atom prop, ClientPtr client){
         return;
     }
     CHECK_WITH_PROP;
+    log(ERROR, "update_effect_property window:%x name:%s", pWin->drawable.id, NameForAtom(prop))
     if(STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)){
         PropertyPtr pProp;
         int rc = dixLookupProperty(&pProp, pWin, prop, client,
@@ -1486,7 +1487,7 @@ JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,
                                         jint which_button, jboolean button_down, jboolean relative,
                                         jint index) {
-    log(ERROR, "binder Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
+//    log(ERROR, "binder Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
     lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
     ValuatorMask mask;
     valuator_mask_zero(&mask);

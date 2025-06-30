@@ -186,7 +186,7 @@ private:
 
     void HandleClientMessage(XEvent event);
 
-    void setMaximizedState(Window window, int maximized);
+    int setMaximizedState(Window window, Bool maximized);
 
     void UpdateXserverClipFile(const char *data);
 };

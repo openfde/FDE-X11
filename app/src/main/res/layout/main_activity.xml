@@ -25,6 +25,8 @@
             android:visibility="visible"
             android:layout_gravity="center" />
 
+
+
         <LinearLayout
             android:id="@+id/stub"
             android:layout_width="match_parent"
@@ -85,11 +87,12 @@
 
     <Button
         android:id="@+id/button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_width="100dp"
+        android:layout_height="50dp"
+        android:layout_gravity="bottom"
         android:visibility="gone"
-        android:text="Button" />
+        android:background="@color/black"
+        />
 
     <LinearLayout
         android:id="@+id/mouse_helper_visibility"

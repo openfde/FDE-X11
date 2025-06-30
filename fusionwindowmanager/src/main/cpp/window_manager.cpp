@@ -314,6 +314,7 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
         value_mask  = e.value_mask | (1 << 1);
 //        log("value_mask : %lu", value_mask);
     }
+    loge("configurerequest x:%d y:%d w:%d h:%d border:%d above:%d stack:%d value:%d", e.x, e.y, e.width, e.height, e.border_width, e.above, e.detail, value_mask);
     if (clients_.count(e.window)) {
         const Window frame = clients_[e.window];
         XConfigureWindow(display_, frame, value_mask, &changes);
@@ -531,7 +532,7 @@ void WindowManager::Run() {
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
-//        log("------Received event: %s",ToString(e).c_str());
+        log("------Received event: %s",ToString(e).c_str());
 //        log("type:%d", e.type);
         // 2. Dispatch event.
         switch (e.type) {
@@ -678,21 +679,101 @@ void WindowManager::HandleClientMessage(XEvent e) {
     GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, e.xclient.window);
 }
 
-void WindowManager::setMaximizedState(Window window, Bool maximized)
-{
+int WindowManager::setMaximizedState(Window window, Bool maximized) {
+    log("setMaximizedState window:%lx maximized:%d", window, maximized);
     Atom net_wm_state = XInternAtom(display_, "_NET_WM_STATE", False);
     Atom vert_max = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False);
     Atom horz_max = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
-    Atom atoms[2];
-    int count = 0;
-    if (maximized) {
-        atoms[count++] = vert_max;
-        atoms[count++] = horz_max;
+    Atom type;
+    int format;
+    unsigned long num_items, bytes_after;
+    unsigned char *data = nullptr;
+    int status = XGetWindowProperty(
+            display_, window, net_wm_state,
+            0, 1024, False, XA_ATOM,
+            &type, &format, &num_items, &bytes_after, &data
+    );
+    std::vector<Atom> current_atoms;
+    if (status == Success && data) {
+        Atom *atoms = reinterpret_cast<Atom*>(data);
+        current_atoms.assign(atoms, atoms + num_items);
+        XFree(data);
     }
-    XChangeProperty(display_, window, net_wm_state,
-                    XA_ATOM, 32, PropModeReplace,
-                    (unsigned char *)atoms, count);
-    XFlush(display_);
+    std::vector<Atom> new_atoms;
+    if (maximized) {
+        new_atoms = current_atoms;
+        bool has_vert = false, has_horz = false;
+        for (Atom atom : current_atoms) {
+            if (atom == vert_max) has_vert = true;
+            if (atom == horz_max) has_horz = true;
+        }
+        if (!has_vert) new_atoms.push_back(vert_max);
+        if (!has_horz) new_atoms.push_back(horz_max);
+    } else {
+        for (Atom atom : current_atoms) {
+            if (atom != vert_max && atom != horz_max) {
+                new_atoms.push_back(atom);
+            }
+        }
+    }
+    XChangeProperty(
+            display_, window, net_wm_state,
+            XA_ATOM, 32, PropModeReplace,
+            reinterpret_cast<unsigned char*>(new_atoms.data()), new_atoms.size()
+    );
+    Atom actions_normal[] = {
+            XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_RESIZE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_HORZ", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_VERT", False),
+            XInternAtom(display_, "_NET_WM_ACTION_FULLSCREEN", False),
+            XInternAtom(display_, "_NET_WM_ACTION_CHANGE_DESKTOP", False),
+            XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)
+    };
+    Atom actions_maximized[] = {
+            XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)
+            // 注意：移除了 RESIZE、MAXIMIZE_HORZ、MAXIMIZE_VERT，因为窗口已经最大化
+    };
+    if (maximized) {
+        XChangeProperty(
+                display_,
+                window,
+                XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
+                XA_ATOM,
+                32,
+                PropModeReplace,
+                (unsigned char *)actions_maximized,
+                4
+        );
+    } else {
+        XChangeProperty(
+                display_,
+                window,
+                XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
+                XA_ATOM,
+                32,
+                PropModeReplace,
+                (unsigned char *)actions_normal,
+                9
+        );
+    }
+//    XSizeHints hints;
+//    hints.flags = PPosition | PWinGravity;  // 设置位置和重力
+//    hints.x = 0;      // x 坐标
+//    hints.y = 0;      // y 坐标
+//    hints.win_gravity = StaticGravity;  // 重力方式（Static=1）
+//
+//    // 设置 WM_NORMAL_HINTS
+//    XSetWMNormalHints(display_, window, &hints);
+
+
+    XSync(display_, False);
+    return true;
 }
 
 void WindowManager::OnSelectionRequest(XEvent e) {
@@ -945,26 +1026,64 @@ int WindowManager::moveWindow(long window, int x, int y) {
 
 
 int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
+    setMaximizedState(window, false);
     XWindowChanges changes;
     changes.x = x;
     changes.y = y;
     changes.width = w;
     changes.height = h;
-    unsigned long value_mask = CWX | CWY | CWWidth | CWHeight ;
+    unsigned long value_mask = CWX| CWY |CWWidth | CWHeight  ;
     int ret;
+//    value_mask = 76;
     if (isInFrameMap(window)) {
         log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
             Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
             value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
-        XSync(display_, False);
     } else {
         log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
             Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
             value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
-        XSync(display_, False);
     }
+
+//    XEvent ev;
+//    ev.type = Expose;
+//    ev.xexpose.window = window;
+//    XSendEvent(display_, window, False, ExposureMask, &ev);
+//    XSync(display_, False);
+
+//    XClientMessageEvent event = {
+//            .type = ClientMessage,
+//            .window = (Window)window,
+//            .message_type = XInternAtom(display_, "WM_CHANGE_STATE", False),
+//            .format = 32,
+//            .data.l[0] = 3  // IconicState
+//    };
+//    XSendEvent(display_, root_, False, SubstructureRedirectMask, (XEvent*)&event);
+//    XMapWindow(display_, window);
+
+
+
+    Atom wm_state = XInternAtom(display_, "WM_STATE", False);
+
+    // 准备要设置的值
+    // data[0] = 窗口状态 (1 = Normal)
+    // data[1] = 图标窗口 ID (0xe1336880)
+    long state_data[2] = {1, 0};
+
+    // 修改窗口属性
+    XChangeProperty(
+            display_,            // 显示连接
+            window,      // 目标窗口
+            wm_state,          // 属性: WM_STATE
+            wm_state,          // 类型: WM_STATE (32位整数)
+            32,                // 格式: 32位
+            PropModeReplace,    // 模式: 替换现有值
+            (unsigned char *)state_data, // 数据
+            2                  // 元素数量 (2个 long 值)
+    );
+    XFlush(display_);
     return ret;
 }
 

@@ -121,6 +121,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -288,7 +289,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         ConfigurationInfo ci = am.getDeviceConfigurationInfo();
         FLog.a("lifecycle", getWindowId(), "glversion: " + ci.reqGlEsVersion);
-        lorieView.setZOrderOnTop(true);
+        lorieView.setZOrderOnTop(false);
         lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
         lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
@@ -434,9 +435,19 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
         mClipboardManager = (android.content.ClipboardManager) getApplication().getSystemService(Context.CLIPBOARD_SERVICE);
         findViewById(R.id.button).setOnClickListener((v)->{
-            mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-                    (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-                    mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
+//            mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+//                    100, 100,
+//                    1600, 800);
+//            View view = null;
+//            for (Map.Entry entry: mFloatViews.entrySet()){
+//                view = (View)entry.getValue();
+//                break;
+//            }
+//            LorieView floatView = view.findViewById(R.id.widget_view);
+//            WindowAttribute attribute = floatView.getAttribute();
+//            mXserviceWrapper.configureWindow(attribute.getWindowPtr(), attribute.getXID(),
+//                    100, 100,
+//                    100, 30);
         });
     }
 

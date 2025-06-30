@@ -33,7 +33,7 @@ extern JavaVM *jniVM;
 extern jclass JavaCmdEntryPointClass;
 bool cursor_drawn;
 extern Bool LOG_ENABLE;
-#define PRINT_LOG (RENDERER_LOG_ENABLE && LOG_ENABLE)
+#define PRINT_LOG (RENDERER_LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_renderer", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_renderer", __VA_ARGS__);}
 
@@ -893,31 +893,48 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         draw(id, -1.f, -1.f, 1.f, 1.f, flip);
     }
     if(dri_id && attr->dri_pWin){
-        int window_offsetx = (int)attr->offset_x;
-        int window_offsety = (int)attr->offset_y;
-
+        glViewport(0, 0, width, height);
+//        int window_offsetx = (int)attr->offset_x;
+//        int window_offsety = (int)attr->offset_y;
+//
         WindowPtr dri_pWin = attr->dri_pWin;
-        int window_drioffsetx = dri_pWin->drawable.x;
-        int window_drioffsety = dri_pWin->drawable.y;
-        int relative_x = attr->dri_x;
-        int relative_y = attr->dri_y;
+//        int window_drioffsetx = dri_pWin->drawable.x;
+//        int window_drioffsety = dri_pWin->drawable.y;
+//        int relative_x = attr->dri_x;
+//        int relative_y = attr->dri_y;
+//
+////      (window_drioffsety - window_offsety) * 2
+//        int viewport_y = height - (dri_pWin->drawable.height +  window_drioffsety - window_offsety + relative_y);
+//        int viewport_x = width - (dri_pWin->drawable.width +  window_drioffsetx - window_offsetx + relative_x);
+//        // glViewport(viewport_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
+//        glViewport(relative_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
+//
+//        log("renderer_redraw_traversal_1 relative_y:%d", relative_y);
+//        log("renderer_redraw_traversal_1 relative_x:%d", relative_x);
+//        log("renderer_redraw_traversal_1 dri_height:%d", dri_pWin->drawable.height);
+//        log("renderer_redraw_traversal_1 dri_width:%d", dri_pWin->drawable.width);
+//        log("renderer_redraw_traversal_1 window_offsetx:%d", window_offsetx);
+//        log("renderer_redraw_traversal_1 window_offsety:%d", window_offsety);
+//        log("renderer_redraw_traversal_1 window_drioffsetx:%d", window_drioffsetx);
+//        log("renderer_redraw_traversal_1 window_drioffsety:%d", window_drioffsety);
+//
+//        draw(dri_id, -1.f, -1.f, 1.f, 1.f, flip);
 
-// (window_drioffsety - window_offsety) * 2
-        int viewport_y = height - (dri_pWin->drawable.height +  window_drioffsety - window_offsety + relative_y);
-        int viewport_x = width - (dri_pWin->drawable.width +  window_drioffsetx - window_offsetx + relative_x);
-        // glViewport(viewport_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
-        glViewport(relative_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
 
-        log("renderer_redraw_traversal_1 relative_y:%d", relative_y);
-        log("renderer_redraw_traversal_1 relative_x:%d", relative_x);
-        log("renderer_redraw_traversal_1 dri_height:%d", dri_pWin->drawable.height);
-        log("renderer_redraw_traversal_1 dri_width:%d", dri_pWin->drawable.width);
-        log("renderer_redraw_traversal_1 window_offsetx:%d", window_offsetx);
-        log("renderer_redraw_traversal_1 window_offsety:%d", window_offsety);
-        log("renderer_redraw_traversal_1 window_drioffsetx:%d", window_drioffsetx);
-        log("renderer_redraw_traversal_1 window_drioffsety:%d", window_drioffsety);
+        float x = attr->dri_x + attr->offset_x;
+        float y = attr->dri_y + attr->offset_y;
+        float w = dri_pWin->drawable.width;
+        float h = dri_pWin->drawable.height;
+        float x0 = (x - attr->offset_x) * 2.0f / width - 1.0f;
+        float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
+        float x1 = x0 + w / width * 2.0f;
+        float y1 = y0 + h / height * 2.0f;
+        log("renderer_redraw_traversal_dri x:%d", attr->dri_x);
+        log("renderer_redraw_traversal_dri y:%d", attr->dri_y);
+        log("renderer_redraw_traversal_dri w:%d", dri_pWin->drawable.width);
+        log("renderer_redraw_traversal_dri h:%d", dri_pWin->drawable.height);
 
-        draw(dri_id, -1.f, -1.f, 1.f, 1.f, flip);
+        draw(dri_id, x0, y0, x1, y1, flip);
     }
 
     glViewport(0, 0, width, height);

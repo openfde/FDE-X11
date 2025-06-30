@@ -288,21 +288,19 @@ static RegionPtr fde_gc_copy_area(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC,
 }
 
 static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, int srcx, int srcy, int w, int h, int dstx, int dsty) {
-    log(ERROR, "DRI3: lorieCopyArea pSrc id:%x type:%d pDst id:%x type:%d srcx:%d, srcy:%d w:%d h:%d dstx:%d dsty:%d",
+    log(ERROR, "DRI3: copyarea pSrc id:%x type:%d pDst id:%x type:%d srcx:%d, srcy:%d w:%d h:%d dstx:%d dsty:%d",
         pSrc->id, pSrc->type,  pDst->id, pDst->type, srcx, srcy, w, h, dstx, dsty);
     if(pSrc->type == DRAWABLE_PIXMAP && pDst->type == DRAWABLE_WINDOW ){
         PixmapPtr pPixmap = (PixmapPtr)pSrc;
         TexturePrivRecPtr ptr = dixLookupPrivate(&pPixmap->devPrivates, &FDETexturePrivateKey);
         if(ptr){
             WindowPtr pWin = (WindowPtr)pDst;
-            PixmapPtr pixmap = (PixmapPtr) (pGC->pScreen->GetWindowPixmap)(pWin);
+//            PixmapPtr pixmap = (PixmapPtr) (pGC->pScreen->GetWindowPixmap)(pWin);
 //            pGC->pScreen->SetWindowPixmap(pWin, pPixmap);
-
             TexturePrivRecPtr pTexturePriv = calloc(1, sizeof(TexturePrivRec));
             pTexturePriv->texture = ptr->texture;
             dixSetPrivate(&pWin->devPrivates, &FDEWindowTexturePrivateKey, pTexturePriv);
-            log(ERROR, "GetWindowPixmap pixmap:%x", pixmap->drawable.id);
-            log(ERROR, "dixLookupPrivate pixmap:%x tid:%d window:%x", pPixmap->drawable.id, ptr->texture, pWin->drawable.id);
+            log(ERROR, "copyarea pixmap:%x tid:%d window:%x", pPixmap->drawable.id, ptr->texture, pWin->drawable.id);
             int size;
             WindAttribute * attrs = _surface_all_window(sfWraper, &size);
             if(size == 1){
@@ -319,7 +317,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
                     }
                 }
             }
-            log(ERROR, "lorieCopyArea set dri_texture_id:%d", ptr->texture);
+            log(ERROR, "copyarea copy texture_id:%d to window:%x ", ptr->texture, pWin->drawable.id);
             WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
             if(attr){
                 attr->dri_pWin = pDst;
@@ -334,10 +332,11 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
         WindAttribute *attr = _surface_find_window(sfWraper, pDstWin->drawable.id);
         TexturePrivRecPtr ptr = dixLookupPrivate(&pSrcWin->devPrivates, &FDEWindowTexturePrivateKey);
         if(attr && ptr){
-            log(ERROR, "lorieCopyArea set dstx:%d dsty:%d", dstx, dsty);
-            attr->dri_pWin = pSrc;
+            log(ERROR, "copyarea copy window:%x to window:%x dstx:%d dsty:%d texture_id:%d",pSrcWin->drawable.id, pDstWin->drawable.id,  dstx, dsty, ptr->texture);
+            attr->dri_pWin = pSrcWin;
             attr->dri_x = dstx;
             attr->dri_y = dsty;
+            attr->dri_texture_id = ptr->texture;
             return NULL;
         }
         return fde_gc_copy_area(pSrc, pDst, pGC, srcx, srcy, w, h, dstx, dsty);
@@ -526,7 +525,7 @@ static const GCOps lorieGCOps = {
 
 static Bool
 lorieCreateGC(GCPtr pGC) {
-    log(ERROR, "DRI3: lorieCreateGC");
+//    log(ERROR, "DRI3: lorieCreateGC");
     ScreenPtr pScreen = pGC->pScreen;
 
     lorieScrPriv(pScreen);

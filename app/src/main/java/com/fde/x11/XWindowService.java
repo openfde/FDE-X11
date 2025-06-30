@@ -407,7 +407,7 @@ public class XWindowService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        FLog.s(TAG, "onStartCommand:" + intent);
+//        FLog.s(TAG, "onStartCommand:" + intent);
         return Service.START_STICKY;
     }
 
