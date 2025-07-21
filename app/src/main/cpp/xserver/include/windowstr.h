@@ -165,6 +165,7 @@ typedef struct _Window {
     unsigned damagedDescendants:1;      /* some descendants are damaged */
     unsigned inhibitBGPaint:1;  /* paint the background? */
 #endif
+    PixmapPtr pixmapPtr;
 } WindowRec;
 
 /*

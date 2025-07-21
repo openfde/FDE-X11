@@ -27,6 +27,15 @@
 #include <stdlib.h>
 
 #include "fb.h"
+#include <android/log.h>
+#define PRINT_LOG 1
+#define log(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_DEBUG, "native_fbpixmap", __VA_ARGS__);\
+                }              \
+
+#define loge(...) if(PRINT_LOG){\
+                __android_log_print(ANDROID_LOG_ERROR, "native_fbpixmap", __VA_ARGS__);\
+                }
 
 PixmapPtr
 fbCreatePixmap(ScreenPtr pScreen, int width, int height, int depth,
@@ -83,6 +92,9 @@ fbCreatePixmap(ScreenPtr pScreen, int width, int height, int depth,
 
     pPixmap->usage_hint = usage_hint;
 
+    if(width > 600 && height > 400){
+        log("fbCreatePixmap width:%d height:%d depth:%d hint:%d pPixmap:%p", width, height, depth, usage_hint, pPixmap);
+    }
     return pPixmap;
 }
 

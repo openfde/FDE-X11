@@ -50,7 +50,7 @@
 #include "protocol-versions.h"
 #include "extinit.h"
 #include <android/log.h>
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){\
                 __android_log_print(ANDROID_LOG_DEBUG, "native_compext", __VA_ARGS__);\
                 }              \
@@ -258,9 +258,10 @@ ProcCompositeNameWindowPixmap(ClientPtr client)
         return BadMatch;
 
     pPixmap = (*pScreen->GetWindowPixmap) (pWin);
+    log("ProcCompositeNameWindowPixmap window:%lx pixmap:%lx pPixmap:%p",pWin->drawable.id, stuff->pixmap, pPixmap);
     if (!pPixmap)
         return BadMatch;
-
+    pWin->pixmapPtr = pPixmap;
     /* security creation/labeling check */
     rc = XaceHook(XACE_RESOURCE_ACCESS, client, stuff->pixmap, RT_PIXMAP,
                   pPixmap, RT_WINDOW, pWin, DixCreateAccess);

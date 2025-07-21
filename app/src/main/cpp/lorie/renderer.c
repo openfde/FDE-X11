@@ -701,9 +701,7 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h ) {
         return;
     }
-    log("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d flip:%d",
-        x, y, w, h, window,
-        texture_id, flip);
+
     WindAttribute *attr = (WindAttribute *) _surface_find_window(sfWraper, window);
     attr->offset_x = (float) x;
     attr->offset_y = (float) y;
@@ -730,6 +728,9 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
+    log("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d flip:%d",
+        x, y, w, h, window,
+        attr->texture_id, flip);
 }
 
 void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, Widget *widget, GLuint texture_id) {

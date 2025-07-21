@@ -120,7 +120,6 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             frame,
             0, 0);  // Offset of client window within frame.
     // 7. Map frame.
-    XMapWindow(display_, frame);
     // 8. Save frame handle.
     clients_[w] = frame;
     // 9. Grab universal window management actions on client window.
@@ -166,6 +165,23 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager) {
             false,
             GrabModeAsync,
             GrabModeAsync);
+    XWindowChanges change_values;
+    change_values.x = x_window_attrs.x;
+    change_values.y = x_window_attrs.y;
+    change_values.width = x_window_attrs.width;
+    change_values.height = x_window_attrs.height;
+    // myDisplayErrorTrapPush (display_info);
+    XConfigureWindow (display_, frame, 15, &change_values);
+    change_values.x = 1;//x_window_attrs.x;
+    change_values.y = 1;//x_window_attrs.y;
+    change_values.width = x_window_attrs.width;
+    change_values.height = x_window_attrs.height;
+    XConfigureWindow (display_, w, 15, &change_values);
+    XMapWindow (display_, frame);
+    XMapWindow (display_, w);
+    Atom normal_type = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+    setWindowType(frame, normal_type);
+
     window_under_frames.insert(w);
     frames.insert(frame);
     log("Framed_ window %x reparent to frame %x" ,w , frame);
@@ -229,9 +245,30 @@ void WindowManager::OnReparentNotify(const XReparentEvent& e) {}
 
 void WindowManager::OnMapNotify(const XMapEvent &e) {
     if(e.event == root_ && support_composite){
-        XCompositeNameWindowPixmap(display_, e.window);
+        Atom type;
+        int format;
+        unsigned long nitems, after;
+        unsigned char *data = NULL;
+        Atom classAtom = XInternAtom(display_, "WM_CLASS", False);
+        XGetWindowProperty(display_, e.window, classAtom, 0, 1024, False,
+                           XA_STRING, &type, &format, &nitems, &after, &data);
+        if(data){
+            log("WM_CLASS %s", data);
+        }
+        if (data && strstr((char *)data, "Simcenter STAR-CCM+")) {
+            log("redirect star!!");
+//            XCompositeRedirectWindow(display_, e.window, CompositeRedirectManual);
+            XCompositeNameWindowPixmap(display_, e.window);
 //        named_windows.insert(e.window);
-        XSync(display_, False);
+            XSync(display_, False);
+
+
+        } else {
+//            XCompositeRedirectWindow(display_, e.window, CompositeRedirectAutomatic);
+            XCompositeNameWindowPixmap(display_, e.window);
+//        named_windows.insert(e.window);
+            XSync(display_, False);
+        }
     }
 }
 
@@ -289,7 +326,44 @@ void WindowManager::OnMapRequest(const XMapRequestEvent& e) {
     // 1. Frame or re-frame window.
 //    Frame(e.window, false);
     // 2. Actually map window.
-    XMapWindow(display_, e.window);
+    Atom type;
+    int format;
+    unsigned long nitems, after;
+    unsigned char *data = NULL;
+    Atom classAtom = XInternAtom(display_, "WM_CLASS", False);
+    XGetWindowProperty(display_, e.window, classAtom, 0, 1024, False,
+                       XA_STRING, &type, &format, &nitems, &after, &data);
+    if (data &&  strstr((char *)data, "Simcenter STAR-CCM+")) {
+        Frame(e.window, false);
+//        XWindowAttributes windowAttr;
+//        XGetWindowAttributes(display_, e.window, &windowAttr);
+//        Window window = e.window;
+//        XSetWindowAttributes attributes;
+//        attributes.bit_gravity = NorthWestGravity;
+//        attributes.win_gravity = NorthWestGravity;
+//        Window frame = XCreateWindow (display_, root_, 0, 0, 1, 1, 0,
+//                                      24, InputOutput, windowAttr.visual, CWWinGravity|CWBitGravity, &attributes);
+//        XReparentWindow (display_, window, frame, 0, 0);
+//        XWindowChanges change_values;
+//        change_values.x = 187;
+//        change_values.y = 97;
+//        change_values.width = 1536;
+//        change_values.height = 831;
+//        // myDisplayErrorTrapPush (display_info);
+//        XConfigureWindow (display_, frame, 15, &change_values);
+//        change_values.x = 0;
+//        change_values.y = 0;
+//        change_values.width = 800;
+//        change_values.height = 600;
+//        XConfigureWindow (display_, window, 15, &change_values);
+//        XMapWindow (display_, frame);
+//        XMapWindow (display_, window);
+//        Atom normal_type = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+//        setWindowType(frame, normal_type);
+    } else {
+        XMapWindow(display_, e.window);
+    }
+    XFlush(display_);
 
 }
 
@@ -297,6 +371,12 @@ void syncConfigureRequest(int x, int y, int w, int h, XID window){
     jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                     "syncConfigureRequest", "(IIIIJ)V");
     GlobalEnv->CallStaticVoidMethod(staticClass, method, x,y,w,h, window);
+}
+
+
+
+void WindowManager::OnCirculateRequest(const XCirculateRequestEvent& e){
+    XCirculateSubwindows(display_, e.parent, e.place);
 }
 
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent& e) {
@@ -560,6 +640,14 @@ void WindowManager::Run() {
             case ConfigureRequest:
                 OnConfigureRequest(e.xconfigurerequest);
                 break;
+            case CirculateRequest:
+                OnCirculateRequest(e.xcirculaterequest);
+                break;
+//            case MapRequest:
+//            case ConfigureRequest:
+//            case CirculateRequest:
+//                XAllowEvents(display_, ReplayPointer, CurrentTime);
+//                break;
             case ButtonPress:
                 OnButtonPress(e.xbutton);
                 break;
@@ -678,6 +766,14 @@ void WindowManager::HandleClientMessage(XEvent e) {
                                                     "updateWmStateClient", "(IJ)V");
     GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, e.xclient.window);
 }
+
+
+void WindowManager::setWindowType(Window window, Atom type) {
+    Atom window_type = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
+    XChangeProperty(display_, window, window_type, XA_ATOM, 32,
+                    PropModeReplace, (unsigned char *)&type, 1);
+}
+
 
 int WindowManager::setMaximizedState(Window window, Bool maximized) {
     log("setMaximizedState window:%lx maximized:%d", window, maximized);
@@ -1040,6 +1136,13 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h) {
             Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
             value_mask);
         ret = XConfigureWindow(display_, window, value_mask, &changes);
+        for (const auto& pair : clients_) {
+            if (pair.second == window) {
+                changes.x = 0;
+                changes.y = 0;
+                ret = XConfigureWindow(display_, pair.first, value_mask, &changes);
+            }
+        }
     } else {
         log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
             Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
@@ -1097,6 +1200,11 @@ int WindowManager::resizeWindow(long window, int w, int h) {
 int WindowManager::unmapWindow(long window){
     int ret = False;
     ret = XUnmapWindow(display_, window);
+    for (const auto& pair : clients_) {
+        if (pair.second == window) {
+            ret = XUnmapWindow(display_, pair.first);
+        }
+    }
     XSync(display_, False);
     return ret;
 }

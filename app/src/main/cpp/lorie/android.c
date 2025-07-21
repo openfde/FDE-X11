@@ -125,19 +125,21 @@ static inline JNIEnv *GetJavaEnv(void) {
 }
 
 void android_update_texture_1(Window window) {
-//    log(ERROR, "android_update_texture_1 window:%x", window);
+    log(ERROR, "android_update_texture_1 window:%x", window);
     if (_surface_count_window(sfWraper, window)) {
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         if(!attr){
             return;
         }
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
-//        log(ERROR, "android_update_texture_1 pixmap:%x", pixmap->drawable.id)
+        int backingStore = attr->pWin->backingStore;
+        int saveunder = attr->pWin->saveUnder;
+        log(ERROR, "android_update_texture_1 pixmap:%p backingStore:%d saveunder:%d", pixmap, backingStore, saveunder)
         TexturePrivRecPtr ptr = dixLookupPrivate(&attr->pWin->devPrivates, &FDEWindowTexturePrivateKey);
         GLuint texture_id = 0;
         if(ptr){
             texture_id = ptr->texture;
-//            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
+            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
         }
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                 pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window, texture_id);
@@ -224,7 +226,7 @@ void android_redirect_window(WindowPtr pWin) {
                "taskTo:%x inbounds:%d mapped:%d clientNum:%d" ,
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
         intransient_bounds, pWin->mapped, clientNum);
-    if (redirect  || aProperty.window_type != _NET_WM_WINDOW_TYPE_NORMAL){
+    if (redirect ){
         if(taskTo == 0){
             taskTo = focusWindow;
         }

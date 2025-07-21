@@ -83,6 +83,7 @@ extern Bool LOG_ENABLE;
 
 #define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
+#define DRI3_DEVICE_PATH_UBUNTU "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_X100 "/dev/dri/card1"
 extern struct SurfaceManagerWrapper *sfWraper;
 
@@ -648,9 +649,9 @@ static int openClient(__unused ClientPtr client,
                       __unused RRProviderPtr provider,
                       __unused int *fdp) {
     int fd;
-    fd = open(DRI3_DEVICE_PATH_KYLIN, O_RDWR|O_CLOEXEC);
+    fd = open(DRI3_DEVICE_PATH_UBUNTU, O_RDWR|O_CLOEXEC);
     if (fd < 0) {
-        log(ERROR, "openClient fdp %d", &fdp);
+        log(ERROR, "openClient fdp %d fail", &fdp);
         return BadAlloc;
     }
     log(ERROR, "openClient fd %d success", fd);

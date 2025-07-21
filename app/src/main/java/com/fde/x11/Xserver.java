@@ -145,6 +145,7 @@ public class Xserver {
         FLog.s(TAG, aid,"final windowtype:" + type);
         if(isActivity){
             switch (type) {
+                case 0:
                 case _NET_WM_WINDOW_TYPE_NORMAL:
                     message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
                             "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, bitmap)));

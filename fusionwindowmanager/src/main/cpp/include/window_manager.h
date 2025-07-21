@@ -26,17 +26,25 @@ static jclass staticClass = NULL;
 #define WIDTH  1920
 #define HEIGHT 1080
 #define DECORCATIONVIEW_HEIGHT 42
+//#define BASE_EVENT_MASK \
+//                        SubstructureNotifyMask |\
+//                        ExposureMask |\
+//                        StructureNotifyMask |\
+//                        PropertyChangeMask
+
+
 #define BASE_EVENT_MASK \
-    SubstructureNotifyMask|\
-    StructureNotifyMask|\
-    SubstructureRedirectMask|\
-    ButtonPressMask|\
-    ButtonReleaseMask|\
-    KeyPressMask|\
-    KeyReleaseMask|\
-    FocusChangeMask|\
-    PropertyChangeMask|\
-    ColormapChangeMask
+                        SubstructureNotifyMask|\
+                        StructureNotifyMask|\
+                        ButtonPressMask|\
+                        ButtonReleaseMask|\
+                        KeyPressMask|\
+                        KeyReleaseMask|\
+                        FocusChangeMask|\
+                        PropertyChangeMask|\
+                        ColormapChangeMask |\
+                        SubstructureRedirectMask
+
 
 #define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_wm", __VA_ARGS__);}
@@ -124,6 +132,7 @@ private:
     void OnConfigureNotify(const XConfigureEvent& e);
     void OnMapRequest(const XMapRequestEvent& e);
     void OnConfigureRequest(const XConfigureRequestEvent& e);
+    void OnCirculateRequest(const XCirculateRequestEvent &e);
     void OnButtonPress(const XButtonEvent& e);
     void OnButtonRelease(const XButtonEvent& e);
     void OnMotionNotify(const XMotionEvent& e);
@@ -189,6 +198,8 @@ private:
     int setMaximizedState(Window window, Bool maximized);
 
     void UpdateXserverClipFile(const char *data);
+
+    void setWindowType(Window window, Atom type);
 };
 
 
