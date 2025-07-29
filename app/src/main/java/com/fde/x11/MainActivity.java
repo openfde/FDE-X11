@@ -48,6 +48,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
@@ -237,6 +238,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private void initXParams() {
+        updateWindowParams();
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         }
@@ -270,6 +272,18 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         mXserviceWrapper = new XserviceInterfaceWrapper();
         mXserviceWrapper.mAttribute = mAttribute;
         mXserviceWrapper.updateCoordinate(mAttribute);
+    }
+
+    private void updateWindowParams() {
+        if(!AppUtils.paramsInited){
+            AppUtils.paramsInited = true;
+            Point point = new Point();
+            getWindowManager().getDefaultDisplay().getRealSize(point);
+            AppUtils.GLOBAL_SCREEN_WIDTH = point.x;
+            AppUtils.GLOBAL_SCREEN_HEIGHT = point.y;
+            Log.d(TAG, "updateWindowParams: " + AppUtils.GLOBAL_SCREEN_WIDTH  + " x "
+             + AppUtils.GLOBAL_SCREEN_HEIGHT);
+        }
     }
 
     private void initView() {
@@ -365,7 +379,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 mInputHandler.handleHostSizeChanged(width, height);
                 mInputHandler.handleClientSizeChanged(width, height);
                 LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
-                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+                Log.d(TAG, "realSizeChanged() called with: isFullscreen = [" + isFullscreen + "], width = [" + width + "], height = [" + height + "]");
                 WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
                 if(attribute != null && width != 0 && height !=0 ){
                     if(isFullscreen){
@@ -642,9 +656,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             return;
         }
         //configuration:{1.0 ?mcc?mnc [zh_CN_#Hans] ldltr sw1080dp w1920dp h1031dp 160dpi xlrg long land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1032) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}, newConfig:true
-        FLog.a("window", getWindowId(), "start checkConfigBeforeExec");
+        FLog.a("window", getWindowId(), "start checkConfigBeforeExec newConfig:" + newConfig);
         this.mConfiguration = configuration;
-        FLog.a("window", getWindowId(), "checkConfigBeforeExec: configuration:" + configuration + ", newConfig:" + newConfig + "");
+//        DeviceConfiguration displayConfig = DeviceConfiguration.parse(configuration.toString());
+//        FLog.a("window", getWindowId(), "displayConfig:" + displayConfig);
+        FLog.a("window", getWindowId(), "checkConfigBeforeExec: configuration:" + configuration);
         Pattern pattern = Pattern.compile("mWindowingMode=([a-zA-Z0-9_]+)");
         Matcher matcher = pattern.matcher(configuration.toString());
         if (matcher.find()) {
@@ -670,6 +686,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
             int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
             int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
+
             float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
 //            Log.d(TAG, "topMargin: " + topMargin);
             Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
@@ -783,25 +800,34 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      * @param height
      */
     private void onSurfaceRealSizeChanged(Surface sfc, int width, int height) {
+        FLog.a("window", getWindowId(), "onSurfaceRealSizeChanged "
+                + "sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
         final int screenWidth = AppUtils.GLOBAL_SCREEN_WIDTH;
         final int screenHeight = AppUtils.GLOBAL_SCREEN_HEIGHT;
         final int statusBarHeight = AppUtils.STATUSBAR_HEIGHT_U;
         final int navBarHeight = AppUtils.NAVIGATION_BAR_HEIGHT_U;
         final int captionHeight = isCaptionShowing() ? AppUtils.DECOR_CAPTION_HEIGHT : 0;
         final int MAXIMIZE_HEIGHT = screenHeight - statusBarHeight - captionHeight - navBarHeight;
-        if (height != MAXIMIZE_HEIGHT && height != screenHeight) {
-            return;
-        }
-        Rect rect;
-        if (height == MAXIMIZE_HEIGHT) {
-            int top = statusBarHeight + captionHeight;
-            int bottom = screenHeight - navBarHeight;
-            rect = new Rect(0, top, screenWidth, bottom);
-            FLog.a("window", getWindowId(), "in MAXIMIZE_HEIGHT rect:" + rect);
-        } else {
-            rect = new Rect(0, 0, screenWidth, screenHeight);
-            FLog.a("window", getWindowId(), "in FULLSCREEN_HEIGHT rect:" + rect);
-        }
+//        if (height != MAXIMIZE_HEIGHT && height != screenHeight) {
+//            return;
+//        }
+
+        LorieView lorieView = getLorieView();
+        int[] location = new int[2];
+        lorieView.getLocationOnScreen(location);
+        Rect rect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
+//        if (height == MAXIMIZE_HEIGHT) {
+//            int top = statusBarHeight + captionHeight;
+//            int bottom = screenHeight - navBarHeight;
+//            rect = new Rect(0, top, screenWidth, bottom);
+//            FLog.a("window", getWindowId(), "in MAXIMIZE_HEIGHT rect:" + rect);
+//        } else {
+//            rect = new Rect(0, 0, screenWidth, screenHeight);
+//            FLog.a("window", getWindowId(), "in FULLSCREEN_HEIGHT rect:" + rect);
+//        }
+        View decorView = getWindow().getDecorView();
+        decorView.getLocationOnScreen(location);
+        Rect decorRect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
         updateAttribueOnly(rect);
         if (mXserviceWrapper != null) {
             mXserviceWrapper.configureWindow(

@@ -304,9 +304,10 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
             log(ERROR, "copyarea pixmap:%x tid:%d window:%x", pPixmap->drawable.id, ptr->texture, pWin->drawable.id);
             int size;
             WindAttribute * attrs = _surface_all_window(sfWraper, &size);
-            if(size == 1){
-                pWin = attrs[0].pWin;
-            } else {
+            //TODO revert from steam
+            //            if(size == 1){
+//                pWin = attrs[0].pWin;
+//            } else {
                 while(1){
                     if(pWin->parent){
                         pWin = pWin->parent;
@@ -317,7 +318,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
                         break;
                     }
                 }
-            }
+//            }
             log(ERROR, "copyarea copy texture_id:%d to window:%x ", ptr->texture, pWin->drawable.id);
             WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
             if(attr){

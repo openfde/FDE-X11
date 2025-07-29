@@ -59,6 +59,7 @@ import java.util.List;
 
 public class AppUtils {
     private final static String TAG = "Utils";
+    public static boolean paramsInited = false;
     private static AlertDialog alertDialog;
     private static final String CLASS_NAME = "android.os.SystemProperties";
 

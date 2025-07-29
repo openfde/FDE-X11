@@ -226,16 +226,18 @@ void android_redirect_window(WindowPtr pWin) {
                "taskTo:%x inbounds:%d mapped:%d clientNum:%d" ,
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
         intransient_bounds, pWin->mapped, clientNum);
-    if (redirect ){
-        if(taskTo == 0){
-            taskTo = focusWindow;
-        }
-        android_redirect_widget(pWin, aProperty ,taskTo);
-        return;
-    } else if (_surface_count_window(sfWraper, pWin->drawable.id)) {
+    //TODO revert from steam
+    //    if (redirect ){
+//        if(taskTo == 0){
+//            taskTo = focusWindow;
+//        }
+//        android_redirect_widget(pWin, aProperty ,taskTo);
+//        return;
+//    } else
+    if (_surface_count_window(sfWraper, pWin->drawable.id)) {
         log(DEBUG, "already redirect_window");
         return;
-    } else {
+    } else if(!redirect && aProperty.window_type == _NET_WM_WINDOW_TYPE_NORMAL){
         PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
         int x = pWin->drawable.x;
         int y = pWin->drawable.y;
@@ -433,7 +435,7 @@ void android_icon_update(int *data, int width, int height, long window) {
     }
     (*env)->SetIntArrayRegion(env, javaData, 0, dataLength, data);
     if (!JavaCmdEntryPointClass) {
-        log(ERROR, "Failed to find class com/example/YourJavaClass");
+        log(ERROR, "Failed to find class com/fde/x11/Xserver");
         return;
     }
     jmethodID mid = (*env)->GetStaticMethodID(env, JavaCmdEntryPointClass, "createBitmapFromNative", "([IIIJ)V");
@@ -459,6 +461,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
     while (pProper) {
         ATOM name = pProper->propertyName;
         propData = pProper->data;
+        log(ERROR, "GET property NAME:%s", NameForAtom(name))
         if (STRING_EQUAL(NameForAtom(name), WINDOW_TYPE)) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
@@ -527,11 +530,11 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
             prop->wm_name = atom_value;
             // log(ERROR, "prop window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
-//            int *icon_data = (int *)propData;
-//            int width = *icon_data;
-//            int height = *(icon_data+1);
-//            int * imageData = ( int*) (icon_data + 2);
-//            prop->icon = android_icon_convert_bitmap(imageData, width, height);
+            int *icon_data = (int *)propData;
+            int width = *icon_data;
+            int height = *(icon_data+1);
+            int * imageData = ( int*) (icon_data + 2);
+            prop->icon = android_icon_convert_bitmap(imageData, width, height);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_PROTOCOLS)) {
             Atom *atoms = (Atom *)propData;
             for (int i = 0; i < pProper->size; i++) {
@@ -543,16 +546,16 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_X11_PID)){
             unsigned long pid = *((unsigned long *) propData);
             log(ERROR, "prop window:%x pid:%ld", pWin->drawable.id, pid);
+            //TODO revert from steam
+        } else if(STRING_EQUAL(NameForAtom(name), "STEAM_GAME")) {
+            prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
         }
-
-
         pProper = pProper->next;
     }
-    if(prop->window_type == 0){
-        prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
-    }
-//    log(ERROR, "prop end================================>");
-
+//    if(prop->window_type == 0){
+//        prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+//    }
+    log(ERROR, "prop end================================>");
 }
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {

@@ -816,7 +816,7 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void *data) {
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
-    log("set_cursor x:%d, y :%d", x , y);
+//    log("set_cursor x:%d, y :%d", x , y);
     cursor.x = (float) x;
     cursor.y = (float) y;
 }
@@ -1269,30 +1269,34 @@ maybe_unused int renderer_get_format(__unused ScreenPtr screen, CARD32 *num_form
         loge("eglQueryDmaBufFormatsEXT not supported.\n");
         return BadAlloc;
     }
-    EGLint max_formats = 64; //
-    EGLint real_formats[max_formats];
-    EGLint real_num_formats;
-    if (global_ctx == EGL_NO_CONTEXT) {
-        loge("egl_no_context")
-    }
-    if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx) !=
-        EGL_TRUE) {
-        loge("Xlorie: eglMakeCurrent failed.\n");
-        eglCheckError(__LINE__);
-    }
-    if (eglQueryDmaBufFormatsEXT(global_egl_display, max_formats, real_formats, &real_num_formats)) {
-        loge("Supported DMA-BUF formats:\n");
-        *num_formats = real_num_formats;
-        *formats = (CARD32 *)malloc(real_num_formats * sizeof(CARD32));
-        for (int i = 0; i < real_num_formats; ++i) {
-            loge("Format %d: 0x%x\n", i, real_formats[i]);
-            (*formats)[i] = (CARD32)real_formats[i];
-        }
-    } else {
-        *num_formats = 0;
-        loge("Failed to query DMA-BUF formats.\n");
-        return FALSE;
-    }
+    //TODO revert from steam
+    *num_formats = 1;
+    *formats = (CARD32 *)malloc(sizeof(CARD32));
+    (*formats)[0] = DRM_FORMAT_XRGB8888;
+//    EGLint max_formats = 64; //
+//    EGLint real_formats[max_formats];
+//    EGLint real_num_formats;
+//    if (global_ctx == EGL_NO_CONTEXT) {
+//        loge("egl_no_context")
+//    }
+//    if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx) !=
+//        EGL_TRUE) {
+//        loge("Xlorie: eglMakeCurrent failed.\n");
+//        eglCheckError(__LINE__);
+//    }
+//    if (eglQueryDmaBufFormatsEXT(global_egl_display, max_formats, real_formats, &real_num_formats)) {
+//        loge("Supported DMA-BUF formats:\n");
+//        *num_formats = real_num_formats;
+//        *formats = (CARD32 *)malloc(real_num_formats * sizeof(CARD32));
+//        for (int i = 0; i < real_num_formats; ++i) {
+//            loge("Format %d: 0x%x\n", i, real_formats[i]);
+//            (*formats)[i] = (CARD32)real_formats[i];
+//        }
+//    } else {
+//        *num_formats = 0;
+//        loge("Failed to query DMA-BUF formats.\n");
+//        return FALSE;
+//    }
     return TRUE;
 }
 
