@@ -241,6 +241,7 @@ ProcCompositeNameWindowPixmap(ClientPtr client)
     ScreenPtr pScreen;
     int rc;
 
+    log("ProcCompositeNameWindowPixmap");
     REQUEST(xCompositeNameWindowPixmapReq);
 
     REQUEST_SIZE_MATCH(xCompositeNameWindowPixmapReq);

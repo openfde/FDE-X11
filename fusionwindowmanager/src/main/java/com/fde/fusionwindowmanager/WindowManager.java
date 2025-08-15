@@ -53,6 +53,7 @@ public class WindowManager  {
 
     // Used to load the 'fusionwindowmanager' library on application startup.
     static {
+        System.loadLibrary("glib-2.0");
         System.loadLibrary("fusionwindowmanager");
     }
 

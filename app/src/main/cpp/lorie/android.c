@@ -227,17 +227,17 @@ void android_redirect_window(WindowPtr pWin) {
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
         intransient_bounds, pWin->mapped, clientNum);
     //TODO revert from steam
-    //    if (redirect ){
-//        if(taskTo == 0){
-//            taskTo = focusWindow;
-//        }
-//        android_redirect_widget(pWin, aProperty ,taskTo);
-//        return;
-//    } else
+        if (redirect ){
+        if(taskTo == 0){
+            taskTo = focusWindow;
+        }
+        android_redirect_widget(pWin, aProperty ,taskTo);
+        return;
+    } else
     if (_surface_count_window(sfWraper, pWin->drawable.id)) {
         log(DEBUG, "already redirect_window");
         return;
-    } else if(!redirect && aProperty.window_type == _NET_WM_WINDOW_TYPE_NORMAL){
+    } else if(!redirect ){
         PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
         int x = pWin->drawable.x;
         int y = pWin->drawable.y;
@@ -547,8 +547,8 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
             unsigned long pid = *((unsigned long *) propData);
             log(ERROR, "prop window:%x pid:%ld", pWin->drawable.id, pid);
             //TODO revert from steam
-        } else if(STRING_EQUAL(NameForAtom(name), "STEAM_GAME")) {
-            prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+//        } else if(STRING_EQUAL(NameForAtom(name), "STEAM_GAME")) {
+//            prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
         }
         pProper = pProper->next;
     }

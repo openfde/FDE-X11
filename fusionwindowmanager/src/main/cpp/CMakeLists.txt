@@ -30,6 +30,11 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         fusionwindowmanager.cpp
         window_manager.cpp
         Util.cpp
+        hints.c
+        netwm.c
+        display.c
+        screen.c
+        client.c
         )
 
 
@@ -68,6 +73,29 @@ set_target_properties( Xcomposite
         PROPERTIES IMPORTED_LOCATION
         ../../../../libs/${CMAKE_ANDROID_ARCH_ABI}/libXcomposite.so )
 
+add_library( glib
+        SHARED
+        IMPORTED )
+set_target_properties( glib
+        PROPERTIES IMPORTED_LOCATION
+        ../../../../libs/${CMAKE_ANDROID_ARCH_ABI}/libglib-2.0.so )
+
+        
+add_library( iconv
+        SHARED
+        IMPORTED )
+set_target_properties( iconv
+        PROPERTIES IMPORTED_LOCATION
+        ../../../../libs/${CMAKE_ANDROID_ARCH_ABI}/libiconv.so )
+
+        
+add_library( pcre
+        SHARED
+        IMPORTED )
+set_target_properties( pcre
+        PROPERTIES IMPORTED_LOCATION
+        ../../../../libs/${CMAKE_ANDROID_ARCH_ABI}/libpcre2-8.so )
+
 include_directories(include)
 
 
@@ -85,5 +113,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         X11
         jnigraphics
         Xcomposite
+        iconv
+        pcre
+        glib
         android
+        EGL
+        GLESv2
         log)

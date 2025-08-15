@@ -2,12 +2,15 @@
 // Created by yang on 2024/4/18.
 //
 
-#include "X11/Xlib.h"
-#include "X11/X.h"
+#include <stdio.h>
+#include <X11/X.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/cursorfont.h>
+#include <X11/extensions/shape.h>
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "X11/Xutil.h"
 #include <memory>
 #include <mutex>
 #include <string>
@@ -16,14 +19,25 @@
 #include <android/log.h>
 #include <set>
 #include <jni.h>
-//#include "ewmh_icccm.h"
+// #include "ewmh_icccm.h"
 #include <X11/Xatom.h>
+
+extern "C"
+{
+#include "glib.h"
+#include "client.h"
+#include "screen.h"
+#include "netwm.h"
+#include "hints.h"
+#include "display.h"
+}
+
 static JavaVM *jniVM = NULL;
 static JNIEnv *GlobalEnv = NULL;
 static jobject bitmap = NULL;
 static jclass staticClass = NULL;
 
-#define WIDTH  1920
+#define WIDTH 1920
 #define HEIGHT 1080
 #define DECORCATIONVIEW_HEIGHT 42
 //#define BASE_EVENT_MASK \
@@ -32,26 +46,58 @@ static jclass staticClass = NULL;
 //                        StructureNotifyMask |\
 //                        PropertyChangeMask
 
+// #define BASE_EVENT_MASK       \
+//     SubstructureNotifyMask |  \
+//         StructureNotifyMask | \
+//         ButtonPressMask |     \
+//         ButtonReleaseMask |   \
+//         KeyPressMask |        \
+//         KeyReleaseMask |      \
+//         FocusChangeMask |     \
+//         PropertyChangeMask |  \
+//         ColormapChangeMask |  \
+//         SubstructureRedirectMask
 
-#define BASE_EVENT_MASK \
-                        SubstructureNotifyMask|\
-                        StructureNotifyMask|\
-                        ButtonPressMask|\
-                        ButtonReleaseMask|\
-                        KeyPressMask|\
-                        KeyReleaseMask|\
-                        FocusChangeMask|\
-                        PropertyChangeMask|\
-                        ColormapChangeMask |\
-                        SubstructureRedirectMask
+#define BASE_EVENT_MASK            \
+    SubstructureNotifyMask |       \
+        StructureNotifyMask |      \
+        SubstructureRedirectMask | \
+        ButtonPressMask |          \
+        ButtonReleaseMask |        \
+        KeyPressMask |             \
+        KeyReleaseMask |           \
+        FocusChangeMask |          \
+        PropertyChangeMask |       \
+        ColormapChangeMask
 
+#define MAIN_EVENT_MASK BASE_EVENT_MASK | ExposureMask
+#define MAIN_EVENT_MASK BASE_EVENT_MASK
+
+static gboolean compositor = TRUE;
+static vblankMode vblank_mode = VBLANK_AUTO;
 
 #define PRINT_LOG 1
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_wm", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "native_wm", __VA_ARGS__);}
+#define log(...)                                                          \
+    if (PRINT_LOG)                                                        \
+    {                                                                     \
+        __android_log_print(ANDROID_LOG_DEBUG, "native_wm", __VA_ARGS__); \
+    }
+#define loge(...)                                                         \
+    if (PRINT_LOG)                                                        \
+    {                                                                     \
+        __android_log_print(ANDROID_LOG_ERROR, "native_wm", __VA_ARGS__); \
+    }
 #define PRINT_XERROR 0
-#define CHECK(condition)  if(condition){   log("#condition fatal");}
-#define CHECK_EQ(val1, val2)  if(val1 != val2){  log("not equal"); }
+#define CHECK(condition)         \
+    if (condition)               \
+    {                            \
+        log("#condition fatal"); \
+    }
+#define CHECK_EQ(val1, val2) \
+    if (val1 != val2)        \
+    {                        \
+        log("not equal");    \
+    }
 #define CLIPMANAGER_ENABLE 1
 #define _NET_WM_STATE_REMOVE 0
 #define _NET_WM_STATE_ADD 1
@@ -83,12 +129,10 @@ const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-
-
-
-class WindowManager  {
+class WindowManager
+{
 public:
-    static ::WindowManager *create( char *string, JNIEnv *env, jclass cls);
+    static ::WindowManager *create(char *string, JNIEnv *env, jclass cls);
     ~WindowManager();
     WindowManager(Display *display);
     void Run();
@@ -111,9 +155,10 @@ public:
     void setClipData(char *text, char *path);
 
 private:
-
     // Handle to the underlying Xlib Display struct.
-    Display* display_;
+    Display *display_;
+    // new Handle to the window manager's display info.
+    DisplayInfo *display_info;
     // Handle to root window.
     const Window root_;
     // Frames a top-level window.
@@ -124,29 +169,29 @@ private:
     Window back_window;
 
     // Event handlers.
-    void OnCreateNotify(const XCreateWindowEvent& e);
-    void OnDestroyNotify(const XDestroyWindowEvent& e);
-    void OnReparentNotify(const XReparentEvent& e);
-    void OnMapNotify(const XMapEvent& e);
-    void OnUnmapNotify(const XUnmapEvent& e);
-    void OnConfigureNotify(const XConfigureEvent& e);
-    void OnMapRequest(const XMapRequestEvent& e);
-    void OnConfigureRequest(const XConfigureRequestEvent& e);
+    void OnCreateNotify(const XCreateWindowEvent &e);
+    void OnDestroyNotify(const XDestroyWindowEvent &e);
+    void OnReparentNotify(const XReparentEvent &e);
+    void OnMapNotify(const XMapEvent &e);
+    void OnUnmapNotify(const XUnmapEvent &e);
+    void OnConfigureNotify(const XConfigureEvent &e);
+    void OnMapRequest(const XMapRequestEvent &e);
+    void OnConfigureRequest(const XConfigureRequestEvent &e);
     void OnCirculateRequest(const XCirculateRequestEvent &e);
-    void OnButtonPress(const XButtonEvent& e);
-    void OnButtonRelease(const XButtonEvent& e);
-    void OnMotionNotify(const XMotionEvent& e);
-    void OnKeyPress(const XKeyEvent& e);
-    void OnKeyRelease(const XKeyEvent& e);
+    void OnButtonPress(const XButtonEvent &e);
+    void OnButtonRelease(const XButtonEvent &e);
+    void OnMotionNotify(const XMotionEvent &e);
+    void OnKeyPress(const XKeyEvent &e);
+    void OnKeyRelease(const XKeyEvent &e);
 
     // Xlib error handler. It must be static as its address is passed to Xlib.
-    static int OnXError(Display* display, XErrorEvent* e);
+    static int OnXError(Display *display, XErrorEvent *e);
     // Xlib error handler used to determine whether another window manager is
     // running. It is set as the error handler right before selecting substructure
     // redirection mask on the root window, so it is invoked if and only if
     // another window manager is running. It must be static as its address is
     // passed to Xlib.
-    static int OnWMDetected(Display* display, XErrorEvent* e);
+    static int OnWMDetected(Display *display, XErrorEvent *e);
     // Whether an existing window manager has been detected. Set by OnWMDetected,
     // and hence must be static.
     static bool wm_detected_;
@@ -176,7 +221,7 @@ private:
     Atom sel, utf8;
     std::string clip_text;
     std::string file_path;
-    Atom * selection_property_list ;
+    Atom *selection_property_list;
     int selection_property_size = 0;
 
     // selection_property_size
@@ -195,11 +240,11 @@ private:
 
     void HandleClientMessage(XEvent event);
 
+    void ProcessClientMessage(XEvent event);
+
     int setMaximizedState(Window window, Bool maximized);
 
     void UpdateXserverClipFile(const char *data);
 
     void setWindowType(Window window, Atom type);
 };
-
-

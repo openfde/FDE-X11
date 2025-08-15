@@ -8,6 +8,8 @@ build/
 *.so
 .externalNativeBuild
 
+.vscode/
+
 # Crashlytics configuations
 com_crashlytics_export_strings.xml
 
