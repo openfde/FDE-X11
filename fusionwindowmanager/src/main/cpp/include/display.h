@@ -342,5 +342,6 @@ Window                   myDisplayGetRootFromWindow             (DisplayInfo *,
                                                                  Window w);
 ScreenInfo              *myDisplayGetScreenFromWindow           (DisplayInfo *,
                                                                  Window w);
-
+void                     myDisplayRemoveClient                  (DisplayInfo *,
+                                                                 Client *);
 #endif /* INC_DISPLAY_H */

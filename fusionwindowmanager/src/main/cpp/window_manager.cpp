@@ -79,18 +79,19 @@ initialize(gboolean replace_wm, Display *display_, Window back_window, Window ro
         {
             g_slist_append(display_info->screens, screen_info);
         }
+        screen_info->xfwm4_win = back_window;
         myDisplayAddScreen(display_info, screen_info);
 
-        setUTF8StringHint(display_info, back_window, NET_WM_NAME, "FDE-XWM");
+        // setUTF8StringHint(display_info, back_window, NET_WM_NAME, "FDE-XWM");
 
         setNetSupportedHint(display_info, screen_info->xroot, back_window);
         log(" display_info  %p   back_window %p ", display_info, back_window);
 
-        setNetDesktopInfo(display_info, screen_info->xroot, screen_info->current_ws,
-                          screen_info->width,
-                          screen_info->height);
+        // setNetDesktopInfo(display_info, screen_info->xroot, screen_info->current_ws,
+                        //   screen_info->width,
+                        //   screen_info->height);
         XSetInputFocus(display_info->dpy, back_window, RevertToPointerRoot, CurrentTime);
-        XSync(display_info->dpy, FALSE);
+        // XSync(display_info->dpy, FALSE);
         clientFrameAll(screen_info);
     }
     return display_info;
@@ -447,6 +448,7 @@ void WindowManager::OnCirculateRequest(const XCirculateRequestEvent &e)
 
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
 {
+    Client *c;
     XWindowChanges changes;
     bool normal = isNormalWindow(e.window);
     changes.x = e.x;
@@ -463,18 +465,40 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
         //        log("value_mask : %lu", value_mask);
     }
     loge("configurerequest x:%d y:%d w:%d h:%d border:%d above:%d stack:%d value:%d", e.x, e.y, e.width, e.height, e.border_width, e.above, e.detail, value_mask);
-    if (clients_.count(e.window))
+    // if (clients_.count(e.window))
+    // {
+    //     const Window frame = clients_[e.window];
+    //     XConfigureWindow(display_, frame, value_mask, &changes);
+    //     log("Resize_ frame %lx  to %s x.y %s value_mask:%lu ", frame, Size<int>(e.width, e.height).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+    // }
+    // else
+    // {
+    //     XConfigureWindow(display_, e.window, value_mask, &changes);
+    //     log("Resize_ %lx to %s x.y %s value_mask:%lu ", e.window, Size<int>(e.width, e.height).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+    // }
+    // XSync(display_, False);
+
+    XConfigureRequestEvent *ev = (XConfigureRequestEvent *)&e;
+    c = myDisplayGetClientFromWindow (display_info, ev->window, SEARCH_WINDOW);
+    if (c)
     {
-        const Window frame = clients_[e.window];
-        XConfigureWindow(display_, frame, value_mask, &changes);
-        log("Resize_ frame %lx  to %s x.y %s value_mask:%lu ", frame, Size<int>(e.width, e.height).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+        log ("configurewindow \"%s\" (0x%lx)", c->name, c->window);
+        if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))
+        {
+            /* Sorry, but it's not the right time for configure request */
+            return ;
+        }
+        // clientAdjustCoordGravity (c, c->gravity, &wc, &ev->value_mask);
+        clientMoveResizeWindow (c, &changes, value_mask);
     }
     else
     {
-        XConfigureWindow(display_, e.window, value_mask, &changes);
-        log("Resize_ %lx to %s x.y %s value_mask:%lu ", e.window, Size<int>(e.width, e.height).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
+        log ("unmanaged configure request for window 0x%lx", ev->window);
+        myDisplayErrorTrapPush (display_info);
+        XConfigureWindow (display_info->dpy, ev->window, value_mask, &changes);
+        myDisplayErrorTrapPopIgnored (display_info);
     }
-    XSync(display_, False);
+
     if (value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight)
     {
         syncConfigureRequest(changes.x, changes.y, changes.width, changes.height, e.window);
@@ -1644,6 +1668,7 @@ int WindowManager::moveWindow(long window, int x, int y)
 int WindowManager::configureWindow(long window, int x, int y, int w, int h)
 {
     // setMaximizedState(window, false);
+    Client *c;
     XWindowChanges changes;
     changes.x = x;
     changes.y = y;
@@ -1651,65 +1676,25 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h)
     changes.height = h;
     unsigned long value_mask = CWX | CWY | CWWidth | CWHeight;
     int ret;
-    //    value_mask = 76;
-    if (isInFrameMap(window))
+
+    c = myDisplayGetClientFromWindow (display_info, window, SEARCH_FRAME);
+    if (c)
     {
-        log("configureWindow_ frame %lx  to %s x.y %s value_mask:%lu ", window,
-            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-            value_mask);
-        ret = XConfigureWindow(display_, window, value_mask, &changes);
-        for (const auto &pair : clients_)
+        log ("configurewindow \"%s\" (0x%lx)", c->name, c->window);
+        if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))
         {
-            if (pair.second == window)
-            {
-                changes.x = 0;
-                changes.y = 0;
-                ret = XConfigureWindow(display_, pair.first, value_mask, &changes);
-            }
+            log ("Sorry, but it's not the right time for configure request");
+            return False;
         }
+        clientMoveResizeWindow (c, &changes, value_mask);
     }
     else
     {
-        log("configureWindow_ %lx to %s x.y %s value_mask:%lu ", window,
-            Size<int>(w, h).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(),
-            value_mask);
-        ret = XConfigureWindow(display_, window, value_mask, &changes);
+        log ("unmanaged configure request for window 0x%lx", window);
+        myDisplayErrorTrapPush (display_info);
+        ret = XConfigureWindow (display_info->dpy, window, value_mask, &changes);
+        myDisplayErrorTrapPopIgnored (display_info);
     }
-
-    //    XEvent ev;
-    //    ev.type = Expose;
-    //    ev.xexpose.window = window;
-    //    XSendEvent(display_, window, False, ExposureMask, &ev);
-    //    XSync(display_, False);
-
-    //    XClientMessageEvent event = {
-    //            .type = ClientMessage,
-    //            .window = (Window)window,
-    //            .message_type = XInternAtom(display_, "WM_CHANGE_STATE", False),
-    //            .format = 32,
-    //            .data.l[0] = 3  // IconicState
-    //    };
-    //    XSendEvent(display_, root_, False, SubstructureRedirectMask, (XEvent*)&event);
-    //    XMapWindow(display_, window);
-
-    // Atom wm_state = XInternAtom(display_, "WM_STATE", False);
-
-    // // 准备要设置的值
-    // // data[0] = 窗口状态 (1 = Normal)
-    // // data[1] = 图标窗口 ID (0xe1336880)
-    // long state_data[2] = {1, 0};
-
-    // // 修改窗口属性
-    // XChangeProperty(
-    //     display_,                    // 显示连接
-    //     window,                      // 目标窗口
-    //     wm_state,                    // 属性: WM_STATE
-    //     wm_state,                    // 类型: WM_STATE (32位整数)
-    //     32,                          // 格式: 32位
-    //     PropModeReplace,             // 模式: 替换现有值
-    //     (unsigned char *)state_data, // 数据
-    //     2                            // 元素数量 (2个 long 值)
-    // );
     XFlush(display_);
     return ret;
 }
@@ -1745,45 +1730,56 @@ int WindowManager::mapWindow(long window)
     return ret;
 }
 
-int WindowManager::closeWindow(long window)
+int WindowManager::closeWindow(long frame)
 {
+    Client *c;
     Atom *supported = nullptr;
+    Window window;
     int num_supported = 0;
-    if (!XGetWMProtocols(display_, window, &supported, &num_supported))
-    {
-        log("closeWindow failed to get protocols for window:%x", window);
-        return -1; // 返回错误
-    }
+    c = myDisplayGetClientFromWindow (display_info, frame, SEARCH_FRAME);
 
-    log("closeWindow window:%x num_supported:%d", window, num_supported);
-    for (int i = 0; i < num_supported; ++i)
-    {
-        log("  Supported protocol: %s", XGetAtomName(display_, supported[i]));
+    if(!c){
+        log ("can't find frame to close window");
+        return FALSE;
     }
+    clientClose(c);
+    // window = c->window;
 
-    int ret = -1;
-    if (num_supported > 0 && supported[0] == XInternAtom(display_, "WM_DELETE_WINDOW", False))
-    {
-        log("closeWindow supported WM_DELETE_WINDOW");
-        XEvent msg;
-        memset(&msg, 0, sizeof(msg));
-        msg.xclient.type = ClientMessage;
-        msg.xclient.message_type = XInternAtom(display_, "WM_PROTOCOLS", False);
-        msg.xclient.window = window;
-        msg.xclient.format = 32;
-        msg.xclient.data.l[0] = XInternAtom(display_, "WM_DELETE_WINDOW", False);
-        msg.xclient.data.l[1] = CurrentTime;
-        ret = XSendEvent(display_, window, false, 0, &msg);
-    }
-    else
-    {
-        log("closeWindow not supported, killing client");
-        ret = XKillClient(display_, window);
-    }
+    // if (!XGetWMProtocols(display_, window, &supported, &num_supported))
+    // {
+    //     log("closeWindow failed to get protocols for window:%x", window);
+    //     return -1; // 返回错误
+    // }
 
-    XSync(display_, False);
-    XFree(supported); // 释放支持的协议列表
-    return ret;
+    // log("closeWindow window:%x num_supported:%d", window, num_supported);
+    // for (int i = 0; i < num_supported; ++i)
+    // {
+    //     log("  Supported protocol: %s", XGetAtomName(display_, supported[i]));
+    // }
+
+    // int ret = -1;
+    // if (num_supported > 0 && supported[0] == XInternAtom(display_, "WM_DELETE_WINDOW", False))
+    // {
+    //     log("closeWindow supported WM_DELETE_WINDOW");
+    //     XEvent msg;
+    //     memset(&msg, 0, sizeof(msg));
+    //     msg.xclient.type = ClientMessage;
+    //     msg.xclient.message_type = XInternAtom(display_, "WM_PROTOCOLS", False);
+    //     msg.xclient.window = window;
+    //     msg.xclient.format = 32;
+    //     msg.xclient.data.l[0] = XInternAtom(display_, "WM_DELETE_WINDOW", False);
+    //     msg.xclient.data.l[1] = CurrentTime;
+    //     ret = XSendEvent(display_, window, false, 0, &msg);
+    // }
+    // else
+    // {
+    //     log("closeWindow not supported, killing client");
+    //     ret = XKillClient(display_, window);
+    // }
+
+    // XSync(display_, False);
+    // XFree(supported); // 释放支持的协议列表
+    return True;
 }
 
 int WindowManager::raiseWindow(long window)

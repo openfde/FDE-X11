@@ -103,7 +103,7 @@ clientGetXDisplay (Client *c)
 //     int i;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -139,7 +139,7 @@ clientGetXDisplay (Client *c)
 //     int result, status;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (c->ncmap)
 //     {
@@ -244,7 +244,7 @@ clientUpdateName (Client *c)
 //     unsigned long maximization_flags = 0L;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     /* Recompute size and position of maximized windows */
 //     maximization_flags = c->flags & CLIENT_FLAG_MAXIMIZED;
@@ -261,7 +261,7 @@ clientUpdateName (Client *c)
 //     guint i;
 
 //     g_return_if_fail (screen_info != NULL);
-//     TRACE ("entering");
+//     logw ("entering");
 
 //     for (c = screen_info->clients, i = 0; i < screen_info->client_count; c = c->next, i++)
 //     {
@@ -319,7 +319,7 @@ clientUpdateName (Client *c)
 //     ScreenInfo *screen_info;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     if (screen_info->params->easy_click)
@@ -333,7 +333,7 @@ clientUpdateName (Client *c)
 // clientUngrabButtons (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 //     xfwm_device_ungrab_button (c->screen_info->display_info->devices, clientGetXDisplay (c),
 //                                AnyButton, AnyModifier, c->window);
 // }
@@ -346,7 +346,7 @@ clientUpdateName (Client *c)
 
 //     c = (Client *) data;
 //     g_return_val_if_fail (c != NULL, FALSE);
-//     TRACE ("iteration %i", c->blink_iterations);
+//     logw ("iteration %i", c->blink_iterations);
 
 //     screen_info = c->screen_info;
 //     if (c != clientGetFocus ())
@@ -406,7 +406,7 @@ clientUpdateName (Client *c)
 // clientUpdateUrgency (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_SEEN_ACTIVE);
 //     if (c->blink_timeout_id)
@@ -523,7 +523,7 @@ clientCoordGravitate (Client *c, int gravity, int mode, int *x, int *y)
 //     int tx, ty, dw, dh;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     tx = wc->x;
 //     ty = wc->y;
@@ -617,6 +617,10 @@ clientConfigureWindows (Client *c, XWindowChanges * wc, unsigned long mask, unsi
     DisplayInfo *display_info;
     ScreenInfo *screen_info;
 
+    logw ("clientConfigureWindows client \"%s\" (0x%lx)", c->name, c->window);
+    logw ("clientConfigureWindows x:%d y：%d w:%d h:%d", c->x, c->y, c->width, c->height);
+    logw ("clientConfigureWindows wc x:%d y：%d w:%d h:%d", wc->x, wc->y, wc->width, wc->height);
+
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
 
@@ -636,8 +640,8 @@ clientConfigureWindows (Client *c, XWindowChanges * wc, unsigned long mask, unsi
     myDisplayErrorTrapPush (display_info);
     if (change_mask_frame & (CWX | CWY | CWWidth | CWHeight))
     {
-        change_values.x = 0;//frameX (c);
-        change_values.y = 0;//frameY (c);
+        change_values.x = c->x;//frameX (c);
+        change_values.y = c->y;//frameY (c);
         change_values.width = c->width;
         change_values.height = c->height;
         XConfigureWindow (display_info->dpy, c->frame, change_mask_frame, &change_values);
@@ -1472,7 +1476,7 @@ clientApplyInitialState (Client *c)
 
 //     g_return_if_fail (c != NULL);
 //     g_return_if_fail (c->window != None);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     for (i = 0; i < STATE_TOGGLED; i++)
@@ -1520,7 +1524,7 @@ clientApplyInitialState (Client *c)
     
 //     c = (Client *) data;
 //     g_return_val_if_fail (c, FALSE);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     clientUpdateIconPix (c);
 //     if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
@@ -1536,7 +1540,7 @@ clientApplyInitialState (Client *c)
 // clientUpdateIcon (Client *c)
 // {
 //     g_return_if_fail (c);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (c->icon_timeout_id == 0)
 //     {
@@ -1797,8 +1801,8 @@ clientFrame (DisplayInfo *display_info, Window w, gboolean recapture)
         clientCoordGravitate (c, c->gravity, APPLY, &c->x, &c->y);
         if (attr.map_state == IsUnmapped)
         {
-            //TODO FDE
-            // clientInitPosition (c);
+            //TODO FDE need
+            //clientInitPosition (c);
         }
     }
 
@@ -2031,6 +2035,27 @@ clientUnframe (Client *c, gboolean remap)
 
     //TODO FDE
     // clientRemoveFromList (c);
+    myDisplayRemoveClient (display_info, c);
+
+    g_assert (screen_info->client_count > 0);
+    screen_info->client_count--;
+    if (screen_info->client_count == 0)
+    {
+        screen_info->clients = NULL;
+    }
+    else
+    {
+        c->next->prev = c->prev;
+        c->prev->next = c->next;
+        if (c == screen_info->clients)
+        {
+            screen_info->clients = screen_info->clients->next;
+        }
+    }
+    screen_info->windows = g_list_remove (screen_info->windows, c);
+    clientSetNetClientList (screen_info, display_info->atoms[NET_CLIENT_LIST], screen_info->windows);
+    FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MANAGED);
+
 
     myDisplayGrabServer (display_info);
     myDisplayErrorTrapPush (display_info);
@@ -2107,19 +2132,10 @@ clientFrameAll (ScreenInfo *screen_info)
     Window w1, w2, *wins;
     unsigned int count, i;
 
-    logw ("entering");
+    logw ("clientFrameAll entering");
 
     display_info = screen_info->display_info;
-    // clientSetFocus (screen_info, NULL, myDisplayGetCurrentTime (display_info), NO_FOCUS_FLAG);
-    // xfwmWindowTemp (screen_info,
-    //                 NULL, 0,
-    //                 screen_info->xroot,
-    //                 &shield,
-    //                 0, 0,
-    //                 screen_info->width,
-    //                 screen_info->height,
-    //                 EnterWindowMask,
-    //                 FALSE);
+    clientSetFocus (screen_info, NULL, myDisplayGetCurrentTime (display_info), NO_FOCUS_FLAG);
 
     logd ("screen_info->xroot %lx", screen_info->xroot);
     
@@ -2129,9 +2145,9 @@ clientFrameAll (ScreenInfo *screen_info)
     for (i = 0; i < count; i++)
     {
         XGetWindowAttributes (display_info->dpy, wins[i], &attr);
-        if ((attr.map_state == IsViewable) && (attr.root == screen_info->xroot))
+        if ((attr.map_state == IsViewable) && (attr.root == screen_info->xroot) && wins[i] != screen_info->xfwm4_win)
         {
-            // clientFrame (display_info, wins[i], TRUE);
+            clientFrame (display_info, wins[i], TRUE);
         }
     }
     if (wins)
@@ -2152,7 +2168,7 @@ clientFrameAll (ScreenInfo *screen_info)
 //     Window w1, w2, *wins;
 //     unsigned int count, i;
 
-//     TRACE ("entering");
+//     logw ("entering");
 
 //     display_info = screen_info->display_info;
 //     clientSetFocus (screen_info, NULL, myDisplayGetCurrentTime (display_info), FOCUS_IGNORE_MODAL);
@@ -2235,7 +2251,7 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
 //     DisplayInfo *display_info;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -2243,12 +2259,12 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
 //     if (ws > screen_info->workspace_count - 1)
 //     {
 //         ws = screen_info->workspace_count - 1;
-//         TRACE ("value off limits, using %i instead", ws);
+//         logw ("value off limits, using %i instead", ws);
 //     }
 
 //     if (c->win_workspace != ws)
 //     {
-//         TRACE ("setting client \"%s\" (0x%lx) to current_ws %d", c->name, c->window, ws);
+//         logw ("setting client \"%s\" (0x%lx) to current_ws %d", c->name, c->window, ws);
 //         c->win_workspace = ws;
 //         if (FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
 //         {
@@ -2271,7 +2287,7 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
 //     guint previous_ws;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (ws > c->screen_info->workspace_count - 1)
 //     {
@@ -2286,7 +2302,7 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
 
 //         if (c2->win_workspace != ws)
 //         {
-//             TRACE ("setting client \"%s\" (0x%lx) to current_ws %d", c->name, c->window, ws);
+//             logw ("setting client \"%s\" (0x%lx) to current_ws %d", c->name, c->window, ws);
 
 //             previous_ws = c2->win_workspace;
 //             clientSetWorkspaceSingle (c2, ws);
@@ -2384,7 +2400,7 @@ clientShow (Client *c, gboolean deiconify)
 //     DisplayInfo *display_info;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -2424,7 +2440,7 @@ clientShow (Client *c, gboolean deiconify)
 //     GList *list;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     list_of_windows = clientListTransientOrModal (c);
 //     for (list = list_of_windows; list; list = g_list_next (list))
@@ -2479,7 +2495,7 @@ clientShow (Client *c, gboolean deiconify)
 //     ScreenInfo *screen_info;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     for (list = screen_info->windows_stack; list; list = g_list_next (list))
@@ -2505,7 +2521,7 @@ clientShow (Client *c, gboolean deiconify)
 // {
 //     GList *list;
 
-//     TRACE ("entering");
+//     logw ("entering");
 
 //     if (screen_info->show_desktop)
 //     {
@@ -2525,7 +2541,7 @@ clientShow (Client *c, gboolean deiconify)
 // {
 //     GList *list;
 
-//     TRACE ("entering");
+//     logw ("entering");
 
 //     clientSetFocus (screen_info, NULL,
 //                     myDisplayGetCurrentTime (screen_info->display_info),
@@ -2567,7 +2583,7 @@ clientShow (Client *c, gboolean deiconify)
 //     Client *ancestor;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     ancestor = clientGetTransientFor(c);
@@ -2616,7 +2632,7 @@ clientShow (Client *c, gboolean deiconify)
 //     }
 //     else
 //     {
-//         TRACE ("setting WM_STATE_DEMANDS_ATTENTION flag on \"%s\" (0x%lx)", c->name, c->window);
+//         logw ("setting WM_STATE_DEMANDS_ATTENTION flag on \"%s\" (0x%lx)", c->name, c->window);
 //         FLAG_SET (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION);
 //         clientSetNetState (c);
 //     }
@@ -2675,7 +2691,7 @@ clientKill (Client *c)
 //     DisplayInfo *display_info;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -2684,7 +2700,7 @@ clientKill (Client *c)
 //     {
 //         if (!strcmp (display_info->hostname, c->hostname))
 //         {
-//             TRACE ("sending client %s (pid %i) signal SIGKILL\n", c->name, c->pid);
+//             logw ("sending client %s (pid %i) signal SIGKILL\n", c->name, c->pid);
 
 //             if (kill (c->pid, SIGKILL) < 0)
 //             {
@@ -2703,7 +2719,7 @@ clientKill (Client *c)
 //     DisplayInfo *display_info;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -2723,7 +2739,7 @@ clientKill (Client *c)
 //     Client *c2 = NULL;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx) on layer %d", c->name, c->window, l);
+//     logw ("client \"%s\" (0x%lx) on layer %d", c->name, c->window, l);
 
 //     list_of_windows = clientListTransientOrModal (c);
 //     for (list = list_of_windows; list; list = g_list_next (list))
@@ -2731,7 +2747,7 @@ clientKill (Client *c)
 //         c2 = (Client *) list->data;
 //         if (c2->win_layer != l)
 //         {
-//             TRACE ("setting client \"%s\" (0x%lx) layer to %d", c2->name,
+//             logw ("setting client \"%s\" (0x%lx) layer to %d", c2->name,
 //                 c2->window, l);
 //             c2->win_layer = l;
 //         }
@@ -2746,12 +2762,12 @@ clientKill (Client *c)
 //     c2 = clientGetFocusOrPending ();
 //     if (c2 && (c2 != c) && (c2->win_layer == c->win_layer))
 //     {
-//         TRACE ("placing %s under %s", c->name, c2->name);
+//         logw ("placing %s under %s", c->name, c2->name);
 //         clientLower (c, c2->frame);
 //     }
 //     else
 //     {
-//        TRACE ("placing %s on top of its layer %lu", c->name, c->win_layer);
+//        logw ("placing %s on top of its layer %lu", c->name, c->win_layer);
 //        clientRaise (c, None);
 //     }
 // }
@@ -2765,16 +2781,16 @@ clientKill (Client *c)
 //     unsigned long mask;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (!CLIENT_HAS_FRAME(c))
 //     {
-//         TRACE ("cowardly refusing to shade \"%s\" (0x%lx) because it has no title", c->name, c->window);
+//         logw ("cowardly refusing to shade \"%s\" (0x%lx) because it has no title", c->name, c->window);
 //         return;
 //     }
 //     else if (FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
 //     {
-//         TRACE ("client \"%s\" (0x%lx) is already shaded", c->name, c->window);
+//         logw ("client \"%s\" (0x%lx) is already shaded", c->name, c->window);
 //         return;
 //     }
 
@@ -2825,11 +2841,11 @@ clientKill (Client *c)
 //     DisplayInfo *display_info;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (!FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
 //     {
-//         TRACE ("\"%s\" (0x%lx) is not shaded", c->name, c->window);
+//         logw ("\"%s\" (0x%lx) is not shaded", c->name, c->window);
 //         return;
 //     }
 
@@ -2953,7 +2969,7 @@ clientUnstick (Client *c, gboolean include_transients)
 // clientToggleSticky (Client *c, gboolean include_transients)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
 //     {
@@ -2974,7 +2990,7 @@ clientUnstick (Client *c, gboolean include_transients)
 //     int i;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 
@@ -3029,7 +3045,7 @@ clientUnstick (Client *c, gboolean include_transients)
 // void clientToggleFullscreen (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     /*can we switch to full screen, does it make any sense? */
 //     if (!FLAG_TEST (c->flags, CLIENT_FLAG_FULLSCREEN) && (c->size->flags & PMaxSize))
@@ -3062,7 +3078,7 @@ clientUnstick (Client *c, gboolean include_transients)
 //     gint num_monitors;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -3100,7 +3116,7 @@ clientUnstick (Client *c, gboolean include_transients)
 // void clientToggleLayerAbove (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if ((c->type & WINDOW_REGULAR_FOCUSABLE) &&
 //         !clientIsValidTransientOrModal (c) &&
@@ -3115,7 +3131,7 @@ clientUnstick (Client *c, gboolean include_transients)
 // void clientToggleLayerBelow (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if ((c->type & WINDOW_REGULAR_FOCUSABLE) &&
 //         !clientIsValidTransientOrModal (c) &&
@@ -3130,7 +3146,7 @@ clientUnstick (Client *c, gboolean include_transients)
 // void clientSetLayerNormal (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (!FLAG_TEST (c->flags, CLIENT_FLAG_FULLSCREEN))
 //     {
@@ -3143,7 +3159,7 @@ clientUnstick (Client *c, gboolean include_transients)
 // clientUpdateMaximizeSize (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     /* Recompute size and position of maximized windows */
 //     if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
@@ -3350,7 +3366,7 @@ clientRemoveMaximizeFlag (Client *c)
 // clientToggleMaximized (Client *c, int mode, gboolean restore_position)
 // {
 //     g_return_val_if_fail (c != NULL, FALSE);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (!CLIENT_CAN_MAXIMIZE_WINDOW (c))
 //     {
@@ -3373,7 +3389,7 @@ clientRemoveMaximizeFlag (Client *c)
 //     unsigned long old_flags;
 
 //     g_return_val_if_fail (c != NULL, FALSE);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (!CLIENT_CAN_MAXIMIZE_WINDOW (c))
 //     {
@@ -3456,7 +3472,7 @@ clientRemoveMaximizeFlag (Client *c)
 //     unsigned long old_flags;
 
 //     g_return_val_if_fail (c != NULL, FALSE);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (!CLIENT_CAN_TILE_WINDOW (c))
 //     {
@@ -3517,7 +3533,7 @@ clientRemoveMaximizeFlag (Client *c)
 // clientUntile (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     c->tile_mode = TILE_NONE;
 // }
@@ -3529,7 +3545,7 @@ clientRemoveMaximizeFlag (Client *c)
 //     ScreenInfo *screen_info;
 
 //     g_return_val_if_fail (c != NULL, FALSE);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -3570,7 +3586,7 @@ clientRemoveMaximizeFlag (Client *c)
 //     GdkRectangle rect;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 
@@ -3594,7 +3610,7 @@ clientRemoveMaximizeFlag (Client *c)
 // clientUpdateTileSize (Client *c)
 // {
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     /* Recompute size and position of maximized windows */
 //     if (c->tile_mode != TILE_NONE)
@@ -3930,7 +3946,7 @@ clientRemoveMaximizeFlag (Client *c)
 
 //     if (!pressed)
 //     {
-//         TRACE ("event loop now finished");
+//         logw ("event loop now finished");
 //         gtk_main_quit ();
 //     }
 
@@ -3947,7 +3963,7 @@ clientRemoveMaximizeFlag (Client *c)
 //     gboolean g1;
 
 //     g_return_if_fail (c != NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     for (b = 0; b < BUTTON_COUNT; b++)
 //     {
@@ -3970,7 +3986,7 @@ clientRemoveMaximizeFlag (Client *c)
 
 //     if (!g1)
 //     {
-//         TRACE ("grab failed in clientButtonPress");
+//         logw ("grab failed in clientButtonPress");
 //         myDisplayBeep (display_info);
 //         return;
 //     }
@@ -3981,11 +3997,11 @@ clientRemoveMaximizeFlag (Client *c)
 //     c->button_status[b] = BUTTON_STATE_PRESSED;
 //     frameQueueDraw (c, FALSE);
 
-//     TRACE ("entering button press loop");
+//     logw ("entering button press loop");
 //     eventFilterPush (display_info->xfilter, clientButtonPressEventFilter, &passdata);
 //     gtk_main ();
 //     eventFilterPop (display_info->xfilter);
-//     TRACE ("leaving button press loop");
+//     logw ("leaving button press loop");
 
 //     myDisplayErrorTrapPush (display_info);
 //     xfwm_device_ungrab (display_info->devices, &display_info->devices->pointer,
@@ -4053,7 +4069,7 @@ clientRemoveMaximizeFlag (Client *c)
 // {
 //     ScreenInfo *screen_info;
 
-//     TRACE ("button=%i, state=%i", button, state);
+//     logw ("button=%i, state=%i", button, state);
 //     screen_info = c->screen_info;
 //     switch (button)
 //     {
@@ -4122,7 +4138,7 @@ clientRemoveMaximizeFlag (Client *c)
 // clientGetLeader (Client *c)
 // {
 //     g_return_val_if_fail (c != NULL, NULL);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     if (c->group_leader != None)
 //     {
@@ -4146,7 +4162,7 @@ clientRemoveMaximizeFlag (Client *c)
 //     int i;
 
 //     g_return_val_if_fail (c != NULL, FALSE);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -4186,7 +4202,7 @@ clientRemoveMaximizeFlag (Client *c)
 //     long val;
 
 //     g_return_val_if_fail (c != NULL, FALSE);
-//     TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
 //     screen_info = c->screen_info;
 //     display_info = screen_info->display_info;
@@ -4255,9 +4271,140 @@ clientClearFocus (Client *c)
 }
 
 void
+clientSetLast(Client *c)
+{
+    ScreenInfo *screen_info;
+
+    g_return_if_fail (c != NULL);
+    logw ("client \"%s\" (0x%lx)", c->name, c->window);
+
+    screen_info = c->screen_info;
+    if (screen_info->client_count > 2)
+    {
+        if (screen_info->clients == c)
+        {
+            screen_info->clients = screen_info->clients->next;
+        }
+        else
+        {
+            c->prev->next = c->next;
+            c->next->prev = c->prev;
+
+            c->prev = screen_info->clients->prev;
+            c->next = screen_info->clients;
+
+            screen_info->clients->prev->next = c;
+            screen_info->clients->prev = c;
+        }
+    }
+}
+
+static void
+clientFocusNone (ScreenInfo *screen_info, Client *previous, guint32 timestamp)
+{
+    logw ("setting focus to none");
+
+    pending_focus = NULL;
+
+    if (previous)
+    {
+        clientSetNetState (previous);
+        // frameQueueDraw (previous, FALSE);
+        if (previous->screen_info != screen_info)
+        {
+            clientSetNetActiveWindow (previous->screen_info, NULL, timestamp);
+        }
+    }
+    clientSetNetActiveWindow (screen_info, NULL, timestamp);
+    XSetInputFocus (myScreenGetXDisplay (screen_info), screen_info->xfwm4_win, RevertToPointerRoot, timestamp);
+}
+
+void
 clientSetFocus (ScreenInfo *screen_info, Client *c, guint32 timestamp, unsigned short flags)
 {
+    Client *c2;
 
+    logw ("entering");
+
+    c2 = NULL;
+    if ((c) && !(flags & FOCUS_IGNORE_MODAL))
+    {
+        // c2 = clientGetModalFor (c);
+
+        // if (c2)
+        // {
+        //     c = c2;
+        // }
+    }
+    c2 = ((client_focus != c) ? client_focus : NULL);
+    if ((c) && FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
+    {
+        logw ("setting focus to client \"%s\" (0x%lx) with timestamp %u", c->name, c->window, (unsigned int) timestamp);
+        user_focus = c;
+        if (FLAG_TEST(c->flags, CLIENT_FLAG_DEMANDS_ATTENTION))
+        {
+            logw ("un-setting WM_STATE_DEMANDS_ATTENTION flag on \"%s\" (0x%lx)", c->name, c->window);
+            FLAG_UNSET (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION);
+            clientSetNetState (c);
+        }
+        if ((c == client_focus) && !(flags & FOCUS_FORCE))
+        {
+            logw ("client \"%s\" (0x%lx) is already focused, ignoring request", c->name, c->window);
+            return;
+        }
+        // if (!clientAcceptFocus (c))
+        // {
+        //     logw ("SKIP_FOCUS set for client \"%s\" (0x%lx)", c->name, c->window);
+        //     return;
+        // }
+        if (FLAG_TEST (c->wm_flags, WM_FLAG_INPUT))
+        {
+            pending_focus = c;
+            /*
+             * When shaded, the client window is unmapped, so it can not be focused.
+             * Instead, we focus the frame that is still mapped.
+             */
+            myDisplayErrorTrapPush (screen_info->display_info);
+            if (FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
+            {
+                XSetInputFocus (myScreenGetXDisplay (screen_info), c->frame, RevertToPointerRoot, timestamp);
+            }
+            else
+            {
+                XSetInputFocus (myScreenGetXDisplay (screen_info), c->window, RevertToPointerRoot, timestamp);
+            }
+            if (myDisplayErrorTrapPop (screen_info->display_info) != Success)
+            {
+                client_focus = NULL;
+                clientFocusNone (screen_info, c2, timestamp);
+            }
+        }
+        else if (flags & FOCUS_TRANSITION)
+        {
+            /*
+             * If we are relying only on the client application to take focus, we need to set the focus
+             * explicitely on our own fallback window otherwise there is a race condition between the
+             * application and the window manager. If the application does not take focus before the
+             * the previously focused window is unmapped (when iconifying or closing for example), the focus
+             * will be reverted to the root window and focus transition will fail.
+             */
+            clientFocusNone (screen_info, c2, timestamp);
+        }
+
+        if (FLAG_TEST(c->wm_flags, WM_FLAG_TAKEFOCUS))
+        {
+            pending_focus = c;
+            sendClientMessage (screen_info, c->window, WM_TAKE_FOCUS, timestamp);
+        }
+    }
+    else
+    {
+        logw ("setting focus to none");
+
+        client_focus = NULL;
+        clientFocusNone (screen_info, c2, timestamp);
+        // clientClearDelayedFocus ();
+    }
 }
 
 void

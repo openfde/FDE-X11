@@ -42,73 +42,17 @@ myScreenSetWMAtom (ScreenInfo *screen_info, gboolean replace_wm)
 
 
     display_info = screen_info->display_info;
-    // g_snprintf (selection, sizeof (selection), "WM_S%d", screen_info->screen);
-    // wm_sn_atom = XInternAtom (display_info->dpy, selection, FALSE);
     display_name = "FDE-XDISPLAY";
     wm_name = "FDE-XWM";
+    wm_sn_atom = XInternAtom (display_info->dpy, "WM_S1001", FALSE);
 
-    // current_wm = XGetSelectionOwner (display_info->dpy, wm_sn_atom);
-    // if (current_wm)
-    // {
-    //     if (!replace_wm)
-    //     {
-    //         logd ("Another Window Manager (%s) is already running on screen %s\n", wm_name, display_name);
-    //         logd ("To replace the current window manager, try \"--replace\"\n");
-    //         // g_free (display_name);
+    if (!setXAtomManagerOwner (display_info, wm_sn_atom, screen_info->xroot, screen_info->xfwm4_win))
+    {
+        logw ("Cannot acquire window manager selection on screen %s", display_name);
+        g_free (display_name);
 
-    //         return FALSE;
-    //     }
-    myDisplayErrorTrapPush (display_info);
-    attrs.event_mask = StructureNotifyMask;
-    XChangeWindowAttributes (display_info->dpy, screen_info->xfwm4_win, CWEventMask, &attrs);
-    XSync (display_info->dpy, FALSE);
-
-        // if (myDisplayErrorTrapPop (display_info))
-        // {
-            // current_wm = None;
-        // }
-    // }
-
-    // if (!setXAtomManagerOwner (display_info, wm_sn_atom, screen_info->xroot, screen_info->xfwm4_win))
-    // {
-        // logw ("Cannot acquire window manager selection on screen %s", display_name);
-        // g_free (display_name);
-
-        // return FALSE;
-    // }
-
-    /* Waiting for previous window manager to exit */
-    // if (current_wm)
-    // {
-    //     logd ("Waiting for current window manager (%s) on screen %s to exit:", wm_name, display_name);
-    //     wait = 0;
-    //     timeout = WM_EXITING_TIMEOUT * G_USEC_PER_SEC;
-    //     while (wait < timeout)
-    //     {
-    //         if (XCheckWindowEvent (display_info->dpy, current_wm, StructureNotifyMask, &event) && (event.type == DestroyNotify))
-    //         {
-    //             break;
-    //         }
-    //         g_usleep(G_USEC_PER_SEC / 10);
-    //         wait += G_USEC_PER_SEC / 10;
-    //         if (wait % G_USEC_PER_SEC == 0)
-    //         {
-    //           logd (".");
-    //         }
-    //     }
-
-    //     if (wait >= timeout)
-    //     {
-    //         logd(" Failed\n");
-    //         logw("Previous window manager (%s) on screen %s is not exiting", wm_name, display_name);
-    //         g_free (display_name);
-
-    //         return FALSE;
-    //     }
-    //     logd(" Done\n");
-    // }
-    // g_free (display_name);
-
+        return FALSE;
+    }
     return TRUE;
 }
 
@@ -143,11 +87,6 @@ myScreenInit (DisplayInfo *display_info, unsigned long event_mask, int index,
         return NULL;
     }
 
-    screen_info->current_ws = 0;
-    screen_info->previous_ws = 0;
-    screen_info->current_ws = 0;
-    screen_info->previous_ws = 0;
-
     screen_info->margins[STRUTS_TOP] = screen_info->gnome_margins[STRUTS_TOP] = 0;
     screen_info->margins[STRUTS_LEFT] = screen_info->gnome_margins[STRUTS_LEFT] = 0;
     screen_info->margins[STRUTS_RIGHT] = screen_info->gnome_margins[STRUTS_RIGHT] = 0;
@@ -169,7 +108,7 @@ myScreenInit (DisplayInfo *display_info, unsigned long event_mask, int index,
     screen_info->pointer_grabs = 0;
 
     // getHint (display_info, screen_info->xroot, NET_SHOWING_DESKTOP, &desktop_visible);
-    screen_info->show_desktop = (desktop_visible != 0);
+    screen_info->show_desktop = TRUE;
 
     screen_info->box_gc = None;
 
@@ -187,8 +126,8 @@ myScreenComputeSize (ScreenInfo *screen_info)
 
     g_return_val_if_fail (screen_info != NULL, FALSE);
 
-    width = 0;
-    height = 0;
+    width = 1920;
+    height = 1080;
 
     changed = ((screen_info->width != width) | (screen_info->height != height));
     screen_info->width = width;

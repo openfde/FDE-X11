@@ -657,7 +657,7 @@ setUTF8StringHint (DisplayInfo *display_info, Window w, int atom_id, const gchar
 {
     g_return_if_fail ((atom_id >= 0) && (atom_id < ATOM_COUNT));
 
-    logw ("window 0x%lx atom %i", w, atom_id);
+    logw ("setUTF8StringHint window 0x%lx atom %i", w, atom_id);
     myDisplayErrorTrapPush (display_info);
     XChangeProperty (display_info->dpy, w, display_info->atoms[atom_id],
                      display_info->atoms[UTF8_STRING], 8, PropModeReplace,
