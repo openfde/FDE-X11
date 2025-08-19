@@ -7,11 +7,20 @@
 #include "screen.h"
 #include "client.h"
 
+#define NET_WINDOW_ACTION_UNDEFINED 0
+#define NET_WINDOW_ACTION_MAXIMIZED 1000
+#define NET_WINDOW_ACTION_MAXIMIZED_REMOVE 1001
+#define NET_WINDOW_ACTION_MINIMIZE 1003
+#define NET_WINDOW_ACTION_MINIMIZE_REMOVE 1004
+#define NET_WINDOW_ACTION_MAXIMIZED_HORZ 1
+#define NET_WINDOW_ACTION_MAXIMIZED_VERT 2
+#define NET_WINDOW_ACTION_DELETE 1007
+
 void                     clientSetNetState                      (Client *);
 void                     clientGetNetState                      (Client *);
 void                     clientUpdateNetWmDesktop               (Client *,
                                                                  XClientMessageEvent *);
-void                     clientUpdateNetState                   (Client *,
+int                     clientUpdateNetState                   (Client *,
                                                                  XClientMessageEvent *);
 void                     clientNetMoveResize                    (Client *,
                                                                  XClientMessageEvent *);

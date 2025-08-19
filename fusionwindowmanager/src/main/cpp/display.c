@@ -68,6 +68,7 @@ myDisplayInitAtoms (DisplayInfo *display_info)
         "_NET_WM_ICON_NAME",
         "_NET_WM_MOVERESIZE",
         "_NET_WM_NAME",
+        "_NET_WM_OPAQUE_REGION",
         "_NET_WM_PID",
         "_NET_WM_PING",
         "_NET_WM_WINDOW_OPACITY",
@@ -165,9 +166,14 @@ myDisplayInit(Display *dpy)
     /* Initialize internal atoms */
     if (!myDisplayInitAtoms (display))
     {
-        g_warning ("Some internal atoms were not properly created.");
+        logw ("Some internal atoms were not properly created.");
     }
 
+    for (int j = 0; j < ATOM_COUNT; j++)
+    {
+        logd ("myDisplayInit: atom[%d] = %s atom = %lu", j, XGetAtomName(display->dpy, display->atoms[j]), display->atoms[j]);
+    }  
+    
     /* Test XShape extension support */
 
     display->shape_version = 0;
@@ -236,7 +242,7 @@ myDisplayGetScreenFromRoot (DisplayInfo *display, Window root)
             return screen;
         }
     }
-    // TRACE ("no screen found");
+    logd ("no screen found");
 
     return NULL;
 }
@@ -246,14 +252,11 @@ myDisplayGrabServer (DisplayInfo *display)
 {
     g_return_if_fail (display);
 
-    logw ("entering myDisplayGrabServer");
     if (display->xgrabcount == 0)
     {
-        logw ("grabbing server");
         XGrabServer (display->dpy);
     }
     display->xgrabcount++;
-    logw ("grabs : %i", display->xgrabcount);
 }
 
 void
@@ -261,7 +264,6 @@ myDisplayUngrabServer (DisplayInfo *display)
 {
     g_return_if_fail (display);
 
-    // DBG ("entering myDisplayUngrabServer");
     display->xgrabcount = display->xgrabcount - 1;
     if (display->xgrabcount < 0)       /* should never happen */
     {
@@ -269,11 +271,9 @@ myDisplayUngrabServer (DisplayInfo *display)
     }
     if (display->xgrabcount == 0)
     {
-        // DBG ("ungrabbing server");
         XUngrabServer (display->dpy);
         XFlush (display->dpy);
     }
-    // DBG ("grabs : %i", display->xgrabcount);
 }
 
 
@@ -282,7 +282,6 @@ myDisplayGetCurrentTime(DisplayInfo *display)
 {
     g_return_val_if_fail(display != NULL, (guint32)CurrentTime);
 
-    // TRACE ("timestamp=%u", (guint32) display->current_time);
     return display->current_time;
 }
 
@@ -317,7 +316,6 @@ myDisplayGetClientFromWindow (DisplayInfo *display, Window w, unsigned short mod
             return (c);
         }
     }
-    // TRACE ("no client found");
 
     return NULL;
 }
@@ -329,7 +327,7 @@ myDisplayAddScreen (DisplayInfo *display, ScreenInfo *screen)
     g_return_if_fail (display != NULL);
 
     display->screens = g_slist_append (display->screens, screen);
-    logw ("  display->screens %p" ,  display->screens);
+    logd ("  display->screens %p" ,  display->screens);
 
     display->nb_screens = display->nb_screens + 1;
 }

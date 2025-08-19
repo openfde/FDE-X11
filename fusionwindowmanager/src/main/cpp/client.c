@@ -173,17 +173,17 @@ clientCreateTitleName (Client *c, gchar *name, gchar *hostname)
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
 
-    if (strlen (hostname) && (display_info->hostname) && (g_ascii_strcasecmp (display_info->hostname, hostname)))
-    {
-        /* TRANSLATORS: "(on %s)" is like "running on" the name of the other host */
-        // title = g_strdup_printf (_("%s (on %s)"), name, hostname);
-    }
-    else
-    {
-        title = g_strdup (name);
-    }
+    // if (strlen (hostname) && (display_info->hostname) && (g_ascii_strcasecmp (display_info->hostname, hostname)))
+    // {
+    //     /* TRANSLATORS: "(on %s)" is like "running on" the name of the other host */
+    //     // title = g_strdup_printf (_("%s (on %s)"), name, hostname);
+    // }
+    // else
+    // {
+    //     title = g_strdup (name);
+    // }
 
-    return title;
+    return hostname;
 }
 
 void
@@ -211,7 +211,7 @@ clientUpdateName (Client *c)
     {
         if (c->hostname)
         {
-            g_free (c->hostname);
+            // g_free (c->hostname);
         }
         c->hostname = hostname;
     }
@@ -231,6 +231,7 @@ clientUpdateName (Client *c)
         // }
         c->name = name;
     }
+    logw ("clientUpdateName name: %s", c->name);
 
     // if (refresh)
     // {
@@ -1268,9 +1269,9 @@ clientGetWMNormalHints (Client *c, gboolean update)
         {
             if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
             {
-                // clientRemoveMaximizeFlag (c);
+                clientRemoveMaximizeFlag (c);
             }
-            // clientConfigure (c, &wc, CWX | CWY | CWWidth | CWHeight, CFG_CONSTRAINED | CFG_FORCE_REDRAW);
+            clientConfigure (c, &wc, CWX | CWY | CWWidth | CWHeight, CFG_CONSTRAINED | CFG_FORCE_REDRAW);
         }
         else if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_IS_RESIZABLE) != previous_value)
         {
@@ -1348,43 +1349,43 @@ clientFree (Client *c)
     }
     if (c->name)
     {
-        g_free (c->name);
+        // g_free (c->name);
     }
     if (c->hostname)
     {
-        g_free (c->hostname);
+        // g_free (c->hostname);
     }
     if (c->size)
     {
-        XFree (c->size);
+        // XFree (c->size);
     }
     if (c->wmhints)
     {
-        XFree (c->wmhints);
+        // XFree (c->wmhints);
     }
     if (c->mwm_hints)
     {
-        g_free (c->mwm_hints);
+        // g_free (c->mwm_hints);
     }
     if ((c->ncmap > 0) && (c->cmap_windows))
     {
-        XFree (c->cmap_windows);
+        // XFree (c->cmap_windows);
     }
     if (c->hint_class.res_name)
     {
-        XFree (c->hint_class.res_name);
+        // XFree (c->hint_class.res_name);
     }
     if (c->hint_class.res_class)
     {
-        XFree (c->hint_class.res_class);
+        // XFree (c->hint_class.res_class);
     }
     if (c->dialog_pid)
     {
-        kill (c->dialog_pid, SIGKILL);
+        // kill (c->dialog_pid, SIGKILL);
     }
     if (c->dialog_fd >= 0)
     {
-        close (c->dialog_fd);
+        // close (c->dialog_fd);
     }
 
     g_free (c);
@@ -2646,7 +2647,7 @@ clientClose (Client *c)
     guint32 timestamp;
 
     g_return_if_fail (c != NULL);
-    log ("client \"%s\" (0x%lx)", c->name, c->window);
+    logw ("client \"%s\" (0x%lx)", c->name, c->window);
 
     screen_info = c->screen_info;
     display_info = screen_info->display_info;

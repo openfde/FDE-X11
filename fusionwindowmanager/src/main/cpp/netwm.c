@@ -49,6 +49,7 @@
 // #include "terminate.h"
 // #include "transients.h"
 // #include "workspaces.h"
+#include "native_log.h"
 
 
 Client *
@@ -355,7 +356,7 @@ clientUpdateNetWmDesktop (Client * c, XClientMessageEvent * ev)
     }
 }
 
-void
+int
 clientUpdateNetState (Client * c, XClientMessageEvent * ev)
 {
     ScreenInfo *screen_info;
@@ -363,17 +364,17 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
     unsigned long action, mode;
     Atom first;
     Atom second;
-
-    g_return_if_fail (c != NULL);
-    //TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+    int wm_action;
+    g_return_val_if_fail (c != NULL, 0);
 
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
-
+    wm_action = NET_WINDOW_ACTION_UNDEFINED;
     action = ev->data.l[0];
     first  = ev->data.l[1];
     second = ev->data.l[2];
     mode = 0;
+    logd ("client \"%s\" (0x%lx) action:%s first:%s second:%s", c->name, c->window, XGetAtomName(display_info->dpy, action),  XGetAtomName(display_info->dpy, first), XGetAtomName(display_info->dpy, second));
 
     if ((first  == display_info->atoms[NET_WM_STATE_HIDDEN]) ||
         (second == display_info->atoms[NET_WM_STATE_HIDDEN]))
@@ -382,63 +383,26 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
         {
             if (CLIENT_CAN_HIDE_WINDOW (c))
             {
-                // clientWithdraw (c, c->win_workspace, TRUE);
+                // clientWithdraw (c, c->win_workspace, TRUE); // no need for now
             }
         }
         else if ((action == NET_WM_STATE_REMOVE) && FLAG_TEST (c->flags, CLIENT_FLAG_ICONIFIED))
         {
-            // clientShow (c, TRUE);
+            // clientShow (c, TRUE);    // no need for now
         }
         else if (action == NET_WM_STATE_TOGGLE)
         {
             if (FLAG_TEST (c->flags, CLIENT_FLAG_ICONIFIED))
             {
-                // clientShow (c, TRUE);
+                // clientShow (c, TRUE);    // no need for now
             }
             else if (CLIENT_CAN_HIDE_WINDOW (c))
             {
-                // clientWithdraw (c, c->win_workspace, TRUE);
+                // clientWithdraw (c, c->win_workspace, TRUE);  // no need for now
             }
         }
     }
 
-    if ((first  == display_info->atoms[NET_WM_STATE_SHADED]) ||
-        (second == display_info->atoms[NET_WM_STATE_SHADED]))
-    {
-        if ((action == NET_WM_STATE_ADD) && !FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
-        {
-            // clientShade (c);
-        }
-        else if ((action == NET_WM_STATE_REMOVE) && FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
-        {
-            // clientUnshade (c);
-        }
-        else if (action == NET_WM_STATE_TOGGLE)
-        {
-            // clientToggleShaded (c);
-        }
-    }
-
-    if ((first  == display_info->atoms[NET_WM_STATE_STICKY]) ||
-        (second == display_info->atoms[NET_WM_STATE_STICKY]))
-    {
-        if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_HAS_STICK))
-        {
-            if ((action == NET_WM_STATE_ADD) && !FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
-            {
-                // clientStick (c, TRUE);
-            }
-            else if ((action == NET_WM_STATE_REMOVE) && FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
-            {
-                // clientUnstick (c, TRUE);
-            }
-            else if (action == NET_WM_STATE_TOGGLE)
-            {
-                // clientToggleSticky (c, TRUE);
-            }
-            // frameQueueDraw (c, FALSE);
-        }
-    }
 
     if ((first  == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ]) ||
         (second == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ]) ||
@@ -453,11 +417,13 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
                 if ((first  == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ]) ||
                     (second == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ]))
                 {
+                    wm_action |= NET_WINDOW_ACTION_MAXIMIZED_HORZ;
                     mode |= !FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ) ? CLIENT_FLAG_MAXIMIZED_HORIZ : 0;
                 }
                 if ((first  == display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT]) ||
                     (second == display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT]))
                 {
+                    wm_action |= NET_WINDOW_ACTION_MAXIMIZED_VERT;
                     mode |= !FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT) ? CLIENT_FLAG_MAXIMIZED_VERT : 0;
                 }
                 // clientToggleMaximized (c, mode, TRUE);
@@ -468,11 +434,13 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
                 if ((first  == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ]) ||
                     (second == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ]))
                 {
+                    wm_action = NET_WINDOW_ACTION_MAXIMIZED_REMOVE;
                     mode |= FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ);
                 }
                 if ((first  == display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT]) ||
                     (second == display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT]))
                 {
+                    wm_action = NET_WINDOW_ACTION_MAXIMIZED_REMOVE;
                     mode |= FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
                 }
                 // clientToggleMaximized (c, mode, TRUE);
@@ -513,8 +481,8 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
         else if (action == NET_WM_STATE_TOGGLE)
         {
             FLAG_TOGGLE (c->flags, CLIENT_FLAG_STATE_MODAL);
-            // clientWindowType (c);
-            // clientSetNetState (c);
+            clientWindowType (c);
+            clientSetNetState (c);
         }
         // frameQueueDraw (c, TRUE);
     }
@@ -614,12 +582,12 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
         if ((action == NET_WM_STATE_ADD) && !FLAG_TEST (c->flags, CLIENT_FLAG_SKIP_TASKBAR))
         {
             FLAG_SET (c->flags, CLIENT_FLAG_SKIP_TASKBAR);
-            clientSetNetState (c);
+            clientSetNetState (c); // no need for now
         }
         else if ((action == NET_WM_STATE_REMOVE) && FLAG_TEST (c->flags, CLIENT_FLAG_SKIP_TASKBAR))
         {
             FLAG_UNSET (c->flags, CLIENT_FLAG_SKIP_TASKBAR);
-            clientSetNetState (c);
+            clientSetNetState (c); // no need for now
         }
         else if (action == NET_WM_STATE_TOGGLE)
         {
@@ -628,34 +596,8 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
         }
         // frameQueueDraw (c, TRUE);
     }
+    return wm_action;
 
-    if ((first  == display_info->atoms[NET_WM_STATE_DEMANDS_ATTENTION]) ||
-        (second == display_info->atoms[NET_WM_STATE_DEMANDS_ATTENTION]))
-    {
-        if ((action == NET_WM_STATE_ADD) && !FLAG_TEST (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION))
-        {
-            /* Do not apply NET_WM_STATE_DEMANDS_ATTENTION if client is already focused */
-            // if (c != clientGetFocusOrPending ())
-            // {
-            //     FLAG_SET (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION);
-            //     clientSetNetState (c);
-            // }
-        }
-        else if ((action == NET_WM_STATE_REMOVE) && FLAG_TEST (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION))
-        {
-            FLAG_UNSET (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION);
-            clientSetNetState (c);
-        }
-        else if (action == NET_WM_STATE_TOGGLE)
-        {
-            /* Do not apply NET_WM_STATE_DEMANDS_ATTENTION if client is already focused */
-            // if (c != clientGetFocusOrPending () || !FLAG_TEST (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION))
-            // {
-            //     FLAG_TOGGLE (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION);
-            //     clientSetNetState (c);
-            // }
-        }
-    }
 }
 
 void
@@ -1251,8 +1193,8 @@ clientSetNetActions (Client * c)
     }
 
     myDisplayErrorTrapPush (display_info);
-    // XChangeProperty (clientGetXDisplay (c), c->window, display_info->atoms[NET_WM_ALLOWED_ACTIONS],
-    //                  XA_ATOM, 32, PropModeReplace, (unsigned char *) atoms, i);
+    XChangeProperty (clientGetXDisplay (c), c->window, display_info->atoms[NET_WM_ALLOWED_ACTIONS],
+                     XA_ATOM, 32, PropModeReplace, (unsigned char *) atoms, i);
     myDisplayErrorTrapPopIgnored (display_info);
 }
 
@@ -1264,14 +1206,14 @@ clientWindowType (Client * c)
     netWindowType old_type;
 
     g_return_if_fail (c != NULL);
-    //TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
 
     old_type = c->type;
     c->initial_layer = c->win_layer;
-    // clientApplyMWMHints (c, FALSE);
+    clientApplyMWMHints (c, FALSE);
 
     if (c->type_atom != None)
     {
@@ -1468,9 +1410,9 @@ clientSetNetActiveWindow (ScreenInfo *screen_info, Client *c, guint32 timestamp)
     {
         data[0] = (unsigned long) c->window;
     }
-    // XChangeProperty (myScreenGetXDisplay (screen_info), screen_info->xroot,
-    //                  display_info->atoms[NET_ACTIVE_WINDOW], XA_WINDOW, 32,
-    //                  PropModeReplace, (unsigned char *) data, 2);
+    XChangeProperty (myScreenGetXDisplay (screen_info), screen_info->xroot,
+                     display_info->atoms[NET_ACTIVE_WINDOW], XA_WINDOW, 32,
+                     PropModeReplace, (unsigned char *) data, 2);
 }
 
 void
@@ -1601,10 +1543,10 @@ clientSendNetWMPing (Client *c, guint32 timestamp)
     // }
 
     /* Makes sure the timestamp is meaningfull */
-    // c->ping_time = myDisplayGetTime (display_info, timestamp);
+    c->ping_time = myDisplayGetTime (display_info, timestamp);
     g_return_val_if_fail (timestamp != CurrentTime, FALSE);
 
-    // sendClientMessage (screen_info, c->window, NET_WM_PING, timestamp);
+    sendClientMessage (screen_info, c->window, NET_WM_PING, timestamp);
     c->ping_timeout_id =
         g_timeout_add_full (G_PRIORITY_DEFAULT,
                             CLIENT_PING_TIMEOUT,

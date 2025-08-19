@@ -61,7 +61,7 @@ getWMState (DisplayInfo *display_info, Window w)
     unsigned long state;
     int result, status;
 
-    //TRACE ("window 0x%lx", w);
+    logd ("window 0x%lx", w);
 
     data = NULL;
     state = WithdrawnState;
@@ -90,7 +90,7 @@ setWMState (DisplayInfo *display_info, Window w, unsigned long state)
 {
     CARD32 data[2];
 
-    //TRACE ("window 0x%lx", w);
+    logd ("window 0x%lx", w);
 
     data[0] = state;
     data[1] = None;
@@ -111,7 +111,7 @@ getMotifHints (DisplayInfo *display_info, Window w)
     PropMwmHints *hints;
     int result, status;
 
-    //TRACE ("window 0x%lx", w);
+    logd ("window 0x%lx", w);
 
     data = NULL;
     hints = NULL;
@@ -149,7 +149,7 @@ getWMProtocols (DisplayInfo *display_info, Window w)
     unsigned char *data;
     int result, status;
 
-    //TRACE ("window 0x%lx", w);
+    logd ("window 0x%lx", w);
 
     flags = 0;
     protocols = NULL;
@@ -234,7 +234,6 @@ getHint (DisplayInfo *display_info, Window w, int atom_id, long *value)
     int result, status;
 
     g_return_val_if_fail (((atom_id >= 0) && (atom_id < ATOM_COUNT)), FALSE);
-    //TRACE ("window 0x%lx atom %i", w, atom_id);
 
     success = FALSE;
     *value = 0;
@@ -263,7 +262,7 @@ void
 setHint (DisplayInfo *display_info, Window w, int atom_id, long value)
 {
     g_return_if_fail ((atom_id >= 0) && (atom_id < ATOM_COUNT));
-    //TRACE ("window 0x%lx atom %i", w, atom_id);
+    logd ("window 0x%lx atom %i", w, atom_id);
 
     myDisplayErrorTrapPush (display_info);
     XChangeProperty (display_info->dpy, w, display_info->atoms[atom_id], XA_CARDINAL,
@@ -448,12 +447,12 @@ setNetSupportedHint (DisplayInfo *display_info, Window root, Window check_win)
                      XA_WINDOW, 32, PropModeReplace, (unsigned char *) data, 1);
 
     XSync(display_info->dpy, FALSE);
-    logd ("setNetSupportedHint: root 0x%lx check_win 0x%lx", root, check_win);
-    logd ("setNetSupportedHint: atoms count %d", i);
-    for (int j = 0; j < i; j++)
-    {
-        // logd ("setNetSupportedHint: atom[%d] = %s", j, XGetAtomName(display_info->dpy, atoms[j]));
-    }                 
+    // logd ("setNetSupportedHint: root 0x%lx check_win 0x%lx", root, check_win);
+    // logd ("setNetSupportedHint: atoms count %d", i);
+    // for (int j = 0; j < i; j++)
+    // {
+    //     logd ("setNetSupportedHint: atom[%d] = %s atom = %lu", j, XGetAtomName(display_info->dpy, atoms[j]), atoms[j]);
+    // }                 
 
 }
 
@@ -472,7 +471,7 @@ getAtomList (DisplayInfo *display_info, Window w, int atom_id, Atom ** atoms_p, 
     *n_atoms_p = 0;
 
     g_return_val_if_fail (((atom_id >= 0) && (atom_id < ATOM_COUNT)), FALSE);
-    //TRACE ("window 0x%lx atom %i", w, atom_id);
+    logd ("window 0x%lx atom %i", w, atom_id);
 
     myDisplayErrorTrapPush (display_info);
     status = XGetWindowProperty (display_info->dpy, w, display_info->atoms[atom_id],
@@ -694,30 +693,42 @@ getTransientFor (DisplayInfo *display_info, Window root, Window w, Window * tran
         *transient_for = None;
     }
 
-    //TRACE ("window (0x%lx) is transient for (0x%lx)", w, *transient_for);
+    logd ("window (0x%lx) is transient for (0x%lx)", w, *transient_for);
 }
 
 static char *
 textPropertyToUTF8 (DisplayInfo *display_info, const XTextProperty * prop)
 {
-    // char **list;
-    // int count;
-    // char *retval;
+ if (!prop || !prop->value || prop->nitems == 0)
+        return NULL;
 
-    // list = NULL;
-    // count = gdk_text_property_to_utf8_list_for_display (display_info->gdisplay,
-    //                                                     gdk_x11_xatom_to_atom (prop->encoding),
-    //                                                     prop->format, prop->value, prop->nitems, &list);
-    // if (count == 0)
-    // {
-    //     //TRACE ("gdk_text_property_to_utf8_list returned 0");
-    //     return NULL;
-    // }
-    // retval = list[0];
-    // list[0] = g_strdup ("");
-    // g_strfreev (list);
+    char *retval = NULL;
 
-    return "retval";
+    if (prop->encoding == XInternAtom(display_info->dpy, "UTF8_STRING", False))
+    {
+        retval = strndup((char *)prop->value, prop->nitems);
+    }
+    else if (prop->encoding == XInternAtom(display_info->dpy, "COMPOUND_TEXT", False))
+    {
+        retval = strndup((char *)prop->value, prop->nitems);
+    }
+    else if (prop->encoding == XA_STRING)
+    {
+        retval = strndup((char *)prop->value, prop->nitems);
+    }
+    else
+    {
+        char **list = NULL;
+        int count = 0;
+
+        if (XmbTextPropertyToTextList(display_info->dpy, prop, &list, &count) == Success && count > 0)
+        {
+            retval = strdup(list[0]);
+            XFreeStringList(list);
+        }
+    }
+
+    return retval;
 }
 
 static char *
@@ -727,7 +738,7 @@ getTextProperty (DisplayInfo *display_info, Window w, Atom a)
     char *retval;
     int result, status;
 
-    //TRACE ("window 0x%lx", w);
+    logd ("window 0x%lx", w);
 
     text.nitems = 0;
     text.value = NULL;
@@ -747,7 +758,7 @@ getTextProperty (DisplayInfo *display_info, Window w, Atom a)
     else
     {
         retval = NULL;
-        //TRACE ("XGetTextProperty() failed");
+        logw ("XGetTextProperty() failed");
     }
     XFree (text.value);
 
@@ -758,44 +769,40 @@ static gboolean
 getUTF8StringData (DisplayInfo *display_info, Window w, int atom_id, gchar **str_p, guint *length)
 {
     Atom type;
-    int format;
-    unsigned long bytes_after;
-    unsigned char *str;
-    unsigned long n_items;
-    int result, status;
+    int format, result, status;
+    unsigned long nitems, after;
+    unsigned char *data = NULL;
 
     g_return_val_if_fail (((atom_id >= 0) && (atom_id < ATOM_COUNT)), FALSE);
-    //TRACE ("window 0x%lx atom %i", w, atom_id);
+    logd ("window 0x%lx atomid %i atom %lu", w, atom_id, display_info->atoms[atom_id]);
 
     *str_p = NULL;
-    str = NULL;
 
     myDisplayErrorTrapPush (display_info);
-    status = XGetWindowProperty (display_info->dpy, w, display_info->atoms[atom_id],
-                                 0, LONG_MAX, FALSE, display_info->atoms[UTF8_STRING],
-                                 &type, &format, &n_items, &bytes_after,
-                                 (unsigned char **) &str);
+    status = XGetWindowProperty(display_info->dpy, w, display_info->atoms[atom_id], 0, (~0L), False,
+                AnyPropertyType, &type, &format, &nitems, &after, &data);
+                                
     result = myDisplayErrorTrapPop (display_info);
 
     if ((result != Success) ||
         (status != Success) ||
-        (str == NULL) ||
+        (data == NULL) ||
         (type == None))
     {
-        //TRACE ("no UTF8_STRING property found");
-        XFree (str);
+        logw ("no UTF8_STRING property found");
+        XFree (data);
         return FALSE;
     }
 
     if (!check_type_and_format (8, display_info->atoms[UTF8_STRING], -1, format, type))
     {
-        //TRACE ("UTF8_STRING value invalid");
-        XFree (str);
+        logw ("UTF8_STRING value invalid");
+        XFree (data);
         return FALSE;
     }
 
-    *str_p = (char *) str;
-    *length = n_items;
+    *str_p = (char *) data;
+    *length = nitems;
 
     return TRUE;
 }
@@ -806,7 +813,7 @@ getUTF8String (DisplayInfo *display_info, Window w, int atom_id, gchar **str_p, 
     char *xstr;
 
     g_return_val_if_fail (((atom_id >= 0) && (atom_id < ATOM_COUNT)), FALSE);
-    //TRACE ("window 0x%lx atom id %i", w, atom_id);
+    logd ("window 0x%lx atom id %i", w, atom_id);
 
     if (!getUTF8StringData (display_info, w, atom_id, &xstr, length))
     {
@@ -905,7 +912,7 @@ getWindowProp (DisplayInfo *display_info, Window window, int atom_id, Window *w)
 
     g_return_val_if_fail (window != None, FALSE);
     g_return_val_if_fail (((atom_id >= 0) && (atom_id < ATOM_COUNT)), FALSE);
-    //TRACE ("window 0x%lx atom id %i", window, atom_id);
+    logd ("window 0x%lx atom id %i", window, atom_id);
 
     *w = None;
     prop = NULL;
@@ -936,7 +943,7 @@ getWindowProp (DisplayInfo *display_info, Window window, int atom_id, Window *w)
 gboolean
 getWindowHostname (DisplayInfo *display_info, Window w, gchar **machine)
 {
-    //TRACE ("window 0x%lx", w);
+    logd ("window 0x%lx", w);
 
     g_return_val_if_fail (machine != NULL, FALSE);
     g_return_val_if_fail (w != None, FALSE);
@@ -958,7 +965,7 @@ getWindowName (DisplayInfo *display_info, Window w, gchar **name)
     char *str;
     guint len;
 
-    //TRACE ("window 0x%lx", w);
+    logw ("getWindowName window 0x%lx", w);
 
     g_return_val_if_fail (name != NULL, FALSE);
     *name = NULL;
@@ -967,6 +974,7 @@ getWindowName (DisplayInfo *display_info, Window w, gchar **name)
     if (getUTF8StringData (display_info, w, NET_WM_NAME, &str, &len))
     {
         *name = internal_utf8_strndup (str, MAX_STR_LENGTH);
+        logw ("getWindowName: window 0x%lx name '%s'", w, *name);
         // xfce_utf8_remove_controls(*name, -1, NULL);
         XFree (str);
         return TRUE;
@@ -1002,10 +1010,9 @@ getClientLeader (DisplayInfo *display_info, Window window)
     Window client_leader;
 
     g_return_val_if_fail (window != None, None);
-    //TRACE ("window 0x%lx", window);
-
     client_leader = None;
     getWindowProp (display_info, window, WM_CLIENT_LEADER, &client_leader);
+    logd ("window 0x%lx client_leader 0x%lx", window, client_leader);
 
     return client_leader;
 }
@@ -1297,28 +1304,16 @@ updateXserverTime (DisplayInfo *display_info)
 guint32
 getXServerTime (DisplayInfo *display_info)
 {
-    // ScreenInfo *screen_info;
-    // XEvent xevent;
-    // XfwmEvent *event;
-    // guint32 timestamp;
+    ScreenInfo *screen_info;
+    guint32 timestamp;
 
-    // g_return_val_if_fail (display_info, CurrentTime);
-    // timestamp = myDisplayGetCurrentTime (display_info);
-    // if (timestamp == CurrentTime)
-    // {
-    //     screen_info = myDisplayGetDefaultScreen (display_info);
-    //     g_return_val_if_fail (screen_info,  CurrentTime);
-
-    //     //TRACE ("using X server roundtrip");
-    //     updateXserverTime (display_info);
-    //     XWindowEvent (display_info->dpy, display_info->timestamp_win, PropertyChangeMask, &xevent);
-    //     event = xfwm_device_translate_event (display_info->devices, &xevent, NULL);
-    //     timestamp = myDisplayUpdateCurrentTime (display_info, event);
-    //     xfwm_device_free_event (event);
-    // }
-
-    //TRACE ("timestamp=%u", (guint32) timestamp);
-    return CurrentTime;
+    g_return_val_if_fail (display_info, CurrentTime);
+    timestamp = myDisplayGetCurrentTime (display_info);
+    if (timestamp < CurrentTime)
+    {
+        return CurrentTime;
+    }
+    return timestamp;
 }
 
 

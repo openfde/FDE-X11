@@ -320,7 +320,21 @@ void WindowManager::OnMapNotify(const XMapEvent &e)
         {
             FLAG_UNSET(c->xfwm_flags, XFWM_FLAG_MAP_PENDING);
         }
+
+        Atom type;
+        int format;
+        unsigned long nitems, after;
+        unsigned char *data = NULL;
+        Atom classAtom = XInternAtom(display_, "_NET_WM_NAME", False);
+        XGetWindowProperty(display_, e.window, classAtom, 0, (~0L), False,
+                            AnyPropertyType, &type, &format, &nitems, &after, &data);
+
+        if(data){
+            log("_NET_WM_NAME %s classAtom %lu", data, classAtom);
+        }
+
     }
+
 
     if (e.event == root_ && support_composite)
     {
@@ -638,7 +652,7 @@ void WindowManager::OnPropertyNotify(XEvent e)
     ScreenInfo *screen_info;
     Client *c;
 
-    log("entering");
+    log("OnPropertyNotify window:0x%lx Atom:%s", ev->window, XGetAtomName(display_, ev->atom));
 
     c = myDisplayGetClientFromWindow(display_info, ev->window, SEARCH_WINDOW | SEARCH_WIN_USER_TIME);
     if (c)
@@ -1021,8 +1035,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
     ScreenInfo *screen_info;
     Client *c;
     XClientMessageEvent *ev = (XClientMessageEvent *)&e.xclient;
-    log("ProcessClientMessage window (0x%lx)", ev->window);
-
+    log("ProcessClientMessage window (0x%lx) %s", ev->window, XGetAtomName(display_, ev->message_type));
     if (ev->window == None)
     {
         /* Some do not set the window member, not much we can do without */
@@ -1054,7 +1067,10 @@ void WindowManager::ProcessClientMessage(XEvent e)
         else if ((ev->message_type == display_info->atoms[NET_WM_STATE]) && (ev->format == 32))
         {
             log("client \"%s\" (0x%lx) has received a NET_WM_STATE event", c->name, c->window);
-            clientUpdateNetState (c, ev);
+            int wm_action = clientUpdateNetState (c, ev);
+            jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                                                    "updateWmStateClient", "(IJ)V");
+            GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, c->window);
         }
         else if ((ev->message_type == display_info->atoms[NET_WM_MOVERESIZE]) && (ev->format == 32))
         {
