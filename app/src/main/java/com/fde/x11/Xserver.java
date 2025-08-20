@@ -308,7 +308,7 @@ public class Xserver {
      * @param text
      */
     public static void updateXserverCliptext(String text){
-//        FLog.s(TAG, "updateXserverCliptext: text:" + text + "");
+        FLog.s(TAG, "updateXserverCliptext: text:" + text + "");
         if(context.get() != null && !TextUtils.isEmpty(text)){
             ClipData mClipData = ClipData.newPlainText("x11", text);
             android.content.ClipboardManager mClipboardManager = (ClipboardManager) context.get().getSystemService(Context.CLIPBOARD_SERVICE);

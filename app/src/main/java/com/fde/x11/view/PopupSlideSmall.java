@@ -15,7 +15,9 @@ public class PopupSlideSmall extends BasePopupWindow {
     public PopupSlideSmall(Context context) {
         super(context);
         setContentView(R.layout.popup_slide_small);
-        setViewClickListener(this::click, mBinding.tvOpen, mBinding.tvRefresh, mBinding.tvShortcut, mBinding.tvInfo, mBinding.tvConpatible);
+        setViewClickListener(this::click, mBinding.tvOpen, mBinding.tvRefresh,
+//                mBinding.tvShortcut,
+                mBinding.tvInfo, mBinding.tvConpatible);
     }
 
     @Override
@@ -32,9 +34,9 @@ public class PopupSlideSmall extends BasePopupWindow {
         if(v == mBinding.tvRefresh ){
             listener.onOptionRefreshClick();
         }
-        if(v == mBinding.tvShortcut ){
-            listener.onOptionShortcutClick();
-        }
+//        if(v == mBinding.tvShortcut ){
+//            listener.onOptionShortcutClick();
+//        }
         if(v == mBinding.tvInfo ){
             listener.onOptionInfoClick();
         }

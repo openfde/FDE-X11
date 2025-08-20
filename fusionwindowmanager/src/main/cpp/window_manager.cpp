@@ -956,6 +956,12 @@ void WindowManager::Run()
                     OnSelectionRequest(e);
                 }
                 break;
+                case SelectionNotify:
+                if (CLIPMANAGER_ENABLE)
+                {
+                    OnSelectionNotify(e);
+                }
+                break;
             case ClientMessage:
                 ProcessClientMessage(e);
                 // HandleClientMessage(e);
@@ -1645,8 +1651,8 @@ int WindowManager::setMaximizedState(Window window, Bool maximized)
 void WindowManager::OnSelectionRequest(XEvent e)
 {
     XSelectionRequestEvent *sev = (XSelectionRequestEvent *)&e.xselectionrequest;
-//    logd("OnSelectionRequest start-------->");
-//    logd("OnSelectionRequest owner:%lx requestor:%lx ", sev->owner, sev->requestor);
+    logd("OnSelectionRequest start-------->");
+    logd("OnSelectionRequest owner:%lx requestor:%lx ", sev->owner, sev->requestor);
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = display_info->atoms[UTF8_STRING];
     Atom targets = XInternAtom(display_, "TARGETS", False);
@@ -1655,7 +1661,7 @@ void WindowManager::OnSelectionRequest(XEvent e)
     Atom type_plain = XInternAtom(display_, "text/plain", False);
     Atom type_text = XInternAtom(display_, "TEXT", False);
     Atom type_string = XInternAtom(display_, "STRING", False);
-//    logd("OnSelectionRequest target:%s property:%s", XGetAtomName(display_, sev->target), XGetAtomName(display_, sev->property));
+    logd("OnSelectionRequest target:%s property:%s", XGetAtomName(display_, sev->target), XGetAtomName(display_, sev->property));
     if (sev->target == targets)
     {
         if (selection_property_size != 0)
@@ -1666,10 +1672,10 @@ void WindowManager::OnSelectionRequest(XEvent e)
                             XA_ATOM,
                             32, PropModeReplace, (unsigned char *)selection_property_list,
                             selection_property_size);
-//            logd("Sending linux data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
+            logd("Sending linux data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
             for (int i = 0; i < selection_property_size; i++)
             {
-//                logd("   property:%s", XGetAtomName(display_, selection_property_list[i]));
+                logd("   property:%s", XGetAtomName(display_, selection_property_list[i]));
             }
         }
         else if (!clip_text.empty())
@@ -1681,7 +1687,7 @@ void WindowManager::OnSelectionRequest(XEvent e)
                             XA_ATOM,
                             32, PropModeReplace, (unsigned char *)types,
                             (int)(sizeof(types) / sizeof(Atom)));
-//            logd("Sending clip text data to window 0x%lx, property '%s' targets & uft8 \n", sev->requestor, XGetAtomName(display_, sev->property));
+            logd("Sending clip text data to window 0x%lx, property '%s' targets & uft8 \n", sev->requestor, XGetAtomName(display_, sev->property));
         }
         else if (!file_path.empty())
         {
@@ -1692,18 +1698,31 @@ void WindowManager::OnSelectionRequest(XEvent e)
                             XA_ATOM,
                             32, PropModeReplace, (unsigned char *)types,
                             (int)(sizeof(types) / sizeof(Atom)));
-//            logd("Sending clip file data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
+            logd("Sending clip file data to window 0x%lx, property '%s'\n", sev->requestor, XGetAtomName(display_, sev->property));
             for (int i = 0; i < (int)(sizeof(types) / sizeof(Atom)); i++)
             {
-//                logd("   property:%s", XGetAtomName(display_, types[i]));
+                logd("   property:%s", XGetAtomName(display_, types[i]));
             }
         }
+        else
+        {
+            // 不支持的目标类型或没有数据
+            logd("Unsupported target or no data available");
+            sev->property = None;  // 标记为没有数据
+        }
+        // 发送SelectionNotify事件
         XSelectionEvent ssev;
         ssev.type = SelectionNotify;
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
         ssev.target = sev->target;
-        ssev.property = sev->property;
+
+        if (sev->property == None) {
+            ssev.property = None;
+        } else {
+            ssev.property = sev->property;
+        }
+
         ssev.time = sev->time;
         XSendEvent(display_, sev->requestor, 0, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
@@ -1713,10 +1732,10 @@ void WindowManager::OnSelectionRequest(XEvent e)
         XSelectionEvent ssev;
         char *an;
         an = XGetAtomName(display_, sev->property);
-//        logd("Sending data to window 0x%lx, property '%s'\n", sev->requestor, an);
+        logd("Sending data to window 0x%lx, property '%s'\n", sev->requestor, an);
         if (!an)
         {
-//            logd("No data to send to window 0x%lx, property '%s'\n", sev->requestor, an);
+            logd("No data to send to window 0x%lx, property '%s'\n", sev->requestor, an);
             XFree(an);
             XFlush(display_);
             return;
@@ -1727,9 +1746,9 @@ void WindowManager::OnSelectionRequest(XEvent e)
         unsigned char *data = nullptr;
         XGetWindowProperty(display_, owner, sev->target, 0, (~0L), False, AnyPropertyType,
                            &actual_type, &actual_format, &nitems, &bytes_after, &data);
-//        logd("data :%s actual_format:%d data:%s nitems:%lu actual_type:%s",
-//            XGetAtomName(display_, sev->target), actual_format, data, nitems, XGetAtomName(display_, actual_type));
-//        logd("send property :%s clip_text:%s file_path:%s selection_property_size:%d", XGetAtomName(display_, sev->target), clip_text.c_str(), file_path.c_str(), selection_property_size)
+        logd("data :%s actual_format:%d data:%s nitems:%lu actual_type:%s",
+            XGetAtomName(display_, sev->target), actual_format, data, nitems, XGetAtomName(display_, actual_type));
+        logd("send property :%s clip_text:%s file_path:%s selection_property_size:%d", XGetAtomName(display_, sev->target), clip_text.c_str(), file_path.c_str(), selection_property_size)
         if (selection_property_size == 0)
         {
             if (!clip_text.empty())
@@ -1760,15 +1779,15 @@ void WindowManager::OnSelectionRequest(XEvent e)
             XChangeProperty(display_, sev->requestor, sev->property, actual_type, actual_format,
                             PropModeReplace,
                             data, nitems);
-//            logd("change data to window 0x%lx, property:%s actual_type:%s actual_format:%d data:%s nitems:%d",
-//                sev->requestor,
-//                XGetAtomName(display_, sev->property),
-//                XGetAtomName(display_, actual_type),
-//                actual_format,
-//                data,
-//                nitems)
+            logd("change data to window 0x%lx, property:%s actual_type:%s actual_format:%d data:%s nitems:%d",
+                sev->requestor,
+                XGetAtomName(display_, sev->property),
+                XGetAtomName(display_, actual_type),
+                actual_format,
+                data,
+                nitems)
         }
-//        logd("Sending data to window 0x%lx, data: '%s'\n", sev->requestor, data);
+        logd("Sending data to window 0x%lx, data: '%s'\n", sev->requestor, data);
         ssev.type = SelectionNotify;
         ssev.requestor = sev->requestor;
         ssev.selection = sev->selection;
@@ -1778,23 +1797,27 @@ void WindowManager::OnSelectionRequest(XEvent e)
         XSendEvent(display_, sev->requestor, True, NoEventMask, (XEvent *)&ssev);
         XFlush(display_);
     }
-//    logd("OnSelectionRequest  end-------->");
+    logd("OnSelectionRequest  end-------->");
 }
 
 void WindowManager::OnSelectionClear(XEvent e)
 {
     Window request = e.xclient.window;
-    logd("OnSelectionClear start--------- request:0x:%x>\n", request);
+    XSelectionClearEvent *scev = &e.xselectionclear;
+    logd("OnSelectionClear start--------- request:0x:%x  clearowner:0x:%lx selection:%s>\n",
+         request, scev->window, XGetAtomName(display_, scev->selection));
     sel = XInternAtom(display_, "CLIPBOARD", False);
     utf8 = XInternAtom(display_, "UTF8_STRING", False);
     Atom target_name = XInternAtom(display_, "TARGETS", False);
     Atom manager_prop_name = XInternAtom(display_, "XSEL_DATA", False);
     XEvent event;
     XConvertSelection(display_, sel, target_name, manager_prop_name, owner, CurrentTime);
+//    XConvertSelection(display_, xa_primary, target_name, manager_prop_name, owner, CurrentTime);
     XSelectionEvent *sev;
     for (;;)
     {
         XNextEvent(display_, &event);
+        logd(" next event.type:%d\n", event.type);
         switch (event.type)
         {
             case SelectionNotify:
@@ -1837,7 +1860,47 @@ void WindowManager::OnSelectionClear(XEvent e)
     }
     ConvertAllTarget();
     XSetSelectionOwner(display_, sel, owner, CurrentTime);
+//    XSetSelectionOwner(display_, xa_primary, owner, CurrentTime);
     logd("OnSelectionClear  end------->\n");
+}
+
+void WindowManager::OnSelectionNotify(XEvent event) {
+    XSelectionEvent *sev = (XSelectionEvent *)&event.xselection;
+    Atom manager_prop_name = XInternAtom(display_, "XSEL_DATA", False);
+    if (sev->property == None)
+    {
+        logd("Conversion could not be performed.\n");
+    }
+    else
+    {
+        Atom type, *targets;
+        int di;
+        unsigned long nitems, dul;
+        unsigned char *prop_ret = nullptr;
+        char *an = nullptr;
+        logd("show_targets:\n");
+        XGetWindowProperty(display_, owner, manager_prop_name, 0, 1024 * sizeof(Atom), False, XA_ATOM,
+                           &type, &di, &nitems, &dul, &prop_ret);
+        logd("Targets:  nitems:%lu \n", nitems);
+        targets = (Atom *)prop_ret;
+        selection_property_list = targets;
+        selection_property_size = nitems;
+        for (int index = 0; index < selection_property_size; index++)
+        {
+            logd("type :%s", XGetAtomName(display_, selection_property_list[index]));
+        }
+        for (int index = 0; index < nitems; index++)
+        {
+            an = XGetAtomName(display_, targets[index]);
+            //                        logd("    '%s'\n", an);
+            if (an)
+                XFree(an);
+        }
+    }
+    ConvertAllTarget();
+    XSetSelectionOwner(display_, sel, owner, CurrentTime);
+//    XSetSelectionOwner(display_, xa_primary, owner, CurrentTime);
+    logd("OnSelectionNotify  end------->\n");
 }
 
 void WindowManager::ConvertAllTarget()
@@ -1874,14 +1937,16 @@ void WindowManager::ConvertAllTarget()
                         if (actual_format == 8)
                         { // 字符串类型
                             logd("actual_type :%s Content of target: %s\n", XGetAtomName(display_, actual_type), data);
-                            if (selection_property_list[i] == utf8)
+                            if (selection_property_list[i] == XInternAtom(display_, "UTF8_STRING", False))
                             {
+                                logd("got text_data :%s\n", data);
                                 isText = true;
                                 text_data = data;
                             }
                             else if (selection_property_list[i] == XInternAtom(display_, "text/uri-list", False)
                             || selection_property_list[i] == XInternAtom(display_, "peony-qt/encoded-uris", False))
                             {
+                                logd("got file_data :%s\n", data);
                                 isFile = true;
                                 file_data = data;
                             }
@@ -2108,6 +2173,9 @@ jint WindowManager::circulaSubWindows(jlong window, jboolean lowest)
 
 void WindowManager::UpdateXserverCliptext(const char *text)
 {
+    std::string in_text = text;
+    clip_text = in_text;
+    logd("update clip text :%s", text)
     if (GlobalEnv && util_is_valid_utf8(text))
     {
         jstring utf = GlobalEnv->NewStringUTF(text);
@@ -2119,6 +2187,9 @@ void WindowManager::UpdateXserverCliptext(const char *text)
 
 void WindowManager::UpdateXserverClipFile(const char *text)
 {
+    std::string in_text = text;
+    file_path = in_text;
+    logd("update clip file :%s", text)
     if (GlobalEnv && util_is_valid_utf8(text))
     {
         jstring utf = GlobalEnv->NewStringUTF(text);

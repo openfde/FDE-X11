@@ -298,7 +298,7 @@ public class WindowManager  {
 
     //called from native code
     public static void updateXserverCliptext(String text){
-//        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
+        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
         if(contextReference.get() != null && !TextUtils.isEmpty(text)){
             ClipData mClipData = ClipData.newPlainText("x11", text);
             android.content.ClipboardManager mClipboardManager = (ClipboardManager) contextReference.get().getSystemService(Context.CLIPBOARD_SERVICE);
@@ -308,7 +308,7 @@ public class WindowManager  {
 
     //called from native code
     public static void updateXserverClipFile(String text){
-//        Log.d(TAG, "updateXserverClipFile: text:" + text + "");
+        Log.d(TAG, "updateXserverClipFile: text:" + text + "");
         if(contextReference.get() != null && !TextUtils.isEmpty(text)){
             try {
                 String decodedPath = URLDecoder.decode(text, StandardCharsets.UTF_8.toString());

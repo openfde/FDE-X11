@@ -229,7 +229,7 @@ private:
     ::std::unordered_map<Window, Window> tray_window_map;
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
     Window owner;
-    Atom sel, utf8;
+    Atom sel, utf8, xa_primary;
     std::string clip_text;
     std::string file_path;
     Atom *selection_property_list;
@@ -276,4 +276,6 @@ private:
     void ReparentDockWindow(Window window);
 
     int SetRootResourceManager(Display *display, const char *resource_string);
+
+    void OnSelectionNotify(XEvent event);
 };
