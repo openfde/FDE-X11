@@ -188,5 +188,7 @@ ScreenInfo              *myScreenInit                           (DisplayInfo *,
                                                                  int,
                                                                  Window,
                                                                  Window);
-
+Client                  *myScreenGetClientFromWindow            (ScreenInfo *,
+                                                                 Window,
+                                                                 unsigned short);
 #endif /* INC_SCREEN_H */

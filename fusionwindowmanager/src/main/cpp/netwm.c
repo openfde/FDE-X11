@@ -383,22 +383,22 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
         {
             if (CLIENT_CAN_HIDE_WINDOW (c))
             {
-                // clientWithdraw (c, c->win_workspace, TRUE); // no need for now
+                clientWithdraw (c, c->win_workspace, TRUE); // no need for now
             }
         }
         else if ((action == NET_WM_STATE_REMOVE) && FLAG_TEST (c->flags, CLIENT_FLAG_ICONIFIED))
         {
-            // clientShow (c, TRUE);    // no need for now
+            clientShow (c, TRUE);    // no need for now
         }
         else if (action == NET_WM_STATE_TOGGLE)
         {
             if (FLAG_TEST (c->flags, CLIENT_FLAG_ICONIFIED))
             {
-                // clientShow (c, TRUE);    // no need for now
+                clientShow (c, TRUE);    // no need for now
             }
             else if (CLIENT_CAN_HIDE_WINDOW (c))
             {
-                // clientWithdraw (c, c->win_workspace, TRUE);  // no need for now
+                clientWithdraw (c, c->win_workspace, TRUE);  // no need for now
             }
         }
     }
@@ -426,7 +426,7 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
                     wm_action |= NET_WINDOW_ACTION_MAXIMIZED_VERT;
                     mode |= !FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT) ? CLIENT_FLAG_MAXIMIZED_VERT : 0;
                 }
-                // clientToggleMaximized (c, mode, TRUE);
+                clientToggleMaximized (c, mode, TRUE);
             }
             else if ((action == NET_WM_STATE_REMOVE) && FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
             {
@@ -443,7 +443,7 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
                     wm_action = NET_WINDOW_ACTION_MAXIMIZED_REMOVE;
                     mode |= FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
                 }
-                // clientToggleMaximized (c, mode, TRUE);
+                clientToggleMaximized (c, mode, TRUE);
             }
             else if (action == NET_WM_STATE_TOGGLE)
             {
@@ -458,7 +458,7 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
                 {
                     mode |= CLIENT_FLAG_MAXIMIZED_VERT;
                 }
-                // clientToggleMaximized (c, mode, TRUE);
+                clientToggleMaximized (c, mode, TRUE);
             }
         }
     }
@@ -490,7 +490,7 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
     if ((first  == display_info->atoms[NET_WM_STATE_FULLSCREEN]) ||
         (second == display_info->atoms[NET_WM_STATE_FULLSCREEN]))
     {
-        // if (!clientIsValidTransientOrModal (c))
+        if (!clientIsValidTransientOrModal (c))
         {
             if ((action == NET_WM_STATE_ADD) && !FLAG_TEST (c->flags, CLIENT_FLAG_FULLSCREEN))
             {
@@ -1486,7 +1486,7 @@ clientRemoveNetWMPing (Client *c)
 {
     g_return_if_fail (c != NULL);
 
-    //TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
     if (c->ping_timeout_id)
     {
@@ -1524,7 +1524,7 @@ clientSendNetWMPing (Client *c, guint32 timestamp)
 
     g_return_val_if_fail (c != NULL, FALSE);
 
-    //TRACE ("client \"%s\" (0x%lx) timestamp %u", c->name, c->window, (unsigned int) timestamp);
+    logd ("client \"%s\" (0x%lx) timestamp %u", c->name, c->window, (unsigned int) timestamp);
 
     if (!FLAG_TEST (c->wm_flags, WM_FLAG_PING))
     {

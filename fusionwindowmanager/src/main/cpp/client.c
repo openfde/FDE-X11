@@ -34,7 +34,7 @@
 // #include "settings.h"
 // #include "stacking.h"
 // #include "startup_notification.h"
-// #include "transients.h"
+#include "transients.h"
 // #include "workspaces.h"
 // #include "xsync.h"
 // #include "event_filter.h"
@@ -1349,43 +1349,43 @@ clientFree (Client *c)
     }
     if (c->name)
     {
-        // g_free (c->name);
+        g_free (c->name);
     }
     if (c->hostname)
     {
-        // g_free (c->hostname);
+        g_free (c->hostname);
     }
     if (c->size)
     {
-        // XFree (c->size);
+        XFree (c->size);
     }
     if (c->wmhints)
     {
-        // XFree (c->wmhints);
+        XFree (c->wmhints);
     }
     if (c->mwm_hints)
     {
-        // g_free (c->mwm_hints);
+        g_free (c->mwm_hints);
     }
     if ((c->ncmap > 0) && (c->cmap_windows))
     {
-        // XFree (c->cmap_windows);
+        XFree (c->cmap_windows);
     }
     if (c->hint_class.res_name)
     {
-        // XFree (c->hint_class.res_name);
+        XFree (c->hint_class.res_name);
     }
     if (c->hint_class.res_class)
     {
-        // XFree (c->hint_class.res_class);
+        XFree (c->hint_class.res_class);
     }
     if (c->dialog_pid)
     {
-        // kill (c->dialog_pid, SIGKILL);
+        kill (c->dialog_pid, SIGKILL);
     }
     if (c->dialog_fd >= 0)
     {
-        // close (c->dialog_fd);
+        close (c->dialog_fd);
     }
 
     g_free (c);
@@ -2034,9 +2034,7 @@ clientUnframe (Client *c, gboolean remap)
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
 
-    //TODO FDE
-    // clientRemoveFromList (c);
-    myDisplayRemoveClient (display_info, c);
+    clientRemoveFromList (c);
 
     g_assert (screen_info->client_count > 0);
     screen_info->client_count--;
@@ -2367,126 +2365,136 @@ clientShowSingle (Client *c, gboolean deiconify)
 void
 clientShow (Client *c, gboolean deiconify)
 {
+    ScreenInfo *screen_info;
+    DisplayInfo *display_info;
+
+    g_return_if_fail (c != NULL);
+
+    if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
+    {
+        /* Should we map the window if it is visible? */
+        return;
+    }
+
+    screen_info = c->screen_info;
+    display_info = screen_info->display_info;
+
+    if ((c->win_workspace == screen_info->current_ws) || FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
+    {
+        logd ("showing client \"%s\" (0x%lx)", c->name, c->window);
+        FLAG_SET (c->xfwm_flags, XFWM_FLAG_VISIBLE);
+        myDisplayErrorTrapPush (display_info);
+        XMapWindow (display_info->dpy, c->frame);
+        // if (!FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
+        // {
+            XMapWindow (display_info->dpy, c->window);
+        // }
+        myDisplayErrorTrapPopIgnored (display_info);
+        /* Adjust to urgency state as the window is visible */
+        // clientUpdateUrgency (c);
+    }
+    if (deiconify)
+    {
+        FLAG_UNSET (c->flags, CLIENT_FLAG_ICONIFIED);
+        setWMState (display_info, c->window, NormalState);
+    }
+    clientSetNetActions (c);
+    clientSetNetState (c);
+}
+
+static void
+clientWithdrawSingle (Client *c, GList *exclude_list, gboolean iconify)
+{
+    ScreenInfo *screen_info;
+    DisplayInfo *display_info;
+
+    g_return_if_fail (c != NULL);
+    logw ("client \"%s\" (0x%lx)", c->name, c->window);
+
+    screen_info = c->screen_info;
+    display_info = screen_info->display_info;
+
+    // clientPassFocus(c->screen_info, c, exclude_list);
+    if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
+    {
+        FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_VISIBLE);
+        c->ignore_unmap++;
+        /* Adjust to urgency state as the window is not visible */
+        // clientUpdateUrgency (c);
+    }
+
+    myDisplayErrorTrapPush (display_info);
+    XUnmapWindow (display_info->dpy, c->frame);
+    XUnmapWindow (display_info->dpy, c->window);
+    myDisplayErrorTrapPopIgnored (display_info);
+
+    if (iconify)
+    {
+        FLAG_SET (c->flags, CLIENT_FLAG_ICONIFIED);
+        setWMState (display_info, c->window, IconicState);
+        // if (!screen_info->show_desktop && !screen_info->params->cycle_minimized)
+        // {
+            clientSetLast (c);
+        // }
+    }
+    clientSetNetActions (c);
+    clientSetNetState (c);
+}
+
+void
+clientWithdraw (Client *c, guint ws, gboolean iconify)
+{
     Client *c2;
     GList *list_of_windows;
     GList *list;
 
     g_return_if_fail (c != NULL);
-    logw ("clientShow client \"%s\" (0x%lx)", c->name, c->window);
-    clientShowSingle (c, deiconify);
-    //TODO FDE
-    // list = g_list_append (NULL, c);
-    // // list_of_windows = clientListTransientOrModal (c);
-    // for (list = g_list_last (list_of_windows); list; list = g_list_previous (list))
-    // {
-    //     c2 = (Client *) list->data;
-    //     // clientSetWorkspaceSingle (c2, c->win_workspace);
-    //     /* Ignore request before if the window is not yet managed */
-    //     if (!FLAG_TEST (c2->xfwm_flags, XFWM_FLAG_MANAGED))
-    //     {
-    //         continue;
-    //     }
-    //     clientShowSingle (c2, deiconify);
-    // }
-    // g_list_free (list_of_windows);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
-    /* Update working area as windows have been shown */
+    list_of_windows = clientListTransientOrModal (c);
+    for (list = list_of_windows; list; list = g_list_next (list))
+    {
+        c2 = (Client *) list->data;
+
+        /* Ignore request before if the window is not yet managed */
+        if (!FLAG_TEST (c2->xfwm_flags, XFWM_FLAG_MANAGED))
+        {
+            continue;
+        }
+
+        if (FLAG_TEST (c2->flags, CLIENT_FLAG_STICKY) && !iconify)
+        {
+            continue;
+        }
+
+        if (clientIsTransientOrModalForGroup (c2))
+        {
+            if ((c2 != c) &&
+                clientTransientOrModalHasAncestor (c2, c2->win_workspace))
+            {
+                /* Other ancestors for that transient for group are still
+                 * visible on current workspace, so don't hide it...
+                 */
+                continue;
+            }
+            if ((ws != c2->win_workspace) &&
+                clientTransientOrModalHasAncestor (c2, ws))
+            {
+                /* ws is used when transitioning between desktops, to avoid
+                   hiding a transient for group that will be shown again on the new
+                   workspace (transient for groups can be transients for multiple
+                   ancesors splitted across workspaces...)
+                 */
+                continue;
+            }
+        }
+        clientWithdrawSingle (c2, list_of_windows, iconify);
+    }
+    g_list_free (list_of_windows);
+
+    /* Update working area as windows have been hidden */
     // workspaceUpdateArea (c->screen_info);
 }
-
-// static void
-// clientWithdrawSingle (Client *c, GList *exclude_list, gboolean iconify)
-// {
-//     ScreenInfo *screen_info;
-//     DisplayInfo *display_info;
-
-//     g_return_if_fail (c != NULL);
-//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
-
-//     screen_info = c->screen_info;
-//     display_info = screen_info->display_info;
-
-//     clientPassFocus(c->screen_info, c, exclude_list);
-//     if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
-//     {
-//         FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_VISIBLE);
-//         c->ignore_unmap++;
-//         /* Adjust to urgency state as the window is not visible */
-//         clientUpdateUrgency (c);
-//     }
-
-//     myDisplayErrorTrapPush (display_info);
-//     XUnmapWindow (display_info->dpy, c->frame);
-//     XUnmapWindow (display_info->dpy, c->window);
-//     myDisplayErrorTrapPopIgnored (display_info);
-
-//     if (iconify)
-//     {
-//         FLAG_SET (c->flags, CLIENT_FLAG_ICONIFIED);
-//         setWMState (display_info, c->window, IconicState);
-//         if (!screen_info->show_desktop && !screen_info->params->cycle_minimized)
-//         {
-//             clientSetLast (c);
-//         }
-//     }
-//     clientSetNetActions (c);
-//     clientSetNetState (c);
-// }
-
-// void
-// clientWithdraw (Client *c, guint ws, gboolean iconify)
-// {
-//     Client *c2;
-//     GList *list_of_windows;
-//     GList *list;
-
-//     g_return_if_fail (c != NULL);
-//     logw ("client \"%s\" (0x%lx)", c->name, c->window);
-
-//     list_of_windows = clientListTransientOrModal (c);
-//     for (list = list_of_windows; list; list = g_list_next (list))
-//     {
-//         c2 = (Client *) list->data;
-
-//         /* Ignore request before if the window is not yet managed */
-//         if (!FLAG_TEST (c2->xfwm_flags, XFWM_FLAG_MANAGED))
-//         {
-//             continue;
-//         }
-
-//         if (FLAG_TEST (c2->flags, CLIENT_FLAG_STICKY) && !iconify)
-//         {
-//             continue;
-//         }
-
-//         if (clientIsTransientOrModalForGroup (c2))
-//         {
-//             if ((c2 != c) &&
-//                 clientTransientOrModalHasAncestor (c2, c2->win_workspace))
-//             {
-//                 /* Other ancestors for that transient for group are still
-//                  * visible on current workspace, so don't hide it...
-//                  */
-//                 continue;
-//             }
-//             if ((ws != c2->win_workspace) &&
-//                 clientTransientOrModalHasAncestor (c2, ws))
-//             {
-//                 /* ws is used when transitioning between desktops, to avoid
-//                    hiding a transient for group that will be shown again on the new
-//                    workspace (transient for groups can be transients for multiple
-//                    ancesors splitted across workspaces...)
-//                  */
-//                 continue;
-//             }
-//         }
-//         clientWithdrawSingle (c2, list_of_windows, iconify);
-//     }
-//     g_list_free (list_of_windows);
-
-//     /* Update working area as windows have been hidden */
-//     workspaceUpdateArea (c->screen_info);
-// }
 
 // void
 // clientWithdrawAll (Client *c, guint ws)
@@ -4271,7 +4279,7 @@ clientClearFocus (Client *c)
     }
 }
 
-void
+void 
 clientSetLast(Client *c)
 {
     ScreenInfo *screen_info;
@@ -4619,8 +4627,8 @@ sendClientMessage (ScreenInfo *screen_info, Window w, int atom_id, guint32 times
     XClientMessageEvent ev;
 
     g_return_if_fail ((atom_id > 0) && (atom_id < ATOM_COUNT));
-    logw ("atom %i, timestamp %u", atom_id, (unsigned int) timestamp);
-
+    // char *atomName = XGetAtomName(display_info->dpy, display_info->atoms[atom_id]);
+    // logw ("atom %i, timestamp %u window 0x%lx atomName %s", atom_id, (unsigned int) timestamp, w, atomName);
     display_info = screen_info->display_info;
     ev.type = ClientMessage;
     ev.window = w;
@@ -4632,4 +4640,144 @@ sendClientMessage (ScreenInfo *screen_info, Window w, int atom_id, guint32 times
     myDisplayErrorTrapPush (screen_info->display_info);
     XSendEvent (myScreenGetXDisplay (screen_info), w, FALSE, 0L, (XEvent *)&ev);
     myDisplayErrorTrapPopIgnored (screen_info->display_info);
+}
+
+gboolean
+clientToggleMaximized (Client *c, int mode, gboolean restore_position)
+{
+    g_return_val_if_fail (c != NULL, FALSE);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
+
+    if (!CLIENT_CAN_MAXIMIZE_WINDOW (c))
+    {
+        return FALSE;
+    }
+
+    return clientToggleMaximizedAtPoint(c,
+                                c->x + c->width / 2,
+                                c->y,
+                                mode, restore_position);
+}
+
+gboolean
+clientToggleMaximizedAtPoint (Client *c, gint cx, gint cy, int mode, gboolean restore_position)
+{
+    DisplayInfo *display_info;
+    ScreenInfo *screen_info;
+    XWindowChanges wc;
+    // GdkRectangle rect;
+    unsigned long old_flags;
+
+    g_return_val_if_fail (c != NULL, FALSE);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
+
+    if (!CLIENT_CAN_MAXIMIZE_WINDOW (c))
+    {
+        return FALSE;
+    }
+
+    // if (c->tile_mode != TILE_NONE)
+    // {
+    //     clientUntile (c);
+    // }
+
+    screen_info = c->screen_info;
+    display_info = screen_info->display_info;
+    // myScreenFindMonitorAtPoint (screen_info, cx, cy, &rect);
+
+    wc.x = 0;c->x;
+    wc.y = 67;c->y;
+    wc.width = 1920;//c->width;
+    wc.height = 945;//c->height;
+
+    // if (restore_position &&
+    //     FLAG_TEST (mode, CLIENT_FLAG_MAXIMIZED))
+    // {
+    //     clientSaveSizePos (c);
+    // }
+
+    // old_flags = c->flags;
+
+    // /* 1) Compute the new state */
+    // clientNewMaxState (c, &wc, mode);
+
+    // /* 2) Compute the new size, based on the state */
+    // if (!clientNewMaxSize (c, &wc, &rect))
+    // {
+    //     c->flags = old_flags;
+    //     return FALSE;
+    // }
+
+    /* 3) Update size and position fields */
+    c->x = wc.x;
+    c->y = wc.y;
+    c->height = wc.height;
+    c->width = wc.width;
+
+    /* Maximizing may remove decoration on the side, update NET_FRAME_EXTENTS accordingly */
+    // setNetFrameExtents (display_info,
+    //                     c->window,
+    //                     frameTop (c),
+    //                     frameLeft (c),
+    //                     frameRight (c),
+    //                     frameBottom (c));
+
+    /* Maximized windows w/out border cannot be resized, update allowed actions */
+    clientSetNetActions (c);
+    if (restore_position && FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MANAGED))
+    {
+        // if (FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
+        // {
+        //     /* It's a shame, we are configuring the same client twice in a row */
+        //     clientUnshade (c);
+        // }
+        clientConfigure (c, &wc, CWWidth | CWHeight | CWX | CWY, CFG_FORCE_REDRAW);
+    }
+    /* Do not update the state while moving/resizing, CSD windows may resize */
+    if (!FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))
+    {
+        clientSetNetState (c);
+    }
+
+    return TRUE;
+}
+
+void
+clientRemoveFromList (Client * c)
+{
+    ScreenInfo *screen_info;
+    DisplayInfo *display_info;
+
+    g_return_if_fail (c != NULL);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
+
+    FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MANAGED);
+
+    screen_info = c->screen_info;
+    display_info = screen_info->display_info;
+    myDisplayRemoveClient (display_info, c);
+
+    g_assert (screen_info->client_count > 0);
+    screen_info->client_count--;
+    if (screen_info->client_count == 0)
+    {
+        screen_info->clients = NULL;
+    }
+    else
+    {
+        c->next->prev = c->prev;
+        c->prev->next = c->next;
+        if (c == screen_info->clients)
+        {
+            screen_info->clients = screen_info->clients->next;
+        }
+    }
+
+    screen_info->windows = g_list_remove (screen_info->windows, c);
+    screen_info->windows_stack = g_list_remove (screen_info->windows_stack, c);
+
+    clientSetNetClientList (screen_info, display_info->atoms[NET_CLIENT_LIST], screen_info->windows);
+    clientSetNetClientList (screen_info, display_info->atoms[NET_CLIENT_LIST_STACKING], screen_info->windows_stack);
+
+    FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MANAGED);
 }

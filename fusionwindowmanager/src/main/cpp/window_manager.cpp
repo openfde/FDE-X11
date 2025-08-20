@@ -979,11 +979,6 @@ void WindowManager::Run()
         case CirculateRequest:
             OnCirculateRequest(e.xcirculaterequest);
             break;
-            //            case MapRequest:
-            //            case ConfigureRequest:
-            //            case CirculateRequest:
-            //                XAllowEvents(display_, ReplayPointer, CurrentTime);
-            //                break;
         case ButtonPress:
             OnButtonPress(e.xbutton);
             break;
@@ -1051,7 +1046,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
             log("client \"%s\" (0x%lx) has received a WM_CHANGE_STATE event", c->name, c->window);
             if (!FLAG_TEST (c->flags, CLIENT_FLAG_ICONIFIED))
             {
-                // clientWithdraw (c, c->win_workspace, TRUE);
+                clientWithdraw (c, c->win_workspace, TRUE);
             }
         }
         else if ((ev->message_type == display_info->atoms[NET_WM_DESKTOP]) && (ev->format == 32))

@@ -147,3 +147,24 @@ myScreenGetXDisplay (ScreenInfo *screen_info)
     display_info = screen_info->display_info;
     return display_info->dpy;
 }
+
+Client *
+myScreenGetClientFromWindow (ScreenInfo *screen_info, Window w, unsigned short mode)
+{
+    Client *c;
+    guint i;
+
+    g_return_val_if_fail (w != None, NULL);
+    logd ("looking for (0x%lx)", w);
+
+    for (c = screen_info->clients, i = 0; i < screen_info->client_count; c = c->next, i++)
+    {
+        if (clientGetFromWindow (c, w, mode))
+        {
+            return (c);
+        }
+    }
+    logd ("no client found");
+
+    return NULL;
+}

@@ -1304,17 +1304,23 @@ updateXserverTime (DisplayInfo *display_info)
 guint32
 getXServerTime (DisplayInfo *display_info)
 {
-    ScreenInfo *screen_info;
+    XEvent xevent;
     guint32 timestamp;
 
-    g_return_val_if_fail (display_info, CurrentTime);
-    timestamp = myDisplayGetCurrentTime (display_info);
-    if (timestamp < CurrentTime)
-    {
-        return CurrentTime;
-    }
+    g_return_val_if_fail (display_info != NULL, CurrentTime);
+    
+    XChangeProperty(display_info->dpy, display_info->timestamp_win,
+                   XA_WM_NAME, XA_STRING, 8, PropModeAppend,
+                   (unsigned char*)" ", 0);
+    
+    XWindowEvent(display_info->dpy, display_info->timestamp_win, PropertyChangeMask, &xevent);
+    
+    timestamp = xevent.xproperty.time;
+    logd ("timestamp=%u", timestamp);
+    
     return timestamp;
 }
+
 
 
 GPid

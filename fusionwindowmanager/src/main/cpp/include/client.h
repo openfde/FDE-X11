@@ -404,9 +404,9 @@ Client                  *clientGetFromWindow                    (Client *,
                                                                  unsigned short);
 void                     clientShow                             (Client *,
                                                                  gboolean);
-// void                     clientWithdraw                         (Client *,
-//                                                                  guint,
-//                                                                  gboolean);
+void                     clientWithdraw                         (Client *,
+                                                                 guint,
+                                                                 gboolean);
 // void                     clientWithdrawAll                      (Client *,
 //                                                                  guint);
 // void                     clientClearAllShowDesktop              (ScreenInfo *);
@@ -444,14 +444,14 @@ void                     clientStick                            (Client *,
 // void                     clientSetLayerNormal                   (Client *);
 void                     clientRemoveMaximizeFlag               (Client *);
 // void                     clientUpdateMaximizeSize               (Client *);
-// gboolean                 clientToggleMaximized                  (Client *,
-//                                                                  int,
-//                                                                  gboolean);
-// gboolean                 clientToggleMaximizedAtPoint           (Client *,
-//                                                                  gint,
-//                                                                  gint,
-//                                                                  int,
-//                                                                  gboolean);
+gboolean                 clientToggleMaximized                  (Client *,
+                                                                 int,
+                                                                 gboolean);
+gboolean                 clientToggleMaximizedAtPoint           (Client *,
+                                                                 gint,
+                                                                 gint,
+                                                                 int,
+                                                                 gboolean);
 // gboolean                 clientTile                             (Client *,
 //                                                                  gint,
 //                                                                  gint,
@@ -525,6 +525,6 @@ void                     sendClientMessage                      (ScreenInfo *,
                                                                  Window,
                                                                  int,
                                                                  guint32);                                                                    
-
-
+void                    clientSetLast                           (Client *c);
+void                     clientRemoveFromList                   (Client *);
 #endif /* INC_CLIENT_H */
