@@ -40,7 +40,7 @@ const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 Bool LOG_ENABLE;
 Bool GL_CHECK_ERROR = FALSE;
-#define ANDROID_LOG_ENABLE 1
+#define ANDROID_LOG_ENABLE 0
 #define PRINT_LOG (ANDROID_LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_android", __VA_ARGS__);}
 //HARD CODE NOW

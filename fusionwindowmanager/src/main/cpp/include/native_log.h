@@ -1,8 +1,9 @@
+// native_log.h
 #ifndef NATIVE_LOG_H
 #define NATIVE_LOG_H
 
 #include <android/log.h>
-#include <string.h> // for strrchr, strchr
+#include <string.h> // for strrchr
 
 // 提取文件名（不带路径）
 #ifdef __FILE_NAME__ // 如果编译器支持 __FILE_NAME__（Clang/GCC）
@@ -27,10 +28,10 @@
     }
 
 // 不同级别的日志宏
-#define logd(fmt, ...) log(ANDROID_LOG_DEBUG, fmt, ##__VA_ARGS__)    // DEBUG
-#define logerror(fmt, ...) log(ANDROID_LOG_ERROR, fmt, ##__VA_ARGS__) // ERROR
-#define logi(fmt, ...) log(ANDROID_LOG_INFO, fmt, ##__VA_ARGS__)     // INFO
-#define logw(fmt, ...) log(ANDROID_LOG_WARN, fmt, ##__VA_ARGS__)     // WARN
-#define logv(fmt, ...) log(ANDROID_LOG_VERBOSE, fmt, ##__VA_ARGS__)  // VERBOSE
+#define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+#define logerror(...) log(ANDROID_LOG_ERROR, __VA_ARGS__)    // ERROR
+#define logi(...) log(ANDROID_LOG_INFO, __VA_ARGS__)     // INFO
+#define logw(...) log(ANDROID_LOG_WARN, __VA_ARGS__)     // WARN
+#define logv(...) log(ANDROID_LOG_VERBOSE, __VA_ARGS__)  // VERBOSE
 
 #endif // NATIVE_LOG_H

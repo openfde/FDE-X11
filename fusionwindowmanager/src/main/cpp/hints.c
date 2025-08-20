@@ -656,7 +656,7 @@ setUTF8StringHint (DisplayInfo *display_info, Window w, int atom_id, const gchar
 {
     g_return_if_fail ((atom_id >= 0) && (atom_id < ATOM_COUNT));
 
-    logw ("setUTF8StringHint window 0x%lx atom %i", w, atom_id);
+    logd ("setUTF8StringHint window 0x%lx atom %i", w, atom_id);
     myDisplayErrorTrapPush (display_info);
     XChangeProperty (display_info->dpy, w, display_info->atoms[atom_id],
                      display_info->atoms[UTF8_STRING], 8, PropModeReplace,
@@ -758,7 +758,7 @@ getTextProperty (DisplayInfo *display_info, Window w, Atom a)
     else
     {
         retval = NULL;
-        logw ("XGetTextProperty() failed");
+        logd ("XGetTextProperty() failed");
     }
     XFree (text.value);
 
@@ -789,14 +789,14 @@ getUTF8StringData (DisplayInfo *display_info, Window w, int atom_id, gchar **str
         (data == NULL) ||
         (type == None))
     {
-        logw ("no UTF8_STRING property found");
+        logd ("no UTF8_STRING property found");
         XFree (data);
         return FALSE;
     }
 
     if (!check_type_and_format (8, display_info->atoms[UTF8_STRING], -1, format, type))
     {
-        logw ("UTF8_STRING value invalid");
+        logd ("UTF8_STRING value invalid");
         XFree (data);
         return FALSE;
     }
@@ -965,7 +965,7 @@ getWindowName (DisplayInfo *display_info, Window w, gchar **name)
     char *str;
     guint len;
 
-    logw ("getWindowName window 0x%lx", w);
+    logd ("getWindowName window 0x%lx", w);
 
     g_return_val_if_fail (name != NULL, FALSE);
     *name = NULL;
@@ -974,7 +974,7 @@ getWindowName (DisplayInfo *display_info, Window w, gchar **name)
     if (getUTF8StringData (display_info, w, NET_WM_NAME, &str, &len))
     {
         *name = internal_utf8_strndup (str, MAX_STR_LENGTH);
-        logw ("getWindowName: window 0x%lx name '%s'", w, *name);
+        logd ("getWindowName: window 0x%lx name '%s'", w, *name);
         // xfce_utf8_remove_controls(*name, -1, NULL);
         XFree (str);
         return TRUE;
@@ -1311,7 +1311,7 @@ getXServerTime (DisplayInfo *display_info)
     
     XChangeProperty(display_info->dpy, display_info->timestamp_win,
                    XA_WM_NAME, XA_STRING, 8, PropModeAppend,
-                   (unsigned char*)" ", 0);
+                   (unsigned char*)"", 0);
     
     XWindowEvent(display_info->dpy, display_info->timestamp_win, PropertyChangeMask, &xevent);
     

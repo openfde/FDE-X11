@@ -15,7 +15,7 @@ myScreenCheckWMAtom (ScreenInfo *screen_info, Atom atom)
     gchar selection[32];
     Atom wm_sn_atom;
 
-    logw ("atom %lu", atom);
+    logd ("atom %lu", atom);
 
     g_snprintf (selection, sizeof (selection), "WM_S%d", screen_info->screen);
     wm_sn_atom = XInternAtom (myScreenGetXDisplay (screen_info), selection, FALSE);
@@ -48,7 +48,7 @@ myScreenSetWMAtom (ScreenInfo *screen_info, gboolean replace_wm)
 
     if (!setXAtomManagerOwner (display_info, wm_sn_atom, screen_info->xroot, screen_info->xfwm4_win))
     {
-        logw ("Cannot acquire window manager selection on screen %s", display_name);
+        logd ("Cannot acquire window manager selection on screen %s", display_name);
         g_free (display_name);
 
         return FALSE;

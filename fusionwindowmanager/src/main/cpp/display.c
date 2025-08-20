@@ -166,7 +166,7 @@ myDisplayInit(Display *dpy)
     /* Initialize internal atoms */
     if (!myDisplayInitAtoms (display))
     {
-        logw ("Some internal atoms were not properly created.");
+        logd ("Some internal atoms were not properly created.");
     }
 
     for (int j = 0; j < ATOM_COUNT; j++)
@@ -296,7 +296,7 @@ myDisplayGetTime (DisplayInfo * display, guint32 timestamp)
         display_timestamp = getXServerTime (display);
     }
 
-    logw ("timestamp=%u", (guint32) display_timestamp);
+    logd ("timestamp=%u", (guint32) display_timestamp);
     return display_timestamp;
 }
 
@@ -367,7 +367,7 @@ myDisplayGetScreenFromWindow (DisplayInfo *display, Window w)
             return screen;
         }
     }
-    logw ("no screen found for 0x%lx", w);
+    logd ("no screen found for 0x%lx", w);
 
     return NULL;
 }
@@ -387,7 +387,7 @@ myDisplayGetRootFromWindow(DisplayInfo *display_info, Window w)
 
     if ((result != Success) || !status)
     {
-        logw ("no root found for 0x%lx", w);
+        logd ("no root found for 0x%lx", w);
         return None;
     }
     return attributes.root;
