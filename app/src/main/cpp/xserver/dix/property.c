@@ -59,7 +59,7 @@ SOFTWARE.
 #include <jni.h>
 #include <android/log.h>
 extern Bool LOG_ENABLE;
-#define PROPERTY_LOG_ENABLE 1
+#define PROPERTY_LOG_ENABLE 0
 #define PRINT_LOG (PROPERTY_LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_property", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_property", __VA_ARGS__);}
@@ -253,7 +253,7 @@ ProcChangeProperty(ClientPtr client)
     }
 
 //    if(strcmp(NameForAtom(stuff->property), "WM_NORMAL_HINTS") == 0){
-//        loge("ProcChangeProperty:%s", NameForAtom(stuff->property))
+        loge("ProcChangeProperty:%s", NameForAtom(stuff->property))
 //        return BadAtom;
 //    }
 

@@ -138,7 +138,7 @@ Equipment Corporation.
 
 void android_unmap_window(Window window);
 
-#define PRINT_LOG 0
+#define PRINT_LOG 1
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_window", __VA_ARGS__);}              \
 
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_window", __VA_ARGS__);}              \
@@ -2861,7 +2861,7 @@ UnmapWindow(WindowPtr pWin, Bool fromConfigure)
     Bool wasViewable = (Bool) pWin->viewable;
     ScreenPtr pScreen = pWin->drawable.pScreen;
     WindowPtr pLayerWin = pWin;
-    log("UnmapWindow window:%x", pWin->drawable.id);
+    log("UnmapWindow window:%x fromConfigure:%d", pWin->drawable.id, fromConfigure);
     if ((!pWin->mapped) || (!(pParent = pWin->parent))){
         android_unmap_window(pWin->drawable.id);
         return Success;

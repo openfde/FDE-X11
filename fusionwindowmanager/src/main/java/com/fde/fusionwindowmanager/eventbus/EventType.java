@@ -11,9 +11,9 @@ public enum EventType {
 
     X_UNMODAL_ACTIVITY("unmodal_activity"),
 
-    X_UNMAP_WINDOW("ANY"),
+    X_UNMAP_WINDOW("UNMAP_ANY"),
 
-    X_DISMISS_WINDOW("FloatView"),
+    X_DISMISS_WINDOW("FloatView_Dismiss"),
     X_DESTROY_ACTIVITY("destroy_activity"),
     X_DESTROY_DIALOG("destroy_dialog"),
     X_DESTROY_VIEW("destroy_view"),

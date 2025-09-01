@@ -43,7 +43,7 @@ public class FLog {
 
     public static final boolean LogXserverNativeEnable = LogEnable && false;
 
-    public static final boolean SHOW_DEBUG_TITLE = true ;//BuildConfig.DEBUG;
+    public static final boolean SHOW_DEBUG_TITLE = false ;//BuildConfig.DEBUG;
 
     //for activity
     public static void a(String tagsuffix, long window, String content, int level){

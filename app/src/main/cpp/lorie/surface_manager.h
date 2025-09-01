@@ -1,6 +1,7 @@
 //
 // Created by yang on 2024/5/2.
 //
+#pragma once
 
 #include "window.h"
 #include "X11/X.h"
@@ -32,22 +33,23 @@ extern Bool LOG_ENABLE;
 
 #define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "native_sm", __VA_ARGS__);}              \
 
-const Atom _NET_WM_WINDOW_TYPE = 267;
-const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
-/**
- * index 11 ~ 20
- */
-const Atom _NET_WM_WINDOW_TYPE_DIALOG = 269;
-const Atom _NET_WM_WINDOW_TYPE_DND = 270;
-const Atom _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
-const Atom _NET_WM_WINDOW_TYPE_MENU = 272;
-/**
- * index 0 ~ 10
- */
-const Atom _NET_WM_WINDOW_TYPE_NORMAL = 273;
-const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
-const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
-const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
+//const Atom _NET_WM_WINDOW_TYPE = 267;
+//const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
+///**
+// * index 11 ~ 20
+// */
+//const Atom _NET_WM_WINDOW_TYPE_DIALOG = 269;
+//const Atom _NET_WM_WINDOW_TYPE_DND = 270;
+//const Atom _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
+//const Atom _NET_WM_WINDOW_TYPE_MENU = 272;
+///**
+// * index 0 ~ 10
+// */
+//const Atom _NET_WM_WINDOW_TYPE_NORMAL = 273;
+//const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
+//const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
+//const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
+
 
 #define CAPACITY 10000
 
@@ -66,6 +68,7 @@ public:
     Widget* find_widget(Window window);                                         //query
     WindAttribute* all_window(int * size);
     int count_window(Window window);
+    int count_window_in_type(Window window, int type, WindAttribute *ptr);
     int count_widget(Window window);
     void traversal_log_window();
     int size();
@@ -75,6 +78,7 @@ private:
     int get_avilable_index(Atom atom);
     void LogWindAttribute(Window window,WindAttribute attr);
     int index_normal = 0;
+
 };
 
 

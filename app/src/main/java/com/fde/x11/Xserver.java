@@ -15,7 +15,9 @@ import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelFileDescriptor;
+import android.os.UserHandle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Surface;
@@ -117,12 +119,16 @@ public class Xserver {
     public static void startOrUpdateWindow(long aid, long transientfor, long leader,
                                            int type, String wm_name, String wm_class,
                                            int x, int y, int w, int h, int index, long p,
-                                           long window, long taskTo, int support_wm_delete,
-                                           Bitmap bitmap, boolean inbound, int clientNum, boolean isActivity) {
-        FLog.s(TAG, aid,"start Activity: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
+                                           long xid, long taskTo, int support_wm_delete,
+                                           Bitmap bitmap, boolean inbound, int clientNum,
+                                           boolean isActivity, long window) {
+        FLog.s(TAG, aid,"startOrUpdateWindow: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
                 + ", type:" + type + ", wm_name:" + wm_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
-                + ", window:" + Long.toHexString(window) + ", taskTo:" + Long.toHexString(taskTo) +
-                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +  " inbound:" + inbound + " clientNum:" + clientNum, FLog.WARN);
+                + ", xid:" + Long.toHexString(xid) + ", taskTo:" + Long.toHexString(taskTo) +
+                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +
+                        " , inbound:" + inbound + " clientNum:" + clientNum
+                + ",  window:" + Long.toHexString(window),
+                FLog.WARN);
         X_ClientNum = clientNum;
         EventMessage message = null;
         if(bitmap != null){
@@ -148,11 +154,11 @@ public class Xserver {
                 case 0:
                 case _NET_WM_WINDOW_TYPE_NORMAL:
                     message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                            "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, bitmap)));
+                            "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, bitmap)));
                     break;
                 case _NET_WM_WINDOW_TYPE_DIALOG:
                     message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
-                            "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete)));
+                            "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete)));
                     break;
                 default:
                     break;
@@ -166,7 +172,7 @@ public class Xserver {
                 case _NET_WM_WINDOW_TYPE_COMBO:
                 default:
                     message = new EventMessage(EventType.X_START_VIEW,
-                            "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, window, taskTo), new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete));
+                            "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, xid, taskTo), new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete));
                     break;
             }
         }
@@ -206,7 +212,7 @@ public class Xserver {
      * @param support_wm_delete     close action
      */
     public static void closeOrDestroyWindow(int index, long pWin, long taskTo,long window, int action, int support_wm_delete, int clientNum) {
-        FLog.s(TAG, window,"close window: index:" + index + ", pWin:" + pWin +
+        FLog.s(TAG, window,"closeOrDestroyWindow: index:" + index + ", pWin:" + pWin +
                 ", taskTo:" + Long.toHexString(taskTo) + ", window:" + Long.toHexString(window) +
                 ", action:" + action + ", support_wm_delete:" + support_wm_delete + "" + " clientNum:" + clientNum, FLog.WARN);
         X_ClientNum = clientNum;
@@ -294,8 +300,7 @@ public class Xserver {
         intent.setPackage(targetPackage);
         intent.putExtra("window_id", window);
         intent.putExtra("window_icon", newBitmap);
-        ctx.sendStickyBroadcast(intent);
-
+        new Handler(Looper.getMainLooper()).postDelayed(() -> ctx.sendBroadcastAsUser(intent, UserHandle.ALL), 1000);
     }
 
     private void sendBroadcastDelayed() {

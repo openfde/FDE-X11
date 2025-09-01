@@ -374,7 +374,10 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
     first  = ev->data.l[1];
     second = ev->data.l[2];
     mode = 0;
-    logd ("client \"%s\" (0x%lx) action:%s first:%s second:%s", c->name, c->window, XGetAtomName(display_info->dpy, action),  XGetAtomName(display_info->dpy, first), XGetAtomName(display_info->dpy, second));
+    logd ("client \"%s\" (0x%lx) action:%s first:%s second:%s", c->name, c->window,
+          XGetAtomName(display_info->dpy, action),
+          XGetAtomName(display_info->dpy, first),
+          XGetAtomName(display_info->dpy, second));
 
     if ((first  == display_info->atoms[NET_WM_STATE_HIDDEN]) ||
         (second == display_info->atoms[NET_WM_STATE_HIDDEN]))

@@ -6,12 +6,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.util.Log;
 import android.widget.Toast;
 
 import com.fde.x11.MainActivity;
 import com.fde.x11.R;
 import com.fde.x11.XWindowService;
+import com.fde.x11.BuildConfig;
 
 import java.io.Closeable;
 import java.io.File;
@@ -176,26 +178,44 @@ public class Util {
     }
 
     public static void showXserverStartSuccess(Context context) {
+        if(!BuildConfig.DEBUG){
+            return;
+        }
         Toast.makeText(context, R.string.xserver_start_success, Toast.LENGTH_SHORT).show();
     }
 
     public static void showXserverConnectSuccess(Context context) {
+        if(!BuildConfig.DEBUG){
+            return;
+        }
         Toast.makeText(context, R.string.xserver_connect_success, Toast.LENGTH_SHORT).show();
     }
 
     public static void showXserverDisconnect(Context context) {
+        if(!BuildConfig.DEBUG){
+            return;
+        }
         Toast.makeText(context, R.string.xserver_disconnect, Toast.LENGTH_SHORT).show();
     }
 
     public static void showXserverCloseOnDisconnect(Context context) {
+        if(!BuildConfig.DEBUG){
+            return;
+        }
         Toast.makeText(context, R.string.xserver_close_disconnect, Toast.LENGTH_LONG).show();
     }
 
     public static void showXserverReconnect(Context context) {
+        if(!BuildConfig.DEBUG){
+            return;
+        }
         Toast.makeText(context, R.string.xserver_reconnect, Toast.LENGTH_SHORT).show();
     }
 
     public static void showXApplicationOpenFail(Context context) {
+        if(!BuildConfig.DEBUG){
+            return;
+        }
         Toast.makeText(context, R.string.xserver_application_open_fail, Toast.LENGTH_SHORT).show();
     }
 

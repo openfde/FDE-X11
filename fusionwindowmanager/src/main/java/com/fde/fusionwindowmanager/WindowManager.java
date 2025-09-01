@@ -151,27 +151,34 @@ public class WindowManager  {
     //called from native code
     public static void updateWmStateClient(int action, long window){
         Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
-//        Context context = contextReference.get();
-//        if(context == null){
-//            return;
-//        }
-//        switch (action){
-//            case WINDOW_ACTION_MAXIMIZED:
-//                sendBroadcastWmState(WINDOW_ACTION_MAXIMIZED_ACTION, window, context);
-//                break;
-//            case WINDOW_ACTION_MAXIMIZED_REMOVE:
-//                sendBroadcastWmState(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION, window, context);
-//                break;
-//            case WINDOW_ACTION_MINIMIZE:
-//                sendBroadcastWmState(WINDOW_ACTION_MINIMIZE_ACTION, window, context);
-//                break;
-//            case WINDOW_ACTION_MINIMIZE_REMOVE:
-//                break;
-//            case WINDOW_ACTION_DELETE:
-//                break;
-//            default:
-//                break;
-//        }
+        Context context = contextReference.get();
+        if((action & WINDOW_ACTION_MAXIMIZED_HORZ) > 0
+                && (action & WINDOW_ACTION_MAXIMIZED_VERT) > 0){
+            action = WINDOW_ACTION_MAXIMIZED;
+        } else {
+            action = WINDOW_ACTION_MAXIMIZED_REMOVE;
+        }
+
+        if(context == null){
+            return;
+        }
+        switch (action){
+            case WINDOW_ACTION_MAXIMIZED:
+                sendBroadcastWmState(WINDOW_ACTION_MAXIMIZED_ACTION, window, context);
+                break;
+            case WINDOW_ACTION_MAXIMIZED_REMOVE:
+                sendBroadcastWmState(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION, window, context);
+                break;
+            case WINDOW_ACTION_MINIMIZE:
+                sendBroadcastWmState(WINDOW_ACTION_MINIMIZE_ACTION, window, context);
+                break;
+            case WINDOW_ACTION_MINIMIZE_REMOVE:
+                break;
+            case WINDOW_ACTION_DELETE:
+                break;
+            default:
+                break;
+        }
     }
 
     public static void sendBroadcastWmState(String action, long window, Context context) {

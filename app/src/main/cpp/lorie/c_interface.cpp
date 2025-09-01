@@ -44,6 +44,12 @@ int _surface_count_window(ARGE_PWRAP, Window window){
     return surfaceManager->count_window(window);
 }
 
+int _surface_count_window_in_type(ARGE_PWRAP, Window window, int type, WindAttribute *ptr){
+    CHECKWRAPER_R(wrapper);
+    GET_PWRAP;
+    return surfaceManager->count_window_in_type(window, type, ptr);
+}
+
 int _surface_count_widget(ARGE_PWRAP, Window window){
     CHECKWRAPER_R(wrapper);
     GET_PWRAP;

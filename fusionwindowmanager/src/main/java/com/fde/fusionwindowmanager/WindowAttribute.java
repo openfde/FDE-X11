@@ -15,7 +15,7 @@ public class WindowAttribute implements Parcelable {
     float height;
     int index;
     long windowPtr;
-
+    long frame, window;
     long XID;
 
     long taskTo = 0;
@@ -32,35 +32,54 @@ public class WindowAttribute implements Parcelable {
         this.focusable = focusable;
     }
 
-    public WindowAttribute(int index, long p, long window) {
+    public WindowAttribute(int index, long p, long xid) {
         this.offsetX = 0;
         this.offsetY = 0;
         this.width = 0;
         this.height = 0;
         this.index = index;
         this.windowPtr = p;
-        this.XID = window;
+        this.XID = xid;
+        this.frame = xid;
     }
 
-    public WindowAttribute(int x, int y, int w, int h, int index, long p, long window, long taskTo) {
+    public WindowAttribute(int x, int y, int w, int h, int index, long p, long xid, long taskTo) {
         this.offsetX = x;
         this.offsetY = y;
         this.width = w;
         this.height = h;
         this.index = index;
         this.windowPtr = p;
-        this.XID = window;
+        this.XID = xid;
+        this.frame = xid;
         this.taskTo = taskTo;
     }
 
-    public WindowAttribute(int x, int y, int w, int h, int index, long p, long window, long taskTo, Property property) {
+    public WindowAttribute(int x, int y, int w, int h, int index, long p, long xid,
+                           long taskTo, Property property) {
         this.offsetX = x;
         this.offsetY = y;
         this.width = w;
         this.height = h;
         this.index = index;
         this.windowPtr = p;
-        this.XID = window;
+        this.XID = xid;
+        this.frame = xid;
+        this.taskTo = taskTo;
+        this.property = property;
+    }
+
+    public WindowAttribute(int x, int y, int w, int h, int index, long p, long xid, long window,
+                           long taskTo, Property property) {
+        this.offsetX = x;
+        this.offsetY = y;
+        this.width = w;
+        this.height = h;
+        this.index = index;
+        this.windowPtr = p;
+        this.XID = xid;
+        this.frame = xid;
+        this.window = window;
         this.taskTo = taskTo;
         this.property = property;
     }
@@ -129,14 +148,24 @@ public class WindowAttribute implements Parcelable {
         this.windowPtr = windowPtr;
     }
 
-    public WindowAttribute(int offsetX, int offsetY, int width, int height, int index, long windowPtr, long window){
+    public long getWindow(){
+        return window;
+    }
+
+    public void setWindow(long window){
+        this.window = window;
+    }
+
+    public WindowAttribute(int offsetX, int offsetY, int width, int height, int index,
+                           long windowPtr,
+                           long xid ){
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.width = width;
         this.height = height;
         this.index = index;
         this.windowPtr = windowPtr;
-        this.XID = window;
+        this.XID = xid;
     }
 
 
@@ -148,7 +177,9 @@ public class WindowAttribute implements Parcelable {
         index = in.readInt();
         windowPtr = in.readLong();
         XID = in.readLong();
+        window = in.readLong();
         taskTo = in.readLong();
+        frame = XID;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             focusable = in.readBoolean();
         }
@@ -176,6 +207,7 @@ public class WindowAttribute implements Parcelable {
             dest.writeInt(index);
             dest.writeLong(windowPtr);
             dest.writeLong(XID);
+            dest.writeLong(window);
             dest.writeLong(taskTo);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             dest.writeBoolean(focusable);
@@ -214,6 +246,7 @@ public class WindowAttribute implements Parcelable {
                 " , index:" + index +
 //                "\n, windowPtr=" + windowPtr +
                 " XID:" + Long.toHexString(XID) +
+                " window:" + window +
                 " taskTo:" + Long.toHexString(taskTo) +
 //                "\n, focusable=" + focusable +
 //                "\n, property=" + property +

@@ -123,6 +123,23 @@ int SurfaceManager::count_window(Window window) {
     return window_attrs.count(window);
 }
 
+int SurfaceManager::count_window_in_type(Window window, int type, WindAttribute *ptr) {
+    for (auto& pair : window_attrs) {
+        if(type == TYPE_WINDOW){
+            if(pair.second.child == window){
+                *ptr = pair.second;
+                return TRUE;
+            }
+        } else if(type == TYPE_FRAME){
+            if(pair.second.frame == window){
+                *ptr = pair.second;
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
 int SurfaceManager::count_widget(Window window) {
     log("count_widget %x", window);
     for (auto& pair : window_attrs) {

@@ -980,10 +980,10 @@ clientGetMWMHints (Client *c)
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
 
-    if (c->mwm_hints)
-    {
-        g_free (c->mwm_hints);
-    }
+//    if (c->mwm_hints)
+//    {
+//        g_free (c->mwm_hints);
+//    }
     c->mwm_hints = getMotifHints (display_info, c->window);
 }
 
@@ -1331,62 +1331,62 @@ clientFree (Client *c)
     // {
     //     clientClearDelayedFocus ();
     // }
-    if (c->blink_timeout_id)
-    {
-        g_source_remove (c->blink_timeout_id);
-    }
-    if (c->icon_timeout_id)
-    {
-        g_source_remove (c->icon_timeout_id);
-    }
-    if (c->frame_timeout_id)
-    {
-        g_source_remove (c->frame_timeout_id);
-    }
-    if (c->ping_timeout_id)
-    {
-        clientRemoveNetWMPing (c);
-    }
-    if (c->name)
-    {
-        g_free (c->name);
-    }
-    if (c->hostname)
-    {
-        g_free (c->hostname);
-    }
-    if (c->size)
-    {
-        XFree (c->size);
-    }
-    if (c->wmhints)
-    {
-        XFree (c->wmhints);
-    }
-    if (c->mwm_hints)
-    {
-        g_free (c->mwm_hints);
-    }
-    if ((c->ncmap > 0) && (c->cmap_windows))
-    {
-        XFree (c->cmap_windows);
-    }
-    if (c->hint_class.res_name)
-    {
-        XFree (c->hint_class.res_name);
-    }
-    if (c->hint_class.res_class)
-    {
-        XFree (c->hint_class.res_class);
-    }
-    if (c->dialog_pid)
-    {
-        kill (c->dialog_pid, SIGKILL);
-    }
-    if (c->dialog_fd >= 0)
-    {
-        close (c->dialog_fd);
-    }
+//    if (c->blink_timeout_id)
+//    {
+//        g_source_remove (c->blink_timeout_id);
+//    }
+//    if (c->icon_timeout_id)
+//    {
+//        g_source_remove (c->icon_timeout_id);
+//    }
+//    if (c->frame_timeout_id)
+//    {
+//        g_source_remove (c->frame_timeout_id);
+//    }
+//    if (c->ping_timeout_id)
+//    {
+//        clientRemoveNetWMPing (c);
+//    }
+//    if (c->name)
+//    {
+//        g_free (c->name);
+//    }
+//    if (c->hostname)
+//    {
+//        g_free (c->hostname);
+//    }
+//    if (c->size)
+//    {
+//        XFree (c->size);
+//    }
+//    if (c->wmhints)
+//    {
+//        XFree (c->wmhints);
+//    }
+//    if (c->mwm_hints)
+//    {
+//        g_free (c->mwm_hints);
+//    }
+//    if ((c->ncmap > 0) && (c->cmap_windows))
+//    {
+//        XFree (c->cmap_windows);
+//    }
+//    if (c->hint_class.res_name)
+//    {
+//        XFree (c->hint_class.res_name);
+//    }
+//    if (c->hint_class.res_class)
+//    {
+//        XFree (c->hint_class.res_class);
+//    }
+//    if (c->dialog_pid)
+//    {
+//        kill (c->dialog_pid, SIGKILL);
+//    }
+//    if (c->dialog_fd >= 0)
+//    {
+//        close (c->dialog_fd);
+//    }
 
     g_free (c);
 }
@@ -2371,17 +2371,18 @@ clientShow (Client *c, gboolean deiconify)
 
     g_return_if_fail (c != NULL);
 
-    if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
-    {
-        /* Should we map the window if it is visible? */
-        return;
-    }
+//    if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
+//    {
+//        /* Should we map the window if it is visible? */
+//        logd("Should we map the window if it is visible?");
+//        return;
+//    }
 
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
 
-    if ((c->win_workspace == screen_info->current_ws) || FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
-    {
+//    if ((c->win_workspace == screen_info->current_ws) || FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
+//    {
         logd ("showing client \"%s\" (0x%lx)", c->name, c->window);
         FLAG_SET (c->xfwm_flags, XFWM_FLAG_VISIBLE);
         myDisplayErrorTrapPush (display_info);
@@ -2393,7 +2394,7 @@ clientShow (Client *c, gboolean deiconify)
         myDisplayErrorTrapPopIgnored (display_info);
         /* Adjust to urgency state as the window is visible */
         // clientUpdateUrgency (c);
-    }
+//    }
     if (deiconify)
     {
         FLAG_UNSET (c->flags, CLIENT_FLAG_ICONIFIED);
@@ -4656,8 +4657,8 @@ clientToggleMaximized (Client *c, int mode, gboolean restore_position)
     }
 
     return clientToggleMaximizedAtPoint(c,
-                                c->x + c->width / 2,
-                                c->y,
+                                0,
+                                0,
                                 mode, restore_position);
 }
 
@@ -4687,8 +4688,8 @@ clientToggleMaximizedAtPoint (Client *c, gint cx, gint cy, int mode, gboolean re
     display_info = screen_info->display_info;
     // myScreenFindMonitorAtPoint (screen_info, cx, cy, &rect);
 
-    wc.x = 0;c->x;
-    wc.y = 67;c->y;
+    wc.x = 0;//c->x;
+    wc.y = 67;//c->y;
     wc.width = 1920;//c->width;
     wc.height = 945;//c->height;
 

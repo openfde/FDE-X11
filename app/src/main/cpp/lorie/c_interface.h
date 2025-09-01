@@ -69,6 +69,9 @@ void _surface_delete_window(ARGE_PWRAP, Window window);
 
 int _surface_count_window(ARGE_PWRAP, Window index);
 
+int _surface_count_window_in_type(SurfaceManagerWrapper *wrapper, Window index, int type,
+                                  WindAttribute *ptr);
+
 int _surface_count_widget(ARGE_PWRAP, Window index);
 
 void _surface_log_traversal_window(ARGE_PWRAP);

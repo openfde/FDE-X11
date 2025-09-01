@@ -45,7 +45,7 @@ typedef struct {
     int dri_w, dri_h;
     int dri_x, dri_y;
     int index;
-    Window window, child;
+    Window window, child, frame;
     WindowPtr pWin;
     WindowPtr dri_pWin;
     EGLSurface sfc;
@@ -61,5 +61,7 @@ typedef struct WindowNode {
     struct WindowNode* next;
 } WindowNode;
 
+#define TYPE_WINDOW 0
+#define TYPE_FRAME  1
 
 #endif // NODE_H

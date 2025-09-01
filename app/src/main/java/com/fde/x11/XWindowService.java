@@ -68,6 +68,7 @@ public class XWindowService extends Service {
 
     public static final String DESTROY_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_destroy";
     public static final String STOP_WINDOW_FROM_X = "com.fde.x11.Xserver.action_stop";
+    public static final String HIDE_WINDOW_FROM_X = "com.fde.x11.Xserver.action_hide";
 
     public static final String START_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_start";
 
@@ -221,8 +222,8 @@ public class XWindowService extends Service {
                 startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity11.class);
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
-            case X_DESTROY_ACTIVITY:
             case X_UNMAP_WINDOW:
+            case X_DESTROY_ACTIVITY:
                 if(message.getProperty()!= null && message.getProperty().getSupportDeleteWindow() != 0){
                     destroyActivitySafety(DESTROY_ACTIVITY_RETRY, message.getWindowAttribute());
                 } else {
@@ -230,6 +231,9 @@ public class XWindowService extends Service {
                 }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
+//            case X_UNMAP_WINDOW:
+//                sendBroadcastHide(message.getWindowAttribute());
+//                break;
 //            case X_UNMAP_WINDOW:
 //                WindowManager.updateWmStateClient(WINDOW_ACTION_MINIMIZE,
 //                        message.getWindowAttribute().getXID());
@@ -255,6 +259,16 @@ public class XWindowService extends Service {
         if(windowSize != size){
             sendBroadcastSize(size);
         }
+    }
+
+    private void sendBroadcastHide(WindowAttribute attr) {
+        FLog.s(TAG, "sendBroadcastHide: attr:" + attr + "");
+        String targetPackage = getPackageName();
+        Intent intent = new Intent(HIDE_WINDOW_FROM_X);
+        intent.setPackage(targetPackage);
+        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+//        sendStickyBroadcast(intent);
+        sendBroadcastAsUser(intent, UserHandle.ALL);
     }
 
     private void sendBroadcastSize(int size) {
@@ -342,7 +356,9 @@ public class XWindowService extends Service {
         Intent intent = new Intent(STOP_WINDOW_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
-        sendStickyBroadcast(intent);
+//        sendStickyBroadcast(intent);
+        sendBroadcastAsUser(intent, UserHandle.ALL);
+
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
@@ -372,7 +388,7 @@ public class XWindowService extends Service {
         }
         runningMainWindow.add(attr.getXID());
         startingWindow.add(attr.getXID());
-        FLog.s(TAG, "start act with decor: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
 //        if(attr.getTaskTo() != 0){
 //            String targetPackage = getPackageName();
 //            Intent intent = new Intent(START_ACTIVITY_FROM_X);

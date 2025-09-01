@@ -27,6 +27,7 @@
 #include <string.h>
 #include <X11/Xatom.h>
 #include <android/bitmap.h>
+#include <signal.h>
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -40,7 +41,7 @@ const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 Bool LOG_ENABLE;
 Bool GL_CHECK_ERROR = FALSE;
-#define ANDROID_LOG_ENABLE 0
+#define ANDROID_LOG_ENABLE 1
 #define PRINT_LOG (ANDROID_LOG_ENABLE)
 #define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_android", __VA_ARGS__);}
 //HARD CODE NOW
@@ -115,6 +116,8 @@ void updateClipText(const char *text);
 
 void android_icon_update(int *pInt, int width, int height, long i);
 
+void printWindAttribute(const WindAttribute *attr);
+
 static inline JNIEnv *GetJavaEnv(void) {
     if (!jniVM) {
         return NULL;
@@ -125,7 +128,7 @@ static inline JNIEnv *GetJavaEnv(void) {
 }
 
 void android_update_texture_1(Window window) {
-    log(ERROR, "android_update_texture_1 window:%x", window);
+//    log(ERROR, "android_update_texture_1 window:%x", window);
     if (_surface_count_window(sfWraper, window)) {
         WindAttribute *attr = _surface_find_window(sfWraper, window);
         if(!attr){
@@ -134,12 +137,12 @@ void android_update_texture_1(Window window) {
         PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
         int backingStore = attr->pWin->backingStore;
         int saveunder = attr->pWin->saveUnder;
-        log(ERROR, "android_update_texture_1 pixmap:%p backingStore:%d saveunder:%d", pixmap, backingStore, saveunder)
+//        log(ERROR, "android_update_texture_1 pixmap:%p backingStore:%d saveunder:%d", pixmap, backingStore, saveunder)
         TexturePrivRecPtr ptr = dixLookupPrivate(&attr->pWin->devPrivates, &FDEWindowTexturePrivateKey);
         GLuint texture_id = 0;
         if(ptr){
             texture_id = ptr->texture;
-            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
+//            log(ERROR, "android_update_texture_1 texture:%x", ptr->texture);
         }
         renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                 pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window, texture_id);
@@ -163,14 +166,15 @@ void android_update_widget_texture(Widget *widget) {
 
 
 void android_destroy_window(Window window) {
-    log(ERROR, "android_destroy_window %x", window);
-    if (_surface_count_window(sfWraper, window)) {
+    log(DEBUG, "android_destroy_window %x", window);
+    WindAttribute attribute = {0};
+    if (_surface_count_window_in_type(sfWraper, window, TYPE_WINDOW, &attribute)) {
         log(DEBUG, "destroy activity");
-        WindAttribute *attr = _surface_find_window(sfWraper, window);
+        WindAttribute *attr = _surface_find_window(sfWraper, attribute.frame);
         attr->discard = 1;
         android_destroy_activity(attr->index, attr->pWin, attr->window, ACTION_DESTORY, attr->aProperty.support_wm_delete);
-        renderer_release_window( GetJavaEnv(), window);
-        _surface_delete_window(sfWraper, window);
+        renderer_release_window( GetJavaEnv(), attr->window);
+        _surface_delete_window(sfWraper, attr->window);
         glDeleteTextures(1, &attr->texture_id);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "destroy widget");
@@ -183,16 +187,17 @@ void android_destroy_window(Window window) {
 }
 
 void android_unmap_window(Window window){
-    log(ERROR, "android_unmap_window %x", window);
+    log(DEBUG, "android_unmap_window %x", window);
     _surface_log_traversal_window(sfWraper);
-    if (_surface_count_window(sfWraper, window)) {
-        log(DEBUG, "unmap activity window:%x", window);
-        WindAttribute *attr = _surface_find_window(sfWraper, window);
+    WindAttribute attribute = {0};
+    if (_surface_count_window_in_type(sfWraper, window, TYPE_WINDOW, &attribute)) {
+        log(DEBUG, "unmap activity window:%x", attribute.frame);
+        WindAttribute *attr = _surface_find_window(sfWraper, attribute.frame);
         attr->discard = 1;
         android_destroy_activity(attr->index, attr->pWin, attr->window,  ACTION_UNMAP, attr->aProperty.support_wm_delete);
         glDeleteTextures(1, &attr->texture_id);
-        renderer_release_window(GetJavaEnv(),window);
-        _surface_delete_window(sfWraper, window);
+        renderer_release_window(GetJavaEnv(), attr->window);
+        _surface_delete_window(sfWraper, attr->window);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget:%0x", window);
         Widget *widget = _surface_find_widget(sfWraper, window);
@@ -213,7 +218,11 @@ void android_redirect_window(WindowPtr pWin) {
     Window taskTo = 0;
     // get real property (name leader transient)
     WindProperty aProperty = {0};
-    xserver_get_window_property(pWin, &aProperty);
+    if(pWin->firstChild && !redirect){
+        xserver_get_window_property(pWin->firstChild, &aProperty);
+    } else {
+        xserver_get_window_property(pWin, &aProperty);
+    }
     Atom win_type = aProperty.window_type;
     if (aProperty.transient != 0) {
         WindAttribute *attr = _surface_find_window(sfWraper, aProperty.transient);
@@ -255,6 +264,11 @@ void android_redirect_window(WindowPtr pWin) {
                 .widget_size = 0,
                 .aProperty = aProperty
         };
+        if(pWin->firstChild){
+            windAttribute.child = pWin->firstChild->drawable.id;
+            windAttribute.frame = pWin->drawable.id;
+        }
+//        printWindAttribute(&windAttribute);
         _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
         android_create_window(windAttribute, aProperty, taskTo, intransient_bounds);
         return;
@@ -387,12 +401,14 @@ jobject android_icon_convert_bitmap(int* data, int width, int height) {
  *
  */
 void update_effect_property(WindowPtr pWin, Atom prop, ClientPtr client){
-    if(!_surface_count_window(sfWraper, pWin->drawable.id)){
+    WindAttribute attribute = {0};
+    if(!_surface_count_window_in_type(sfWraper, pWin->drawable.id,
+                                      TYPE_WINDOW, &attribute)){
         return;
     }
     CHECK_WITH_PROP;
-    log(ERROR, "update_effect_property window:%x name:%s", pWin->drawable.id, NameForAtom(prop))
     if(STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)){
+        log(ERROR, "update_effect_property window:%x name:%s", pWin->drawable.id, NameForAtom(prop))
         PropertyPtr pProp;
         int rc = dixLookupProperty(&pProp, pWin, prop, client,
                                    DixReadAccess);
@@ -461,7 +477,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
     while (pProper) {
         ATOM name = pProper->propertyName;
         propData = pProper->data;
-        log(ERROR, "GET property NAME:%s", NameForAtom(name))
+//        log(ERROR, "GET property NAME:%s", NameForAtom(name))
         if (STRING_EQUAL(NameForAtom(name), WINDOW_TYPE)) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
@@ -545,7 +561,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
             }
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_X11_PID)){
             unsigned long pid = *((unsigned long *) propData);
-            log(ERROR, "prop window:%x pid:%ld", pWin->drawable.id, pid);
+//            log(ERROR, "prop window:%x pid:%ld", pWin->drawable.id, pid);
             //TODO revert from steam
 //        } else if(STRING_EQUAL(NameForAtom(name), "STEAM_GAME")) {
 //            prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
@@ -555,7 +571,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
 //    if(prop->window_type == 0){
 //        prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
 //    }
-    log(ERROR, "prop end================================>");
+//    log(ERROR, "prop end================================>");
 }
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
@@ -622,7 +638,7 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop,  Window window) 
 
 void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, bool inbound) {
     log(DEBUG, "android_create_view window:%x wm_name:%s net_wm_name:%s inbound:%d",
-        widget.window,aProperty.wm_name, aProperty.net_wm_name, inbound );
+        widget.window, aProperty.wm_name, aProperty.net_wm_name, inbound );
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         log(DEBUG, "ready to create view");
@@ -649,12 +665,12 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
         Window window = widget.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateWindow",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZIZ)V");
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZIZJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          aWindow, aTransient, aLeader, aType, wm_class, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, 0,
                                          (long) windowPtr, (long) window, (long) taskTo,
-                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, false);
+                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, false, aWindow);
     }
 }
 
@@ -687,12 +703,12 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateWindow",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZIZ)V");
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZIZJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          (long)aWindow, (long)aTransient, (long)aLeader, aType, wm_class, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
                                          (long) windowPtr, (long) window, (long) taskTo,
-                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, true);
+                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, true, (long)attribute.child);
         free(aProperty.net_wm_name);
         free(aProperty.wm_class);
         free(aProperty.wm_name);
@@ -1175,8 +1191,8 @@ Java_com_fde_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
                                                       "(I)Landroid/os/ParcelFileDescriptor;");
         socketpair(AF_UNIX, SOCK_STREAM, 0, client);
         fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
-        __android_log_print(ANDROID_LOG_ERROR, "native_android",
-                            "getXConnection: conn_fd:%d fd[0]%d fd[1]%d", conn_fd, client[0], client[1]);
+//        __android_log_print(ANDROID_LOG_ERROR, "native_android",
+//                            "getXConnection: conn_fd:%d fd[0]%d fd[1]%d", conn_fd, client[0], client[1]);
         QueueWorkProc(addFd, NULL, (void *) (int64_t) client[1]);
         return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
     } else {
@@ -1492,7 +1508,7 @@ JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,
                                         jint which_button, jboolean button_down, jboolean relative,
                                         jint index) {
-//    log(ERROR, "binder Mouse event x:%.0f y:%.0f detail:%d down:%d", x, y, which_button, button_down);
+//    log(DEBUG, "MouseEvent x:%.0f y:%.0f detail:%d  down:%s", x, y, which_button, button_down == 1 ? "true" : "false" );
     lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
     ValuatorMask mask;
     valuator_mask_zero(&mask);
@@ -1535,6 +1551,30 @@ Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfl
         default:
             break;
     }
+
+}
+
+void printWindAttribute(const WindAttribute *attr) {
+    log(DEBUG, "WindAttribute:\n");
+    log(DEBUG,"  texture_id: %u\n", attr->texture_id);
+    log(DEBUG,"  dri_texture_id: %u\n", attr->dri_texture_id);
+    log(DEBUG,"  width: %.2f, height: %.2f\n", attr->width, attr->height);
+    log(DEBUG,"  offset_x: %.2f, offset_y: %.2f\n", attr->offset_x, attr->offset_y);
+    log(DEBUG,"  dri_w: %d, dri_h: %d\n", attr->dri_w, attr->dri_h);
+    log(DEBUG,"  dri_x: %d, dri_y: %d\n", attr->dri_x, attr->dri_y);
+    log(DEBUG,"  index: %d\n", attr->index);
+    log(DEBUG,"  window: 0x%lx, child: 0x%lx, frame: 0x%lx\n",
+           (unsigned long)attr->window,
+           (unsigned long)attr->child,
+           (unsigned long)attr->frame);
+    log(DEBUG,"  pWin: %p\n", attr->pWin);
+    log(DEBUG,"  dri_pWin: %p\n", attr->dri_pWin);
+    log(DEBUG,"  sfc: %p\n", attr->sfc);
+    log(DEBUG,"  widget: %p\n", attr->widget);
+    log(DEBUG,"  widgets: %p\n", attr->widgets);
+    log(DEBUG,"  widget_size: %d\n", attr->widget_size);
+    log(DEBUG,"  discard: %d\n", attr->discard);
+    log(DEBUG,"  level: %d\n", attr->level);
 
 }
 
