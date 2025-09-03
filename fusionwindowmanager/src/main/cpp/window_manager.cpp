@@ -344,35 +344,6 @@ bool is_top_level_window(Display *display, Window window) {
     return false;
 }
 
-// 检查窗口是否在顶部（在兄弟窗口中最前面）
-bool is_window_on_top(Display *display, Window window) {
-    Window root, parent;
-    Window *children;
-    unsigned int nchildren;
-
-    if (XQueryTree(display, window, &root, &parent, &children, &nchildren)) {
-        // 查找窗口在兄弟列表中的位置
-        for (unsigned int i = 0; i < nchildren; i++) {
-            if (children[i] == window) {
-                // 如果窗口是列表中的最后一个，那么它在顶部
-                bool result = (i == nchildren - 1);
-                XFree(children);
-                return result;
-            }
-        }
-        XFree(children);
-    }
-
-    return false;
-}
-
-// 综合检查：是否为顶层且可见的窗口
-bool is_top_visible_window(Display *display, Window window) {
-    return is_top_level_window(display, window) &&
-           is_window_visible(display, window);
-}
-
-
 void WindowManager::OnMapNotify(const XMapEvent &e)
 {
     Client *c;
@@ -552,19 +523,6 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
     }
     loge("OnConfigureRequest x:%d y:%d w:%d h:%d border:%d above:%d stack:%d value:%d",
          e.x, e.y, e.width, e.height, e.border_width, e.above, e.detail, value_mask);
-    // if (clients_.count(e.window))
-    // {
-    //     const Window frame = clients_[e.window];
-    //     XConfigureWindow(display_, frame, value_mask, &changes);
-    //     log("Resize_ frame %lx  to %s x.y %s value_mask:%lu ", frame, Size<int>(e.width, e.height).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
-    // }
-    // else
-    // {
-    //     XConfigureWindow(display_, e.window, value_mask, &changes);
-    //     log("Resize_ %lx to %s x.y %s value_mask:%lu ", e.window, Size<int>(e.width, e.height).ToString().c_str(), Size<int>(changes.x, changes.y).ToString().c_str(), value_mask);
-    // }
-    // XSync(display_, False);
-
     XConfigureRequestEvent *ev = (XConfigureRequestEvent *)&e;
     c = myDisplayGetClientFromWindow (display_info, ev->window, SEARCH_WINDOW);
     if (c)
@@ -590,7 +548,7 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
 
     if (value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight)
     {
-//        syncConfigureRequest(changes.x, changes.y, changes.width, changes.height, e.window);
+        syncConfigureRequest(changes.x, changes.y, changes.width, changes.height, e.window);
     }
 }
 
@@ -811,24 +769,6 @@ void WindowManager::OnPropertyNotify(XEvent e)
             clientGetNetWmType(c);
             // frameQueueDraw(c, TRUE);
         }
-        else if ((ev->atom == display_info->atoms[NET_WM_STRUT]) ||
-                 (ev->atom == display_info->atoms[NET_WM_STRUT_PARTIAL]))
-        {
-            log("client \"%s\" (0x%lx) has received a NET_WM_STRUT notify", c->name, c->window);
-            // if (clientGetNetStruts(c) && FLAG_TEST(c->xfwm_flags, XFWM_FLAG_VISIBLE))
-            // {
-            //     workspaceUpdateArea(c->screen_info);
-            // }
-        }
-        else if (ev->atom == display_info->atoms[WM_COLORMAP_WINDOWS])
-        {
-            // log("client \"%s\" (0x%lx) has received a WM_COLORMAP_WINDOWS notify", c->name, c->window);
-            // clientUpdateColormaps(c);
-            // if (c == clientGetFocus())
-            // {
-            //     clientInstallColormaps(c);
-            // }
-        }
         else if (ev->atom == display_info->atoms[NET_WM_USER_TIME])
         {
             log("client \"%s\" (0x%lx) has received a NET_WM_USER_TIME notify", c->name, c->window);
@@ -876,26 +816,6 @@ void WindowManager::OnPropertyNotify(XEvent e)
          {
             // clientUpdateIcon(c);
          }
-        else if (ev->atom == display_info->atoms[GTK_FRAME_EXTENTS])
-        {
-            // log("client \"%s\" (0x%lx) has received a GTK_FRAME_EXTENTS notify", c->name, c->window);
-            // if (clientGetGtkFrameExtents(c))
-            // {
-            //     clientUpdateMaximizeSize(c);
-            // }
-        }
-        else if (ev->atom == display_info->atoms[GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED])
-        {
-            log("client \"%s\" (0x%lx) has received a GTK_HIDE_TITLEBAR_WHEN_MAXIMIZED notify", c->name, c->window);
-            // if (clientGetGtkHideTitlebar(c))
-            // {
-            //     if (FLAG_TEST(c->flags, CLIENT_FLAG_MAXIMIZED))
-            //     {
-            //         clientUpdateMaximizeSize(c);
-            //         clientReconfigure(c, CFG_FORCE_REDRAW);
-            //     }
-            // }
-        }
         return;
     }
 
@@ -1045,8 +965,7 @@ void WindowManager::Run()
             OnConfigureNotify(e.xconfigure);
             break;
         case MapRequest:
-//            XMapWindow(display_, e.xmaprequest.window);
-                OnMapRequest(e.xmaprequest);
+            OnMapRequest(e.xmaprequest);
             break;
         case ConfigureRequest:
             OnConfigureRequest(e.xconfigurerequest);
@@ -1114,8 +1033,6 @@ void WindowManager::ProcessClientMessage(XEvent e)
     c = myDisplayGetClientFromWindow (display_info, ev->window, SEARCH_WINDOW);
     if (c)
     {
-        screen_info = c->screen_info;
-
         if ((ev->message_type == display_info->atoms[WM_CHANGE_STATE]) && (ev->format == 32) && (ev->data.l[0] == IconicState))
         {
             log("client \"%s\" (0x%lx) has received a WM_CHANGE_STATE event", c->name, c->window);
@@ -1136,6 +1053,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
         }
         else if ((ev->message_type == display_info->atoms[NET_WM_STATE]) && (ev->format == 32))
         {
+            //TODO operation in decoration
             log("client \"%s\" (0x%lx) has received a NET_WM_STATE event", c->name, c->window);
             int wm_action = clientUpdateNetState (c, ev);
             jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
@@ -1145,6 +1063,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
         else if ((ev->message_type == display_info->atoms[NET_WM_MOVERESIZE]) && (ev->format == 32))
         {
             log("client \"%s\" (0x%lx) has received a NET_WM_MOVERESIZE event", c->name, c->window);
+            //TODO operation in decoration
             clientNetMoveResize (c, ev);
         }
         else if ((ev->message_type == display_info->atoms[NET_MOVERESIZE_WINDOW]) && (ev->format == 32))
@@ -1183,42 +1102,6 @@ void WindowManager::ProcessClientMessage(XEvent e)
             return;
         }
 
-        if ((ev->message_type == display_info->atoms[NET_CURRENT_DESKTOP]) && (ev->format == 32))
-        {
-            log("root has received a win_workspace or a NET_CURRENT_DESKTOP event %li", ev->data.l[0]);
-            if ((ev->data.l[0] >= 0) && (ev->data.l[0] < (long) screen_info->workspace_count) &&
-                (ev->data.l[0] != (long) screen_info->current_ws))
-            {
-                // workspaceSwitch (screen_info, ev->data.l[0], NULL, TRUE,
-                                //  myDisplayGetTime (display_info, (guint32) ev->data.l[1]));
-            }
-        }
-        else if ((ev->message_type == display_info->atoms[NET_NUMBER_OF_DESKTOPS]) && (ev->format == 32))
-        {
-            log("root has received a win_workspace_count event");
-            if (ev->data.l[0] != (long) screen_info->workspace_count)
-            {
-                // workspaceSetCount (screen_info, ev->data.l[0]);
-                // getDesktopLayout(display_info, screen_info->xroot, screen_info->workspace_count, &screen_info->desktop_layout);
-            }
-        }
-        else if ((ev->message_type == display_info->atoms[NET_SHOWING_DESKTOP]) && (ev->format == 32))
-        {
-            log("root has received a NET_SHOWING_DESKTOP event");
-            screen_info->show_desktop = (ev->data.l[0] != 0);
-            // clientToggleShowDesktop (screen_info);
-            // setHint (display_info, screen_info->xroot, NET_SHOWING_DESKTOP, ev->data.l[0]);
-        }
-        else if (ev->message_type == display_info->atoms[NET_REQUEST_FRAME_EXTENTS])
-        {
-            log("window (0x%lx) has received a NET_REQUEST_FRAME_EXTENTS event", ev->window);
-            /* Size estimate from the decoration extents */
-            // setNetFrameExtents (display_info, ev->window,
-            //                     frameDecorationTop (screen_info),
-            //                     frameDecorationLeft (screen_info),
-            //                     frameDecorationRight (screen_info),
-            //                     frameDecorationBottom (screen_info));
-        }
         else if ((ev->message_type == display_info->atoms[MANAGER]) && (ev->format == 32))
         {
             Atom selection;
@@ -1239,15 +1122,6 @@ void WindowManager::ProcessClientMessage(XEvent e)
                 log("root has received a NET_WM_PING (pong) event\n");
                 clientReceiveNetWMPong (screen_info, (guint32) ev->data.l[1]);
             }
-        }
-        else if (ev->message_type == display_info->atoms[GTK_READ_RCFILES])
-        {
-            log("window (0x%lx) has received a GTK_READ_RCFILES event", ev->window);
-            // set_reload (display_info);
-        }
-        else
-        {
-            log("unidentified client message for window 0x%lx", ev->window);
         }
     }
 }
@@ -1460,15 +1334,6 @@ int WindowManager::setMaximizedState(Window window, Bool maximized)
             (unsigned char *)actions_normal,
             9);
     }
-    //    XSizeHints hints;
-    //    hints.flags = PPosition | PWinGravity;  // 设置位置和重力
-    //    hints.x = 0;      // x 坐标
-    //    hints.y = 0;      // y 坐标
-    //    hints.win_gravity = StaticGravity;  // 重力方式（Static=1）
-    //
-    //    // 设置 WM_NORMAL_HINTS
-    //    XSetWMNormalHints(display_, window, &hints);
-
     XSync(display_, False);
     return true;
 }
@@ -1767,7 +1632,7 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h)
     c = myDisplayGetClientFromWindow (display_info, window, SEARCH_FRAME);
     if (c)
     {
-        log ("configureWindow \"%s\" (0x%lx)", c->name, c->window);
+        log ("configureWindow \"%s\" (0x%lx) (%d, %d) %dx%d", c->name, c->window, x, y, w, h);
         if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))
         {
             log ("Sorry, but it's not the right time for configure request");
@@ -1821,52 +1686,12 @@ int WindowManager::mapWindow(long window)
 int WindowManager::closeWindow(long frame)
 {
     Client *c;
-    Atom *supported = nullptr;
-    Window window;
-    int num_supported = 0;
     c = myDisplayGetClientFromWindow (display_info, frame, SEARCH_FRAME);
-
     if(!c){
         log ("can't find frame to close window");
         return FALSE;
     }
     clientClose(c);
-    // window = c->window;
-
-    // if (!XGetWMProtocols(display_, window, &supported, &num_supported))
-    // {
-    //     log("closeWindow failed to get protocols for window:%x", window);
-    //     return -1; // 返回错误
-    // }
-
-    // log("closeWindow window:%x num_supported:%d", window, num_supported);
-    // for (int i = 0; i < num_supported; ++i)
-    // {
-    //     log("  Supported protocol: %s", XGetAtomName(display_, supported[i]));
-    // }
-
-    // int ret = -1;
-    // if (num_supported > 0 && supported[0] == XInternAtom(display_, "WM_DELETE_WINDOW", False))
-    // {
-    //     log("closeWindow supported WM_DELETE_WINDOW");
-    //     XEvent msg;
-    //     memset(&msg, 0, sizeof(msg));
-    //     msg.xclient.type = ClientMessage;
-    //     msg.xclient.message_type = XInternAtom(display_, "WM_PROTOCOLS", False);
-    //     msg.xclient.window = window;
-    //     msg.xclient.format = 32;
-    //     msg.xclient.data.l[0] = XInternAtom(display_, "WM_DELETE_WINDOW", False);
-    //     msg.xclient.data.l[1] = CurrentTime;
-    //     ret = XSendEvent(display_, window, false, 0, &msg);
-    // }
-    // else
-    // {
-    //     log("closeWindow not supported, killing client");
-    //     ret = XKillClient(display_, window);
-    // }
-
-    // XSync(display_, False);
-    // XFree(supported); // 释放支持的协议列表
     return True;
 }
 
@@ -1877,7 +1702,6 @@ int WindowManager::raiseWindow(long window)
     ret =  XRaiseWindow(display_, window);
     Client *c;
     c = myDisplayGetClientFromWindow(display_info, window, SEARCH_FRAME);
-//    XSetInputFocus(display_, window, RevertToPointerRoot, CurrentTime);
     if(c){
         log("raiseWindow %x", c->window);
         XRaiseWindow(display_, c->window);

@@ -726,11 +726,11 @@ clientConfigure (Client *c, XWindowChanges * wc, unsigned long mask, unsigned sh
     }
     if (mask & CWWidth)
     {
-        c->width = clientCheckWidth (c, wc->width, flags & CFG_REQUEST);
+        c->width = wc->width; //clientCheckWidth (c, wc->width, flags & CFG_REQUEST);
     }
     if (mask & CWHeight)
     {
-        c->height = clientCheckHeight (c, wc->height, flags & CFG_REQUEST);
+        c->height = wc->height; // clientCheckHeight (c, wc->height, flags & CFG_REQUEST);
     }
     if (mask & CWBorderWidth)
     {

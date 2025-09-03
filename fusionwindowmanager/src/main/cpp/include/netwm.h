@@ -7,6 +7,10 @@
 #include "screen.h"
 #include "client.h"
 
+#ifndef Button7
+#define Button7 7
+#endif
+
 #define NET_WINDOW_ACTION_UNDEFINED 0
 #define NET_WINDOW_ACTION_MAXIMIZED 1000
 #define NET_WINDOW_ACTION_MAXIMIZED_REMOVE 1001

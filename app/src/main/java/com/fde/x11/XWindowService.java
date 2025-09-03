@@ -82,7 +82,7 @@ public class XWindowService extends Service {
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
     private static final int DESTROY_ACTIVITY_RETRY = 1;
-    private static final int DESTROY_ACTIVITY_DELAY = 300;
+    private static final int DESTROY_ACTIVITY_DELAY = 1000;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
     private final HashSet<Long> startingWindow = new HashSet<>();
@@ -362,19 +362,21 @@ public class XWindowService extends Service {
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
-        if(retry == 0){
-            return;
-        }
+//        if(retry == 0){
+//            return;
+//        }
         runningMainWindow.remove(attr.getXID());
-        FLog.s(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
-        String targetPackage = getPackageName();
-        Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
-        intent.setPackage(targetPackage);
-        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
-        sendBroadcast(intent);
-        handler.postDelayed(()->{
-            destroyActivitySafety(retry - 1, attr);
-        }, DESTROY_ACTIVITY_DELAY);
+        handler.postDelayed(() -> {
+            FLog.s(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
+            String targetPackage = getPackageName();
+            Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
+            intent.setPackage(targetPackage);
+            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+            sendBroadcast(intent);
+        },DESTROY_ACTIVITY_DELAY);
+//        handler.postDelayed(()->{
+//            destroyActivitySafety(retry - 1, attr);
+//        }, DESTROY_ACTIVITY_DELAY);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {

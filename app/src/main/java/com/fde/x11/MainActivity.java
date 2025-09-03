@@ -42,12 +42,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.content.pm.ActivityInfo;
 import android.content.pm.ConfigurationInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -60,7 +58,6 @@ import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.preference.PreferenceManager;
-import android.provider.DocumentsContract;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -72,7 +69,6 @@ import android.view.LayoutInflater;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -104,7 +100,6 @@ import com.fde.x11.input.TouchInputHandler.RenderStub;
 import com.fde.x11.input.TouchInputHandler;
 import com.fde.x11.utils.AppUtils;
 import com.fde.x11.utils.FLog;
-import com.fde.x11.utils.SamsungDexUtils;
 import com.fde.x11.utils.TermuxX11ExtraKeys;
 import com.fde.x11.utils.ThreadPoolManager;
 import com.fde.x11.utils.Util;
@@ -113,17 +108,11 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.io.FileNotFoundException;
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -199,6 +188,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private XserviceInterfaceWrapper mXserviceWrapper;
     protected boolean captionShowing;
     private boolean needSurface;
+
+    public static final String NAME_MATE_TERMINAL = "mate-terminal";
+    public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
 
     protected long getWindowId() {
         return WindowCode;
@@ -832,31 +824,44 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         decorView.getLocationOnScreen(location);
         Rect decorRect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
         updateAttribueOnly(rect);
-        if (mXserviceWrapper != null) {
-            mXserviceWrapper.configureWindow(
-                    mAttribute.getWindowPtr(),
-                    mAttribute.getXID(),
-                    (int) mAttribute.getOffsetX(),
-                    (int) mAttribute.getOffsetY(),
-                    rect.width(),
-                    rect.height()
-            );
-            mXserviceWrapper.raiseWindow(mAttribute.getXID());
-            InputManager.getInstance().setFocusView(getLorieView());
-            if (needSurface) {
-                serviceWindowChange(
-                        sfc,
-                        mAttribute.getOffsetX(),
-                        mAttribute.getOffsetY(),
-                        mAttribute.getWidth(),
-                        mAttribute.getHeight(),
-                        mAttribute.getIndex(),
-                        mAttribute.getWindowPtr(),
-                        mAttribute.getXID()
-                );
-                needSurface = false;
-            }
+        int delayMS = 0;
+        postWindowChanged(rect, sfc ,0);
+        if(!TextUtils.isEmpty(title) && title.contains(NAME_MATE_TERMINAL)){
+            delayMS = CONFIGURE_WINDOW_DELAY_MS;
         }
+        if(delayMS > 0){
+            postWindowChanged(rect, sfc ,delayMS);
+        }
+    }
+
+    private void postWindowChanged(Rect rect, Surface sfc, int delayMS) {
+        handler.postDelayed(() -> {
+            if (mXserviceWrapper != null) {
+                mXserviceWrapper.configureWindow(
+                        mAttribute.getWindowPtr(),
+                        mAttribute.getXID(),
+                        (int) mAttribute.getOffsetX(),
+                        (int) mAttribute.getOffsetY(),
+                        rect.width(),
+                        rect.height()
+                );
+                mXserviceWrapper.raiseWindow(mAttribute.getXID());
+                InputManager.getInstance().setFocusView(getLorieView());
+                if (needSurface) {
+                    serviceWindowChange(
+                            sfc,
+                            mAttribute.getOffsetX(),
+                            mAttribute.getOffsetY(),
+                            mAttribute.getWidth(),
+                            mAttribute.getHeight(),
+                            mAttribute.getIndex(),
+                            mAttribute.getWindowPtr(),
+                            mAttribute.getXID()
+                    );
+                    needSurface = false;
+                }
+            }
+        }, delayMS);
     }
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
@@ -1251,6 +1256,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 Log.v(TAG, "preference: " + intent.getStringExtra("key"));
             } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                FLog.a("event", "DESTROY_ACTIVITY_FROM_X: attr = [" + attr + "], mAttribute = [" + mAttribute + "]");
                 if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID() && mAttribute.getIndex() == attr.getIndex()){
                     FLog.a("event", getWindowId(), "onReceive: "  + "DESTROY_ACTIVITY_FROM_X"  + " attr:" + attr  + " mAttribute:" + mAttribute);
                     killSelf = true;
