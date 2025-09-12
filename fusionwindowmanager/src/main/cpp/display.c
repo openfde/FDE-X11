@@ -168,6 +168,8 @@ myDisplayInit(Display *dpy)
     {
         logd ("Some internal atoms were not properly created.");
     }
+    display->devices = xfwm_devices_new ();
+
 
     for (int j = 0; j < ATOM_COUNT; j++)
     {
@@ -274,6 +276,31 @@ myDisplayUngrabServer (DisplayInfo *display)
         XUngrabServer (display->dpy);
         XFlush (display->dpy);
     }
+}
+
+Cursor
+myDisplayGetCursorMove  (DisplayInfo *display)
+{
+    g_return_val_if_fail (display, None);
+
+    return display->move_cursor;
+}
+
+XfwmDevices *
+xfwm_devices_new ()
+{
+    XfwmDevices *devices;
+
+    devices = g_new0 (XfwmDevices, 1);
+    devices->xi2_available = FALSE;
+    devices->xi2_opcode = 0;
+
+    devices->pointer.keyboard = FALSE;
+    devices->pointer.xi2_device = None;
+
+    devices->keyboard.keyboard = TRUE;
+    devices->keyboard.xi2_device = None;
+    return devices;
 }
 
 

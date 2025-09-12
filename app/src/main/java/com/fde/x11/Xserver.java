@@ -30,6 +30,7 @@ import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
 import com.fde.x11.data.Constants;
 import com.fde.x11.input.InputManager;
+import com.fde.x11.utils.AppUtils;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
 
@@ -55,7 +56,7 @@ public class Xserver {
 //     private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
 
     // listen unix or tcp socket, only for local X client
-    private static final String[] ARGS_DEFAULT = { ":" + DISPLAY_GLOBAL};
+    private String[] ARGS_DEFAULT;
 
     private  static final int _NET_WM_WINDOW_TYPE = 267;
     private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -77,6 +78,10 @@ public class Xserver {
     private static WeakReference<Service> context;
 
     public void startXserver() {
+        String height = AppUtils.getProperty("openfde.display_height", "1080");
+        String width = AppUtils.getProperty("openfde.display_width", "1920");
+        ARGS_DEFAULT = new String[]{":" + DISPLAY_GLOBAL, "-width",width,
+            "-height", height };
         if (!start(ARGS_DEFAULT, FLog.LogXserverNativeEnable)) {
             FLog.s(TAG, "startXserver: failed", FLog.ERROR);
         }

@@ -20,7 +20,7 @@
 
 #include "screen.h"
 #include "hints.h"
-
+#include "display.h"
 
 
 #define APPLY                           +1

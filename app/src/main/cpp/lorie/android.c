@@ -446,8 +446,8 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
     unsigned char *propData;
     prop->window = pWin->drawable.id;
     bool overrideRedirect = pWin->overrideRedirect;
-    log(ERROR, "prop start================================>");
-    log(ERROR, "prop window:%x realized:%d", pWin->drawable.id, pWin->realized);
+    // log(ERROR, "prop start================================>");
+    // log(ERROR, "prop window:%x realized:%d", pWin->drawable.id, pWin->realized);
 //    log(ERROR, "prop window:%x overrideRedirect:%d", pWin->drawable.id, overrideRedirect);
     while (pProper) {
         ATOM name = pProper->propertyName;
@@ -457,7 +457,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
                 char* type = NameForAtom(atoms[i]);
-                log(ERROR, "prop window:%x type:%s", pWin->drawable.id, type);
+                // log(ERROR, "prop window:%x type:%s", pWin->drawable.id, type);
                 if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
                     prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
                     if(!overrideRedirect){
@@ -504,18 +504,18 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
         }
         else if (STRING_EQUAL(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
             prop->transient = ((Window *) propData)[0];
-            log(ERROR, "prop window:%x transient:%x", pWin->drawable.id, prop->transient);
+            // log(ERROR, "prop window:%x transient:%x", pWin->drawable.id, prop->transient);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLIENT_LEADER)) {
             prop->leader = ((Window *) propData)[0];
-            log(ERROR, "prop window:%x leader:%x", pWin->drawable.id, prop->leader);
+            // log(ERROR, "prop window:%x leader:%x", pWin->drawable.id, prop->leader);
         } else if (STRING_EQUAL(NameForAtom(name), NET_WINDOW_NAME)) {
             STRCPY;
             prop->net_wm_name = atom_value;
-            log(ERROR, "prop window:%x net_wm_name:%s", pWin->drawable.id, prop->net_wm_name);
+            // log(ERROR, "prop window:%x net_wm_name:%s", pWin->drawable.id, prop->net_wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)){
             STRCPY;
             prop->wm_class = atom_value;
-             log(ERROR, "prop window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
+            //  log(ERROR, "prop window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             STRCPY;
             prop->wm_name = atom_value;
@@ -532,7 +532,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
                 if(STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_DELETE_WINDOW)){
                     prop->support_wm_delete = TRUE;
                 }
-                log(ERROR, "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
+                // log(ERROR, "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
             }
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_X11_PID)){
             unsigned long pid = *((unsigned long *) propData);
@@ -546,7 +546,7 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
 //    if(prop->window_type == 0){
 //        prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
 //    }
-    log(ERROR, "prop end================================>");
+    // log(ERROR, "prop end================================>");
 }
 
 bool check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
@@ -822,7 +822,6 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
     JNIEnv *JavaEnv = env;
     JavaCmdEntryPointClass = (*JavaEnv)->NewGlobalRef(JavaEnv, thiz);
     setenv("XKB_CONFIG_ROOT", "/data/data/com.fde.x11/files/xkb/", 1);
-
 
     argv[0] = (char *) "FDEX11";
     for (int i = 1; i < argc; i++) {

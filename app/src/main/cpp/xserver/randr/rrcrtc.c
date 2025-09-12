@@ -26,6 +26,12 @@
 #include "mipointer.h"
 
 #include <X11/Xatom.h>
+#include <android/log.h>
+
+#define PRINT_LOG 0
+#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_rrcrtc", __VA_ARGS__);}              \
+
+#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_rrcrtc", __VA_ARGS__);}              \
 
 RESTYPE RRCrtcType = 0;
 
@@ -81,12 +87,13 @@ RRCrtcCreate(ScreenPtr pScreen, void *devPrivate)
     crtc->x = 0;
     crtc->y = 0;
     crtc->rotation = RR_Rotate_0;
-    crtc->rotations = RR_Rotate_0;
+    crtc->rotations = RR_Rotate_0 | RR_Rotate_90 | RR_Rotate_180 | RR_Rotate_270;
     crtc->outputs = NULL;
     crtc->numOutputs = 0;
     crtc->gammaSize = 0;
     crtc->gammaRed = crtc->gammaBlue = crtc->gammaGreen = NULL;
     crtc->changed = FALSE;
+    crtc->transforms = TRUE;
     crtc->devPrivate = devPrivate;
     RRTransformInit(&crtc->client_pending_transform);
     RRTransformInit(&crtc->client_current_transform);
@@ -102,7 +109,7 @@ RRCrtcCreate(ScreenPtr pScreen, void *devPrivate)
     pScrPriv->crtcs[pScrPriv->numCrtcs++] = crtc;
 
     RRResourcesChanged(pScreen);
-
+    log("RRCrtcCreate id:%ld", crtc->id);
     return crtc;
 }
 
@@ -1085,37 +1092,73 @@ RRCrtcTransformSet(RRCrtcPtr crtc,
     PictFilterPtr filter = NULL;
     int width = 0, height = 0;
 
-    if (!crtc->transforms)
+    // 记录函数调用开始，打印CRTC ID和滤波器名称（如果有）
+    log("[RRCrtcTransformSet] 开始设置CRTC %d 的变换。滤波器: '%.*s'\n",
+           crtc->id, filter_len, filter_name ? filter_name : "(null)");
+
+    if (!crtc->transforms) {
+        log("[RRCrtcTransformSet] 错误：CRTC %d 不支持变换操作。\n", crtc->id);
         return BadValue;
+    }
 
     if (filter_len) {
+        // 查找请求的滤波器
+        log("[RRCrtcTransformSet] 正在查找滤波器 '%.*s'...\n", filter_len, filter_name);
         filter = PictureFindFilter(crtc->pScreen, filter_name, filter_len);
-        if (!filter)
+
+        if (!filter) {
+            log("[RRCrtcTransformSet] 错误：未找到滤波器 '%.*s'。\n", filter_len, filter_name);
             return BadName;
+        }
+        log("[RRCrtcTransformSet] 找到滤波器 '%s' (ID: %d)。\n", filter->name, filter->id);
+
         if (filter->ValidateParams) {
+            // 验证滤波器参数
+            log("[RRCrtcTransformSet] 验证滤波器参数，数量: %d...\n", nparams);
             if (!filter->ValidateParams(crtc->pScreen, filter->id,
-                                        params, nparams, &width, &height))
+                                        params, nparams, &width, &height)) {
+                log("[RRCrtcTransformSet] 错误：滤波器参数验证失败。\n");
                 return BadMatch;
+            }
+            log("[RRCrtcTransformSet] 参数验证成功，计算尺寸: %dx%d\n", width, height);
         }
         else {
+            // 使用滤波器的默认尺寸
             width = filter->width;
             height = filter->height;
+            log("[RRCrtcTransformSet] 使用滤波器默认尺寸: %dx%d\n", width, height);
         }
     }
     else {
-        if (nparams)
+        // 没有指定滤波器但提供了参数，这是错误
+        if (nparams) {
+            log("[RRCrtcTransformSet] 错误：未指定滤波器但提供了 %d 个参数。\n", nparams);
             return BadMatch;
+        }
+        log("[RRCrtcTransformSet] 未使用滤波器。\n");
     }
-    if (!RRTransformSetFilter(&crtc->client_pending_transform,
-                              filter, params, nparams, width, height))
-        return BadAlloc;
 
+    // 设置变换滤波器
+    log("[RRCrtcTransformSet] 正在设置变换滤波器...\n");
+    if (!RRTransformSetFilter(&crtc->client_pending_transform,
+                              filter, params, nparams, width, height)) {
+        log("[RRCrtcTransformSet] 错误：内存分配失败（RRTransformSetFilter）。\n");
+        return BadAlloc;
+    }
+
+    log("[TransformDebug] 变换矩阵:\n");
+    log("[TransformDebug]   %f %f %f\n", f_transform->m[0][0], f_transform->m[0][1], f_transform->m[0][2]);
+    log("[TransformDebug]   %f %f %f\n", f_transform->m[1][0], f_transform->m[1][1], f_transform->m[1][2]);
+    log("[TransformDebug]   %f %f %f\n", f_transform->m[2][0], f_transform->m[2][1], f_transform->m[2][2]);
+
+    // 保存变换矩阵
     crtc->client_pending_transform.transform = *transform;
     crtc->client_pending_transform.f_transform = *f_transform;
     crtc->client_pending_transform.f_inverse = *f_inverse;
+
+    log("[RRCrtcTransformSet] CRTC %d 的变换设置成功完成。\n", crtc->id);
     return Success;
 }
-
 /*
  * Initialize crtc type
  */

@@ -32,6 +32,7 @@ import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
@@ -43,9 +44,11 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Base64;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.TranslateAnimation;
@@ -78,6 +81,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import okhttp3.Call;
+import razerdp.basepopup.BasePopupFlag;
 import razerdp.basepopup.BasePopupWindow;
 import razerdp.util.animation.AnimationHelper;
 import razerdp.util.animation.ScaleConfig;
@@ -111,6 +115,7 @@ public class AppListActivity extends AppCompatActivity {
 
     private final Handler handler = new Handler();
     private FilterRunnable runnable;
+    private Rect mRect = new Rect();
 
     public interface ItemClickListener {
         void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event);
@@ -164,6 +169,9 @@ public class AppListActivity extends AppCompatActivity {
             fromShortcut = !TextUtils.isEmpty(shortcuPath) && !TextUtils.isEmpty(shortcutApp);
             shortcutAppBean = new AppListResult.DataBeanX.DataBean(shortcutApp, shortcuPath);
         }
+        getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            getWindow().getDecorView().getWindowVisibleDisplayFrame(mRect);
+        });
     }
 
     static class FilterRunnable implements Runnable{
@@ -302,7 +310,9 @@ public class AppListActivity extends AppCompatActivity {
             int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
             globalWidth = right - left;
             globalHeight = bottom - top;
+            mRect = new Rect(left, top, right, bottom);
         }
+        Log.d(TAG, "checkConfig: mrect:" + mRect);
         mayGetApps();
     }
 
@@ -430,9 +440,11 @@ public class AppListActivity extends AppCompatActivity {
                 fromX = withAnchor ? -1f : 1f;
                 break;
         }
-
-        fromY = globalHeight - event.getY() > DimenUtils.dpToPx(250.0f)? -1 : 1;
-        gravity = globalHeight - event.getY() > DimenUtils.dpToPx(250.0f)? Gravity.BOTTOM : Gravity.TOP;
+        float offset = 950 - event.getY() - mRect.top;
+        boolean bottom = (offset > 500) && (globalHeight - event.getY() > DimenUtils.dpToPx(210.0f));
+        Log.d(TAG, "showOptionView: offset:" + offset);
+        fromY = bottom? -1.0f : 1.0f;
+        gravity = bottom? Gravity.BOTTOM : Gravity.TOP;
         if (fromX != 0 || fromY != 0) {
             showAnimation = createTranslateAnimation(fromX, toX, fromY, toY);
             dismissAnimation = createTranslateAnimation(toX, fromX, toY, fromY);
@@ -441,6 +453,8 @@ public class AppListActivity extends AppCompatActivity {
         popupWindow.setBackground(null);
         popupWindow.setPopupGravityMode(horizontalGravityMode, verticalGravityMode);
         popupWindow.setPopupGravity(gravity);
+//        popupWindow.setOverlayStatusbar(true);
+        popupWindow.setOverlayNavigationBarMode(BasePopupFlag.OVERLAY_MASK | BasePopupFlag.OVERLAY_CONTENT);
         popupWindow.setShowAnimation(showAnimation);
         popupWindow.setDismissAnimation(dismissAnimation);
         if (withAnchor) {

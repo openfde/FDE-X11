@@ -36,7 +36,7 @@
 // #include <common/xfwm-common.h>
 
 #include "client.h"
-// #include "moveresize.h"
+ #include "moveresize.h"
 // #include "compositor.h"
 #include "display.h"
 // #include "frame.h"
@@ -50,6 +50,7 @@
 // #include "transients.h"
 // #include "workspaces.h"
 #include "native_log.h"
+#include "device.h"
 
 
 Client *
@@ -612,7 +613,7 @@ clientNetMoveResize (Client * c, XClientMessageEvent * ev)
      int corner;
      gboolean resize; /* true == resize, false == move */
      XEvent *xevent;
-//     XfwmEvent *event;
+     XfwmEvent *event;
 
      g_return_if_fail (c != NULL);
      logd ("client \"%s\" (0x%lx)", c->name, c->window);
@@ -642,89 +643,90 @@ clientNetMoveResize (Client * c, XClientMessageEvent * ev)
 
      logd(" button:%d x_root:%d y_root:%d time:%ld action:%d",
           button, x_root, y_root, xevent->xkey.time, action );
-//     switch (action)
-//     {
-//         /* Keyboard */
-//         case NET_WM_MOVERESIZE_SIZE_KEYBOARD:
-//             xevent->type = KeyPress;
-//             corner = CORNER_BOTTOM_RIGHT;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_MOVE_KEYBOARD:
-//             xevent->type = KeyPress;
-//             resize = FALSE; /* Move */
-//             break;
-//
-//         /* Sides */
-//         case NET_WM_MOVERESIZE_SIZE_TOP:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_COUNT + SIDE_TOP;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_SIZE_BOTTOM:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_COUNT + SIDE_BOTTOM;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_SIZE_RIGHT:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_COUNT + SIDE_RIGHT;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_SIZE_LEFT:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_COUNT + SIDE_LEFT;
-//             resize = TRUE; /* Resize */
-//             break;
-//
-//         /* Corners */
-//         case NET_WM_MOVERESIZE_SIZE_TOPLEFT:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_TOP_LEFT;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_SIZE_TOPRIGHT:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_TOP_RIGHT;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_BOTTOM_LEFT;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT:
-//             xevent->type = ButtonPress;
-//             corner = CORNER_BOTTOM_RIGHT;
-//             resize = TRUE; /* Resize */
-//             break;
-//         case NET_WM_MOVERESIZE_MOVE:
-//             xevent->type = ButtonPress;
-//             resize = FALSE; /* Move */
-//             break;
-//         case NET_WM_MOVERESIZE_CANCEL:
-//             FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING);
+     switch (action)
+     {
+         /* Keyboard */
+         case NET_WM_MOVERESIZE_SIZE_KEYBOARD:
+             xevent->type = KeyPress;
+             corner = CORNER_BOTTOM_RIGHT;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_MOVE_KEYBOARD:
+             xevent->type = KeyPress;
+             resize = FALSE; /* Move */
+             break;
+
+         /* Sides */
+         case NET_WM_MOVERESIZE_SIZE_TOP:
+             xevent->type = ButtonPress;
+             corner = CORNER_COUNT + SIDE_TOP;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_SIZE_BOTTOM:
+             xevent->type = ButtonPress;
+             corner = CORNER_COUNT + SIDE_BOTTOM;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_SIZE_RIGHT:
+             xevent->type = ButtonPress;
+             corner = CORNER_COUNT + SIDE_RIGHT;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_SIZE_LEFT:
+             xevent->type = ButtonPress;
+             corner = CORNER_COUNT + SIDE_LEFT;
+             resize = TRUE; /* Resize */
+             break;
+
+         /* Corners */
+         case NET_WM_MOVERESIZE_SIZE_TOPLEFT:
+             xevent->type = ButtonPress;
+             corner = CORNER_TOP_LEFT;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_SIZE_TOPRIGHT:
+             xevent->type = ButtonPress;
+             corner = CORNER_TOP_RIGHT;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_SIZE_BOTTOMLEFT:
+             xevent->type = ButtonPress;
+             corner = CORNER_BOTTOM_LEFT;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_SIZE_BOTTOMRIGHT:
+             xevent->type = ButtonPress;
+             corner = CORNER_BOTTOM_RIGHT;
+             resize = TRUE; /* Resize */
+             break;
+         case NET_WM_MOVERESIZE_MOVE:
+             xevent->type = ButtonPress;
+             resize = FALSE; /* Move */
+             break;
+         case NET_WM_MOVERESIZE_CANCEL:
+             FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING);
 //             FALLTHROUGH;
-//         default: /* Do nothing */
-//             return;
-//             break;
-//     }
-//
-//     if (!FLAG_TEST (c->flags, CLIENT_FLAG_FULLSCREEN))
-//     {
-//         if (resize && FLAG_TEST_ALL (c->xfwm_flags, XFWM_FLAG_HAS_RESIZE | XFWM_FLAG_IS_RESIZABLE))
-//         {
-//             event = xfwm_device_translate_event (display_info->devices, xevent, NULL);
-//             clientResize (c, corner, event->meta.type == XFWM_EVENT_BUTTON ? &event->button : NULL);
-//             xfwm_device_free_event (event);
-//         }
-//         else if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_HAS_MOVE))
-//         {
-//             event = xfwm_device_translate_event (display_info->devices, xevent, NULL);
-//             clientMove (c, event->meta.type == XFWM_EVENT_BUTTON ? &event->button : NULL);
-//             xfwm_device_free_event (event);
-//         }
-//     }
+             break;
+         default: /* Do nothing */
+             return;
+             break;
+     }
+
+     if (!FLAG_TEST (c->flags, CLIENT_FLAG_FULLSCREEN))
+     {
+         if (resize && FLAG_TEST_ALL (c->xfwm_flags, XFWM_FLAG_HAS_RESIZE | XFWM_FLAG_IS_RESIZABLE))
+         {
+             event = xfwm_device_translate_event (display_info->devices, xevent, NULL);
+             clientResize (c, corner, event->meta.type == XFWM_EVENT_BUTTON ? &event->button : NULL);
+             xfwm_device_free_event (event);
+         }
+         else if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_HAS_MOVE))
+         {
+             event = xfwm_device_translate_event (display_info->devices, xevent, NULL);
+             clientMove (c, event->meta.type == XFWM_EVENT_BUTTON ? &event->button : NULL);
+             xfwm_device_free_event (event);
+         }
+     }
 }
 
 void

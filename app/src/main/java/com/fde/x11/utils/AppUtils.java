@@ -63,15 +63,16 @@ public class AppUtils {
     private static AlertDialog alertDialog;
     private static final String CLASS_NAME = "android.os.SystemProperties";
 
+    public static float GLOBAL_DENSITY = 1.0f;
     public static int GLOBAL_SCREEN_WIDTH = 1920;
     public static int GLOBAL_SCREEN_HEIGHT = 1080;
-    public static final int DECOR_CAPTION_HEIGHT = 44;
-    public static final int STATUSBAR_HEIGHT_U = 25; //android 14
-    public static final int STATUSBAR_HEIGHT_R = 0; //android 14
+    public static int DECOR_CAPTION_HEIGHT = 44;
+    public static int STATUSBAR_HEIGHT_U = 25; //android 14
+    public static int STATUSBAR_HEIGHT_R = 0; //android 11
 
-    public static final int NAVIGATION_BAR_HEIGHT_U = 68;
-    public static final int NAVIGATION_BAR_HEIGHT = 48;
-    public static final int CONTENT_HEIGHT = GLOBAL_SCREEN_HEIGHT - NAVIGATION_BAR_HEIGHT - DECOR_CAPTION_HEIGHT -1;
+    public static int NAVIGATION_BAR_HEIGHT_U = 68;
+    public static int NAVIGATION_BAR_HEIGHT = 48;
+    public static int CONTENT_HEIGHT = GLOBAL_SCREEN_HEIGHT - NAVIGATION_BAR_HEIGHT - DECOR_CAPTION_HEIGHT -1;
 
     private static Context mContext;
     private static Thread mUiThread;
@@ -79,17 +80,41 @@ public class AppUtils {
     private static Handler sHandler = new Handler(Looper.getMainLooper());
 
     public static void init(Context context)
-    { //在Application中初始化
+    {
         mContext = context;
         mUiThread = Thread.currentThread();
+        updateSystemAttr(GLOBAL_SCREEN_WIDTH, GLOBAL_SCREEN_HEIGHT);
     }
+
+    public static void updateSystemAttr(int screenWidth, int screenHeight) {
+        GLOBAL_SCREEN_WIDTH = screenWidth;
+        GLOBAL_SCREEN_HEIGHT = screenHeight;
+        GLOBAL_DENSITY = mContext.getResources().getDisplayMetrics().density;
+        DECOR_CAPTION_HEIGHT = (int)((float)44 * GLOBAL_DENSITY + 0.5f);
+        STATUSBAR_HEIGHT_U = (int)((float)25 * GLOBAL_DENSITY + 0.5f); //android 14
+        STATUSBAR_HEIGHT_R = 0; //android 11
+        NAVIGATION_BAR_HEIGHT_U = (int)((float)68 * GLOBAL_DENSITY + 0.5f);
+        NAVIGATION_BAR_HEIGHT = (int)((float)48 * GLOBAL_DENSITY + 0.5f);
+        CONTENT_HEIGHT = GLOBAL_SCREEN_HEIGHT - NAVIGATION_BAR_HEIGHT - DECOR_CAPTION_HEIGHT -1;
+        // Log.d(TAG, "updateSystemAttr() called GLOBAL_SCREEN_WIDTH:" + GLOBAL_SCREEN_WIDTH
+        //         + "\n GLOBAL_SCREEN_HEIGHT:" + GLOBAL_SCREEN_HEIGHT
+        //         + "\n GLOBAL_DENSITY:" + GLOBAL_DENSITY
+        //         + "\n DECOR_CAPTION_HEIGHT:" + DECOR_CAPTION_HEIGHT
+        //         + "\n STATUSBAR_HEIGHT_U:" + STATUSBAR_HEIGHT_U
+        //         + "\n STATUSBAR_HEIGHT_R:" + STATUSBAR_HEIGHT_R
+        //         + "\n NAVIGATION_BAR_HEIGHT_U:" + NAVIGATION_BAR_HEIGHT_U
+        //         + "\n NAVIGATION_BAR_HEIGHT:" + NAVIGATION_BAR_HEIGHT
+        //         + "\n CONTENT_HEIGHT:" + CONTENT_HEIGHT
+        // );
+    }
+
 
     public static void set(String key, String defaultValue) {
         try {
             final Class<?> systemProperties = Class.forName("android.os.SystemProperties");
             final Method set = systemProperties.getMethod("set", String.class, String.class);
             set.invoke(null, key, defaultValue);
-            Log.d(TAG,"set " + key + " " + defaultValue);
+            // Log.d(TAG,"set " + key + " " + defaultValue);
         } catch (Exception e) {
             Log.e(TAG, "Exception while setting system property: ", e);
         }
@@ -112,6 +137,7 @@ public class AppUtils {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
+            // Log.d(TAG, "getProperty() called with: key = [" + key + "], value = [" + value + "]");
             return value;
         }
     }

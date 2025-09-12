@@ -8,7 +8,7 @@
 #include <X11/cursorfont.h>
 #include <X11/extensions/shape.h>
 #include <X11/extensions/render.h>
-
+#include "device.h"
 #include "glib.h"
 // #include <X11/extensions/Xrandr.h>
 // #include <X11/extensions/sync.h>
@@ -279,7 +279,7 @@ struct _DisplayInfo
     Atom atoms[ATOM_COUNT];
 
     // eventFilterSetup *xfilter;
-    // XfwmDevices *devices;
+     XfwmDevices *devices;
     GSList *screens;
     GSList *clients;
 
@@ -318,6 +318,7 @@ struct _DisplayInfo
     gint present_opcode;
     gint present_error_base;
     gint present_event_base;
+
 };
 
 DisplayInfo             *myDisplayInit                          (Display *dpy);
@@ -344,4 +345,5 @@ ScreenInfo              *myDisplayGetScreenFromWindow           (DisplayInfo *,
                                                                  Window w);
 void                     myDisplayRemoveClient                  (DisplayInfo *,
                                                                  Client *);
+Cursor                   myDisplayGetCursorMove                 (DisplayInfo *);                                                                 
 #endif /* INC_DISPLAY_H */

@@ -168,3 +168,105 @@ myScreenGetClientFromWindow (ScreenInfo *screen_info, Window w, unsigned short m
 
     return NULL;
 }
+
+gboolean
+myScreenGrabKeyboard (ScreenInfo *screen_info, guint event_mask, guint32 timestamp)
+{
+    gboolean grab;
+
+    g_return_val_if_fail (screen_info, FALSE);
+
+    logd("timestamp %u", (unsigned int) timestamp);
+
+    grab = TRUE;
+    if (screen_info->key_grabs == 0)
+    {
+        myDisplayErrorTrapPush (screen_info->display_info);
+        grab = xfwm_device_grab (screen_info->display_info->devices,
+                                 &screen_info->display_info->devices->keyboard,
+                                 myScreenGetXDisplay (screen_info), screen_info->xroot,
+                                 TRUE, event_mask, GrabModeAsync, screen_info->xroot,
+                                 None, (Time) timestamp);
+        myDisplayErrorTrapPopIgnored (screen_info->display_info);
+    }
+    screen_info->key_grabs++;
+    logd("global key grabs %i", screen_info->key_grabs);
+
+    return grab;
+}
+
+
+gboolean
+myScreenGrabPointer (ScreenInfo *screen_info, gboolean owner_events,
+                     guint event_mask, Cursor cursor, guint32 timestamp)
+{
+    gboolean grab;
+
+    g_return_val_if_fail (screen_info, FALSE);
+    logd("timestamp %u", (unsigned int) timestamp);
+
+    grab = TRUE;
+    if (screen_info->pointer_grabs == 0)
+    {
+        myDisplayErrorTrapPush (screen_info->display_info);
+        grab = xfwm_device_grab (screen_info->display_info->devices,
+                                 &screen_info->display_info->devices->pointer,
+                                 myScreenGetXDisplay (screen_info), screen_info->xroot,
+                                 owner_events, event_mask, GrabModeAsync, screen_info->xroot,
+                                 cursor, (Time) timestamp);
+        myDisplayErrorTrapPopIgnored (screen_info->display_info);
+    }
+    screen_info->pointer_grabs++;
+    logd("global pointer grabs %i", screen_info->pointer_grabs);
+
+    return grab;
+}
+
+unsigned int
+myScreenUngrabKeyboard (ScreenInfo *screen_info, guint32 timestamp)
+{
+    g_return_val_if_fail (screen_info, 0);
+    logd("timestamp %u", (unsigned int) timestamp);
+
+    screen_info->key_grabs--;
+    if (screen_info->key_grabs < 0)
+    {
+        screen_info->key_grabs = 0;
+    }
+    if (screen_info->key_grabs == 0)
+    {
+        myDisplayErrorTrapPush (screen_info->display_info);
+        xfwm_device_ungrab (screen_info->display_info->devices,
+                            &screen_info->display_info->devices->keyboard,
+                            myScreenGetXDisplay (screen_info), (Time) timestamp);
+        myDisplayErrorTrapPopIgnored (screen_info->display_info);
+    }
+    logd("global key grabs %i", screen_info->key_grabs);
+
+    return screen_info->key_grabs;
+}
+
+
+unsigned int
+myScreenUngrabPointer (ScreenInfo *screen_info, guint32 timestamp)
+{
+    g_return_val_if_fail (screen_info, 0);
+    logd("timestamp %u", (unsigned int) timestamp);
+
+    screen_info->pointer_grabs--;
+    if (screen_info->pointer_grabs < 0)
+    {
+        screen_info->pointer_grabs = 0;
+    }
+    if (screen_info->pointer_grabs == 0)
+    {
+        myDisplayErrorTrapPush (screen_info->display_info);
+        xfwm_device_ungrab (screen_info->display_info->devices,
+                            &screen_info->display_info->devices->pointer,
+                            myScreenGetXDisplay (screen_info), (Time) timestamp);
+        myDisplayErrorTrapPopIgnored (screen_info->display_info);
+    }
+    logd("global pointer grabs %i", screen_info->pointer_grabs);
+
+    return screen_info->pointer_grabs;
+}

@@ -68,7 +68,8 @@ static jclass staticClass = NULL;
         KeyReleaseMask |           \
         FocusChangeMask |          \
         PropertyChangeMask |       \
-        ColormapChangeMask
+        ColormapChangeMask |       \
+        PointerMotionMask 
 
 #define MAIN_EVENT_MASK BASE_EVENT_MASK | ExposureMask
 #define MAIN_EVENT_MASK BASE_EVENT_MASK

@@ -36,6 +36,8 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
         screen.c
         client.c
         transients.c
+        device.c
+        moveresize.c
         )
 
 

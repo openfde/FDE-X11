@@ -4,6 +4,10 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
+import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_ABOUT_WINDOW;
+import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_ADD;
+import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_REMOVE;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ABOUT_TASK_ID;
 import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_KEY_WINDOWID;
 import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_ACTION;
 import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
@@ -26,6 +30,8 @@ import static com.fde.x11.Xserver.ACTION_START;
 import static com.fde.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.fde.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.fde.x11.data.Constants.APP_TITLE_PREFIX;
+import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
+import static com.fde.x11.utils.AppUtils.GLOBAL_DENSITY;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -171,9 +177,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private String title;
     private Configuration mConfiguration;
     private boolean isFullscreen = false;
-    private int mSystemInsetTop = AppUtils.DECOR_CAPTION_HEIGHT;
+    private int mSystemInsetTop = DECOR_CAPTION_HEIGHT;
 
-    private int mDecorCaptionViewHeight = 42;
+    public static int mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
 
     // Used to set the contents of the clipboard.
     private android.content.ClipboardManager.OnPrimaryClipChangedListener mOnPrimaryClipChangedListener;
@@ -222,12 +228,35 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        DisplayMetrics dm = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+        AppUtils.updateSystemAttr(dm.widthPixels, dm.heightPixels);
+        mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
+        mSystemInsetTop = DECOR_CAPTION_HEIGHT;
         mFrameworkOperations = FrameworkFactory.create(this);
         initXParams();
 //        Util.setBaseContext(this);
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
         initView();
         initEvent();
+        broadcastTaskId(true);
+    }
+
+    private void broadcastTaskId(boolean isAdd){
+        String targetPackage = getPackageName();
+        Intent intent = new Intent();
+        if(isAdd){
+            intent.setAction(TASK_ID_FROM_ACTIVITY_ADD);
+            intent.setPackage(targetPackage);
+            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getWindow());
+            intent.putExtra(TASK_ID_ABOUT_WINDOW, getTaskId());
+        } else {
+            intent.setAction(TASK_ID_FROM_ACTIVITY_REMOVE);
+            intent.setPackage(targetPackage);
+            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getWindow());
+           intent.putExtra(TASK_ID_ABOUT_WINDOW, getTaskId());
+        }
+        sendBroadcast(intent);
     }
 
     private void initXParams() {
@@ -587,6 +616,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         mClipboardManager = null;
         mOnPrimaryClipChangedListener = null;
         EventBus.getDefault().unregister(this);
+        broadcastTaskId(false);
     }
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
@@ -685,7 +715,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
 //            Log.d(TAG, "topMargin: " + topMargin);
             Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
-            FLog.a("window", getWindowId(), "checkConfigBeforeExec configure:" + rect);
+            FLog.a("window", getWindowId(), "checkConfigBeforeExec configure:" + rect +
+                    " mDecorCaptionViewHeight:" + mDecorCaptionViewHeight +
+                    " GLOBAL_DENSITY:" + GLOBAL_DENSITY);
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
             if( newConfig ||  !samePosition || !sameSize ){
@@ -801,7 +833,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         final int screenHeight = AppUtils.GLOBAL_SCREEN_HEIGHT;
         final int statusBarHeight = AppUtils.STATUSBAR_HEIGHT_U;
         final int navBarHeight = AppUtils.NAVIGATION_BAR_HEIGHT_U;
-        final int captionHeight = isCaptionShowing() ? AppUtils.DECOR_CAPTION_HEIGHT : 0;
+        final int captionHeight = isCaptionShowing() ? DECOR_CAPTION_HEIGHT : 0;
         final int MAXIMIZE_HEIGHT = screenHeight - statusBarHeight - captionHeight - navBarHeight;
 //        if (height != MAXIMIZE_HEIGHT && height != screenHeight) {
 //            return;

@@ -87,8 +87,9 @@ from The Open Group.
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
 #define INITOUTPUT_LOG_ENABLE 0
 extern Bool LOG_ENABLE;
-#define PRINT_LOG (INITOUTPUT_LOG_ENABLE && LOG_ENABLE)
+#define PRINT_LOG INITOUTPUT_LOG_ENABLE
 #define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "native_InitOutput", __VA_ARGS__);}
+
 #define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "native_InitOutput", __VA_ARGS__);}
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
@@ -214,6 +215,9 @@ void ddxUseMsg(void) {
 }
 
 int ddxProcessArgument(unused int argc, unused char *argv[], unused int i) {
+    logh("ddxProcessArgument argc:%d argv:%s i:%d", argc, argv[i], i);
+
+
     if (strcmp(argv[i], "-xstartup") == 0) {  /* -xstartup "command" */
         CHECK_FOR_REQUIRED_ARGUMENTS(1);
         xstartup = argv[++i];
@@ -235,6 +239,17 @@ int ddxProcessArgument(unused int argc, unused char *argv[], unused int i) {
         return 1;
     }
 
+    if (strcmp(argv[i], "-width") == 0) {
+        CHECK_FOR_REQUIRED_ARGUMENTS(1);
+        pvfb->root.width = atoi(argv[++i]);
+        return 2;
+    }
+
+    if (strcmp(argv[i], "-height") == 0) {
+        CHECK_FOR_REQUIRED_ARGUMENTS(1);
+        pvfb->root.height = atoi(argv[++i]);
+        return 2;
+    }
     return 0;
 }
 

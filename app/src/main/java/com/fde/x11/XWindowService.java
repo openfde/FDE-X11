@@ -8,7 +8,9 @@ import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
 
+import android.annotation.SuppressLint;
 import android.app.ActivityOptions;
+import android.app.ActivityTaskManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -83,6 +85,7 @@ public class XWindowService extends Service {
     public static final String X_WINDOW_PROPERTY = "x_window_property";
     private static final int DESTROY_ACTIVITY_RETRY = 1;
     private static final int DESTROY_ACTIVITY_DELAY = 1000;
+    private static final int CREATE_ACTIVITY_DELAY = 300;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
     private final HashSet<Long> startingWindow = new HashSet<>();
@@ -241,6 +244,20 @@ public class XWindowService extends Service {
             case X_CONFIGURE_WINDOW:
                 sendBroadcastConfigureWindow(message.getWindowAttribute());
                 break;
+            case X_RESIZE_TASK:
+                WindowAttribute attr = message.getWindowAttribute();
+                int taskId = WindowManager.taskIdMap.getOrDefault(attr.getXID(), -1);
+                if(taskId != -1){
+                    @SuppressLint("WrongConstant")
+                    ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
+                    Rect rect = new Rect(attr.getRect().left,
+                            attr.getRect().top - MainActivity.mDecorCaptionViewHeight,
+                            attr.getRect().right,
+                            attr.getRect().bottom);
+                    Log.d(TAG, "resizeTask: "  + " " + taskId + " " + rect);
+                    taskManager.resizeTask(taskId, rect);
+                }
+                break;
             case X_CONFIGURE_WIDGET:
                 sendBroadcastConfigureWidget(message.getWindowAttribute());
                 break;
@@ -304,15 +321,14 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastConfigureWindow(WindowAttribute attr) {
-//        UserManager userManager = (UserManager) getSystemService(Context.USER_SERVICE);
-//        List<UserHandle> userProfiles = userManager.getUserProfiles();
-        String targetPackage = getPackageName();
-        Intent intent = new Intent(CONFIGURE_ACTIVITY_FROM_X);
-        intent.setPackage(targetPackage);
-        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
-//        intent.addFlags(Intent.FLAG_RECEIVER_REGISTERED_ONLY);
-//        sendBroadcastAsUser(intent, userProfiles.get(0));
-        sendBroadcast(intent);
+        handler.postDelayed(() -> {
+            FLog.s(TAG, "sendBroadcastConfigureWindow: attr:" + attr + "");
+            String targetPackage = getPackageName();
+            Intent intent = new Intent(CONFIGURE_ACTIVITY_FROM_X);
+            intent.setPackage(targetPackage);
+            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+            sendBroadcast(intent);
+        },DESTROY_ACTIVITY_DELAY);
     }
 
     private void sendBroadcastFocusableIfNeed(WindowAttribute attr, boolean isFocusable) {
@@ -456,5 +472,8 @@ public class XWindowService extends Service {
         FLog.s(TAG, "onDestroy");
 //        EventBus.getDefault().unregister(this);
         Util.deleteRecursive(new File("/tmp/fde"));
+        if(DWM_START_DEFAULT){
+            wm.stopWindowManager();
+        }
     }
 }

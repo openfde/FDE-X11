@@ -5,10 +5,12 @@ import android.app.Activity;
 import android.app.ActivityOptions;
 import android.app.Dialog;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -42,9 +44,11 @@ import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 
 public class WindowManager  {
 
@@ -87,6 +91,14 @@ public class WindowManager  {
     public static final int WINDOW_ACTION_DELETE = 1007;
     public static final String WINDOW_ACTION_KEY_WINDOWID = "window_id";
 
+    public static final String TASK_ID_FROM_ACTIVITY_ADD = "task_id_from_activity_add";
+    public static final String TASK_ID_FROM_ACTIVITY_REMOVE = "task_id_from_activity_remove";
+
+    public static final String TASK_ID_ABOUT_WINDOW = "task_id_from_activity";
+    public static final String WINDOW_ABOUT_TASK_ID = "window_about_task_id";
+
+    public static HashMap<Long, Integer> taskIdMap = new HashMap<>();
+    IntentFilter intentFilter;
     public WindowManager() {
         mThread = new HandlerThread("WM");
         mThread.start();
@@ -98,7 +110,29 @@ public class WindowManager  {
         mThread = new HandlerThread("WM");
         mThread.start();
         mHandler = new TaskHandler(mThread.getLooper());
+        intentFilter = new IntentFilter();
+        intentFilter.addAction(TASK_ID_FROM_ACTIVITY_ADD);
+        intentFilter.addAction(TASK_ID_FROM_ACTIVITY_REMOVE);
+        contextReference.get().registerReceiver(receiver, intentFilter, 0X4);
     }
+
+    BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "onReceive() called with: context = [" + context + "], intent = [" + intent.getAction() + "]");
+            if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_ADD)){
+                long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
+                int taskId= intent.getIntExtra(TASK_ID_ABOUT_WINDOW, -1);
+                Log.d(TAG, "onReceive: window:" + window  + " taskId:" + taskId);
+                taskIdMap.put(window, taskId);
+            } else if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_REMOVE)){
+                long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
+                int taskId= intent.getIntExtra(TASK_ID_ABOUT_WINDOW, -1);
+                Log.d(TAG, "onReceive: window:" + window  + " taskId:" + taskId);
+                taskIdMap.remove(window);
+            }
+        }
+    };
 
     public void startWindowManager(String displayGlobalParam) {
         this.display = displayGlobalParam;
@@ -113,6 +147,7 @@ public class WindowManager  {
 
     public void stopWindowManager() {
         disconnect2Server();
+        contextReference.get().unregisterReceiver(receiver);
     }
 
     /**
@@ -144,8 +179,13 @@ public class WindowManager  {
     //called from native code
     public static void  syncConfigureRequest(int x, int y, int width, int height, long window){
         Log.d(TAG, "syncConfigureRequest: x:" + x + ", y:" + y + ", width:" + width + ", height:" + height + ", window:" + window + "");
-        EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
-        EventBus.getDefault().post(message);
+        if(taskIdMap.get(window) != null  && taskIdMap.get(window) != -1){
+            EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
+            EventBus.getDefault().post(message);
+        } else {
+            EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
+            EventBus.getDefault().post(message);
+        }
     }
 
     //called from native code

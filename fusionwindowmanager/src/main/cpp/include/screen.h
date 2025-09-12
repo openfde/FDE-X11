@@ -28,6 +28,31 @@
 
 #define N_BUFFERS 2
 
+typedef struct _MoveResizeData MoveResizeData;
+struct _MoveResizeData
+{
+    Client *c;
+//    WireFrame *wireframe;
+    gboolean use_keys;
+    gboolean grab;
+    gboolean is_transient;
+    gboolean move_resized;
+    gboolean released;
+    gboolean client_gone;
+    guint button;
+    gint cancel_x, cancel_y;
+    gint cancel_w, cancel_h;
+    unsigned long cancel_flags;
+    unsigned long configure_flags;
+    guint cancel_workspace;
+    gint mx, my;
+    double pxratio, pyratio; /* pointer relative position ratio */
+    gint ox, oy;
+    gint ow, oh;
+    gint oldw, oldh;
+    gint handle;
+//    Poswin *poswin;
+};
 
 
 struct _gaussian_conv {
@@ -177,6 +202,7 @@ struct _ScreenInfo
     // GLsync gl_sync;
     // XSyncFence fence[N_BUFFERS];
     gboolean present_pending;
+    MoveResizeData passdata;
 };
 
 gboolean                 myScreenCheckWMAtom                    (ScreenInfo *,
@@ -191,4 +217,16 @@ ScreenInfo              *myScreenInit                           (DisplayInfo *,
 Client                  *myScreenGetClientFromWindow            (ScreenInfo *,
                                                                  Window,
                                                                  unsigned short);
+gboolean                 myScreenGrabKeyboard                   (ScreenInfo *,
+                                                                 guint,
+                                                                 guint32);
+gboolean                 myScreenGrabPointer                    (ScreenInfo *,
+                                                                 gboolean,
+                                                                 guint,
+                                                                 Cursor,
+                                                                 guint32);
+unsigned int             myScreenUngrabKeyboard                 (ScreenInfo *,
+                                                                 guint32);
+unsigned int             myScreenUngrabPointer                  (ScreenInfo *,
+                                                                 guint32);                                                                 
 #endif /* INC_SCREEN_H */
