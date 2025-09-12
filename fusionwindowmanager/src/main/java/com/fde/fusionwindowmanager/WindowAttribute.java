@@ -23,6 +23,34 @@ public class WindowAttribute implements Parcelable {
     boolean focusable = true;
     Property property;
 
+    int taskId = - 1;
+
+    public int getCaptionHeight() {
+        return captionHeight;
+    }
+
+    public void setCaptionHeight(int captionHeight) {
+        this.captionHeight = captionHeight;
+    }
+
+    int supportMotif;
+    int captionHeight;
+
+    public int getSupportMotif() {
+        return supportMotif;
+    }
+
+    public void setSupportMotif(int supportMotif) {
+        this.supportMotif = supportMotif;
+    }
+
+    public int getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(int taskId) {
+        this.taskId = taskId;
+    }
 
     public boolean isFocusable() {
         return focusable;
@@ -67,6 +95,7 @@ public class WindowAttribute implements Parcelable {
         this.frame = xid;
         this.taskTo = taskTo;
         this.property = property;
+        this.supportMotif = property.getSupportMotif();
     }
 
     public WindowAttribute(int x, int y, int w, int h, int index, long p, long xid, long window,
@@ -82,6 +111,7 @@ public class WindowAttribute implements Parcelable {
         this.window = window;
         this.taskTo = taskTo;
         this.property = property;
+        this.supportMotif = property.getSupportMotif();
     }
 
     public Property getProperty() {
@@ -179,6 +209,9 @@ public class WindowAttribute implements Parcelable {
         XID = in.readLong();
         window = in.readLong();
         taskTo = in.readLong();
+        taskId = in.readInt();
+        supportMotif = in.readInt();
+        captionHeight = in.readInt();
         frame = XID;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             focusable = in.readBoolean();
@@ -209,6 +242,9 @@ public class WindowAttribute implements Parcelable {
             dest.writeLong(XID);
             dest.writeLong(window);
             dest.writeLong(taskTo);
+            dest.writeInt(taskId);
+            dest.writeInt(supportMotif);
+            dest.writeInt(captionHeight);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             dest.writeBoolean(focusable);
         }

@@ -535,9 +535,9 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     if(_surface_count_window(sfWraper, res->window)){
         log("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
-        if(attr->discard){
-            return;
-        }
+//        if(attr->discard){
+//            return;
+//        }
         attr->offset_x = res->offset_x;
         attr->offset_y = res->offset_y;
         attr->width = res->width;

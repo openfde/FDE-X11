@@ -24,6 +24,7 @@
 #define WINDOW_PROTOCOLS                "WM_PROTOCOLS"
 #define WINDOW_DELETE_WINDOW            "WM_DELETE_WINDOW"
 #define WINDOW_X11_PID                  "_NET_WM_PID"
+#define WINDOW_MOTIF_WM_HINTS           "_MOTIF_WM_HINTS"
 
 #define ACTION_UNMAP 1
 #define ACTION_DESTORY 2
@@ -45,6 +46,37 @@
           return NULL;                \
       }
 
+// Motif WM Hints 标志位
+#define MWM_HINTS_FUNCTIONS     (1L << 0)
+#define MWM_HINTS_DECORATIONS   (1L << 1)
+#define MWM_HINTS_INPUT_MODE    (1L << 2)
+#define MWM_HINTS_STATUS        (1L << 3)
+
+// 功能位
+#define MWM_FUNC_ALL            (1L << 0)
+#define MWM_FUNC_RESIZE         (1L << 1)
+#define MWM_FUNC_MOVE           (1L << 2)
+#define MWM_FUNC_MINIMIZE       (1L << 3)
+#define MWM_FUNC_MAXIMIZE       (1L << 4)
+#define MWM_FUNC_CLOSE          (1L << 5)
+
+// 装饰位
+#define MWM_DECOR_ALL           (1L << 0)
+#define MWM_DECOR_BORDER        (1L << 1)
+#define MWM_DECOR_RESIZE        (1L << 2)
+#define MWM_DECOR_TITLE         (1L << 3)
+#define MWM_DECOR_MENU          (1L << 4)
+#define MWM_DECOR_MINIMIZE      (1L << 5)
+#define MWM_DECOR_MAXIMIZE      (1L << 6)
+
+// 定义与客户端相同的结构体和常量
+#define MWM_HINTS_ELEMENTS 3L
+
+typedef struct {
+    unsigned long flags;
+    unsigned long functions;
+    unsigned long decorations;
+} PropMwmHints;
 
 #ifdef __cplusplus
 extern "C" {

@@ -16,6 +16,7 @@ public class Property implements Parcelable {
     String wm_class;
 
     int supportDeleteWindow;
+    int supportMotif;
 
     Bitmap icon;
 
@@ -32,7 +33,8 @@ public class Property implements Parcelable {
         this.supportDeleteWindow = supportDeleteWindow;
     }
 
-    public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class, int supportDeleteWindow, Bitmap icon) {
+    public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class, int supportDeleteWindow,
+                    int supportMotif, Bitmap icon) {
         this.XID = XID;
         this.transientfor = transientfor;
         this.leader = leader;
@@ -40,6 +42,7 @@ public class Property implements Parcelable {
         this.net_name = net_name;
         this.wm_class = wm_class;
         this.supportDeleteWindow = supportDeleteWindow;
+        this.supportMotif = supportMotif;
         this.icon = icon;
     }
 
@@ -60,6 +63,7 @@ public class Property implements Parcelable {
         net_name = in.readString();
         wm_class = in.readString();
         supportDeleteWindow = in.readInt();
+        supportMotif = in.readInt();
         icon = in.readParcelable(Bitmap.class.getClassLoader());
     }
 
@@ -144,6 +148,14 @@ public class Property implements Parcelable {
         return 0;
     }
 
+    public int getSupportMotif() {
+        return supportMotif;
+    }
+
+    public void setSupportMotif(int supportMotif) {
+        this.supportMotif = supportMotif;
+    }
+
     @Override
     public void writeToParcel(@NonNull Parcel dest, int flags) {
         dest.writeLong(XID);
@@ -153,6 +165,7 @@ public class Property implements Parcelable {
         dest.writeString(net_name);
         dest.writeString(wm_class);
         dest.writeInt(supportDeleteWindow);
+        dest.writeInt(supportMotif);
         dest.writeParcelable(icon, flags);
     }
 

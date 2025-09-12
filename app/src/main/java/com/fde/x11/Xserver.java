@@ -125,7 +125,7 @@ public class Xserver {
                                            int type, String wm_name, String wm_class,
                                            int x, int y, int w, int h, int index, long p,
                                            long xid, long taskTo, int support_wm_delete,
-                                           Bitmap bitmap, boolean inbound, int clientNum,
+                                           int support_motif, Bitmap bitmap, boolean inbound, int clientNum,
                                            boolean isActivity, long window) {
         FLog.s(TAG, aid,"startOrUpdateWindow: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
                 + ", type:" + type + ", wm_name:" + wm_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
@@ -159,11 +159,14 @@ public class Xserver {
                 case 0:
                 case _NET_WM_WINDOW_TYPE_NORMAL:
                     message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                            "xserver start activity as main window", new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, bitmap)));
+                            "xserver start activity as main window",
+                            new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
+                            new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, support_motif, bitmap)));
                     break;
                 case _NET_WM_WINDOW_TYPE_DIALOG:
                     message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
-                            "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo, new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete)));
+                            "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
+                            new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete)));
                     break;
                 default:
                     break;

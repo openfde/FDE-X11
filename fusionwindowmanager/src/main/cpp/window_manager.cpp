@@ -661,7 +661,7 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e)
             && c
         )
         {
-            syncConfigureRequest(changes.x, changes.y, changes.width, changes.height, c->window);
+            syncConfigureRequest(changes.x, changes.y, changes.width, changes.height, c->frame);
         }
 
         // alt + left button: Move window.
@@ -1107,6 +1107,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
     c = myDisplayGetClientFromWindow (display_info, ev->window, SEARCH_WINDOW);
     if (c)
     {
+        log("format:%d",ev->format)
         if ((ev->message_type == display_info->atoms[WM_CHANGE_STATE]) && (ev->format == 32) && (ev->data.l[0] == IconicState))
         {
             log("client \"%s\" (0x%lx) has received a WM_CHANGE_STATE event", c->name, c->window);
@@ -1780,6 +1781,7 @@ int WindowManager::raiseWindow(long window)
         log("raiseWindow %x", c->window);
         XRaiseWindow(display_, c->window);
         XSetInputFocus(display_, c->window, RevertToPointerRoot, CurrentTime);
+        clientShow(c, TRUE);
     }
     XSync(display_, false);
     return ret;

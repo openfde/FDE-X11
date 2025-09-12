@@ -94,10 +94,10 @@ public class WindowManager  {
     public static final String TASK_ID_FROM_ACTIVITY_ADD = "task_id_from_activity_add";
     public static final String TASK_ID_FROM_ACTIVITY_REMOVE = "task_id_from_activity_remove";
 
-    public static final String TASK_ID_ABOUT_WINDOW = "task_id_from_activity";
+    public static final String ATTR_ABOUT_WINDOW = "attr_from_activity";
     public static final String WINDOW_ABOUT_TASK_ID = "window_about_task_id";
 
-    public static HashMap<Long, Integer> taskIdMap = new HashMap<>();
+    public static HashMap<Long, WindowAttribute> taskIdMap = new HashMap<>();
     IntentFilter intentFilter;
     public WindowManager() {
         mThread = new HandlerThread("WM");
@@ -122,13 +122,13 @@ public class WindowManager  {
             Log.d(TAG, "onReceive() called with: context = [" + context + "], intent = [" + intent.getAction() + "]");
             if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_ADD)){
                 long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
-                int taskId= intent.getIntExtra(TASK_ID_ABOUT_WINDOW, -1);
-                Log.d(TAG, "onReceive: window:" + window  + " taskId:" + taskId);
-                taskIdMap.put(window, taskId);
+                WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
+                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
+                taskIdMap.put(window, attr);
             } else if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_REMOVE)){
                 long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
-                int taskId= intent.getIntExtra(TASK_ID_ABOUT_WINDOW, -1);
-                Log.d(TAG, "onReceive: window:" + window  + " taskId:" + taskId);
+                WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
+                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
                 taskIdMap.remove(window);
             }
         }
@@ -179,7 +179,7 @@ public class WindowManager  {
     //called from native code
     public static void  syncConfigureRequest(int x, int y, int width, int height, long window){
         Log.d(TAG, "syncConfigureRequest: x:" + x + ", y:" + y + ", width:" + width + ", height:" + height + ", window:" + window + "");
-        if(taskIdMap.get(window) != null  && taskIdMap.get(window) != -1){
+        if(taskIdMap.get(window) != null  && taskIdMap.get(window).getTaskId() != -1){
             EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
             EventBus.getDefault().post(message);
         } else {

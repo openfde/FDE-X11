@@ -4,7 +4,7 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
-import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_ABOUT_WINDOW;
+import static com.fde.fusionwindowmanager.WindowManager.ATTR_ABOUT_WINDOW;
 import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_ADD;
 import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_REMOVE;
 import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ABOUT_TASK_ID;
@@ -81,6 +81,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.window.WindowContainerTransaction;
 
 import androidx.annotation.NonNull;
 import androidx.core.math.MathUtils;
@@ -248,13 +249,13 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(isAdd){
             intent.setAction(TASK_ID_FROM_ACTIVITY_ADD);
             intent.setPackage(targetPackage);
-            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getWindow());
-            intent.putExtra(TASK_ID_ABOUT_WINDOW, getTaskId());
+            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
+            intent.putExtra(ATTR_ABOUT_WINDOW, mAttribute);
         } else {
             intent.setAction(TASK_ID_FROM_ACTIVITY_REMOVE);
             intent.setPackage(targetPackage);
-            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getWindow());
-           intent.putExtra(TASK_ID_ABOUT_WINDOW, getTaskId());
+            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
+           intent.putExtra(ATTR_ABOUT_WINDOW, mAttribute);
         }
         sendBroadcast(intent);
     }
@@ -272,6 +273,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             WindowCode = mAttribute.getXID();
             mWindowRect.set(mAttribute.getRect());
             App.getApp().windowAttrMap.put(mAttribute.getXID(), mAttribute);
+            mAttribute.setCaptionHeight(mDecorCaptionViewHeight);
+            mAttribute.setTaskId(getTaskId());
         }
         mProperty = getIntent().getParcelableExtra(X_WINDOW_PROPERTY);
         if(mProperty != null){

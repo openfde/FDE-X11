@@ -9,6 +9,7 @@ import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
 
 import android.annotation.SuppressLint;
+import android.app.ActivityManager;
 import android.app.ActivityOptions;
 import android.app.ActivityTaskManager;
 import android.app.Service;
@@ -218,7 +219,12 @@ public class XWindowService extends Service {
 //        FLog.s(TAG, "before: size:" + windowSize);
         switch (message.getType()){
             case X_START_ACTIVITY_MAIN_WINDOW:
-                startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, DECOR_CAPTION_HEIGHT);
+                if(message.getWindowAttribute().getProperty() != null
+                        && message.getWindowAttribute().getProperty().getSupportMotif() > 0){
+                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity11.class);
+                } else {
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, DECOR_CAPTION_HEIGHT);
+                }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_START_ACTIVITY_WINDOW:
@@ -226,6 +232,14 @@ public class XWindowService extends Service {
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_UNMAP_WINDOW:
+//                sendBroadcastHide(message.getWindowAttribute());
+                WindowAttribute unmap = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
+                Log.d(TAG, "onReceiveMsg: unmapId:" + unmap);
+                if(unmap != null && unmap.getTaskId() != 0){
+                    ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                    am.moveTaskToBack(true, unmap.getTaskId());
+                }
+                break;
             case X_DESTROY_ACTIVITY:
                 if(message.getProperty()!= null && message.getProperty().getSupportDeleteWindow() != 0){
                     destroyActivitySafety(DESTROY_ACTIVITY_RETRY, message.getWindowAttribute());
@@ -246,16 +260,17 @@ public class XWindowService extends Service {
                 break;
             case X_RESIZE_TASK:
                 WindowAttribute attr = message.getWindowAttribute();
-                int taskId = WindowManager.taskIdMap.getOrDefault(attr.getXID(), -1);
-                if(taskId != -1){
+                WindowAttribute resize = WindowManager.taskIdMap.get(message.getWindowAttribute().getXID());
+                if(resize != null && resize.getTaskId() != 0 ){
                     @SuppressLint("WrongConstant")
                     ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
                     Rect rect = new Rect(attr.getRect().left,
-                            attr.getRect().top - MainActivity.mDecorCaptionViewHeight,
+                            attr.getRect().top - resize.getCaptionHeight(),
+//                            attr.getRect().top,
                             attr.getRect().right,
                             attr.getRect().bottom);
-                    Log.d(TAG, "resizeTask: "  + " " + taskId + " " + rect);
-                    taskManager.resizeTask(taskId, rect);
+                    Log.d(TAG, "resizeTask: "  + " " + resize + " " + rect);
+                    taskManager.resizeTask(resize.getTaskId(), rect);
                 }
                 break;
             case X_CONFIGURE_WIDGET:

@@ -28,6 +28,7 @@
 #include <X11/Xatom.h>
 #include <android/bitmap.h>
 #include <signal.h>
+#include <arpa/inet.h>
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -191,9 +192,9 @@ void android_unmap_window(Window window){
         WindAttribute *attr = _surface_find_window(sfWraper, attribute.frame);
         attr->discard = 1;
         android_destroy_activity(attr->index, attr->pWin, attr->window,  ACTION_UNMAP, attr->aProperty.support_wm_delete);
-        glDeleteTextures(1, &attr->texture_id);
-        renderer_release_window(GetJavaEnv(), attr->window);
-        _surface_delete_window(sfWraper, attr->window);
+//        glDeleteTextures(1, &attr->texture_id);
+//        renderer_release_window(GetJavaEnv(), attr->window);
+//        _surface_delete_window(sfWraper, attr->window);
     } else if(_surface_count_widget(sfWraper, window)){
         log(DEBUG, "unmap widget:%0x", window);
         Widget *widget = _surface_find_widget(sfWraper, window);
@@ -439,6 +440,88 @@ void android_icon_update(int *data, int width, int height, long window) {
     (*env)->DeleteLocalRef(env, javaData);
 }
 
+// 解析函数
+void parseMotifHints(Atom name, unsigned long *data, unsigned long nitems, uint32_t format)
+{
+    if (STRING_EQUAL(NameForAtom(name), WINDOW_MOTIF_WM_HINTS)) {
+        log(DEBUG,"Raw Motif Hints data (%lu items): format:%d", nitems, format);
+        for (int i = 0; i < nitems; i++) {
+            log(DEBUG," 0x%lx", data[i]);
+        }
+        log(DEBUG,"\n");
+
+        // 检查数据是否足够
+        if (nitems >= MWM_HINTS_ELEMENTS) {
+            PropMwmHints hints;
+
+            // 直接内存拷贝（假设字节序相同）
+//            memcpy(&hints, data, sizeof(PropMwmHints));
+
+            // 或者逐个字段解析（更安全的方式）
+            hints.flags = ntohl(data[0]);
+            hints.functions = ntohl(data[1]);
+            hints.decorations = ntohl(data[2]);
+
+            // 现在可以使用解析出的提示信息
+            log(DEBUG,"Motif Hints - Flags: 0x%lx, Functions: 0x%lx, Decorations: 0x%lx\n",
+                   hints.flags, hints.functions, hints.decorations);
+
+            // 检查各个标志位
+            if (hints.flags & MWM_HINTS_FUNCTIONS) {
+                log(DEBUG,"Functions hint present\n");
+                if (hints.functions & MWM_FUNC_ALL) {
+                    log(DEBUG,"All functions enabled\n");
+                }
+                if (hints.functions & MWM_FUNC_RESIZE) {
+                    log(DEBUG,"Resize function enabled\n");
+                }
+                if (hints.functions & MWM_FUNC_MOVE) {
+                    log(DEBUG,"Move function enabled\n");
+                }
+                if (hints.functions & MWM_FUNC_MINIMIZE) {
+                    log(DEBUG,"Minimize function enabled\n");
+                }
+                if (hints.functions & MWM_FUNC_MAXIMIZE) {
+                    log(DEBUG,"Maxmize function enabled\n");
+                }
+                if (hints.functions & MWM_FUNC_CLOSE) {
+                    log(DEBUG,"Close function enabled\n");
+                }
+                // 检查其他功能位...
+            }
+
+            if (hints.flags & MWM_HINTS_DECORATIONS) {
+                log(DEBUG,"Decorations hint present\n");
+                if (hints.decorations & MWM_DECOR_ALL) {
+                    log(DEBUG,"All decorations enabled\n");
+                }
+                if (hints.decorations & MWM_DECOR_BORDER) {
+                    log(DEBUG,"Border decoration enabled\n");
+                }
+                if (hints.decorations & MWM_DECOR_RESIZE) {
+                    log(DEBUG,"Resize decoration enabled\n");
+                }
+                if (hints.decorations & MWM_DECOR_TITLE) {
+                    log(DEBUG,"Title decoration enabled\n");
+                }
+                if (hints.decorations & MWM_DECOR_MENU) {
+                    log(DEBUG,"Menu decoration enabled\n");
+                }
+                if (hints.decorations & MWM_DECOR_MINIMIZE) {
+                    log(DEBUG,"Minimize decoration enabled\n");
+                }
+                if (hints.decorations & MWM_DECOR_MAXIMIZE) {
+                    log(DEBUG,"Maxmize decoration enabled\n");
+                }
+                // 检查其他装饰位...
+            }
+        } else {
+            log(DEBUG,"Insufficient data for MOTIF_WM_HINTS: got %lu, need %ld\n",
+                   nitems, MWM_HINTS_ELEMENTS);
+        }
+    }
+}
+
 
 void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
     CHECK_WITH_PROP;
@@ -540,6 +623,10 @@ void xserver_get_window_property(WindowPtr pWin, WindProperty *prop) {
             //TODO revert from steam
 //        } else if(STRING_EQUAL(NameForAtom(name), "STEAM_GAME")) {
 //            prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+        } else if (STRING_EQUAL(NameForAtom(name), WINDOW_MOTIF_WM_HINTS)){
+            prop->support_motif = true;
+//            unsigned long *data = ((unsigned long *) propData);
+//            parseMotifHints(name, data, pProper->size, pProper->format);
         }
         pProper = pProper->next;
     }
@@ -640,12 +727,13 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
         Window window = widget.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateWindow",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZIZJ)V");
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIILandroid/graphics/Bitmap;ZIZJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          aWindow, aTransient, aLeader, aType, wm_class, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, 0,
                                          (long) windowPtr, (long) window, (long) taskTo,
-                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, false, aWindow);
+                                         aProperty.support_wm_delete, aProperty.support_motif,
+                                         aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, false, aWindow);
     }
 }
 
@@ -678,12 +766,13 @@ void android_create_window(WindAttribute attribute, WindProperty aProperty, Wind
         Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateWindow",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJILandroid/graphics/Bitmap;ZIZJ)V");
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIILandroid/graphics/Bitmap;ZIZJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          (long)aWindow, (long)aTransient, (long)aLeader, aType, wm_class, net_wm_name == NULL ? wm_name: net_wm_name,
                                          offsetX, offsetY, width, height, index,
                                          (long) windowPtr, (long) window, (long) taskTo,
-                                         aProperty.support_wm_delete, aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, true, (long)attribute.child);
+                                         aProperty.support_wm_delete, aProperty.support_motif,
+                                         aProperty.icon ? aProperty.icon: NULL, inbound, clientNum, true, (long)attribute.child);
         free(aProperty.net_wm_name);
         free(aProperty.wm_class);
         free(aProperty.wm_name);
@@ -1482,7 +1571,7 @@ JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,
                                         jint which_button, jboolean button_down, jboolean relative,
                                         jint index) {
-//    log(DEBUG, "MouseEvent x:%.0f y:%.0f detail:%d  down:%s", x, y, which_button, button_down == 1 ? "true" : "false" );
+    log(DEBUG, "MouseEvent x:%.0f y:%.0f detail:%d  down:%s", x, y, which_button, button_down == 1 ? "true" : "false" );
     lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
     ValuatorMask mask;
     valuator_mask_zero(&mask);
