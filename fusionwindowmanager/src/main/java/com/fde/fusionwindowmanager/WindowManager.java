@@ -177,13 +177,13 @@ public class WindowManager  {
     public native int disconnect2Server();
 
     //called from native code
-    public static void  syncConfigureRequest(int x, int y, int width, int height, long window){
-        Log.d(TAG, "syncConfigureRequest: x:" + x + ", y:" + y + ", width:" + width + ", height:" + height + ", window:" + window + "");
+    public static void  syncConfigureRequest(int x, int y, int width, int height, long window, int isMoving){
+        Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "]");
         if(taskIdMap.get(window) != null  && taskIdMap.get(window).getTaskId() != -1){
-            EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
+            EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window, isMoving), null);
             EventBus.getDefault().post(message);
         } else {
-            EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window), null);
+            EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window, isMoving), null);
             EventBus.getDefault().post(message);
         }
     }

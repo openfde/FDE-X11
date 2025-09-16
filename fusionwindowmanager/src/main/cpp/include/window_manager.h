@@ -248,4 +248,6 @@ private:
     void UpdateXserverClipFile(const char *data);
 
     void setWindowType(Window window, Atom type);
+
+    int isTaskMoving;
 };

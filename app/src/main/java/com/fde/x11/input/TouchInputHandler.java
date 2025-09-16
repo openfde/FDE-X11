@@ -7,6 +7,7 @@ package com.fde.x11.input;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.PointF;
 import android.os.Handler;
@@ -21,6 +22,7 @@ import android.view.ViewConfiguration;
 import androidx.annotation.IntDef;
 import androidx.core.math.MathUtils;
 
+import com.android.internal.policy.DecorView;
 import com.fde.x11.MainActivity;
 import com.fde.x11.R;
 
@@ -153,10 +155,84 @@ public class TouchInputHandler {
     public boolean isTouching(){
         return isTouching;
     }
+    private int mDragSlop;
 
+    private boolean passedSlop(int x, int y) {
+        return Math.abs(x - mTouchDownX) > mDragSlop || Math.abs(y - mTouchDownY) > mDragSlop;
+    }
+    private boolean mCheckForDragging;
+    private int mTouchDownX;
+    private int mTouchDownY;
+    private boolean mDragging = false;
+    private boolean isMoveTask = false;
+
+    public boolean isMoveTask() {
+        return isMoveTask;
+    }
+
+    public void setMoveTask(boolean moveTask) {
+        isMoveTask = moveTask;
+    }
 
     public boolean handleTouchEvent(View view0, View view, MotionEvent event) {
-//        Log.d(TAG, "handl_e:" + event);
+        if( isMoveTask || event.getAction() == MotionEvent.ACTION_DOWN){
+            handleMoveTaskEvent(view0, view, event);
+        }
+        return handleNormalEvent(view0, view, event);
+
+    }
+
+    private boolean handleMoveTaskEvent(View view0, View view, MotionEvent e) {
+        Log.d(TAG, "handleMoveTaskEvent() called with: isMoveTask = [" + isMoveTask + "], this = [" + this + "], e = [" + e + "]");
+        mDragSlop = ViewConfiguration.get(mContext).getScaledTouchSlop();
+        final int x = (int) e.getX();
+        final int y = (int) e.getY();
+        final boolean fromMouse = e.getToolType(e.getActionIndex()) == MotionEvent.TOOL_TYPE_MOUSE;
+        final boolean primaryButton = (e.getButtonState() & MotionEvent.BUTTON_PRIMARY) != 0;
+        final int actionMasked = e.getActionMasked();
+        DecorView decorView = (DecorView) ((Activity)mContext).getWindow().getDecorView();
+
+        switch (actionMasked) {
+            case MotionEvent.ACTION_DOWN:
+                // Checking for a drag action is started if we aren't dragging already and the
+                // starting event is either a left mouse button or any other input device.
+                if (!fromMouse || primaryButton) {
+                    mCheckForDragging = true;
+                    mTouchDownX = x;
+                    mTouchDownY = y;
+                }
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                if (!mDragging && mCheckForDragging && (fromMouse || passedSlop(x, y))) {
+                    mCheckForDragging = false;
+                    mDragging = true;
+                    decorView.startDecorMovingTask(e.getRawX(), e.getRawY());
+                    // After the above call the framework will take over the input.
+                    // This handler will receive ACTION_CANCEL soon (possible after a few spurious
+                    // ACTION_MOVE events which are safe to ignore).
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                if (!mDragging) {
+                    break;
+                }
+                // Abort the ongoing dragging.
+                if (actionMasked == MotionEvent.ACTION_UP) {
+                    // If it receives ACTION_UP event, the dragging is already finished and also
+                    // the system can not end drag on ACTION_UP event. So request to finish
+                    // dragging.
+                    decorView.finisDecorMovingTask();
+                }
+                mDragging = false;
+                return !mCheckForDragging;
+        }
+        return mDragging || mCheckForDragging;
+    }
+
+    private boolean handleNormalEvent(View view0, View view, MotionEvent event) {
         if(event.getAction() == MotionEvent.ACTION_DOWN || event.getAction() == MotionEvent.ACTION_MOVE){
             isTouching = true;
         } else if(event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {

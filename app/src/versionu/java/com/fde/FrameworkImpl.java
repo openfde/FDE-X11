@@ -35,12 +35,23 @@ public class FrameworkImpl implements FrameworkOperations {
     @Override
     public void startFullScreenWindow(Activity activity) {
         DecorView decorView = (DecorView) activity.getWindow().getDecorView();
-        decorView.startFullScreenWindow();
+        decorView.startFullScreenWindow(false);
         Log.d(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
     }
 
     @Override
     public boolean isWindowMaximized() {
         return false;
+    }
+
+    @Override
+    public boolean startDecorMovingTask(float startX, float startY) {
+        DecorView decorView = (DecorView) activity.getWindow().getDecorView();
+        return decorView.startDecorMovingTask(startX, startY);
+    }
+
+    public void finisDecorMovingTask() {
+        DecorView decorView = (DecorView) activity.getWindow().getDecorView();
+        decorView.finisDecorMovingTask();
     }
 }

@@ -89,12 +89,17 @@ public class XWindowService extends Service {
     private static final int CREATE_ACTIVITY_DELAY = 300;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
+    private ActivityManager am;
     private final HashSet<Long> startingWindow = new HashSet<>();
     private final HashSet<Long> stopingWindow = new HashSet<>();
     private final HashSet<Long> runningMainWindow = new HashSet<>();
     private boolean mBound = false;
 
+    private ActivityTaskManager taskManager;
+    private android.view.WindowManager systemWindowManager;
     private final HashMap<Long, Property> propertyHashMap = new HashMap<>();
+
+    private final HashMap<Long, IActivityCallback> activityCallbackMap = new HashMap<>();
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
@@ -193,12 +198,27 @@ public class XWindowService extends Service {
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
+
+        @Override
+        public void registerActivityCallback(long window, IActivityCallback callback) throws RemoteException {
+            activityCallbackMap.put(window, callback);
+        }
+
+        @Override
+        public void unregisterActivityCallback(long window, IActivityCallback callback) throws RemoteException {
+            activityCallbackMap.remove(window);
+        }
+
     };
     private Handler handler = new Handler();
 
+    @SuppressLint("WrongConstant")
     @Override
     public void onCreate() {
         super.onCreate();
+        taskManager = (ActivityTaskManager)getSystemService("activity_task");
+        systemWindowManager = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+        am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         Util.copyAssetsToFiles(this, "xkb", "xkb");
 //        Util.checkX11FdPermission(this);
         EventBus.getDefault().register(this);
@@ -236,7 +256,6 @@ public class XWindowService extends Service {
                 WindowAttribute unmap = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
                 Log.d(TAG, "onReceiveMsg: unmapId:" + unmap);
                 if(unmap != null && unmap.getTaskId() != 0){
-                    ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
                     am.moveTaskToBack(true, unmap.getTaskId());
                 }
                 break;
@@ -262,15 +281,27 @@ public class XWindowService extends Service {
                 WindowAttribute attr = message.getWindowAttribute();
                 WindowAttribute resize = WindowManager.taskIdMap.get(message.getWindowAttribute().getXID());
                 if(resize != null && resize.getTaskId() != 0 ){
-                    @SuppressLint("WrongConstant")
-                    ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
                     Rect rect = new Rect(attr.getRect().left,
                             attr.getRect().top - resize.getCaptionHeight(),
 //                            attr.getRect().top,
                             attr.getRect().right,
                             attr.getRect().bottom);
                     Log.d(TAG, "resizeTask: "  + " " + resize + " " + rect);
-                    taskManager.resizeTask(resize.getTaskId(), rect);
+                    IActivityCallback callback = activityCallbackMap.get(attr.getXID());
+                    if(callback != null && attr.getIsMoving() != 2){
+                        try {
+                            if(attr.getIsMoving() == 1){
+                                callback.startDecorMovingTask(rect.left, rect.top, attr.getXID());
+                            } else if(attr.getIsMoving() == 0){
+                                callback.finisDecorMovingTask(attr.getXID());
+                            }
+                        } catch (RemoteException e){
+                            Log.e(TAG, "onReceiveMsg: " + e.getMessage());
+                        }
+                    }
+                    if(attr.getIsMoving() == 2){
+                        taskManager.resizeTask(resize.getTaskId(), rect);
+                    }
                 }
                 break;
             case X_CONFIGURE_WIDGET:
@@ -429,28 +460,28 @@ public class XWindowService extends Service {
 //            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
 //            sendBroadcast(intent);
 //        } else {
-            ActivityOptions options = ActivityOptions.makeBasic();
-            options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
-                    (int)(attr.getOffsetY() - decorHeight),
-                    (int)(attr.getWidth() + attr.getOffsetX()),
-                    (int)(attr.getHeight() + attr.getOffsetY())));
-            Intent intent = new Intent(this, cls);
-            if(attr.getProperty() != null){
-                intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
-                Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
-                Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
-                intent.putExtra("X11_titile", attr.getProperty().getNet_name());
-            }
-            try {
-                Method method = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);
-                method.invoke(options, 5); // change to freeform mode
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent, options.toBundle());
-            Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        ActivityOptions options = ActivityOptions.makeBasic();
+        options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
+                (int)(attr.getOffsetY() - decorHeight),
+                (int)(attr.getWidth() + attr.getOffsetX()),
+                (int)(attr.getHeight() + attr.getOffsetY())));
+        Intent intent = new Intent(this, cls);
+        if(attr.getProperty() != null){
+            intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
+            Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
+            Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
+            intent.putExtra("X11_titile", attr.getProperty().getNet_name());
+        }
+        try {
+            Method method = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);
+            method.invoke(options, 5); // change to freeform mode
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent, options.toBundle());
+        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
 //        }
     }
 

@@ -491,11 +491,11 @@ void WindowManager::OnMapRequest(const XMapRequestEvent &e)
     }
 }
 
-void syncConfigureRequest(int x, int y, int w, int h, XID window)
+void syncConfigureRequest(int x, int y, int w, int h, XID window, int isMoving)
 {
     jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                                                    "syncConfigureRequest", "(IIIIJ)V");
-    GlobalEnv->CallStaticVoidMethod(staticClass, method, x, y, w, h, window);
+                                                    "syncConfigureRequest", "(IIIIJI)V");
+    GlobalEnv->CallStaticVoidMethod(staticClass, method, x, y, w, h, window, isMoving);
 }
 
 void WindowManager::OnCirculateRequest(const XCirculateRequestEvent &e)
@@ -550,7 +550,8 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
         && c
     )
     {
-        syncConfigureRequest(changes.x, changes.y, changes.width, changes.height, c->frame);
+        syncConfigureRequest(changes.x, changes.y, changes.width,
+                             changes.height, c->frame, 2);
     }
 }
 
@@ -597,6 +598,12 @@ void WindowManager::OnButtonRelease(const XButtonEvent &e) {
     XUngrabPointer (display_, myDisplayGetCurrentTime(display_info));
     screen_info->passdata.c = NULL;
     log("OnButtonRelease clear passdata.c");
+    Client *c;
+    c = myDisplayGetClientFromWindow (display_info, e.window, SEARCH_WINDOW);
+    if(isTaskMoving && c){
+        isTaskMoving = FALSE;
+        syncConfigureRequest(0, 0, 0, 0, c->frame, isTaskMoving);
+    }
 }
 
 void WindowManager::OnMotionNotify(const XMotionEvent &e)
@@ -607,40 +614,27 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e)
     const Vector2D<int> delta = drag_pos - drag_start_pos_;
     log("OnMotionNotify  window:%lx x_root:%d y_root:%d state:0x%X type:%d x:%d y:%d send_event:%d",
          e.window, e.x_root, e.y_root, e.state, e.type, e.x, e.y, e.send_event);
-    
     ScreenInfo *screen_info;
     screen_info = myDisplayGetScreenFromWindow(display_info, e.window);
     if (!screen_info || !screen_info->passdata.c)
     {
         return; 
     }
-
-    log("OnMotionNotify_mx:%d my:%d  ox:%d oy:%d ow:%d oh:%d oldw:%d oldh:%d cancel_x:%d cancel_y:%d", 
+    log("OnMotionNotify_mx:%d my:%d  ox:%d oy:%d ow:%d oh:%d oldw:%d oldh:%d cancel_x:%d cancel_y:%d",
         screen_info->passdata.mx, screen_info->passdata.my, 
         screen_info->passdata.ox, screen_info->passdata.oy,
         screen_info->passdata.ow, screen_info->passdata.oh,
         screen_info->passdata.oldw, screen_info->passdata.oldh,
         screen_info->passdata.cancel_x, screen_info->passdata.cancel_y
     );
-
     Client *c = screen_info->passdata.c;
-
     log("OnMotionNotify width:%d height:%d", c->width, c->height);
-
-
     if (e.state & Button1Mask)
     {
         int origin_x =  screen_info->passdata.ox;
         int origin_y =  screen_info->passdata.oy;
         int final_x = origin_x + (e.x_root - screen_info->passdata.mx);
         int final_y = origin_y + (e.y_root - screen_info->passdata.my);
-        if (final_x < 0) final_x = 0;
-        if (final_y < 0) final_y = 0;
-        // if (final_x + screen_info->passdata.ow > screen_info->width)
-        //     final_x = screen_info->width - screen_info->passdata.ow;
-        // if (final_y + screen_info->passdata.oh > screen_info->height)   
-        //     final_y = screen_info->height - screen_info->passdata.oh;
-
         c->x = final_x;
         c->y = final_y;
         XWindowChanges changes;
@@ -649,27 +643,14 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e)
         changes.width = c->width;
         changes.height = c->height;
         unsigned long value_mask = CWX | CWY ;
-
         log("OnMotionNotify_window:%lx frame:%lx final_x:%d final_y:%d", c->window, c->frame, final_x, final_y);
-
-        // XMoveWindow(display_, c->frame, final_x, final_y);
-        // XMoveWindow(display_, c->window, final_x, final_y);
-        // clientConfigure (c, &changes, value_mask, NO_CFG_FLAG);
         clientMoveResizeWindow (c, &changes, value_mask);
-
-        if ((value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight)
-            && c
-        )
+        if ((value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight))
         {
-            syncConfigureRequest(changes.x, changes.y, changes.width, changes.height, c->frame);
+            isTaskMoving = TRUE;
+            syncConfigureRequest(changes.x, changes.y, changes.width,
+                                 changes.height, c->frame, isTaskMoving);
         }
-
-        // alt + left button: Move window.
-        // const Position<int> dest_frame_pos = drag_start_frame_pos_ + delta;
-        // XMoveWindow(
-            // display_,
-            // frame,
-            // dest_frame_pos.x, dest_frame_pos.y);
     }
     else if (e.state & Button3Mask)
     {

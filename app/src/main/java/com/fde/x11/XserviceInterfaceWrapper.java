@@ -142,6 +142,9 @@ public class XserviceInterfaceWrapper implements InputStub {
 
     @Override
     public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) {
+        if(buttonDown){
+            FLog.e(TAG, "sendMouseEvent: ");
+        }
         try {
             if(isAviable()){service.sendMouseEvent(x, y, whichButton, buttonDown, relative, index);}
         }catch (RemoteException e){
@@ -179,6 +182,22 @@ public class XserviceInterfaceWrapper implements InputStub {
             if(isAviable()){service.sendClipFile(imagePath);}
         }catch (RemoteException e){
             FLog.e(TAG, "sendClipText failed" + e.getMessage());
+        }
+    }
+
+    public void registerActivityCallback(long window, IActivityCallback.Stub callback) {
+        try {
+            if(isAviable()){service.registerActivityCallback(window, callback);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "registerActivityCallback failed" + e.getMessage());
+        }
+    }
+
+    public void unregisterActivityCallback(long window, IActivityCallback.Stub callback) {
+        try {
+            if(isAviable()){service.unregisterActivityCallback(window, callback);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "registerActivityCallback failed" + e.getMessage());
         }
     }
 }

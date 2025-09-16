@@ -95,4 +95,14 @@ public class FrameworkImpl implements FrameworkOperations{
         DecorView decorView = (DecorView)activity.getWindow().getDecorView();
         return decorView.isWindowMaximized();
     }
+
+    @Override
+    public boolean startDecorMovingTask(float startX, float startY) {
+        return false;
+    }
+
+    @Override
+    public void finisDecorMovingTask() {
+
+    }
 }

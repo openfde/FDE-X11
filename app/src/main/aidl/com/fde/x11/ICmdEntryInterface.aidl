@@ -1,5 +1,6 @@
 package com.fde.x11;
 
+import com.fde.x11.IActivityCallback;
 
 // This interface is used by utility on termux side.
 interface ICmdEntryInterface {
@@ -31,4 +32,9 @@ interface ICmdEntryInterface {
     void sendClipFile(String file);
 
     void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index);
+
+    void registerActivityCallback(long window, IActivityCallback callback);
+
+    void unregisterActivityCallback(long window, IActivityCallback callback);
+
 }

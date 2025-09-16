@@ -23,7 +23,13 @@ public class WindowAttribute implements Parcelable {
     boolean focusable = true;
     Property property;
 
+    int isMoving = 1;
+
     int taskId = - 1;
+
+    public WindowAttribute() {
+
+    }
 
     public int getCaptionHeight() {
         return captionHeight;
@@ -188,7 +194,22 @@ public class WindowAttribute implements Parcelable {
 
     public WindowAttribute(int offsetX, int offsetY, int width, int height, int index,
                            long windowPtr,
-                           long xid ){
+                           long xid,
+                           int isMoving){
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.width = width;
+        this.height = height;
+        this.index = index;
+        this.windowPtr = windowPtr;
+        this.XID = xid;
+        this.isMoving = isMoving;
+    }
+
+    public WindowAttribute(int offsetX, int offsetY, int width, int height, int index,
+                           long windowPtr,
+                           long xid
+    ){
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.width = width;
@@ -212,10 +233,19 @@ public class WindowAttribute implements Parcelable {
         taskId = in.readInt();
         supportMotif = in.readInt();
         captionHeight = in.readInt();
+        isMoving = in.readInt();
         frame = XID;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             focusable = in.readBoolean();
         }
+    }
+
+    public int getIsMoving() {
+        return isMoving;
+    }
+
+    public void setIsMoving(int isMoving) {
+        this.isMoving = isMoving;
     }
 
     public long getTaskTo() {
@@ -245,6 +275,7 @@ public class WindowAttribute implements Parcelable {
             dest.writeInt(taskId);
             dest.writeInt(supportMotif);
             dest.writeInt(captionHeight);
+            dest.writeInt(isMoving);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             dest.writeBoolean(focusable);
         }

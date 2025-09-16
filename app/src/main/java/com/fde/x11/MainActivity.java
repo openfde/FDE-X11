@@ -195,6 +195,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private XserviceInterfaceWrapper mXserviceWrapper;
     protected boolean captionShowing;
     private boolean needSurface;
+    private boolean isTaskMoving;
 
     public static final String NAME_MATE_TERMINAL = "mate-terminal";
     public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
@@ -475,21 +476,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         Xserver.requestConnection();
         bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
         mClipboardManager = (android.content.ClipboardManager) getApplication().getSystemService(Context.CLIPBOARD_SERVICE);
-        findViewById(R.id.button).setOnClickListener((v)->{
-//            mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-//                    100, 100,
-//                    1600, 800);
-//            View view = null;
-//            for (Map.Entry entry: mFloatViews.entrySet()){
-//                view = (View)entry.getValue();
-//                break;
-//            }
-//            LorieView floatView = view.findViewById(R.id.widget_view);
-//            WindowAttribute attribute = floatView.getAttribute();
-//            mXserviceWrapper.configureWindow(attribute.getWindowPtr(), attribute.getXID(),
-//                    100, 100,
-//                    100, 30);
-        });
     }
 
 
@@ -551,8 +537,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             getLorieView().requestFocus();
             detectViewRequestFocus();
             ThreadPoolManager.getInstance().execute(this::getClipText);
-//            configureWindowDelayWithOffsetY(1, 50);
-//            configureWindowDelayWithOffsetY(0, 500);
         } else {
             if(mInputHandler != null && !mFloatViews.isEmpty()){
                 mInputHandler.mouseClick();
@@ -569,7 +553,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                if(mXserviceWrapper == null){
+                if(mXserviceWrapper == null /* &&  isTaskMoving*/){
                     return;
                 }
                 mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
@@ -611,6 +595,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         unregisterReceiver(receiver);
         unbindService(connection);
         stopFloatViews();
+        if(mAttribute != null){
+            mXserviceWrapper.unregisterActivityCallback(mAttribute.getXID(), iActivityCallback);
+        }
         mXserviceWrapper.disableService();
         FLog.a("lifecycle", getWindowId(), "onDestroy");
         if(mClipboardManager != null){
@@ -620,6 +607,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         mOnPrimaryClipChangedListener = null;
         EventBus.getDefault().unregister(this);
         broadcastTaskId(false);
+
     }
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
@@ -723,19 +711,21 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     " GLOBAL_DENSITY:" + GLOBAL_DENSITY);
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
-            if( newConfig ||  !samePosition || !sameSize ){
+            if( (newConfig ||  !samePosition || !sameSize) /* &&  !isTaskMoving*/ ){
                 updateAttribueOnly(rect);
                 mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
                         rect.right - rect.left, rect.bottom - rect.top);
             }
         }
-        mXserviceWrapper.raiseWindow(mAttribute.getXID());
+//        if(!isTaskMoving){
+            mXserviceWrapper.raiseWindow(mAttribute.getXID());
+//        }
         InputManager.getInstance().setFocusView(getLorieView());
 
         if (isFullscreen) {
             handler.postDelayed(() -> {
-                if(mXserviceWrapper == null){
+                if(mXserviceWrapper == null /*|| isTaskMoving*/){
                     return;
                 }
                 mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
@@ -871,7 +861,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void postWindowChanged(Rect rect, Surface sfc, int delayMS) {
         handler.postDelayed(() -> {
-            if (mXserviceWrapper != null) {
+            if (mXserviceWrapper != null /*&& !isTaskMoving*/) {
                 mXserviceWrapper.configureWindow(
                         mAttribute.getWindowPtr(),
                         mAttribute.getXID(),
@@ -925,7 +915,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     public synchronized void configureFromX() {
         FLog.a("window", getWindowId(), "configureFromX mConfigureRect:" + mConfigureRect);
-        if(mConfigureRect != null){
+        if(mConfigureRect != null /*&& !isTaskMoving*/){
             mAttribute.setRect(mConfigureRect);
             mWindowRect = mConfigureRect;
             Rect rect = mConfigureRect;
@@ -1267,6 +1257,31 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         return true;
     }
 
+    private final IActivityCallback.Stub iActivityCallback = new IActivityCallback.Stub() {
+        @Override
+        public boolean startDecorMovingTask(float startX, float startY, long window) throws RemoteException {
+            if (mAttribute != null && mAttribute.getXID() == window) {
+//                if (mFrameworkOperations.startDecorMovingTask(startX, startY)) {
+                    isTaskMoving = true;
+                Log.d(TAG, "startDecorMovingTask() called with: startX = [" + startX + "], startY = [" + startY + "], isTaskMoving = [" + isTaskMoving + "]");
+                    mInputHandler.setMoveTask(isTaskMoving);
+                    return true;
+//                }
+            }
+            return false;
+        }
+
+        @Override
+        public void finisDecorMovingTask(long window) throws RemoteException {
+            if(mAttribute != null && mAttribute.getXID() == window){
+//                mFrameworkOperations.finisDecorMovingTask();
+                Log.d(TAG, "finisDecorMovingTask: isTaskMoving:" + isTaskMoving);
+                isTaskMoving = false;
+                mInputHandler.setMoveTask(isTaskMoving);
+            }
+        }
+    };
+
     public  class XserverActionReceiver extends BroadcastReceiver {
 
         @Override
@@ -1486,6 +1501,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     binder.linkToDeath(new ConnectionDeathRecipient(), 0);
                 } catch (RemoteException e) {
                     FLog.e("connection", e.getMessage());
+                }
+                if(mAttribute != null){
+                    mXserviceWrapper.registerActivityCallback(mAttribute.getXID(), iActivityCallback);
                 }
             }
         }
