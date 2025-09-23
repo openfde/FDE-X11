@@ -1,11 +1,18 @@
 package com.fde.x11;
 
 
+import static android.app.ActivityManager.MOVE_TASK_NO_USER_ACTION;
+import static com.fde.fusionwindowmanager.WindowManager.ACTION_X_UPDATE_SYSTEMTRAY_ICON;
+import static com.fde.fusionwindowmanager.WindowManager.KEY_ACTION;
+import static com.fde.fusionwindowmanager.WindowManager.KEY_ICON;
+import static com.fde.fusionwindowmanager.WindowManager.KEY_TITLE;
+import static com.fde.fusionwindowmanager.WindowManager.KEY_WINDOW;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.Service;
 import android.content.ClipData;
 import android.content.ClipboardManager;
@@ -26,6 +33,7 @@ import androidx.annotation.Keep;
 
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
+import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
 import com.fde.x11.data.Constants;
@@ -58,20 +66,23 @@ public class Xserver {
     // listen unix or tcp socket, only for local X client
     private String[] ARGS_DEFAULT;
 
-    private  static final int _NET_WM_WINDOW_TYPE = 267;
-    private  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
-    private  static final int _NET_WM_WINDOW_TYPE_DIALOG = 269;
-    private  static final int _NET_WM_WINDOW_TYPE_DND = 270;
-    private  static final int _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
-    private  static final int _NET_WM_WINDOW_TYPE_MENU = 272;
-    private  static final int _NET_WM_WINDOW_TYPE_NORMAL = 273;
-    private  static final int _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
-    private  static final int _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
-    private  static final int _NET_WM_WINDOW_TYPE_UTILITY = 276;
+    public  static final int _NET_WM_WINDOW_TYPE = 267;
+    public  static final int _NET_WM_WINDOW_TYPE_COMBO = 268;
+    public  static final int _NET_WM_WINDOW_TYPE_DIALOG = 269;
+    public  static final int _NET_WM_WINDOW_TYPE_DND = 270;
+    public  static final int _NET_WM_WINDOW_TYPE_DROPDOWN_MENU = 271;
+    public  static final int _NET_WM_WINDOW_TYPE_MENU = 272;
+    public  static final int _NET_WM_WINDOW_TYPE_NORMAL = 273;
+    public  static final int _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
+    public  static final int _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
+    public  static final int _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
-    private static final int ACTION_UNMAP = 1;
-    private static final int ACTION_DESTORY = 2;
-    private static final int ACTION_DISMISS_VIEW = 3;
+    public  static final int _WM_WINDOW_TYPE_SYSTRAY = 1000;
+    public  static final int _WM_WINDOW_TYPE_SYSTIP = 1001;
+
+    public static final int ACTION_UNMAP = 1;
+    public static final int ACTION_DESTORY = 2;
+    public static final int ACTION_DISMISS_VIEW = 3;
     public static int X_ClientNum = 0;
 
 
@@ -81,7 +92,7 @@ public class Xserver {
         String height = AppUtils.getProperty("openfde.display_height", "1080");
         String width = AppUtils.getProperty("openfde.display_width", "1920");
         ARGS_DEFAULT = new String[]{":" + DISPLAY_GLOBAL, "-width",width,
-            "-height", height };
+                "-height", height };
         if (!start(ARGS_DEFAULT, FLog.LogXserverNativeEnable)) {
             FLog.s(TAG, "startXserver: failed", FLog.ERROR);
         }
@@ -122,17 +133,18 @@ public class Xserver {
      * @param support_wm_delete     close action
      */
     public static void startOrUpdateWindow(long aid, long transientfor, long leader,
-                                           int type, String wm_name, String wm_class,
+                                           int type, String wm_name, String net_wm_name,
                                            int x, int y, int w, int h, int index, long p,
                                            long xid, long taskTo, int support_wm_delete,
                                            int support_motif, Bitmap bitmap, boolean inbound, int clientNum,
-                                           boolean isActivity, long window) {
+                                           boolean isActivity, long window, boolean start) {
         FLog.s(TAG, aid,"startOrUpdateWindow: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
-                + ", type:" + type + ", wm_name:" + wm_name + ", wm_class:" + wm_class + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
-                + ", xid:" + Long.toHexString(xid) + ", taskTo:" + Long.toHexString(taskTo) +
-                ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +
+                        + ", type:" + type + ", wm_name:" + wm_name + ", net_wm_name:" + net_wm_name + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
+                        + ", xid:" + Long.toHexString(xid) + ", taskTo:" + Long.toHexString(taskTo) +
+                        ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +
                         " , inbound:" + inbound + " clientNum:" + clientNum
-                + ",  window:" + Long.toHexString(window),
+                        + ",  window:" + Long.toHexString(window)
+                        + ",  start: " + start,
                 FLog.WARN);
         X_ClientNum = clientNum;
         EventMessage message = null;
@@ -154,19 +166,33 @@ public class Xserver {
         }
 //        taskTo = taskTo == 0 ? transientfor : taskTo;
         FLog.s(TAG, aid,"final windowtype:" + type);
+
         if(isActivity){
             switch (type) {
+//                case _WM_WINDOW_TYPE_SYSTRAY:
                 case 0:
                 case _NET_WM_WINDOW_TYPE_NORMAL:
-                    message = new EventMessage(EventType.X_START_ACTIVITY_MAIN_WINDOW,
-                            "xserver start activity as main window",
+                    message = new EventMessage(start ? EventType.X_START_ACTIVITY_MAIN_WINDOW
+                            : EventType.X_MAP_ACTIVITY,"xserver start activity as main window",
                             new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
-                            new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete, support_motif, bitmap)));
+                            new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete, support_motif, bitmap)));
                     break;
                 case _NET_WM_WINDOW_TYPE_DIALOG:
-                    message = new EventMessage(EventType.X_START_ACTIVITY_WINDOW,
-                            "xserver open activity as dialog", new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
-                            new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete)));
+                    message = new EventMessage(start ? EventType.X_START_ACTIVITY_WINDOW
+                            : EventType.X_MAP_ACTIVITY,"xserver open activity as dialog",
+                            new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
+                            new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete)));
+                    break ;
+                case _WM_WINDOW_TYPE_SYSTRAY:
+                    message = new EventMessage(EventType.X_START_SYSTRAY, "start some view as systray",
+                            new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
+                            new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete, support_motif, bitmap)));
+                    break;
+                case _WM_WINDOW_TYPE_SYSTIP:
+                    message = new EventMessage(EventType.X_START_VIEW, "start some view as systip",
+                            new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
+                            new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete, support_motif, bitmap)));
+                    Log.d(TAG, "startOrUpdateWindow: " + message.getProperty());
                     break;
                 default:
                     break;
@@ -178,15 +204,28 @@ public class Xserver {
                 case _NET_WM_WINDOW_TYPE_TOOLTIP:
                 case _NET_WM_WINDOW_TYPE_POPUP_MENU:
                 case _NET_WM_WINDOW_TYPE_COMBO:
+//                case _WM_WINDOW_TYPE_SYSTIP:
                 default:
                     message = new EventMessage(EventType.X_START_VIEW,
-                            "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, xid, taskTo), new Property(aid, transientfor, leader, type, wm_name, wm_class, support_wm_delete));
+                            "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, xid, taskTo,
+                            new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete)));
                     break;
             }
         }
 
+//        Log.d(TAG, "startOrUpdateWindow: " + message.getProperty());
         if (message != null) {
             EventBus.getDefault().post(message);
+        }
+    }
+
+    public static void xserverMapWindow(long window){
+        Log.d(TAG, "xserverMapWindow() called with: window = [" + window + "]");
+        WindowAttribute attr = WindowManager.taskIdMap.get(window);
+        if(attr != null && attr.getTaskId() != 0){
+            ActivityManager am = (ActivityManager)
+                    context.get().getSystemService(Context.ACTIVITY_SERVICE);
+            am.moveTaskToFront(attr.getTaskId(), MOVE_TASK_NO_USER_ACTION);
         }
     }
 
@@ -309,6 +348,22 @@ public class Xserver {
         intent.putExtra("window_id", window);
         intent.putExtra("window_icon", newBitmap);
         new Handler(Looper.getMainLooper()).postDelayed(() -> ctx.sendBroadcastAsUser(intent, UserHandle.ALL), 1000);
+    }
+
+    //called from native code
+    public static void  updateSystemTrayIcon(Bitmap bitmap, long window, long action, String title){
+        Log.d(TAG, "updateSystemTrayIcon() called with: bitmap = [" + bitmap + "], window = [" + window + "], " +
+                "action = [" + action + "], title = [" + title + "]");
+        Context ctx = context.get();
+        if(ctx != null){
+            Intent intent = new Intent(ACTION_X_UPDATE_SYSTEMTRAY_ICON);
+            intent.putExtra(KEY_ICON, bitmap);
+            intent.putExtra(KEY_WINDOW, window);
+            intent.putExtra(KEY_ACTION, action);
+            intent.putExtra(KEY_TITLE, title);
+            intent.setPackage("com.android.systemui");
+            ctx.sendBroadcast(intent);
+        }
     }
 
     private void sendBroadcastDelayed() {

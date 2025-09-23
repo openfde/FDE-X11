@@ -27,7 +27,7 @@ using ::std::pair;
 using ::std::ostringstream;
 
 
-int is_valid_utf8(const char *string) {
+int util_is_valid_utf8(const char *string) {
     if (!string)
         return 0;
 

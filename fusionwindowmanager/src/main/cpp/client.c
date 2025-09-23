@@ -985,6 +985,8 @@ clientGetMWMHints (Client *c)
 //        g_free (c->mwm_hints);
 //    }
     c->mwm_hints = getMotifHints (display_info, c->window);
+//    logd ("client mwm_hints flags:%lu  func:%lu decor:%lu", c->mwm_hints->flags, c->mwm_hints->functions,
+//            c->mwm_hints->decorations);
 }
 
 void
@@ -1623,6 +1625,17 @@ clientFrame (DisplayInfo *display_info, Window w, gboolean recapture)
         // goto out;
     // }
 
+    if (checkKdeSystrayWindow (display_info, w))
+    {
+        logd("detected KDE systray windows");
+        if (screen_info->systray != None)
+        {
+            sendSystrayReqDock (display_info, w, screen_info->systray);
+            goto out;
+        }
+        logd("no systray found for this screen");
+    }
+
     if (attr.override_redirect)
     {
         logd ("override redirect window 0x%lx", w);
@@ -1862,6 +1875,7 @@ clientFrame (DisplayInfo *display_info, Window w, gboolean recapture)
     c->frame =
         XCreateWindow (display_info->dpy, screen_info->xroot, 0, 0, 1, 1, 0,
         c->depth, InputOutput, c->visual, valuemask, &attributes);
+    XStoreName (display_info->dpy, c->frame, "android_frame");
 
     XSelectInput (display_info->dpy, c->window, NoEventMask);
     XSetWindowBorderWidth (display_info->dpy, c->window, 0);

@@ -6,13 +6,13 @@ public enum EventType {
     X_START_ACTIVITY_WINDOW("other window"),
     X_START_DIALOG("dialog window"),
     X_START_VIEW("tip window"),
-
+    X_START_SYSTRAY("systray window"),
     X_MODAL_ACTIVITY("modal_activity"),
 
     X_UNMODAL_ACTIVITY("unmodal_activity"),
 
     X_UNMAP_WINDOW("UNMAP_ANY"),
-
+    X_MAP_ACTIVITY("MAP_ACTIVITY"),
     X_DISMISS_WINDOW("FloatView_Dismiss"),
     X_DESTROY_ACTIVITY("destroy_activity"),
     X_DESTROY_DIALOG("destroy_dialog"),

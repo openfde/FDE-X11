@@ -1,10 +1,9 @@
 package com.fde.x11;
 
-import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
-import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MINIMIZE;
-import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MINIMIZE_ACTION;
+import static android.os.Build.VERSION.SDK_INT;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
+import static com.fde.x11.Xserver._WM_WINDOW_TYPE_SYSTIP;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
 
@@ -13,25 +12,31 @@ import android.app.ActivityManager;
 import android.app.ActivityOptions;
 import android.app.ActivityTaskManager;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.os.UserHandle;
-import android.os.UserManager;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.Surface;
-import android.widget.Toast;
+import android.view.View;
+
+import androidx.annotation.NonNull;
 
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
-import com.fde.x11.input.InputManager;
+import com.fde.x11.input.InputEventSender;
+import com.fde.x11.input.InputStub;
+import com.fde.x11.input.TouchInputHandler;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
 
@@ -45,7 +50,9 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 
 /**
@@ -62,16 +69,26 @@ public class XWindowService extends Service {
 
     public static final String ACTION_X_WINDOW_ATTRIBUTE = "action_x_window_attribute";
     public static final String ACTION_X_WINDOW_PROPERTY = "action_x_window_property";
+    private static final int TYPE_TRAY = 1;
+    private static final int TYPE_TIP = 2;
+
+    private final Map<Long, View> mFloatTrays = new HashMap<>();
+    private final Map<Long, View> mFloatTips = new HashMap<>();
+
+    private WindowAttribute rightAttr;
 
     public static final String CONFIGURE_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_configure";
     public static final String CONFIGURE_WIDGET_FROM_X = "com.fde.x11.Xserver.action_configure_widget";
 
     public static final String START_VIEW_FROM_X = "com.fde.x11.Xserver.start_action_view";
     public static final String STOP_VIEW_FROM_X = "com.fde.x11.Xserver.stop_action_view";
+    public static final String START_SYSTRAY_FROM_X = "com.fde.x11.Xserver.start_systray_from_x";
+    public static final String STOP_SYSTRAY_FROM_X = "com.fde.x11.Xserver.stop_systray_from_x";
 
     public static final String DESTROY_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_destroy";
     public static final String STOP_WINDOW_FROM_X = "com.fde.x11.Xserver.action_stop";
     public static final String HIDE_WINDOW_FROM_X = "com.fde.x11.Xserver.action_hide";
+    public static final String SHOW_WINDOW_FROM_X = "com.fde.x11.Xserver.action_show";
 
     public static final String START_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_start";
 
@@ -82,6 +99,12 @@ public class XWindowService extends Service {
     public static final String X_MAIN_WINDOW_SIZE = "x_main_window_size";
     public static final String X_CLIENT_SIZE = "x_client_size";
 
+    public static final String X_WINDOW_RECT = "x_window_rect";
+    public static final String X_WINDOW_INDEX = "x_window_index";
+    public static final String X_WINDOW_PWIN = "x_window_pwin";
+    public static final String X_WINDOW_WINDOW = "x_window_window";
+
+    public Handler mainHandler = new Handler(Looper.getMainLooper());
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
     private static final int DESTROY_ACTIVITY_RETRY = 1;
@@ -196,6 +219,7 @@ public class XWindowService extends Service {
 
         @Override
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
+            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
 
@@ -234,7 +258,9 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
-        FLog.s(TAG,  message.getType().usefor +" ID:" + Long.toHexString(message.getWindowAttribute().getXID()));
+        FLog.s(TAG,  message.getMessage() +" ID:" +
+                Long.toHexString(message.getWindowAttribute().getXID())
+         + "prop:" + message.getProperty());
         int windowSize = runningMainWindow.size();
 //        FLog.s(TAG, "before: size:" + windowSize);
         switch (message.getType()){
@@ -252,15 +278,34 @@ public class XWindowService extends Service {
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_UNMAP_WINDOW:
-//                sendBroadcastHide(message.getWindowAttribute());
-                WindowAttribute unmap = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
-                Log.d(TAG, "onReceiveMsg: unmapId:" + unmap);
-                if(unmap != null && unmap.getTaskId() != 0){
-                    am.moveTaskToBack(true, unmap.getTaskId());
+                if (mFloatTrays.get(message.getWindowAttribute().getXID()) != null){
+                    stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TRAY);
+                } else if (mFloatTips.get(message.getWindowAttribute().getXID()) != null){
+                    stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TIP);
+                } else {
+                    sendBroadcastHide(message.getWindowAttribute());
+                    WindowAttribute unmap = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
+                    Log.d(TAG, "onReceiveMsg: unmapId:" + unmap);
+                    if(unmap != null && unmap.getTaskId() != 0){
+                        am.moveTaskToBack(true, unmap.getTaskId());
+                    }
                 }
                 break;
+            case X_MAP_ACTIVITY:{
+//                WindowAttribute mapAttr = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
+//                Log.d(TAG, "X_MAP_ACTIVITY: map:" + mapAttr);
+//                if(mapAttr != null && mapAttr.getTaskId() != 0){
+//                    am.moveTaskToFront(mapAttr.getTaskId(), MOVE_TASK_NO_USER_ACTION);
+//                }
+                sendBroadcastMapWindow(message.getWindowAttribute());
+                break;
+            }
             case X_DESTROY_ACTIVITY:
-                if(message.getProperty()!= null && message.getProperty().getSupportDeleteWindow() != 0){
+                if (mFloatTrays.get(message.getWindowAttribute().getXID()) != null){
+                    stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TRAY);
+                } else if (mFloatTips.get(message.getWindowAttribute().getXID()) != null){
+                    stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TIP);
+                }else if(message.getProperty()!= null && message.getProperty().getSupportDeleteWindow() != 0){
                     destroyActivitySafety(DESTROY_ACTIVITY_RETRY, message.getWindowAttribute());
                 } else {
                     stopWindow(message.getWindowAttribute());
@@ -305,15 +350,24 @@ public class XWindowService extends Service {
                 }
                 break;
             case X_CONFIGURE_WIDGET:
-                sendBroadcastConfigureWidget(message.getWindowAttribute());
+//                sendBroadcastConfigureWidget(message.getWindowAttribute());
                 break;
             case X_START_VIEW:
-                sendBroadcastAboutView(message.getWindowAttribute(), message.getProperty(), X_START_VIEW);
+                if(message.getProperty() != null && message.getProperty().getType() == _WM_WINDOW_TYPE_SYSTIP) {
+                    updateSystrayAndTip(message.getWindowAttribute(), TYPE_TIP);
+                } else {
+                    sendBroadcastAboutView(message.getWindowAttribute(), message.getProperty(), X_START_VIEW);
+                }
 //   TODO for test             startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
                 break;
             case X_DISMISS_WINDOW:
-                sendBroadcastAboutView(message.getWindowAttribute(),message.getProperty(), X_DISMISS_WINDOW);
+                if(!stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TIP)){
+                    sendBroadcastAboutView(message.getWindowAttribute(),message.getProperty(), X_DISMISS_WINDOW);
+                }
                 break;
+            case X_START_SYSTRAY:
+//                sendBroadcastSystray(message.getWindowAttribute(),message.getProperty(), X_START_SYSTRAY);
+                updateSystrayAndTip(message.getWindowAttribute(), TYPE_TRAY);
             default:
                 break;
         }
@@ -322,6 +376,218 @@ public class XWindowService extends Service {
         if(windowSize != size){
             sendBroadcastSize(size);
         }
+    }
+
+    private boolean stopFloatTrayAndTip(WindowAttribute attr, int type) {
+        Log.d(TAG, "stopFloatTrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+        Map<Long, View> floatViews;
+        if(type == TYPE_TRAY){
+            floatViews = mFloatTrays;
+        } else {
+            floatViews = mFloatTips;
+        }
+
+        if(attr == null || floatViews.isEmpty()){
+            Log.d(TAG, "stopFloatTrayAndTip: isEmpty");
+            return false;
+        }
+        View floatView = floatViews.get(attr.getXID());
+        if(systemWindowManager != null && floatView != null && floatView.isAttachedToWindow()){
+            systemWindowManager.removeView(floatView);
+            Log.d(TAG, "stopFloatTrayAndTip: successful");
+            if(type == TYPE_TIP){
+                mFloatTips.remove(attr.getXID());
+                return true;
+            }
+        }
+//        mFloatViews.remove(attr.getXID());
+        if(type == TYPE_TRAY){
+            rearrangeWindowAttributes(attr.getXID());
+        }
+        return false;
+//        }
+    }
+
+    private void rearrangeWindowAttributes(long removedViewId) {
+        // 1. 移除指定的View
+        mFloatTrays.remove(removedViewId);
+        // 2. 获取剩余的所有WindowAttribute并按当前offsetX排序
+        List<WindowAttribute> attributes = mFloatTrays.values().stream()
+                .map(view -> (WindowAttribute) view.getTag())
+                .sorted((attr1, attr2) -> Float.compare(attr1.getOffsetX(), attr2.getOffsetX()))
+                .collect(Collectors.toList());
+
+        // 3. 重新设置offsetX，从右向左排列
+        float currentOffsetX = rightAttr.getOffsetX();
+        for (WindowAttribute attr : attributes) {
+            attr.setOffsetX(currentOffsetX);
+            updateSystrayAndTip(attr, TYPE_TRAY);
+            currentOffsetX -= 30;
+        }
+    }
+
+    private void sendBroadcastSystray(WindowAttribute attr, Property property, EventType type) {
+        FLog.s(TAG, attr.getXID(), "sendBroadcastAboutView: attr:" + attr + ", type:" + type);
+        Intent intent = new Intent();
+        intent.setAction(START_SYSTRAY_FROM_X);
+        intent.setPackage("com.android.systemui");
+        intent.putExtra(X_WINDOW_RECT, attr.getRect());
+        intent.putExtra(X_WINDOW_INDEX, attr.getIndex());
+        intent.putExtra(X_WINDOW_PWIN, attr.getWindowPtr());
+        intent.putExtra(X_WINDOW_WINDOW, attr.getXID());
+        sendBroadcast(intent);
+    }
+
+    private void updateSystrayAndTip(WindowAttribute attr, int type) {
+        Log.d(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+        if(type == TYPE_TRAY && rightAttr == null){
+            rightAttr = attr;
+        }
+
+        View floatView;
+        Map<Long, View> floatViews;
+        if(type == TYPE_TRAY){
+            floatViews = mFloatTrays;
+        } else {
+            floatViews = mFloatTips;
+        }
+
+        android.view.WindowManager.LayoutParams floatParams = createLayoutParams(attr);
+        if(floatViews.get(attr.getXID()) == null){
+            floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view,null,false);
+            systemWindowManager.addView(floatView, floatParams);
+        } else {
+            floatView = floatViews.get(attr.getXID());
+            systemWindowManager.updateViewLayout(floatView,floatParams);
+        }
+//        systemWindowManager.updateViewLayout(floatView,floatParams);
+        LorieView widgetView = floatView.findViewById(R.id.widget_view);
+        widgetView.updateCoordinate(attr);
+        mainHandler.post(() -> widgetView.setCallback(new LorieView.Callback() {
+            @Override
+            public void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight) {
+//                Xserver.getInstance().windowChanged(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+            }
+
+            @Override
+            public void realSizeChanged(Surface sfc, int width, int height) {
+                if(wm != null){
+                    wm.configureWindow(attr.getXID(), (int)attr.getOffsetX(),
+                            (int)attr.getOffsetY(),width, height);
+                }
+                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+                Xserver.getInstance().windowChanged(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+            }
+        }));
+
+        InputEventSender inputEventSender = getInputEventSender(attr, widgetView);
+        TouchInputHandler inputHandler = new TouchInputHandler(this, new TouchInputHandler.RenderStub.NullStub() {
+            @Override
+            public void swipeDown() {
+            }
+        }, inputEventSender);
+        floatView.setOnTouchListener((v, e) ->{
+                   return inputHandler.handleTouchEvent(floatView, widgetView, e);
+                }
+        );
+        floatView.setOnHoverListener((v, e) -> {
+                    return inputHandler.handleTouchEvent(floatView, widgetView, e);
+                }
+        );
+        floatView.setOnGenericMotionListener((v, e) -> {
+                    return inputHandler.handleTouchEvent(floatView, widgetView, e);
+                }
+        );
+        widgetView.setOnCapturedPointerListener((v, e) -> {
+                    return inputHandler.handleTouchEvent(widgetView, widgetView, e);
+                }
+        );
+        floatView.setOnCapturedPointerListener((v, e) -> {
+                    return inputHandler.handleTouchEvent(widgetView, widgetView, e);
+                }
+        );
+        floatView.setTag(attr);
+        floatViews.put(attr.getXID(), floatView);
+        Log.d(TAG, "updateSystrayAndTip: " + floatViews.size());
+    }
+
+    @NonNull
+    private static InputEventSender getInputEventSender(WindowAttribute attr, LorieView widgetView) {
+        InputEventSender inputEventSender = new InputEventSender(widgetView);
+        inputEventSender.setEventInterface(new InputStub() {
+            @Override
+            public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) {
+                Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
+            }
+
+            @Override
+            public void sendMouseWheelEvent(float deltaX, float deltaY) {
+
+            }
+
+            @Override
+            public boolean sendKeyEvent(int scanCode, int keyCode, boolean keyDown) {
+                return false;
+            }
+
+            @Override
+            public void sendTextEvent(byte[] utf8Bytes) {
+
+            }
+
+            @Override
+            public void sendUnicodeEvent(int code) {
+
+            }
+
+            @Override
+            public void sendTouchEvent(int action, int pointerId, int x, int y) {
+
+            }
+
+            @Override
+            public WindowAttribute getAttribute() {
+                return attr;
+            }
+        });
+        return inputEventSender;
+    }
+
+    public android.view.WindowManager.LayoutParams createLayoutParams(WindowAttribute attr) {
+        android.view.WindowManager.LayoutParams params = new android.view.WindowManager.LayoutParams();
+        params.flags = android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                | android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | android.view.WindowManager.LayoutParams.FLAG_SCALED
+                | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
+                | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+//        if (Build.VERSION.SDK_INT >= 26) {
+            params.type = 2024;//android.view.WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
+//        } else {
+//            params.type = android.view.WindowManager.LayoutParams.TYPE_SYSTEM_DIALOG;
+//        }
+        if (SDK_INT >= Build.VERSION_CODES.R) {
+            params.setFitInsetsTypes(0);
+        }
+        params.gravity = Gravity.TOP | Gravity.START;
+        params.width = (int) attr.getWidth();
+        params.height = (int) attr.getHeight();
+        params.x = (int) attr.getOffsetX();
+        params.y = (int) attr.getOffsetY();
+//        params.format = PixelFormat.TRANSPARENT;
+        return params;
+    }
+
+    private void sendBroadcastMapWindow(WindowAttribute attr) {
+        handler.postDelayed(() -> {
+            FLog.s(TAG, "sendBroadcastMapWindow: attr:" + attr + "");
+            String targetPackage = getPackageName();
+            Intent intent = new Intent(SHOW_WINDOW_FROM_X);
+            intent.setPackage(targetPackage);
+            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+            sendBroadcastAsUser(intent, UserHandle.ALL);
+        }, 1000);
+
     }
 
     private void sendBroadcastHide(WindowAttribute attr) {
@@ -352,7 +618,8 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastAboutView(WindowAttribute attr, Property property, EventType type) {
-        FLog.s(TAG, attr.getXID(), "sendBroadcastAboutView: attr:" + attr + ", type:" + type);
+        FLog.s(TAG, attr.getXID(), "sendBroadcastAboutView: attr:" + attr + ", type:" + type +
+                ", property:" + property);
         String targetPackage = getPackageName();
         Intent intent = new Intent();
         if (Objects.requireNonNull(type) == X_START_VIEW) {

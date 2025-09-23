@@ -58,6 +58,7 @@ SOFTWARE.
 #include "xace.h"
 #include <jni.h>
 #include <android/log.h>
+
 extern Bool LOG_ENABLE;
 #define PROPERTY_LOG_ENABLE 0
 #define PRINT_LOG (PROPERTY_LOG_ENABLE)
@@ -94,7 +95,7 @@ PrintPropertys(WindowPtr pWin)
 }
 #endif
 
-void update_effect_property(WindowPtr pWin, ATOM prop, ClientPtr clientPtr);
+void property_update_android(WindowPtr pWin, Atom prop, ClientPtr client);
 
 int
 dixLookupProperty(PropertyPtr *result, WindowPtr pWin, Atom propertyName,
@@ -260,7 +261,7 @@ ProcChangeProperty(ClientPtr client)
     err = dixChangeWindowProperty(client, pWin, stuff->property, stuff->type,
                                   (int) format, (int) mode, len, &stuff[1],
                                   TRUE);
-    update_effect_property(pWin, stuff->property, client);
+    property_update_android(pWin, stuff->property, client);
     if (err != Success)
         return err;
     else

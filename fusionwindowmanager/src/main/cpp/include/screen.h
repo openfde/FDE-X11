@@ -138,7 +138,9 @@ struct _ScreenInfo
     /* tabwin css provider */
     gboolean tabwin_provider_ready;
 
-
+    /* There can be one systray per screen */
+    Atom net_system_tray_selection;
+    Window systray;
 
     Window overlay;
     Window root_overlay;

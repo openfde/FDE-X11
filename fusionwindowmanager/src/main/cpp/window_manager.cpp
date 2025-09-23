@@ -33,12 +33,12 @@ mutex WindowManager::wm_detected_mutex_;
 }
 
 WindowManager::WindowManager(Display *display)
-    : display_(display),
-      screen_(DefaultScreen(display)),
-      root_(DefaultRootWindow(display_)),
-      WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
-      WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
-      stoped(False)
+        : display_(display),
+          screen_(DefaultScreen(display)),
+          root_(DefaultRootWindow(display_)),
+          WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
+          WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
+          stoped(False)
 {
     back_window = XCreateSimpleWindow(display_, root_, 0, 0, WIDTH, HEIGHT, 0,
                                       BlackPixel(display, screen_), WhitePixel(display, screen_));
@@ -88,8 +88,8 @@ initialize(gboolean replace_wm, Display *display_, Window back_window, Window ro
         log(" display_info  %p   back_window %p ", display_info, back_window);
 
         // setNetDesktopInfo(display_info, screen_info->xroot, screen_info->current_ws,
-                        //   screen_info->width,
-                        //   screen_info->height);
+        //   screen_info->width,
+        //   screen_info->height);
         XSetInputFocus(display_info->dpy, back_window, RevertToPointerRoot, CurrentTime);
         // XSync(display_info->dpy, FALSE);
         clientFrameAll(screen_info);
@@ -150,75 +150,75 @@ void WindowManager::Frame(Window w, bool was_created_before_window_manager)
 
     // 3. Create frame.
     const Window frame = XCreateSimpleWindow(
-        display_,
-        root_,
-        x_window_attrs.x,
-        x_window_attrs.y,
-        x_window_attrs.width,
-        x_window_attrs.height,
-        BORDER_WIDTH,
-        BORDER_COLOR,
-        BG_COLOR);
+            display_,
+            root_,
+            x_window_attrs.x,
+            x_window_attrs.y,
+            x_window_attrs.width,
+            x_window_attrs.height,
+            BORDER_WIDTH,
+            BORDER_COLOR,
+            BG_COLOR);
     // 4. Select events on frame.
     XSelectInput(
-        display_,
-        frame,
-        BASE_EVENT_MASK);
+            display_,
+            frame,
+            BASE_EVENT_MASK);
     // 5. Add client to save set, so that it will be restored and kept alive if we
     // crash.
     XAddToSaveSet(display_, w);
     // 6. Reparent client window.
     XReparentWindow(
-        display_,
-        w,
-        frame,
-        0, 0); // Offset of client window within frame.
+            display_,
+            w,
+            frame,
+            0, 0); // Offset of client window within frame.
     // 7. Map frame.
     // 8. Save frame handle.
     clients_[w] = frame;
     // 9. Grab universal window management actions on client window.
     //   a. Move windows with alt + left button.
     XGrabButton(
-        display_,
-        Button1,
-        Mod1Mask,
-        w,
-        false,
-        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-        GrabModeAsync,
-        GrabModeAsync,
-        None,
-        None);
+            display_,
+            Button1,
+            Mod1Mask,
+            w,
+            false,
+            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+            GrabModeAsync,
+            GrabModeAsync,
+            None,
+            None);
     //   b. Resize windows with alt + right button.
     XGrabButton(
-        display_,
-        Button3,
-        Mod1Mask,
-        w,
-        false,
-        ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
-        GrabModeAsync,
-        GrabModeAsync,
-        None,
-        None);
+            display_,
+            Button3,
+            Mod1Mask,
+            w,
+            false,
+            ButtonPressMask | ButtonReleaseMask | ButtonMotionMask,
+            GrabModeAsync,
+            GrabModeAsync,
+            None,
+            None);
     //   c. Kill windows with alt + f4.
     XGrabKey(
-        display_,
-        XKeysymToKeycode(display_, XK_F4),
-        Mod1Mask,
-        w,
-        false,
-        GrabModeAsync,
-        GrabModeAsync);
+            display_,
+            XKeysymToKeycode(display_, XK_F4),
+            Mod1Mask,
+            w,
+            false,
+            GrabModeAsync,
+            GrabModeAsync);
     //   d. Switch windows with alt + tab.
     XGrabKey(
-        display_,
-        XKeysymToKeycode(display_, XK_Tab),
-        Mod1Mask,
-        w,
-        false,
-        GrabModeAsync,
-        GrabModeAsync);
+            display_,
+            XKeysymToKeycode(display_, XK_Tab),
+            Mod1Mask,
+            w,
+            false,
+            GrabModeAsync,
+            GrabModeAsync);
     XWindowChanges change_values;
     change_values.x = x_window_attrs.x;
     change_values.y = x_window_attrs.y;
@@ -268,7 +268,8 @@ bool WindowManager::isNormalWindow(long window)
                 {
                     continue;
                 }
-                else if (atoms[i] == type_menu || atoms[i] == type_dialog || atoms[i] == type_popup)
+                else if (atoms[i] == type_menu || atoms[i] == type_dialog
+                         || atoms[i] == type_popup || atoms[i] == _NET_WM_WINDOW_TYPE_TRAY)
                 {
                     char *atomValue = XGetAtomName(display_, atoms[i]);
                     //                    log("%s not normal window %lx \n", atomValue, window);
@@ -280,6 +281,20 @@ bool WindowManager::isNormalWindow(long window)
     }
     XFree(propData);
     return True;
+}
+
+void syncConfigureRequest(int x, int y, int w, int h, XID window, int isMoving)
+{
+    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                                                    "syncConfigureRequest", "(IIIIJI)V");
+    GlobalEnv->CallStaticVoidMethod(staticClass, method, x, y, w, h, window, isMoving);
+}
+
+void updateSystemTrayIcon(jobject icon, XID window, long opcode)
+{
+    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                                                    "updateSystemTrayIcon", "(Landroid/graphics/Bitmap;JJ)V");
+    GlobalEnv->CallStaticVoidMethod(staticClass, method, icon, window, opcode);
 }
 
 bool WindowManager::isInFrameMap(long window)
@@ -297,6 +312,7 @@ void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {}
 
 void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &e)
 {
+    dock_windows.erase(e.window);
     Client *c = myDisplayGetClientFromWindow(display_info, e.window, SEARCH_WINDOW);
     if (c)
     {
@@ -304,7 +320,8 @@ void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &e)
     }
 }
 
-void WindowManager::OnReparentNotify(const XReparentEvent &e) {}
+void WindowManager::OnReparentNotify(const XReparentEvent &e) {
+}
 
 
 // 检查窗口是否可见
@@ -354,22 +371,6 @@ void WindowManager::OnMapNotify(const XMapEvent &e)
     if (c)
     {
         log("client \"%s\" (0x%lx)", c->name, c->window);
-//        if (FLAG_TEST(c->xfwm_flags, XFWM_FLAG_MAP_PENDING))
-//        {
-//            FLAG_UNSET(c->xfwm_flags, XFWM_FLAG_MAP_PENDING);
-//        }
-//
-//        Atom type;
-//        int format;
-//        unsigned long nitems, after;
-//        unsigned char *data = NULL;
-//        Atom classAtom = XInternAtom(display_, "_NET_WM_NAME", False);
-//        XGetWindowProperty(display_, e.window, classAtom, 0, (~0L), False,
-//                            AnyPropertyType, &type, &format, &nitems, &after, &data);
-//
-//        if(data){
-//            log("_NET_WM_NAME %s classAtom %lu", data, classAtom);
-//        }
         if(c->frame && is_window_visible(display_, c->frame)){
             log("XCompositeNameWindowPixmap window:0x%lx", c->frame);
             XCompositeNameWindowPixmap(display_, c->frame);
@@ -381,6 +382,7 @@ void WindowManager::OnMapNotify(const XMapEvent &e)
             log("XCompositeNameWindowPixmap window:0x%lx", e.window);
             XCompositeNameWindowPixmap(display_, e.window);
             XSync(display_, False);
+//            CreateBitmapFromPixmap(GlobalEnv, display_, pixmap);
         }
     }
 
@@ -409,6 +411,15 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
             }
         }
     }
+    if(dock_windows.count(ev.window)){
+//        if(tray_window_map.count(ev.window)){
+        Window tray = tray_window_map[ev.window];
+        log("Undock request window: %lx, tray: %lx", ev.window, tray);
+        updateSystemTrayIcon(nullptr, tray, SYSTEM_TRAY_UNDOCK);
+        tray_window_map.erase(ev.window);
+        dock_windows.erase(ev.window);
+//        }
+    }
 }
 
 void WindowManager::Unframe(Window w)
@@ -425,10 +436,10 @@ void WindowManager::Unframe(Window w)
     log(" serial2:%ld", serial);
     // 2. Reparent client window.
     XReparentWindow(
-        display_,
-        w,
-        root_,
-        0, 0); // Offset of client window within root.
+            display_,
+            w,
+            root_,
+            0, 0); // Offset of client window within root.
     serial = NextRequest(display_);
     log(" serial3:%ld", serial);
     // 3. Remove client window from save set, as it is now unrelated to us.
@@ -491,16 +502,35 @@ void WindowManager::OnMapRequest(const XMapRequestEvent &e)
     }
 }
 
-void syncConfigureRequest(int x, int y, int w, int h, XID window, int isMoving)
-{
-    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                                                    "syncConfigureRequest", "(IIIIJI)V");
-    GlobalEnv->CallStaticVoidMethod(staticClass, method, x, y, w, h, window, isMoving);
-}
 
 void WindowManager::OnCirculateRequest(const XCirculateRequestEvent &e)
 {
     XCirculateSubwindows(display_, e.parent, e.place);
+}
+
+Atom getWindowType(Display *display, Window window) {
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems, bytes_after;
+    Atom *prop = NULL;
+    Atom type = None;
+
+    Atom wm_window_type = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
+
+    if (XGetWindowProperty(display, window, wm_window_type,
+                           0, 1, False, XA_ATOM,
+                           &actual_type, &actual_format,
+                           &nitems, &bytes_after,
+                           (unsigned char**)&prop) == Success) {
+
+        if (prop && nitems > 0) {
+            type = prop[0];
+        }
+
+        if (prop) XFree(prop);
+    }
+
+    return type;
 }
 
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
@@ -509,7 +539,7 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
     XWindowChanges changes;
     bool normal = isNormalWindow(e.window);
     changes.x = e.x;
-    changes.y = (e.y < DECORCATIONVIEW_HEIGHT && normal) ? DECORCATIONVIEW_HEIGHT : e.y;
+    changes.y = (e.y < DECORCATIONVIEW_HEIGHT && normal ) ? DECORCATIONVIEW_HEIGHT : e.y;
     changes.width = e.width;
     changes.height = e.height;
     changes.border_width = e.border_width;
@@ -518,12 +548,26 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
     unsigned long value_mask = e.value_mask;
     if (e.y < DECORCATIONVIEW_HEIGHT)
     {
-        value_mask = e.value_mask | (1 << 1);
+        value_mask = e.value_mask | CWY;
         //        log("value_mask : %lu", value_mask);
     }
+
     loge("OnConfigureRequest x:%d y:%d w:%d h:%d border:%d above:%d stack:%d value:%d",
          e.x, e.y, e.width, e.height, e.border_width, e.above, e.detail, value_mask);
     XConfigureRequestEvent *ev = (XConfigureRequestEvent *)&e;
+
+//    Atom type = getWindowType(display_, e.window);
+    int isDockWindow = dock_windows.count(ev->window);
+    if(isDockWindow){
+        int offsetx = (SYSTEM_TRAY_ICON_WIDTH - e.width) / 2;
+        int offsety = (SYSTEM_TRAY_ICON_WIDTH - e.height) / 2;
+        value_mask = CWWidth | CWHeight | CWX | CWY;
+        changes.x = offsetx;
+        changes.y = offsety;
+        log("dock_window:%lx w:%d h:%d x:%d y:%d", ev->window, e.width, e.height,
+            offsetx, offsety)
+        loge("configure a dock window")
+    }
     c = myDisplayGetClientFromWindow (display_info, ev->window, SEARCH_WINDOW);
     if (c)
     {
@@ -548,7 +592,7 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
 
     if ((value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight)
         && c
-    )
+            )
     {
         syncConfigureRequest(changes.x, changes.y, changes.width,
                              changes.height, c->frame, 2);
@@ -560,7 +604,7 @@ void WindowManager::OnButtonPress(const XButtonEvent &e)
     CHECK(clients_.count(e.window));
     const Window frame = clients_[e.window];
     log("OnButtonPress  window:%lx x_root:%d y_root:%d state:0x%X type:%d x:%d y:%d send_event:%d",
-         e.window, e.x_root, e.y_root, e.state, e.type, e.x, e.y, e.send_event);
+        e.window, e.x_root, e.y_root, e.state, e.type, e.x, e.y, e.send_event);
 
     // // 1. Save initial cursor position.
     // drag_start_pos_ = Position<int>(e.x_root, e.y_root);
@@ -613,15 +657,15 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e)
     const Position<int> drag_pos(e.x_root, e.y_root);
     const Vector2D<int> delta = drag_pos - drag_start_pos_;
     log("OnMotionNotify  window:%lx x_root:%d y_root:%d state:0x%X type:%d x:%d y:%d send_event:%d",
-         e.window, e.x_root, e.y_root, e.state, e.type, e.x, e.y, e.send_event);
+        e.window, e.x_root, e.y_root, e.state, e.type, e.x, e.y, e.send_event);
     ScreenInfo *screen_info;
     screen_info = myDisplayGetScreenFromWindow(display_info, e.window);
     if (!screen_info || !screen_info->passdata.c)
     {
-        return; 
+        return;
     }
     log("OnMotionNotify_mx:%d my:%d  ox:%d oy:%d ow:%d oh:%d oldw:%d oldh:%d cancel_x:%d cancel_y:%d",
-        screen_info->passdata.mx, screen_info->passdata.my, 
+        screen_info->passdata.mx, screen_info->passdata.my,
         screen_info->passdata.ox, screen_info->passdata.oy,
         screen_info->passdata.ow, screen_info->passdata.oh,
         screen_info->passdata.oldw, screen_info->passdata.oldh,
@@ -657,19 +701,19 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e)
         // alt + right button: Resize window.
         // Window dimensions cannot be negative.
         const Vector2D<int> size_delta(
-            max(delta.x, -drag_start_frame_size_.width),
-            max(delta.y, -drag_start_frame_size_.height));
+                max(delta.x, -drag_start_frame_size_.width),
+                max(delta.y, -drag_start_frame_size_.height));
         const Size<int> dest_frame_size = drag_start_frame_size_ + size_delta;
         // 1. Resize frame.
         XResizeWindow(
-            display_,
-            frame,
-            dest_frame_size.width, dest_frame_size.height);
+                display_,
+                frame,
+                dest_frame_size.width, dest_frame_size.height);
         // 2. Resize client window.
         XResizeWindow(
-            display_,
-            e.window,
-            dest_frame_size.width, dest_frame_size.height);
+                display_,
+                e.window,
+                dest_frame_size.width, dest_frame_size.height);
     }
 }
 
@@ -786,7 +830,7 @@ void WindowManager::OnPropertyNotify(XEvent e)
                 }
                 // if ((c->wmhints->flags & IconPixmapHint) && (screen_info->params->show_app_icon))
                 // {
-                    // clientUpdateIcon(c);
+                // clientUpdateIcon(c);
                 // }
                 if (HINTS_ACCEPT_INPUT(c->wmhints))
                 {
@@ -866,11 +910,11 @@ void WindowManager::OnPropertyNotify(XEvent e)
                 FLAG_UNSET(c->xfwm_flags, XFWM_FLAG_OPACITY_LOCKED);
             }
         }
-         else if ((ev->atom == display_info->atoms[NET_WM_ICON]))
-        //           (ev->atom == display_info->atoms[KWM_WIN_ICON])))
-         {
+        else if ((ev->atom == display_info->atoms[NET_WM_ICON]))
+            //           (ev->atom == display_info->atoms[KWM_WIN_ICON])))
+        {
             // clientUpdateIcon(c);
-         }
+        }
         return;
     }
 
@@ -932,9 +976,9 @@ void WindowManager::Run()
         wm_detected_ = false;
         XSetErrorHandler(&WindowManager::OnWMDetected);
         XSelectInput(
-            display_,
-            root_,
-            BASE_EVENT_MASK);
+                display_,
+                root_,
+                BASE_EVENT_MASK);
         XSync(display_, false);
         int composite_major = 0, composite_minor = 0;
         XCompositeQueryVersion(display_, &composite_major, &composite_minor);
@@ -960,12 +1004,12 @@ void WindowManager::Run()
     Window *top_level_windows;
     unsigned int num_top_level_windows;
     CHECK(XQueryTree(
-        display_,
-        root_,
-        &returned_root,
-        &returned_parent,
-        &top_level_windows,
-        &num_top_level_windows));
+            display_,
+            root_,
+            &returned_root,
+            &returned_parent,
+            &top_level_windows,
+            &num_top_level_windows));
     CHECK_EQ(returned_root, root_);
     //     ii. Frame each top-level window.
     for (unsigned int i = 0; i < num_top_level_windows; ++i)
@@ -996,80 +1040,80 @@ void WindowManager::Run()
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
-        // log("------Received event: %s", ToString(e).c_str());
+        log("------Received event: %s", ToString(e).c_str());
         //        log("type:%d", e.type);
         // 2. Dispatch event.
         switch (e.type)
         {
-        case CreateNotify:
-            OnCreateNotify(e.xcreatewindow);
-            break;
-        case DestroyNotify:
-            OnDestroyNotify(e.xdestroywindow);
-            break;
-        case ReparentNotify:
-            OnReparentNotify(e.xreparent);
-            break;
-        case MapNotify:
-            OnMapNotify(e.xmap);
-            break;
-        case UnmapNotify:
-            OnUnmapNotify(e.xunmap);
-            break;
-        case ConfigureNotify:
-            OnConfigureNotify(e.xconfigure);
-            break;
-        case MapRequest:
-            OnMapRequest(e.xmaprequest);
-            break;
-        case ConfigureRequest:
-            OnConfigureRequest(e.xconfigurerequest);
-            break;
-        case CirculateRequest:
-            OnCirculateRequest(e.xcirculaterequest);
-            break;
-        case ButtonPress:
-            OnButtonPress(e.xbutton);
-            break;
-        case ButtonRelease:
-            OnButtonRelease(e.xbutton);
-            break;
-        case MotionNotify:
-            // Skip any already pending motion events.
-            while (XCheckTypedWindowEvent(
-                display_, e.xmotion.window, MotionNotify, &e))
-            {
-            }
-            OnMotionNotify(e.xmotion);
-            break;
-        case KeyPress:
-            OnKeyPress(e.xkey);
-            break;
-        case KeyRelease:
-            OnKeyRelease(e.xkey);
-            break;
-        case PropertyNotify:
-            OnPropertyNotify(e);
-            break;
-        case SelectionClear:
-            if (CLIPMANAGER_ENABLE)
-            {
-                OnSelectionClear(e);
-            }
-            break;
-        case SelectionRequest:
-            if (CLIPMANAGER_ENABLE)
-            {
-                OnSelectionRequest(e);
-            }
-            break;
-        case ClientMessage:
-            ProcessClientMessage(e);
-            // HandleClientMessage(e);
-            break;
-        default:
-            break;
-            //                log("Ignored event");
+            case CreateNotify:
+                OnCreateNotify(e.xcreatewindow);
+                break;
+            case DestroyNotify:
+                OnDestroyNotify(e.xdestroywindow);
+                break;
+            case ReparentNotify:
+                OnReparentNotify(e.xreparent);
+                break;
+            case MapNotify:
+                OnMapNotify(e.xmap);
+                break;
+            case UnmapNotify:
+                OnUnmapNotify(e.xunmap);
+                break;
+            case ConfigureNotify:
+                OnConfigureNotify(e.xconfigure);
+                break;
+            case MapRequest:
+                OnMapRequest(e.xmaprequest);
+                break;
+            case ConfigureRequest:
+                OnConfigureRequest(e.xconfigurerequest);
+                break;
+            case CirculateRequest:
+                OnCirculateRequest(e.xcirculaterequest);
+                break;
+            case ButtonPress:
+                OnButtonPress(e.xbutton);
+                break;
+            case ButtonRelease:
+                OnButtonRelease(e.xbutton);
+                break;
+            case MotionNotify:
+                // Skip any already pending motion events.
+                while (XCheckTypedWindowEvent(
+                        display_, e.xmotion.window, MotionNotify, &e))
+                {
+                }
+                OnMotionNotify(e.xmotion);
+                break;
+            case KeyPress:
+                OnKeyPress(e.xkey);
+                break;
+            case KeyRelease:
+                OnKeyRelease(e.xkey);
+                break;
+            case PropertyNotify:
+                OnPropertyNotify(e);
+                break;
+            case SelectionClear:
+                if (CLIPMANAGER_ENABLE)
+                {
+                    OnSelectionClear(e);
+                }
+                break;
+            case SelectionRequest:
+                if (CLIPMANAGER_ENABLE)
+                {
+                    OnSelectionRequest(e);
+                }
+                break;
+            case ClientMessage:
+                ProcessClientMessage(e);
+                // HandleClientMessage(e);
+                break;
+            default:
+                break;
+                //                log("Ignored event");
         }
     }
 }
@@ -1113,7 +1157,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
             log("client \"%s\" (0x%lx) has received a NET_WM_STATE event", c->name, c->window);
             int wm_action = clientUpdateNetState (c, ev);
             jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                                                    "updateWmStateClient", "(IJ)V");
+                                                            "updateWmStateClient", "(IJ)V");
             GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, c->frame);
         }
         else if ((ev->message_type == display_info->atoms[NET_WM_MOVERESIZE]) && (ev->format == 32))
@@ -1136,13 +1180,13 @@ void WindowManager::ProcessClientMessage(XEvent e)
         {
             log("client \"%s\" (0x%lx) has received a NET_REQUEST_FRAME_EXTENTS event", c->name, c->window);
             // setNetFrameExtents (display_info, c->window, frameTop (c), frameLeft (c),
-                                                        //  frameRight (c), frameBottom (c));
+            //  frameRight (c), frameBottom (c));
         }
         else if (ev->message_type == display_info->atoms[NET_WM_FULLSCREEN_MONITORS])
         {
             log("client \"%s\" (0x%lx) has received a NET_WM_FULLSCREEN_MONITORS event", c->name, c->window);
             // clientSetFullscreenMonitor (c, (gint) ev->data.l[0], (gint) ev->data.l[1],
-                                        //    (gint) ev->data.l[2], (gint) ev->data.l[3]);
+            //    (gint) ev->data.l[2], (gint) ev->data.l[3]);
         }
         else if ((ev->message_type == display_info->atoms[GTK_SHOW_WINDOW_MENU]) && (ev->format == 32))
         {
@@ -1179,7 +1223,351 @@ void WindowManager::ProcessClientMessage(XEvent e)
                 clientReceiveNetWMPong (screen_info, (guint32) ev->data.l[1]);
             }
         }
+        else if(ev->message_type == display_info->atoms[NET_SYSTEM_TRAY_OPCODE])
+        {
+            if(SYSTEM_TRAY_ENABLE && !system_tray){
+                XSetWindowAttributes attributes;
+                attributes.background_pixel = 0x80808080;
+
+                system_tray = XCreateWindow(display_, root_,
+                    WIDTH - 254 - SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, 0,
+                    SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH,
+                              0,
+                              CopyFromParent,
+                              InputOutput,
+                              CopyFromParent,
+                              CWBackPixel,
+                              &attributes);
+//                system_tray = XCreateSimpleWindow(display_, root_,
+//                              WIDTH - 254 - SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, 0,
+//                              SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH, 0, 0, 0);
+                MotifWmHints hints;
+                Atom motif_hints_atom = XInternAtom(display_, "_MOTIF_WM_HINTS", False);
+                hints.flags = MWM_HINTS_DECORATIONS;
+                hints.functions = 2;
+                hints.decorations = 0;
+                hints.input_mode = 0;
+                hints.status = 0;
+                XChangeProperty(display_, system_tray, motif_hints_atom, motif_hints_atom, 32,
+                                PropModeReplace, (unsigned char*)&hints, 5);
+                Atom prop_atom = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
+                Atom type_atom;
+                type_atom = _NET_WM_WINDOW_TYPE_TRAY;
+                XChangeProperty(display_, system_tray, prop_atom, XA_ATOM, 32,
+                                PropModeReplace, (unsigned char*)&type_atom, 1);
+                XMapWindow(display_, system_tray);
+                    Atom utf8_string = XInternAtom(display_, "UTF8_STRING", False);
+                    Atom net_wm_name = XInternAtom(display_, "_NET_WM_NAME", False);
+                    XChangeProperty(display_, system_tray, net_wm_name, utf8_string, 8,
+                                    PropModeReplace, (unsigned char*)"x11_tray",
+                                    strlen("x11_tray"));
+            }
+            HandleSystemTrayClientMessage(screen_info, ev);
+        }
     }
+}
+
+void WindowManager::HandleSystemTrayClientMessage( ScreenInfo *screen_info, XClientMessageEvent *ev) {
+    long *data = ev->data.l;
+    long timestamp = data[0];
+    long opcode = data[1];
+    switch (opcode) {
+        case SYSTEM_TRAY_REQUEST_DOCK: {
+            Window dock_window = data[2];
+            log("Received DOCK request from client. Icon window: %lx  tray window: %lx",
+                dock_window, screen_info->systray);
+            dock_windows.insert(dock_window);
+            size_t dock_icon_count = dock_windows.size();
+            if (dock_icon_count) {
+                ReparentDockWindow(dock_window);
+//                XReparentWindow(display_, dock_window, system_tray,
+//                                0, 0);
+//                XMapWindow(display_, dock_window);
+            }
+            break;
+        }
+        case SYSTEM_TRAY_BEGIN_MESSAGE:
+            log("Begin message: timeout=%ld, length=%ld, id=%ld\n", data[2], data[3], data[4]);
+            break;
+        case SYSTEM_TRAY_CANCEL_MESSAGE:
+            log("Cancel message: id=%ld\n", data[2]);
+            break;
+        case SYSTEM_TRAY_UNDOCK: {
+            Window window = data[2];
+            dock_windows.erase(window);
+            if(tray_window_map.count(window)){
+                Window tray = tray_window_map[window];
+                log("Undock request window: %lx, tray: %lx", window, tray);
+                updateSystemTrayIcon(nullptr, tray, opcode);
+                tray_window_map.erase(window);
+                XUnmapWindow(display_, tray);
+//                XDestroyWindow(display_, window);
+                XDestroyWindow(display_, tray);
+                XSync(display_, False);
+            }
+            break;
+        }
+        default:
+            log("Unknown opcode received: %ld\n", opcode);
+            break;
+    }
+}
+
+char* get_net_wm_name(Display *dpy, Window win_b) {
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems;
+    unsigned long bytes_after;
+    unsigned char *prop_value = NULL;
+    Atom prop_atom = XInternAtom(dpy, "_NET_WM_NAME", False);
+    char *wm_name = NULL;
+
+    int result = XGetWindowProperty(dpy, win_b, prop_atom, 0, 1024, False,
+                                    XInternAtom(dpy, "UTF8_STRING", False),
+                                    &actual_type, &actual_format,
+                                    &nitems, &bytes_after, &prop_value);
+
+    if (result == Success && actual_type != None && nitems > 0) {
+        wm_name = strdup((char*)prop_value);
+    }
+    XFree(prop_value);
+    return wm_name;
+}
+
+void WindowManager::ReparentDockWindow(Window window)
+{
+    XWindowAttributes attrs;
+    char *target_wm_name = nullptr;
+    if (XGetWindowAttributes(display_, window, &attrs)) {
+        XSetWindowAttributes tray_attr;
+        tray_attr.background_pixel = 0xC0C0C0;
+        Window tray = XCreateWindow(display_, root_,
+                                    WIDTH - 254 - dock_windows.size() * STATUA_BAR_ICON_WIDTH +
+                                    (STATUA_BAR_ICON_WIDTH - SYSTEM_TRAY_ICON_WIDTH) / 2,
+                                    (STATUA_BAR_HEIGHT - SYSTEM_TRAY_ICON_WIDTH) / 2,
+                                    SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH,
+                               0,
+                               CopyFromParent,
+                               InputOutput,
+                               CopyFromParent,
+                               CWBackPixel,
+                               &tray_attr);
+//        XSetWindowBackground(display_, tray, WhitePixel(display_, screen_));
+
+        log("ReparentDockWindow tray window：%lx  x:(%zu) y:(%d) w:(%d) h:(%d)",
+            tray,(WIDTH - 254 - dock_windows.size() * SYSTEM_TRAY_ICON_WIDTH), 0,
+            SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH)
+        target_wm_name = get_net_wm_name(display_, window);
+        if (target_wm_name) {
+            Atom utf8_string = XInternAtom(display_, "UTF8_STRING", False);
+            Atom net_wm_name = XInternAtom(display_, "_NET_WM_NAME", False);
+            XChangeProperty(display_, tray, net_wm_name, utf8_string, 8,
+                            PropModeReplace, (unsigned char*)target_wm_name,
+                            strlen(target_wm_name));
+            free(target_wm_name);
+        } else {
+            XStoreName(display_, tray, "tray");
+        }
+        MotifWmHints hints;
+        Atom motif_hints_atom = XInternAtom(display_, "_MOTIF_WM_HINTS", False);
+        hints.flags = MWM_HINTS_DECORATIONS;
+        hints.functions = 0;
+        hints.decorations = 0;
+        hints.input_mode = 0;
+        hints.status = 0;
+        XChangeProperty(display_, tray, motif_hints_atom, motif_hints_atom, 32,
+                        PropModeReplace, (unsigned char*)&hints, 5);
+
+        Atom prop_atom = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
+        Atom type_atom;
+        type_atom = _NET_WM_WINDOW_TYPE_TRAY;
+
+        XChangeProperty(display_, tray, prop_atom, XA_ATOM, 32,
+                        PropModeReplace, (unsigned char*)&type_atom, 1);
+        dock_trays.insert(tray);
+//        int offsetx = (SYSTEM_TRAY_ICON_WIDTH - attrs.width) / 2;
+//        int offsety = (SYSTEM_TRAY_ICON_WIDTH - attrs.height) / 2;
+
+        XWindowChanges changes;
+        changes.width = SYSTEM_TRAY_ICON_WIDTH;
+        changes.height = SYSTEM_TRAY_ICON_WIDTH;
+        XConfigureWindow(display_, window, CWWidth | CWHeight, &changes);
+        XReparentWindow(display_, window, tray,
+                        0, 0);
+        XMapWindow(display_, window);
+        XMapWindow(display_, tray);
+        tray_window_map[window] = tray;
+//        log("ReparentDockWindow dock window:%lx  x:%d y:%d w:%d h:%d", window, offsetx, offsety, attrs.width, attrs.height);
+    }
+}
+
+jobject WindowManager::GetWindowIcon(Window target_window) {
+    XWindowAttributes attrs;
+    jobject bitmap = nullptr;
+
+    if (!XGetWindowAttributes(display_, target_window, &attrs)) {
+        log("Window does not exist or cannot be accessed");
+        return bitmap;
+    }
+    // 3. 尝试获取 _NET_WM_ICON 属性（现代应用程序）
+    Atom net_wm_icon = XInternAtom(display_, "_NET_WM_ICON", False);
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems;
+    unsigned long bytes_after;
+    unsigned char *data = nullptr;
+
+    int status = XGetWindowProperty(display_, target_window, net_wm_icon,
+                                    0, LONG_MAX, False, XA_CARDINAL,
+                                    &actual_type, &actual_format,
+                                    &nitems, &bytes_after, &data);
+
+    if (status == Success && data && nitems > 0) {
+        log("Found _NET_WM_ICON property, items: %lu", nitems);
+        bitmap = CreateBitmapFromNetWmIcon(  data, nitems);
+        XFree(data);
+    }
+// 尝试获取 WM_HINTS
+//    XWMHints *hints = XGetWMHints(display_, target_window);
+//    if (hints && (hints->flags & IconPixmapHint)) {
+//        bitmap = CreateBitmapFromPixmap(GlobalEnv, display_, hints->icon_pixmap);
+//    }
+//    if (hints) XFree(hints);
+    return bitmap;
+}
+
+jobject WindowManager::CreateBitmapFromPixmap(JNIEnv *env, Display *display, Pixmap pixmap) {
+    if (pixmap == None) {
+        return nullptr;
+    }
+
+    XWindowAttributes pix_attrs;
+    if (!XGetWindowAttributes(display, pixmap, &pix_attrs)) {
+        log("Failed to get pixmap attributes");
+        return nullptr;
+    }
+
+    // 获取 pixmap 数据
+    XImage *image = XGetImage(display, pixmap, 0, 0,
+                              pix_attrs.width, pix_attrs.height,
+                              AllPlanes, ZPixmap);
+
+    if (!image) {
+        log("Failed to get image from pixmap");
+        return nullptr;
+    }
+
+    jobject bitmap = CreateBitmapFromXImage(env, image);
+    XDestroyImage(image);
+    return bitmap;
+}
+
+// 从 XImage 创建 Bitmap
+jobject WindowManager::CreateBitmapFromXImage(JNIEnv *env, XImage *image) {
+    int width = image->width;
+    int height = image->height;
+
+    jclass bitmap_class = env->FindClass("android/graphics/Bitmap");
+    jmethodID create_bitmap = env->GetStaticMethodID(bitmap_class,
+                                                     "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+
+    jclass config_class = env->FindClass("android/graphics/Bitmap$Config");
+    jfieldID argb_8888_field = env->GetStaticFieldID(config_class, "ARGB_8888",
+                                                     "Landroid/graphics/Bitmap$Config;");
+    jobject config = env->GetStaticObjectField(config_class, argb_8888_field);
+
+    jobject bitmap = env->CallStaticObjectMethod(bitmap_class, create_bitmap,
+                                                 width, height, config);
+
+    AndroidBitmapInfo info;
+    void *pixels;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) == ANDROID_BITMAP_RESULT_SUCCESS &&
+        AndroidBitmap_lockPixels(env, bitmap, &pixels) == ANDROID_BITMAP_RESULT_SUCCESS) {
+
+        uint32_t *dest = (uint32_t *)pixels;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                unsigned long pixel = XGetPixel(image, x, y);
+                // 根据图像格式进行转换
+                uint32_t android_pixel = ConvertPixelToARGB(pixel, image->depth, image->byte_order);
+                dest[y * width + x] = android_pixel;
+            }
+        }
+
+        AndroidBitmap_unlockPixels(env, bitmap);
+    }
+
+    return bitmap;
+}
+
+uint32_t WindowManager::ConvertPixelToARGB(unsigned long pixel, int depth, int byte_order) {
+    if (depth == 24 || depth == 32) {
+        // 假设是 ARGB 或 BGRA 格式
+        if (byte_order == LSBFirst) {
+            // 小端序：可能是 BGRA
+            return ((pixel & 0xFF000000) >> 24) |  // A
+                   ((pixel & 0x00FF0000) >> 8)  |  // R
+                   ((pixel & 0x0000FF00) << 8)  |  // G
+                   ((pixel & 0x000000FF) << 24);   // B
+        } else {
+            // 大端序：可能是 ARGB
+            return pixel;
+        }
+    } else if (depth == 1) {
+        // 单色位图
+        return pixel ? 0xFFFFFFFF : 0xFF000000;
+    }
+
+    return 0xFF000000; // 默认黑色
+}
+
+jobject WindowManager::CreateBitmapFromNetWmIcon(unsigned char *data, unsigned long nitems)
+{
+    if (nitems < 2) {
+        log("Invalid _NET_WM_ICON data");
+        return nullptr;
+    }
+    // 解析图标数据：宽度、高度、像素数据
+    unsigned long *long_data = (unsigned long *)data;
+    int width = (int)long_data[0];
+    int height = (int)long_data[1];
+    if (nitems < (unsigned long)(2 + width * height)) {
+        log("Incomplete _NET_WM_ICON data");
+        return nullptr;
+    }
+    log("Creating bitmap from _NET_WM_ICON: %dx%d", width, height);
+    jclass bitmap_class = GlobalEnv->FindClass("android/graphics/Bitmap");
+    jmethodID create_bitmap = GlobalEnv->GetStaticMethodID(bitmap_class,
+                                                           "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    jclass config_class = GlobalEnv->FindClass("android/graphics/Bitmap$Config");
+    jfieldID argb_8888_field = GlobalEnv->GetStaticFieldID(config_class, "ARGB_8888",
+                                                           "Landroid/graphics/Bitmap$Config;");
+    jobject config = GlobalEnv->GetStaticObjectField(config_class, argb_8888_field);
+
+    jobject bitmap = GlobalEnv->CallStaticObjectMethod(bitmap_class, create_bitmap,
+                                                       width, height, config);
+    AndroidBitmapInfo info;
+    void *pixels;
+    if (AndroidBitmap_getInfo(GlobalEnv, bitmap, &info) == ANDROID_BITMAP_RESULT_SUCCESS &&
+        AndroidBitmap_lockPixels(GlobalEnv, bitmap, &pixels) == ANDROID_BITMAP_RESULT_SUCCESS) {
+        uint32_t *dest = (uint32_t *)pixels;
+        unsigned long *src = long_data + 2;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                unsigned long pixel = src[y * width + x];
+                // 转换 ARGB 格式（X11 通常是 BGRA 或 ARGB）
+                uint32_t android_pixel =
+                        ((pixel & 0xFF000000) >> 24) |  // A
+                        ((pixel & 0x00FF0000) >> 8)  |  // R
+                        ((pixel & 0x0000FF00) << 8)  |  // G
+                        ((pixel & 0x000000FF) << 24);   // B
+                dest[y * width + x] = android_pixel;
+            }
+        }
+        AndroidBitmap_unlockPixels(GlobalEnv, bitmap);
+    }
+    return bitmap;
 }
 
 void WindowManager::HandleClientMessage(XEvent e)
@@ -1308,9 +1696,9 @@ int WindowManager::setMaximizedState(Window window, Bool maximized)
     unsigned long num_items, bytes_after;
     unsigned char *data = nullptr;
     int status = XGetWindowProperty(
-        display_, window, net_wm_state,
-        0, 1024, False, XA_ATOM,
-        &type, &format, &num_items, &bytes_after, &data);
+            display_, window, net_wm_state,
+            0, 1024, False, XA_ATOM,
+            &type, &format, &num_items, &bytes_after, &data);
     std::vector<Atom> current_atoms;
     if (status == Success && data)
     {
@@ -1346,49 +1734,49 @@ int WindowManager::setMaximizedState(Window window, Bool maximized)
         }
     }
     XChangeProperty(
-        display_, window, net_wm_state,
-        XA_ATOM, 32, PropModeReplace,
-        reinterpret_cast<unsigned char *>(new_atoms.data()), new_atoms.size());
+            display_, window, net_wm_state,
+            XA_ATOM, 32, PropModeReplace,
+            reinterpret_cast<unsigned char *>(new_atoms.data()), new_atoms.size());
     Atom actions_normal[] = {
-        XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
-        XInternAtom(display_, "_NET_WM_ACTION_RESIZE", False),
-        XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
-        XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
-        XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_HORZ", False),
-        XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_VERT", False),
-        XInternAtom(display_, "_NET_WM_ACTION_FULLSCREEN", False),
-        XInternAtom(display_, "_NET_WM_ACTION_CHANGE_DESKTOP", False),
-        XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)};
+            XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_RESIZE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_HORZ", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_VERT", False),
+            XInternAtom(display_, "_NET_WM_ACTION_FULLSCREEN", False),
+            XInternAtom(display_, "_NET_WM_ACTION_CHANGE_DESKTOP", False),
+            XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)};
     Atom actions_maximized[] = {
-        XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
-        XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
-        XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
-        XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)
-        // 注意：移除了 RESIZE、MAXIMIZE_HORZ、MAXIMIZE_VERT，因为窗口已经最大化
+            XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
+            XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)
+            // 注意：移除了 RESIZE、MAXIMIZE_HORZ、MAXIMIZE_VERT，因为窗口已经最大化
     };
     if (maximized)
     {
         XChangeProperty(
-            display_,
-            window,
-            XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
-            XA_ATOM,
-            32,
-            PropModeReplace,
-            (unsigned char *)actions_maximized,
-            4);
+                display_,
+                window,
+                XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
+                XA_ATOM,
+                32,
+                PropModeReplace,
+                (unsigned char *)actions_maximized,
+                4);
     }
     else
     {
         XChangeProperty(
-            display_,
-            window,
-            XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
-            XA_ATOM,
-            32,
-            PropModeReplace,
-            (unsigned char *)actions_normal,
-            9);
+                display_,
+                window,
+                XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
+                XA_ATOM,
+                32,
+                PropModeReplace,
+                (unsigned char *)actions_normal,
+                9);
     }
     XSync(display_, False);
     return true;
@@ -1549,41 +1937,41 @@ void WindowManager::OnSelectionClear(XEvent e)
         XNextEvent(display_, &event);
         switch (event.type)
         {
-        case SelectionNotify:
-            sev = (XSelectionEvent *)&event.xselection;
-            if (sev->property == None)
-            {
-                log("Conversion could not be performed.\n");
-            }
-            else
-            {
-                Atom type, *targets;
-                int di;
-                unsigned long nitems, dul;
-                unsigned char *prop_ret = NULL;
-                char *an = NULL;
-                log("show_targets:\n");
-                XGetWindowProperty(display_, owner, manager_prop_name, 0, 1024 * sizeof(Atom), False, XA_ATOM,
-                                   &type, &di, &nitems, &dul, &prop_ret);
-                log("Targets:  nitems:%lu \n", nitems);
-                targets = (Atom *)prop_ret;
-                selection_property_list = targets;
-                selection_property_size = nitems;
-                for (int index = 0; index < selection_property_size; index++)
+            case SelectionNotify:
+                sev = (XSelectionEvent *)&event.xselection;
+                if (sev->property == None)
                 {
-                    log("type :%s", XGetAtomName(display_, selection_property_list[index]));
+                    log("Conversion could not be performed.\n");
                 }
-                for (int index = 0; index < nitems; index++)
+                else
                 {
-                    an = XGetAtomName(display_, targets[index]);
-                    //                        log("    '%s'\n", an);
-                    if (an)
-                        XFree(an);
+                    Atom type, *targets;
+                    int di;
+                    unsigned long nitems, dul;
+                    unsigned char *prop_ret = NULL;
+                    char *an = NULL;
+                    log("show_targets:\n");
+                    XGetWindowProperty(display_, owner, manager_prop_name, 0, 1024 * sizeof(Atom), False, XA_ATOM,
+                                       &type, &di, &nitems, &dul, &prop_ret);
+                    log("Targets:  nitems:%lu \n", nitems);
+                    targets = (Atom *)prop_ret;
+                    selection_property_list = targets;
+                    selection_property_size = nitems;
+                    for (int index = 0; index < selection_property_size; index++)
+                    {
+                        log("type :%s", XGetAtomName(display_, selection_property_list[index]));
+                    }
+                    for (int index = 0; index < nitems; index++)
+                    {
+                        an = XGetAtomName(display_, targets[index]);
+                        //                        log("    '%s'\n", an);
+                        if (an)
+                            XFree(an);
+                    }
                 }
-            }
-            break;
-        default:
-            break;
+                break;
+            default:
+                break;
         }
         break;
     }
@@ -1608,49 +1996,49 @@ void WindowManager::ConvertAllTarget()
             XNextEvent(display_, &event);
             switch (event.type)
             {
-            case SelectionNotify:
-                sev = (XSelectionEvent *)&event.xselection;
-                if (sev->property == None)
-                {
-                    log("Conversion could not be performed.\n");
-                }
-                else
-                {
-                    Atom actual_type;
-                    int actual_format;
-                    unsigned long nitems, bytes_after;
-                    unsigned char *data = nullptr;
-                    XGetWindowProperty(display_, owner, selection_property_list[i], 0, (~0L),
-                                       False, AnyPropertyType,
-                                       &actual_type, &actual_format, &nitems, &bytes_after, &data);
-                    if (actual_format == 8)
-                    { // 字符串类型
-                        log("actual_type :%s Content of target: %s\n", XGetAtomName(display_, actual_type), data);
-                        if (selection_property_list[i] == utf8)
-                        {
-                            isText = true;
-                            text_data = data;
-                        }
-                        else if (selection_property_list[i] == XInternAtom(display_, "text/uri-list", False) || selection_property_list[i] == XInternAtom(display_, "peony-qt/encoded-uris", False))
-                        {
-                            isFile = true;
-                            file_data = data;
-                        }
+                case SelectionNotify:
+                    sev = (XSelectionEvent *)&event.xselection;
+                    if (sev->property == None)
+                    {
+                        log("Conversion could not be performed.\n");
                     }
                     else
                     {
-                        log("Content of target (binary data or non-8-bit format):\n");
-                        for (unsigned long item = 0; item < nitems; item++)
-                        {
-                            log("%02x ", data[item]);
+                        Atom actual_type;
+                        int actual_format;
+                        unsigned long nitems, bytes_after;
+                        unsigned char *data = nullptr;
+                        XGetWindowProperty(display_, owner, selection_property_list[i], 0, (~0L),
+                                           False, AnyPropertyType,
+                                           &actual_type, &actual_format, &nitems, &bytes_after, &data);
+                        if (actual_format == 8)
+                        { // 字符串类型
+                            log("actual_type :%s Content of target: %s\n", XGetAtomName(display_, actual_type), data);
+                            if (selection_property_list[i] == utf8)
+                            {
+                                isText = true;
+                                text_data = data;
+                            }
+                            else if (selection_property_list[i] == XInternAtom(display_, "text/uri-list", False) || selection_property_list[i] == XInternAtom(display_, "peony-qt/encoded-uris", False))
+                            {
+                                isFile = true;
+                                file_data = data;
+                            }
                         }
-                        log("\n");
+                        else
+                        {
+                            log("Content of target (binary data or non-8-bit format):\n");
+                            for (unsigned long item = 0; item < nitems; item++)
+                            {
+                                log("%02x ", data[item]);
+                            }
+                            log("\n");
+                        }
+                        XFree(data);
                     }
-                    XFree(data);
-                }
-                break;
-            default:
-                break;
+                    break;
+                default:
+                    break;
             }
             break;
         }
@@ -1709,7 +2097,7 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h)
 
 int WindowManager::resizeWindow(long window, int w, int h)
 {
-    log("resizeWindow %x w:%d h:%d", window, w, h);
+    log("resizeWindow %lx w:%d h:%d", window, w, h);
     int ret = XResizeWindow(display_, window, w, h);
     XSync(display_, False);
     return ret;
@@ -1717,7 +2105,7 @@ int WindowManager::resizeWindow(long window, int w, int h)
 
 int WindowManager::unmapWindow(long window)
 {
-    log("unmapWindow %x ", window);
+    log("unmapWindow %lx ", window);
     int ret = False;
     ret = XUnmapWindow(display_, window);
     for (const auto &pair : clients_)
@@ -1842,7 +2230,7 @@ jint WindowManager::circulaSubWindows(jlong window, jboolean lowest)
 
 void WindowManager::UpdateXserverCliptext(const char *text)
 {
-    if (GlobalEnv && is_valid_utf8(text))
+    if (GlobalEnv && util_is_valid_utf8(text))
     {
         jstring utf = GlobalEnv->NewStringUTF(text);
         jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
@@ -1853,7 +2241,7 @@ void WindowManager::UpdateXserverCliptext(const char *text)
 
 void WindowManager::UpdateXserverClipFile(const char *text)
 {
-    if (GlobalEnv && is_valid_utf8(text))
+    if (GlobalEnv && util_is_valid_utf8(text))
     {
         jstring utf = GlobalEnv->NewStringUTF(text);
         jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
@@ -1861,3 +2249,4 @@ void WindowManager::UpdateXserverClipFile(const char *text)
         GlobalEnv->CallStaticVoidMethod(staticClass, method, utf);
     }
 }
+

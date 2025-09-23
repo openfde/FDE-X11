@@ -315,6 +315,7 @@ public class WindowAttribute implements Parcelable {
                 " XID:" + Long.toHexString(XID) +
                 " window:" + window +
                 " taskTo:" + Long.toHexString(taskTo) +
+                " taskid:" + getTaskId() +
 //                "\n, focusable=" + focusable +
 //                "\n, property=" + property +
                 "";

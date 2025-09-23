@@ -63,7 +63,7 @@ myScreenInit (DisplayInfo *display_info, unsigned long event_mask, int index,
     ScreenInfo *screen_info;
     long desktop_visible;
     int i, j;
-
+    gchar selection[32];
     g_return_val_if_fail (display_info, NULL);
 
     screen_info = g_new0 (ScreenInfo, 1);
@@ -114,6 +114,11 @@ myScreenInit (DisplayInfo *display_info, unsigned long event_mask, int index,
 
     screen_info->monitors_index = NULL;
 
+    g_snprintf (selection, sizeof (selection), "_NET_SYSTEM_TRAY_S%d", screen_info->screen);
+    screen_info->net_system_tray_selection = XInternAtom (display_info->dpy, selection, FALSE);
+    XSetSelectionOwner(display_info->dpy, screen_info->net_system_tray_selection, screen_info->xfwm4_win,
+                       myDisplayGetCurrentTime(display_info));
+    screen_info->systray = getSystrayWindow (display_info, screen_info->net_system_tray_selection);
     return (screen_info);
 }
 

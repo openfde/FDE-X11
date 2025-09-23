@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.MANAGE_ACTIVITY_TASKS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.MANAGE_ACTIVITY_STACKS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission

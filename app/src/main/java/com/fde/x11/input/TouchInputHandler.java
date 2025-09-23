@@ -175,8 +175,10 @@ public class TouchInputHandler {
     }
 
     public boolean handleTouchEvent(View view0, View view, MotionEvent event) {
-        if( isMoveTask || event.getAction() == MotionEvent.ACTION_DOWN){
-            handleMoveTaskEvent(view0, view, event);
+        if( (isMoveTask || event.getAction() == MotionEvent.ACTION_DOWN)){
+            if((mContext instanceof Activity)){
+                handleMoveTaskEvent(view0, view, event);
+            }
         }
         return handleNormalEvent(view0, view, event);
 
@@ -237,8 +239,10 @@ public class TouchInputHandler {
             isTouching = true;
         } else if(event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
             isTouching = false;
-            MainActivity mainActivity = (MainActivity) mContext;
-            mainActivity.configureFromXIfNeed();
+            if(mContext instanceof MainActivity){
+                MainActivity mainActivity = (MainActivity) mContext;
+                mainActivity.configureFromXIfNeed();
+            }
         }
         if (view0 != view) {
             int[] view0Location = new int[2];

@@ -55,7 +55,6 @@ maybe_unused void renderer_set_window_init(JNIEnv* env, AHardwareBuffer* buffer)
 maybe_unused int renderer_should_redraw(void);
 maybe_unused int renderer_redraw(JNIEnv* env, uint8_t flip, bool empty);
 maybe_unused int renderer_redraw_traversal_1(JNIEnv* env, uint8_t flip, int index, Window window, bool empty);
-maybe_unused jobject android_icon_convert_bitmap(int* data, int width, int height);
 maybe_unused void renderer_print_fps(float millis);
 
 maybe_unused void renderer_update_root(int w, int h, void* data, uint8_t flip);
@@ -69,6 +68,7 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
 maybe_unused int renderer_get_format(__unused ScreenPtr screen, CARD32 *num_formats, CARD32 **formats);
 maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint32_t format, uint32_t *num_modifiers, uint64_t **modifiers);
 maybe_unused int renderer_release_window(JNIEnv *env, Window window);
-
+maybe_unused void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip,
+                                           void *widget, GLuint texture_id);
 
 #define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5 // Stands to HAL_PIXEL_FORMAT_BGRA_8888

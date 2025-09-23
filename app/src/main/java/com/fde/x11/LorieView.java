@@ -137,7 +137,7 @@ public class LorieView extends SurfaceView implements InputStub {
         });
 
         Rect r = getHolder().getSurfaceFrame();
-        getActivity().runOnUiThread(() -> mSurfaceCallback.surfaceChanged(getHolder(), PixelFormat.TRANSLUCENT, r.width(), r.height()));
+        mSurfaceCallback.surfaceChanged(getHolder(), PixelFormat.TRANSLUCENT, r.width(), r.height());
     }
 
     private Activity getActivity() {
@@ -242,18 +242,12 @@ public class LorieView extends SurfaceView implements InputStub {
     }
 
     static native void connect(int fd);
-    native void handleXEvents();
-    static native void startLogcat(int fd);
-    static native void setClipboardSyncEnabled(boolean enabled);
     static native void sendWindowChange(int width, int height, int framerate);
     public native void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index);
     public native void sendTouchEvent(int action, int id, int x, int y);
     public native boolean sendKeyEvent(int scanCode, int keyCode, boolean keyDown);
     public native void sendTextEvent(byte[] text);
     public native void sendUnicodeEvent(int code);
-
-    public native void sendClipText(String cliptext);
-
 
     static {
         System.loadLibrary("Xlorie");

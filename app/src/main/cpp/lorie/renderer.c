@@ -8,7 +8,7 @@
 #pragma ide diagnostic ignored "misc-no-recursion"
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
-#define RENDERER_LOG_ENABLE 0
+#define RENDERER_LOG_ENABLE 1
 #include <EGL/egl.h> // requires ndk r5 or newer
 #include <GLES/gl.h>
 #include <EGL/eglext.h>
@@ -17,7 +17,7 @@
 #include <GLES3/gl32.h>
 #include <android/native_window_jni.h>
 #include <fb.h>
-#include "node.h"
+#include "android.h"
 #include <dlfcn.h>
 #include "renderer.h"
 #include "os.h"
@@ -163,11 +163,12 @@ static int renderedFrames = 0;
 static jmethodID Surface_release = NULL;
 static jmethodID Surface_destroy = NULL;
 struct SurfaceManagerWrapper *sfWraper = NULL;
-extern void android_update_texture(int index);
-extern void android_update_texture_1(Window window);
-extern void android_update_widget_texture(Widget *widget);
-extern void android_redirect_window(WindowPtr pWin);
-extern bool IfRealizedWindow(WindowPtr widget);
+//extern void android_update_texture(int index);
+//extern void android_update_texture(Window window);
+//extern void android_update_system_tray(WindAttribute *attr);
+//extern void android_update_widget_texture(Widget *widget);
+//extern void android_redirect_window(WindowPtr pWin);
+//extern bool IfRealizedWindow(WindowPtr widget);
 GLuint tempid = -1;
 WindowPtr tempptr = NULL;
 static struct {
@@ -535,6 +536,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     if(_surface_count_window(sfWraper, res->window)){
         log("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
+        attr->status = 6;
 //        if(attr->discard){
 //            return;
 //        }
@@ -701,8 +703,10 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h ) {
         return;
     }
-
     WindAttribute *attr = (WindAttribute *) _surface_find_window(sfWraper, window);
+    if(attr->prop.window_type == 1000 && !attr->dock_sent){
+//        android_update_system_tray(attr);
+    }
     attr->offset_x = (float) x;
     attr->offset_y = (float) y;
     attr->width = (float) w;
@@ -733,8 +737,12 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         attr->texture_id, flip);
 }
 
-void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, Widget *widget, GLuint texture_id) {
+void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, void *window, GLuint texture_id) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
+        return;
+    }
+    Widget *widget = (Widget *) window;
+    if(!widget){
         return;
     }
     log("renderer_update_widget_texture x:%d y:%d w:%d h:%d window:%x tid:%d", x, y, w, h, widget->window,
@@ -855,7 +863,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     float width, height;
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (attr && window != 0) {
-        android_update_texture_1(window);
+        android_update_texture(window);
         eglSurface = attr->sfc;
         id = attr->texture_id;
         dri_id = attr->dri_texture_id;
@@ -946,7 +954,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
                 widget.texture_id);
             if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
                || !widget.inbounds || !widget.width || !widget.height
-               || !IfRealizedWindow(widget.pWin)){
+               || !widget.pWin->realized){
                 continue;
             }
             log("renderer_redraw_traversal_1 text 1")
@@ -976,7 +984,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
                 eglErrorLabel(err));
 //            renderer_clear_window(env, index);
 //            renderer_set_window(env, NULL, NULL);
-            return FALSE;
+//            return FALSE;
         }
     }
 //    if(!empty){

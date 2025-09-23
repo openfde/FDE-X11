@@ -6,5 +6,6 @@
     <com.fde.x11.LorieView
         android:id="@+id/widget_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        />
 </FrameLayout>

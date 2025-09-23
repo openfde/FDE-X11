@@ -142,9 +142,6 @@ public class XserviceInterfaceWrapper implements InputStub {
 
     @Override
     public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) {
-        if(buttonDown){
-            FLog.e(TAG, "sendMouseEvent: ");
-        }
         try {
             if(isAviable()){service.sendMouseEvent(x, y, whichButton, buttonDown, relative, index);}
         }catch (RemoteException e){

@@ -251,5 +251,5 @@ template <typename T>
     return out.str();
 }
 
-int is_valid_utf8(const char *string);
+int util_is_valid_utf8(const char *string);
 #endif

@@ -13,7 +13,7 @@ public class Property implements Parcelable {
     long leader;
     int type;
     String net_name;
-    String wm_class;
+    String net_wm_name;
 
     int supportDeleteWindow;
     int supportMotif;
@@ -29,18 +29,18 @@ public class Property implements Parcelable {
         this.leader = leader;
         this.type = type;
         this.net_name = net_name;
-        this.wm_class = wm_class;
+        this.net_wm_name = wm_class;
         this.supportDeleteWindow = supportDeleteWindow;
     }
 
-    public Property(long XID, long transientfor, long leader, int type, String net_name, String wm_class, int supportDeleteWindow,
+    public Property(long XID, long transientfor, long leader, int type, String net_name, String net_wm_name, int supportDeleteWindow,
                     int supportMotif, Bitmap icon) {
         this.XID = XID;
         this.transientfor = transientfor;
         this.leader = leader;
         this.type = type;
         this.net_name = net_name;
-        this.wm_class = wm_class;
+        this.net_wm_name = net_wm_name;
         this.supportDeleteWindow = supportDeleteWindow;
         this.supportMotif = supportMotif;
         this.icon = icon;
@@ -52,7 +52,7 @@ public class Property implements Parcelable {
         this.leader = leader;
         this.type = type;
         this.net_name = net_name;
-        this.wm_class = wm_class;
+        this.net_wm_name = wm_class;
     }
 
     protected Property(Parcel in) {
@@ -61,7 +61,7 @@ public class Property implements Parcelable {
         leader = in.readLong();
         type = in.readInt();
         net_name = in.readString();
-        wm_class = in.readString();
+        net_wm_name = in.readString();
         supportDeleteWindow = in.readInt();
         supportMotif = in.readInt();
         icon = in.readParcelable(Bitmap.class.getClassLoader());
@@ -136,11 +136,11 @@ public class Property implements Parcelable {
     }
 
     public String getWm_class() {
-        return wm_class;
+        return net_wm_name;
     }
 
     public void setWm_class(String wm_class) {
-        this.wm_class = wm_class;
+        this.net_wm_name = wm_class;
     }
 
     @Override
@@ -163,7 +163,7 @@ public class Property implements Parcelable {
         dest.writeLong(leader);
         dest.writeInt(type);
         dest.writeString(net_name);
-        dest.writeString(wm_class);
+        dest.writeString(net_wm_name);
         dest.writeInt(supportDeleteWindow);
         dest.writeInt(supportMotif);
         dest.writeParcelable(icon, flags);

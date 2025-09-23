@@ -75,7 +75,6 @@ from The Open Group.
 #include "glxserver.h"
 #include "glxutil.h"
 #include "fbconfigs.h"
-
 #include "renderer.h"
 #include "inpututils.h"
 #include "lorie.h"

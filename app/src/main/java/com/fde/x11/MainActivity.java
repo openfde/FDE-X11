@@ -1,5 +1,6 @@
 package com.fde.x11;
 
+import static android.app.ActivityManager.MOVE_TASK_NO_USER_ACTION;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
@@ -19,6 +20,7 @@ import static com.fde.x11.XWindowService.CONFIGURE_WIDGET_FROM_X;
 import static com.fde.x11.XWindowService.DESTROY_ACTIVITY_FROM_X;
 import static com.fde.x11.XWindowService.HIDE_WINDOW_FROM_X;
 import static com.fde.x11.XWindowService.MODALED_ACTION_ACTIVITY_FROM_X;
+import static com.fde.x11.XWindowService.SHOW_WINDOW_FROM_X;
 import static com.fde.x11.XWindowService.START_ACTIVITY_FROM_X;
 import static com.fde.x11.XWindowService.START_VIEW_FROM_X;
 import static com.fde.x11.XWindowService.STOP_VIEW_FROM_X;
@@ -256,7 +258,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             intent.setAction(TASK_ID_FROM_ACTIVITY_REMOVE);
             intent.setPackage(targetPackage);
             intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
-           intent.putExtra(ATTR_ABOUT_WINDOW, mAttribute);
+            intent.putExtra(ATTR_ABOUT_WINDOW, mAttribute);
         }
         sendBroadcast(intent);
     }
@@ -309,7 +311,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             AppUtils.GLOBAL_SCREEN_WIDTH = point.x;
             AppUtils.GLOBAL_SCREEN_HEIGHT = point.y;
             Log.d(TAG, "updateWindowParams: " + AppUtils.GLOBAL_SCREEN_WIDTH  + " x "
-             + AppUtils.GLOBAL_SCREEN_HEIGHT);
+                    + AppUtils.GLOBAL_SCREEN_HEIGHT);
         }
     }
 
@@ -461,6 +463,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             addAction(START_ACTIVITY_FROM_X);
             addAction(STOP_WINDOW_FROM_X);
             addAction(HIDE_WINDOW_FROM_X);
+            addAction(SHOW_WINDOW_FROM_X);
             addAction(MODALED_ACTION_ACTIVITY_FROM_X);
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
@@ -719,7 +722,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
         }
 //        if(!isTaskMoving){
-            mXserviceWrapper.raiseWindow(mAttribute.getXID());
+        mXserviceWrapper.raiseWindow(mAttribute.getXID());
 //        }
         InputManager.getInstance().setFocusView(getLorieView());
 
@@ -1006,11 +1009,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 | WindowManager.LayoutParams.FLAG_SCALED
                 | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
-        if (Build.VERSION.SDK_INT >= 26) {
+//        if (Build.VERSION.SDK_INT >= 26) {
             params.type = 2024; //WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        } else {
-            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
-        }
+//        } else {
+//            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
+//        }
         if (SDK_INT >= VERSION_CODES.R) {
             params.setFitInsetsTypes(0);
         }
@@ -1262,10 +1265,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         public boolean startDecorMovingTask(float startX, float startY, long window) throws RemoteException {
             if (mAttribute != null && mAttribute.getXID() == window) {
 //                if (mFrameworkOperations.startDecorMovingTask(startX, startY)) {
-                    isTaskMoving = true;
+                isTaskMoving = true;
                 Log.d(TAG, "startDecorMovingTask() called with: startX = [" + startX + "], startY = [" + startY + "], isTaskMoving = [" + isTaskMoving + "]");
-                    mInputHandler.setMoveTask(isTaskMoving);
-                    return true;
+                mInputHandler.setMoveTask(isTaskMoving);
+                return true;
 //                }
             }
             return false;
@@ -1304,25 +1307,25 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 finishAffinity();
             } else if (ACTION_PREFERENCES_CHANGED.equals(intent.getAction())) {
                 Log.v(TAG, "preference: " + intent.getStringExtra("key"));
-            } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())){
+            } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 FLog.a("event", "DESTROY_ACTIVITY_FROM_X: attr = [" + attr + "], mAttribute = [" + mAttribute + "]");
-                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID() && mAttribute.getIndex() == attr.getIndex()){
-                    FLog.a("event", getWindowId(), "onReceive: "  + "DESTROY_ACTIVITY_FROM_X"  + " attr:" + attr  + " mAttribute:" + mAttribute);
+                if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID() && mAttribute.getIndex() == attr.getIndex()) {
+                    FLog.a("event", getWindowId(), "onReceive: " + "DESTROY_ACTIVITY_FROM_X" + " attr:" + attr + " mAttribute:" + mAttribute);
                     killSelf = true;
                     finish();
                     App.getApp().stopingActivityWindow.add(mAttribute.getXID());
                 }
-            } else if (START_ACTIVITY_FROM_X.equals(intent.getAction())){
+            } else if (START_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getTaskTo()){
+                if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getTaskTo()) {
                     ActivityOptions options = ActivityOptions.makeBasic();
-                    options.setLaunchBounds(new Rect((int)attr.getOffsetX(),
-                            (int)(attr.getOffsetY() ),
-                            (int)(attr.getWidth() + attr.getOffsetX()),
-                            (int)(attr.getHeight() + attr.getOffsetY())));
+                    options.setLaunchBounds(new Rect((int) attr.getOffsetX(),
+                            (int) (attr.getOffsetY()),
+                            (int) (attr.getWidth() + attr.getOffsetX()),
+                            (int) (attr.getHeight() + attr.getOffsetY())));
                     Intent actIntent = new Intent(MainActivity.this, MainActivity.MainActivity11.class);
-                    if(attr.getProperty() != null){
+                    if (attr.getProperty() != null) {
                         actIntent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
                         Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
                         Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
@@ -1338,7 +1341,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     actIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(actIntent, options.toBundle());
                 }
-            } else if(STOP_WINDOW_FROM_X.equals(intent.getAction())) {
+            } else if (STOP_WINDOW_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 FLog.a("event", "STOP_WINDOW_FROM_X: attr = [" + attr + "], mAttribute = [" + mAttribute + "]");
                 if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
@@ -1351,7 +1354,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                             "STOP_WINDOW_FROM_X" + " attr:" + attr);
                     finish();
                 }
-            }else if(HIDE_WINDOW_FROM_X.equals(intent.getAction())){
+            } else if (HIDE_WINDOW_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 FLog.a("event", "HIDE_WINDOW_FROM_X: attr = [" + attr + "], mAttribute = [" + mAttribute + "]");
                 if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
@@ -1362,7 +1365,20 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     MainActivity.this.moveTaskToBack(true);
 //                    am.moveTaskToBack(true, getTaskId());
                 }
-            } else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+            } else if(SHOW_WINDOW_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                FLog.a("event", "SHOW_WINDOW_FROM_X: attr = [" + attr + "], mAttribute = [" + mAttribute + "]");
+                if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
+                        && mXserviceWrapper.isAviable() //fix some delay broadcast
+                ) {
+                    FLog.a("event", getWindowId(), "onReceive: " +
+                            "SHOW_WINDOW_FROM_X" + " attr:" + attr);
+//                    am.moveTaskToFront(MainActivity.this.getTaskId(), MOVE_TASK_NO_USER_ACTION);
+//                    MainActivity.this.movef(true);
+//                    am.moveTaskToBack(true, getTaskId());
+                }
+
+            }else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
@@ -1386,7 +1402,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
                 Log.d(TAG, "ACTION_UPDATE_ICON: " + getTitle() + ", windowId:" + windowId + " " + mAttribute) ;
-                    if(mAttribute !=  null && (windowId == mAttribute.getXID() || windowId == mAttribute.getWindow())){
+                if(mAttribute !=  null && (windowId == mAttribute.getXID() || windowId == mAttribute.getWindow())){
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
                     ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
                     MainActivity.this.setTaskDescription(description);
@@ -1400,7 +1416,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 {
                     mConfigureRect = attr.getRect();
 //                    if(!mInputHandler.isTouching()){
-                        configureFromX();
+                    configureFromX();
 //                    }
                 } else if(isFullscreen && mAttribute != null && mAttribute.getXID() == attr.getXID()
                         && mXserviceWrapper != null){

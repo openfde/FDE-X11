@@ -90,6 +90,38 @@ WindAttribute* SurfaceManager::find_window(Window window) {
     }
 }
 
+WindAttribute* SurfaceManager::find_window_in_type(Window window, int type) {
+    for (auto& pair : window_attrs) {
+//        if(type & TYPE_ANY){
+//            if(pair.second.child == window || pair.second.window == window
+//               || pair.second.frame == window || pair.second.prop.leader == window){
+//                return &pair.second;
+//            }
+//        }
+        if(type & TYPE_WINDOW){
+            if(pair.second.window == window){
+                return &pair.second;
+            }
+        }
+        if(type & TYPE_FRAME){
+            if(pair.second.frame == window){
+                return &pair.second;
+            }
+        }
+        if(type & TYPE_CHILD){
+            if(pair.second.child == window){
+                return &pair.second;
+            }
+        }
+        if(type & TYPE_LEADER){
+            if(pair.second.prop.leader == window){
+                return &pair.second;
+            }
+        }
+    }
+    return nullptr;
+}
+
 Widget* SurfaceManager::find_widget(Window window) {
     for (auto& pair : window_attrs) {
         for (int i = 0; i < pair.second.widget_size; ++i) {
@@ -125,7 +157,13 @@ int SurfaceManager::count_window(Window window) {
 
 int SurfaceManager::count_window_in_type(Window window, int type, WindAttribute *ptr) {
     for (auto& pair : window_attrs) {
-        if(type == TYPE_WINDOW){
+        if(type == TYPE_ANY){
+            if(pair.second.child == window || pair.second.window == window
+             || pair.second.frame == window){
+                *ptr = pair.second;
+                return TRUE;
+            }
+        } if(type == TYPE_WINDOW){
             if(pair.second.child == window){
                 *ptr = pair.second;
                 return TRUE;
@@ -172,6 +210,43 @@ int SurfaceManager::size(){
     return window_attrs.size();
 }
 
+static void printWindAttributeFormatted(const WindAttribute* attr, const char* tag) {
+    if (attr == NULL) {
+        log("[%s] WindAttribute is NULL\n", tag);
+        return;
+    }
+
+    log("\n┌─── WindAttribute: %s ───\n", tag);
+    log("├─ Graphics:\n");
+    log("│   texture_id: %u, dri_texture_id: %u\n", attr->texture_id, attr->dri_texture_id);
+    log("│   size: %.1fx%.1f, offset: (%.1f,%.1f)\n", attr->width, attr->height, attr->offset_x, attr->offset_y);
+
+    log("├─ DRI Info:\n");
+    log("│   dri_size: %dx%d, dri_pos: (%d,%d)\n", attr->dri_w, attr->dri_h, attr->dri_x, attr->dri_y);
+
+    log("├─ Window IDs:\n");
+    log("│   window: 0x%lx, child: 0x%lx, frame: 0x%lx\n",
+           (unsigned long)attr->window, (unsigned long)attr->child, (unsigned long)attr->frame);
+    log("│   pWin: %p, dri_pWin: %p\n", (void*)attr->pWin, (void*)attr->dri_pWin);
+
+    log("├─ EGL/Widgets:\n");
+    log("│   EGLSurface: %p\n", (void*)attr->sfc);
+    log("│   widget: %p, widgets: %p (size: %d)\n",
+           (void*)attr->widget, (void*)attr->widgets, attr->widget_size);
+
+    log("├─ Flags & Status:\n");
+    log("│   discard: %d, level: %d, status: %d\n", attr->discard, attr->level, attr->status);
+    log("│   system_tray: %s, dock_sent: %s\n",
+           attr->system_tray ? "YES" : "NO",
+           attr->dock_sent ? "YES" : "NO");
+
+    log("├─ Android:\n");
+    log("│   override_window_type: %d, android_component: %d\n",
+           attr->override_window_type, attr->android_component);
+
+    log("└────────────────────────────\n\n");
+}
+
 void SurfaceManager::traversal_log_window(){
     if(window_attrs.size() == 0){
         log("no window for android");
@@ -180,13 +255,14 @@ void SurfaceManager::traversal_log_window(){
     log("traversal_window_attrs>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
     for (const auto& pair : window_attrs) {
         LogWindAttribute(pair.first, pair.second);
+//        printWindAttributeFormatted(&pair.second, "traversal_window_attrs");
     }
     log("traversal_window_attrs<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
 }
 
 void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
-    log("======> this is a window xid:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f  t:%d win:%p s:%p level:%d",
+    log("======> this is a window xid:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f  t:%d win:%p s:%p level:%d name:%s leader:%x transient:%x",
         attr.window,
         attr.index,
         attr.width,
@@ -196,7 +272,11 @@ void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
         attr.texture_id,
         attr.pWin,
         attr.sfc,
-        attr.level);
+        attr.level,
+        attr.prop.net_wm_name,
+        attr.prop.leader,
+        attr.prop.transient
+        )
     if (attr.widget_size != 0) {
         for (int i = 0; i < attr.widget_size; i++) {
             Widget widget = attr.widgets[i];

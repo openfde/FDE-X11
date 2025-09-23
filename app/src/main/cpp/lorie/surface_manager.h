@@ -17,7 +17,7 @@
 #include <window.h>
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
-#include "node.h"
+#include "android.h"
 #include <map>
 #include "lorie.h"
 #include <memory>
@@ -28,7 +28,7 @@
 #include <vector>
 extern Bool LOG_ENABLE;
 #define SURFACE_LOG_ENABLE 1
-#define PRINT_LOG (SURFACE_LOG_ENABLE && LOG_ENABLE)
+#define PRINT_LOG (SURFACE_LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_sm", __VA_ARGS__);}              \
 
 #define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "native_sm", __VA_ARGS__);}              \
@@ -65,6 +65,7 @@ public:
     int remove_widget(Window window);                                           //delete
     void update_window(Window window, WindAttribute attr);                      //update
     WindAttribute* find_window(Window window);                                  //query
+    WindAttribute* find_window_in_type(Window window, int type);                                  //query
     Widget* find_widget(Window window);                                         //query
     WindAttribute* all_window(int * size);
     int count_window(Window window);

@@ -97,6 +97,19 @@ public class WindowManager  {
     public static final String ATTR_ABOUT_WINDOW = "attr_from_activity";
     public static final String WINDOW_ABOUT_TASK_ID = "window_about_task_id";
 
+    public static final String ACTION_X_UPDATE_SYSTEMTRAY_ICON = "com.fde.x11.update_systemtray_icon";
+    public static final String KEY_ICON = "icon";
+    public static final String KEY_WINDOW = "window";
+    public static final String KEY_ACTION = "action";
+    public static final String KEY_TITLE = "title";
+    public static final long SYSTEM_TRAY_REQUEST_DOCK = 0;
+    public static final long SYSTEM_TRAY_BEGIN_MESSAGE = 1;
+    public static final long SYSTEM_TRAY_CANCEL_MESSAGE = 2;
+    public static final long SYSTEM_TRAY_UNDOCK = 3;
+
+    public static final long SYSTEM_TRAY_CLICK = 4;
+
+
     public static HashMap<Long, WindowAttribute> taskIdMap = new HashMap<>();
     IntentFilter intentFilter;
     public WindowManager() {
@@ -113,6 +126,7 @@ public class WindowManager  {
         intentFilter = new IntentFilter();
         intentFilter.addAction(TASK_ID_FROM_ACTIVITY_ADD);
         intentFilter.addAction(TASK_ID_FROM_ACTIVITY_REMOVE);
+        intentFilter.addAction(ACTION_X_UPDATE_SYSTEMTRAY_ICON);
         contextReference.get().registerReceiver(receiver, intentFilter, 0X4);
     }
 
@@ -130,6 +144,9 @@ public class WindowManager  {
                 WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
                 Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
                 taskIdMap.remove(window);
+            } else if(TextUtils.equals(intent.getAction(), ACTION_X_UPDATE_SYSTEMTRAY_ICON)){
+                long window = intent.getLongExtra(KEY_WINDOW, -1);
+                long action = intent.getLongExtra(KEY_ACTION, -1);
             }
         }
     };
@@ -189,6 +206,20 @@ public class WindowManager  {
     }
 
     //called from native code
+    public static void  updateSystemTrayIcon(Bitmap bitmap, long window, long action){
+        Log.d(TAG, "updateSystemTrayIcon() called with: bitmap = [" + bitmap + "], window = [" + window + "], action = [" + action + "]");
+        Context context = contextReference.get();
+        if(context != null){
+            Intent intent = new Intent("com.fde.x11.update_systemtray_icon");
+            intent.putExtra("icon", bitmap);
+            intent.putExtra("window", window);
+            intent.putExtra("action", action);
+            intent.setPackage("com.android.systemui"); // 指定接收应用的包名
+            context.sendBroadcast(intent);
+        }
+    }
+
+        //called from native code
     public static void updateWmStateClient(int action, long window){
         Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
         Context context = contextReference.get();

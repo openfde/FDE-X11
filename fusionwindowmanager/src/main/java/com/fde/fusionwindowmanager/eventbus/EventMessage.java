@@ -26,7 +26,7 @@ public class EventMessage {
     }
 
     public Property getProperty() {
-        return property;
+        return property == null ? windowAttribute.getProperty() : property;
     }
 
     public void setProperty(Property property) {

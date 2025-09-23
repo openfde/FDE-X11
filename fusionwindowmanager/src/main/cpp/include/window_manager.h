@@ -21,6 +21,7 @@
 #include <jni.h>
 // #include "ewmh_icccm.h"
 #include <X11/Xatom.h>
+#include <android/bitmap.h>
 
 extern "C"
 {
@@ -104,6 +105,10 @@ static vblankMode vblank_mode = VBLANK_AUTO;
 #define _NET_WM_STATE_ADD 1
 #define _NET_WM_STATE_TOGGLE 2
 
+#define SYSTEM_TRAY_ENABLE 0
+#define SYSTEM_TRAY_CAPACITY 10
+
+
 #define _NET_WM_STATE_FULLSCREEN 1
 #define _NET_WM_STATE_ABOVE 3
 #define _NET_WM_STATE_BELOW 4
@@ -118,6 +123,25 @@ static vblankMode vblank_mode = VBLANK_AUTO;
 #define WINDOW_ACTION_MAXIMIZED_VERT 2
 #define WINDOW_ACTION_DELETE 1007
 
+#define SYSTEM_TRAY_REQUEST_DOCK    0
+#define SYSTEM_TRAY_BEGIN_MESSAGE   1
+#define SYSTEM_TRAY_CANCEL_MESSAGE  2
+#define SYSTEM_TRAY_UNDOCK          3
+
+#define SYSTEM_TRAY_ICON_WIDTH 18
+#define STATUA_BAR_HEIGHT 24
+#define STATUA_BAR_ICON_WIDTH 30
+
+#define MWM_HINTS_DECORATIONS    (1L << 1) // 使用decorations字段
+
+typedef struct {
+    unsigned long flags;
+    unsigned long functions;
+    unsigned long decorations;
+    long input_mode;
+    unsigned long status;
+} MotifWmHints;
+
 
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -129,6 +153,7 @@ const Atom _NET_WM_WINDOW_TYPE_NORMAL = 273;
 const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
+const Atom _NET_WM_WINDOW_TYPE_TRAY = 1000;
 
 class WindowManager
 {
@@ -168,6 +193,7 @@ private:
     void Unframe(Window w);
     int screen_;
     Window back_window;
+    Window system_tray = 0;
 
     // Event handlers.
     void OnCreateNotify(const XCreateWindowEvent &e);
@@ -216,7 +242,10 @@ private:
     std::set<Window> window_under_frames;
     std::set<Window> frames;
     std::set<Window> named_windows;
+    std::set<Window> dock_windows;
+    std::set<Window> dock_trays;
 
+    ::std::unordered_map<Window, Window> tray_window_map;
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
     Window owner;
     Atom sel, utf8;
@@ -250,4 +279,18 @@ private:
     void setWindowType(Window window, Atom type);
 
     int isTaskMoving;
+
+    void HandleSystemTrayClientMessage( ScreenInfo *screen_info, XClientMessageEvent *ev);
+
+    jobject GetWindowIcon(Window id);
+
+    jobject CreateBitmapFromNetWmIcon(unsigned char *data, unsigned long nitems);
+
+    jobject CreateBitmapFromXImage(JNIEnv *env, XImage *image);
+
+    uint32_t ConvertPixelToARGB(unsigned long pixel, int depth, int byte_order);
+
+    jobject CreateBitmapFromPixmap(JNIEnv *env, Display *display, Pixmap pixmap);
+
+    void ReparentDockWindow(Window window);
 };
