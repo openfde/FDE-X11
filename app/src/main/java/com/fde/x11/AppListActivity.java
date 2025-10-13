@@ -44,6 +44,7 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Base64;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -116,6 +117,7 @@ public class AppListActivity extends AppCompatActivity {
     private final Handler handler = new Handler();
     private FilterRunnable runnable;
     private Rect mRect = new Rect();
+    private int density = 160;
 
     public interface ItemClickListener {
         void onItemClick(View itemView, int position, AppListResult.DataBeanX.DataBean app, boolean isRight, MotionEvent event);
@@ -125,6 +127,9 @@ public class AppListActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.applist_activity);
+        DisplayMetrics dm = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+        density = dm.densityDpi;
         com.xiaokun.dialogtiplib.util.AppUtils.init(this);
         loadingView = (ProgressBar) findViewById(R.id.loadingView);
         tipLoadDialog = new TipLoadDialog(this);
@@ -293,6 +298,9 @@ public class AppListActivity extends AppCompatActivity {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if(density != newConfig.densityDpi){
+            finish();
+        }
         checkConfig(newConfig);
         FLog.l(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
     }

@@ -91,6 +91,17 @@ public class Xserver {
     public void startXserver() {
         String height = AppUtils.getProperty("openfde.display_height", "1080");
         String width = AppUtils.getProperty("openfde.display_width", "1920");
+        startXserver(width, height);
+        ARGS_DEFAULT = new String[]{":" + DISPLAY_GLOBAL, "-width",width,
+                "-height", height };
+        if (!start(ARGS_DEFAULT, FLog.LogXserverNativeEnable)) {
+            FLog.s(TAG, "startXserver: failed", FLog.ERROR);
+        }
+        spawnListeningThread();
+        sendBroadcastDelayed();
+    }
+
+    public void startXserver(String width, String height) {
         ARGS_DEFAULT = new String[]{":" + DISPLAY_GLOBAL, "-width",width,
                 "-height", height };
         if (!start(ARGS_DEFAULT, FLog.LogXserverNativeEnable)) {

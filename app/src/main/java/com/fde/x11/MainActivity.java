@@ -198,6 +198,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     protected boolean captionShowing;
     private boolean needSurface;
     private boolean isTaskMoving;
+    private int density = 160;
 
     public static final String NAME_MATE_TERMINAL = "mate-terminal";
     public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
@@ -234,6 +235,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         super.onCreate(savedInstanceState);
         DisplayMetrics dm = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+        density = dm.densityDpi;
         AppUtils.updateSystemAttr(dm.widthPixels, dm.heightPixels);
         mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
         mSystemInsetTop = DECOR_CAPTION_HEIGHT;
@@ -515,6 +517,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+        if(density != newConfig.densityDpi){
+            finish();
+        }
+        this.density = newConfig.densityDpi;
         FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
         if(mXserviceWrapper == null){
             return;

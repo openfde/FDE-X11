@@ -56,12 +56,13 @@ JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
     }
 }
 
-JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display, jstring cliptext, jstring filepath){
+JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display, jstring cliptext,
+    jstring filepath, jint width, jint height, jint dpi){
     jboolean isCopy = false;
     char* export_display = const_cast<char *>(env->GetStringUTFChars(display, &isCopy));
     jclass js  = static_cast<jclass>(env->NewGlobalRef(obj));
     setenv("DISPLAY", export_display, 1);
-    window_manager = WindowManager::create(export_display, env, js);
+    window_manager = WindowManager::create(export_display, env, js, width, height, dpi);
     jsize length = 0;
     if(cliptext != NULL){
         length = env->GetStringLength(cliptext);
@@ -183,7 +184,7 @@ JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
 
 static JNINativeMethod method_table[] = {
         {"createXWindow","()V", (void *) createXWindow},
-        {"connect2Server", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I", (void *) connect2Server},
+        {"connect2Server", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;III)I", (void *) connect2Server},
         {"moveWindow","(JII)I", (void *) moveWindow},
         {"configureWindow","(JIIII)I", (void *) configureWindow},
         {"resizeWindow","(JII)I", (void *) resizeWindow},

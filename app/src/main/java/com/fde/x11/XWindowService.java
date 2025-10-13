@@ -13,6 +13,7 @@ import android.app.ActivityOptions;
 import android.app.ActivityTaskManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
@@ -21,6 +22,8 @@ import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.os.UserManager;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -34,6 +37,9 @@ import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.fde.x11.input.InputManager;
+import com.fde.x11.utils.AppUtils;
+import com.fde.x11.utils.DimenUtils;
 import com.fde.x11.input.InputEventSender;
 import com.fde.x11.input.InputStub;
 import com.fde.x11.input.TouchInputHandler;
@@ -123,6 +129,8 @@ public class XWindowService extends Service {
     private final HashMap<Long, Property> propertyHashMap = new HashMap<>();
 
     private final HashMap<Long, IActivityCallback> activityCallbackMap = new HashMap<>();
+    private int mWidht = 1920;
+    private int mHeight = 1080;
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
@@ -247,13 +255,38 @@ public class XWindowService extends Service {
 //        Util.checkX11FdPermission(this);
         EventBus.getDefault().register(this);
         Xserver.getInstance().registerContext(new WeakReference<>(this));
-        Xserver.getInstance().startXserver();
+        String height = AppUtils.getProperty("openfde.display_height", "1080");
+        String width = AppUtils.getProperty("openfde.display_width", "1920");
+        mWidht = Integer.parseInt(width);
+        mHeight = Integer.parseInt(height);
+        Xserver.getInstance().startXserver(width, height);
         Xserver.X_ClientNum = 0;
+        int density = getSystemDensity();
         if(DWM_START_DEFAULT){
-            wm = new WindowManager( new WeakReference<>(this));
+            wm = new WindowManager( new WeakReference<>(this),
+                    mWidht, mHeight, density);
             wm.startWindowManager(DISPLAY_GLOBAL+"");
         }
-        FLog.s(TAG, "onCreate");
+        FLog.s(TAG, "onCreate density:%d", density);
+    }
+
+    private int getSystemDensity() {
+        String pDensity = AppUtils.getProperty("ro.sf.lcd_density", "160");
+        int lcd_density = Integer.parseInt(pDensity);
+
+        DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+        int densityDpi = displayMetrics.densityDpi;
+
+        float d = (float)( densityDpi  * 96 / lcd_density);
+        float xFactor = mWidht == 1920 ? 1.f : 1.75f ;
+        return  (int)(d * xFactor);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+//        Log.d(TAG, "onConfigurationChanged() called with: newConfig = [" + newConfig + "]");
+        stopSelf();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)

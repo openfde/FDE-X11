@@ -33,10 +33,10 @@ extern "C"
 #include "display.h"
 }
 
-static JavaVM *jniVM = NULL;
-static JNIEnv *GlobalEnv = NULL;
-static jobject bitmap = NULL;
-static jclass staticClass = NULL;
+static JavaVM *jniVM = nullptr;
+static JNIEnv *GlobalEnv = nullptr;
+static jobject bitmap = nullptr;
+static jclass staticClass = nullptr;
 
 #define WIDTH 1920
 #define HEIGHT 1080
@@ -158,9 +158,9 @@ const Atom _NET_WM_WINDOW_TYPE_TRAY = 1000;
 class WindowManager
 {
 public:
-    static ::WindowManager *create(char *string, JNIEnv *env, jclass cls);
+    static ::WindowManager *create(char *string, JNIEnv *env, jclass cls, jint width, jint height, jint dpi);
     ~WindowManager();
-    WindowManager(Display *display);
+    WindowManager(Display *display, jint i, jint i1, jint i2);
     void Run();
     int configureWindow(long window, int x, int y, int w, int h);
     int moveWindow(long window, int x, int y);
@@ -193,6 +193,10 @@ private:
     void Unframe(Window w);
     int screen_;
     Window back_window;
+    int width_ = 1920;
+    int height_ = 1080;
+    int density_ = 96;
+    int decorcationview_height  = 42;
     Window system_tray = 0;
 
     // Event handlers.
@@ -293,4 +297,6 @@ private:
     jobject CreateBitmapFromPixmap(JNIEnv *env, Display *display, Pixmap pixmap);
 
     void ReparentDockWindow(Window window);
+
+    int SetRootResourceManager(Display *display, const char *resource_string);
 };

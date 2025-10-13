@@ -96,6 +96,9 @@ public class WindowManager  {
 
     public static final String ATTR_ABOUT_WINDOW = "attr_from_activity";
     public static final String WINDOW_ABOUT_TASK_ID = "window_about_task_id";
+    private int mWidth = 1920;
+    private int mHeight = 1080;
+    private int density = 96;
 
     public static final String ACTION_X_UPDATE_SYSTEMTRAY_ICON = "com.fde.x11.update_systemtray_icon";
     public static final String KEY_ICON = "icon";
@@ -118,7 +121,10 @@ public class WindowManager  {
         mHandler = new TaskHandler(mThread.getLooper());
     }
 
-    public WindowManager(WeakReference<Context> activityWeakReference) {
+    public WindowManager(WeakReference<Context> activityWeakReference, int width, int height, int density) {
+        this.mWidth = width;
+        this.mHeight = height;
+        this.density = density;
         contextReference = activityWeakReference;
         mThread = new HandlerThread("WM");
         mThread.start();
@@ -173,7 +179,8 @@ public class WindowManager  {
      */
     public native void createXWindow();
 
-    public static native int connect2Server(String display, String cliptext, String filepath);
+    public static native int connect2Server(String display, String cliptext, String filepath,
+        int width, int height, int dpi);
 
     public native int configureWindow(long window, int x, int y, int width, int height);
 
@@ -333,8 +340,9 @@ public class WindowManager  {
                     if(!TextUtils.isEmpty(filePath)){
                         filePath = filePath.replace(" ", "%20");
                     }
-                    isConnected = connect2Server(display, clipText, filePath) > 0;
                     Log.d(TAG, "MSG_START_WM isConnected:" + isConnected + " display:" + display);
+                    isConnected = connect2Server(display, clipText, filePath,
+                            mWidth, mHeight, density) > 0;
                     break;
                 default:
                     break;

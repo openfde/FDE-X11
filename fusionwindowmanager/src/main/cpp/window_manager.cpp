@@ -15,7 +15,8 @@ bool WindowManager::wm_detected_;
 bool WindowManager::support_composite;
 mutex WindowManager::wm_detected_mutex_;
 
-::WindowManager *WindowManager::create(char *export_display, JNIEnv *env, jclass cls)
+::WindowManager *WindowManager::create(char *export_display, JNIEnv *env, jclass cls, jint width,
+                                       jint height, jint density)
 {
     staticClass = cls;
     GlobalEnv = env;
@@ -29,18 +30,21 @@ mutex WindowManager::wm_detected_mutex_;
         return nullptr;
     }
     // 2. Construct WindowManager instance.
-    return new WindowManager(display);
+    return new WindowManager(display, width, height, density);
 }
 
-WindowManager::WindowManager(Display *display)
-        : display_(display),
-          screen_(DefaultScreen(display)),
-          root_(DefaultRootWindow(display_)),
-          WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
-          WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
-          stoped(False)
+WindowManager::WindowManager(Display *display, jint width, jint height, jint density)
+    : display_(display),
+        width_(width),
+        height_(height),
+        density_(density),
+      screen_(DefaultScreen(display)),
+      root_(DefaultRootWindow(display_)),
+      WM_PROTOCOLS(XInternAtom(display_, "WM_PROTOCOLS", false)),
+      WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
+      stoped(False)
 {
-    back_window = XCreateSimpleWindow(display_, root_, 0, 0, WIDTH, HEIGHT, 0,
+    back_window = XCreateSimpleWindow(display_, root_, 0, 0, width_, height_, 0,
                                       BlackPixel(display, screen_), WhitePixel(display, screen_));
     XMapWindow(display, back_window);
     XSetWindowBackground(display, back_window, WhitePixel(display, screen_));
@@ -539,14 +543,14 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
     XWindowChanges changes;
     bool normal = isNormalWindow(e.window);
     changes.x = e.x;
-    changes.y = (e.y < DECORCATIONVIEW_HEIGHT && normal ) ? DECORCATIONVIEW_HEIGHT : e.y;
+    changes.y = (e.y < decorcationview_height && normal) ? decorcationview_height : e.y;
     changes.width = e.width;
     changes.height = e.height;
     changes.border_width = e.border_width;
     changes.sibling = e.above;
     changes.stack_mode = e.detail;
     unsigned long value_mask = e.value_mask;
-    if (e.y < DECORCATIONVIEW_HEIGHT)
+    if (e.y < decorcationview_height)
     {
         value_mask = e.value_mask | CWY;
         //        log("value_mask : %lu", value_mask);
@@ -967,6 +971,25 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e)
 
 void WindowManager::Run()
 {
+
+    char resource_data[1024];
+    snprintf(resource_data, sizeof(resource_data),
+             "Xft.dpi:\t%d\n"
+             "Xcursor.size:\t%d\n"
+             "Xcursor.theme:\tdark-sense\n"
+             "Xft.antialias:\t1\n"
+             "Xft.hinting:\t1\n"
+             "Xft.hintstyle:\thintslight\n"
+             "Xft.rgba:\trgb\n"
+             "Xft.lcdfilter:\tlcddefault\n",
+             density_, density_ / 4);
+    // 设置属性
+    if (SetRootResourceManager(display_, resource_data) == 0) {
+        log("RESOURCE_MANAGER属性设置成功");
+    } else {
+        log("RESOURCE_MANAGER属性设置失败");
+    }
+
     // 1. Initialization.
     //   a. Select events on root window. Use a special error handler so we can
     //   exit gracefully if another window manager is already running.
@@ -2250,3 +2273,27 @@ void WindowManager::UpdateXserverClipFile(const char *text)
     }
 }
 
+int WindowManager::SetRootResourceManager(Display *display, const char *resource_string) {
+    Window root = DefaultRootWindow(display);
+    Atom resource_manager = XInternAtom(display, "RESOURCE_MANAGER", False);
+    if (resource_manager == None) {
+        log("无法获取RESOURCE_MANAGER原子");
+        return -1;
+    }
+    Atom string_atom = XInternAtom(display, "STRING", False);
+    if (string_atom == None) {
+        log("无法获取STRING原子");
+        return -1;
+    }
+    log("设置RESOURCE_MANAGER属性...");
+    log("数据长度: %zu 字节", strlen(resource_string));
+    XChangeProperty(display, root,
+                    resource_manager,
+                    string_atom,
+                    8,                // 8位格式
+                    PropModeReplace,
+                    (unsigned char *)resource_string,
+                    strlen(resource_string));
+    XSync(display, False);
+    return 0;
+}
