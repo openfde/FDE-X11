@@ -149,27 +149,32 @@ void android_destroy_window(Window window) {
 
 void android_unmap_window(Window window) {
     log(DEBUG, "android_unmap_window %x", window);
-//    _surface_log_traversal_window(sfWraper);
+    _surface_log_traversal_window(sfWraper);
     WindAttribute attribute = {0};
-    if (_surface_count_window_in_type(sfWraper, window, TYPE_ANY, &attribute)) {
-        log(DEBUG, "unmap activity window:%x", attribute.frame);
-        WindAttribute *attr = _surface_find_window(sfWraper, attribute.frame);
-        if (attr) {
-            attr->discard = 1;
-            android_destroy_activity(attr->index, attr->pWin, attr->window, ACTION_UNMAP,
-                                     attr->prop.support_wm_delete);
-//            android_destroy_window(attr->window);
-        } else {
+    if(_surface_count_window_in_type(sfWraper, window, TYPE_ANY, &attribute))
+    {
+        log(DEBUG, "unmap attribute:%0x", window);
+        if(attribute.android_component == ANDROID_COMPONENT_VIEW){
+            log(DEBUG, "unmap view window:%x", attribute.window);
+            android_destroy_view(0, attribute.pWin, attribute.prop.transient, attribute.window, ACTION_DISMISS);
             attribute.discard = 1;
+            glDeleteTextures(1, &attribute.texture_id);
+            renderer_release_window(GetJavaEnv(), window);
+            _surface_delete_window(sfWraper, attribute.window);
+        } else {
+            log(DEBUG, "unmap activity window:%x", attribute.frame);
             android_destroy_activity(attribute.index, attribute.pWin, attribute.window,
                                      ACTION_UNMAP,
                                      attribute.prop.support_wm_delete);
-//            android_destroy_window(attribute.window);
+            //            android_destroy_window(attr.window);
+            //        glDeleteTextures(1, &attr.texture_id);
+//        renderer_release_window(GetJavaEnv(), attr.window);
+//        _surface_delete_window(sfWraper, attr.window);
         }
-//        glDeleteTextures(1, &attr->texture_id);
-//        renderer_release_window(GetJavaEnv(), attr->window);
-//        _surface_delete_window(sfWraper, attr->window);
-    } else if (_surface_count_widget(sfWraper, window)) {
+
+    }
+    else if (_surface_count_widget(sfWraper, window))
+    {
         log(DEBUG, "unmap widget:%0x", window);
         Widget *widget = _surface_find_widget(sfWraper, window);
         if (!widget->inbounds) {
@@ -631,25 +636,25 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
     }
 }
 
-void android_create_or_map_window(WindAttribute attribute, WindProperty aProperty, Window taskTo, bool inbound, bool create) {
+void android_create_or_map_window(WindAttribute attribute, WindProperty prop, Window taskTo, bool inbound, bool create) {
     log(DEBUG, "android_create_window window:%x wm_name:%s net_wm_name:%s inbound:%d",
-        attribute.window, aProperty.wm_name, aProperty.net_wm_name, inbound);
+        attribute.window, prop.wm_name, prop.net_wm_name, inbound);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
-        log(DEBUG, "ready to create window %lx", attribute.window);
-        Window aWindow = aProperty.window;
-        Window aTransient = aProperty.transient;
-        Window aLeader = aProperty.leader;
-        int aType = aProperty.window_type;
+        log(DEBUG, "ready to create window %x", attribute.window);
+        Window aid = attribute.window;
+        Window aTransient = prop.transient;
+        Window aLeader = prop.leader;
+        int aType = attribute.override_window_type ? attribute.override_window_type :prop.window_type;
         jstring wm_name = NULL, net_wm_name = NULL, wm_class = NULL;
-        if (util_is_valid_utf8(aProperty.net_wm_name)) {
-            net_wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.net_wm_name);
+        if (util_is_valid_utf8(prop.net_wm_name)) {
+            net_wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, prop.net_wm_name);
         }
-        if (util_is_valid_utf8(aProperty.wm_name)) {
-            wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.wm_name);
+        if (util_is_valid_utf8(prop.wm_name)) {
+            wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, prop.wm_name);
         }
-        if (util_is_valid_utf8(aProperty.wm_class)) {
-            wm_class = (*JavaEnv)->NewStringUTF(JavaEnv, aProperty.wm_class);
+        if (util_is_valid_utf8(prop.wm_class)) {
+            wm_class = (*JavaEnv)->NewStringUTF(JavaEnv, prop.wm_class);
         }
         int offsetX = attribute.pWin->drawable.x;
         int offsetY = attribute.pWin->drawable.y;
@@ -657,21 +662,21 @@ void android_create_or_map_window(WindAttribute attribute, WindProperty aPropert
         int height = attribute.pWin->drawable.height;
         int index = attribute.index;
         WindowPtr windowPtr = attribute.pWin;
-        Window window = attribute.window;
+//        Window window = attribute.window;
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
                                                          "startOrUpdateWindow",
                                                          "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIILandroid/graphics/Bitmap;ZIZJZ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         (long) aWindow, (long) aTransient, (long) aLeader, aType,
+                                         (long) aid, (long) aTransient, (long) aLeader, aType,
                                          wm_class, net_wm_name == NULL ? wm_name : net_wm_name,
                                          offsetX, offsetY, width, height, index,
-                                         (long) windowPtr, (long) window, (long) taskTo,
-                                         aProperty.support_wm_delete, aProperty.support_motif,
-                                         aProperty.icon ? aProperty.icon : NULL, inbound, clientNum,
+                                         (long) windowPtr, (long) aid, (long) taskTo,
+                                         prop.support_wm_delete, prop.support_motif,
+                                         prop.icon ? prop.icon : NULL, inbound, clientNum,
                                          true, (long) attribute.child, create);
-//        free(aProperty.net_wm_name);
-//        free(aProperty.wm_class);
-//        free(aProperty.wm_name);
+//        free(prop.net_wm_name);
+//        free(prop.wm_class);
+//        free(prop.wm_name);
     }
 }
 
@@ -1378,12 +1383,16 @@ int property_lookup(PropertyPtr *result, WindowPtr pWin, Atom name)
     int rc = FALSE;
     PropertyPtr pProp;
     for (pProp = wUserProps(pWin); pProp; pProp = pProp->next)
+    {
+        log(DEBUG, "检查属性: pProp=%p, propertyName=%s, 目标name=%s",
+            pProp, NameForAtom(pProp->propertyName), NameForAtom(name));
         if (pProp->propertyName == name)
         {
             *result = pProp;
             rc = TRUE;
             break;
         }
+    }
     return rc;
 }
 

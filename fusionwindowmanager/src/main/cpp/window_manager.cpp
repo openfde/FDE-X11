@@ -44,6 +44,14 @@ WindowManager::WindowManager(Display *display, jint width, jint height, jint den
       WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
       stoped(False)
 {
+    decorcationview_height = density_ * decorcationview_height / 96;
+    system_tray_icon_width = density_ * system_tray_icon_width / 96;
+    status_bar_height = density_ * status_bar_height / 96;
+    status_bar_icon_width = density_ * status_bar_icon_width / 96;
+    offset_right_in_statusbar = density_ * offset_right_in_statusbar / 96;
+
+    log("WindowManager::WindowManager %d %d %d %d %d", decorcationview_height, system_tray_icon_width,
+        status_bar_height, status_bar_icon_width, offset_right_in_statusbar);
     back_window = XCreateSimpleWindow(display_, root_, 0, 0, width_, height_, 0,
                                       BlackPixel(display, screen_), WhitePixel(display, screen_));
     XMapWindow(display, back_window);
@@ -314,13 +322,25 @@ bool WindowManager::isInFrameMap(long window)
 
 void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {}
 
-void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &e)
+void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &ev)
 {
-    dock_windows.erase(e.window);
-    Client *c = myDisplayGetClientFromWindow(display_info, e.window, SEARCH_WINDOW);
+    dock_windows.erase(ev.window);
+    Client *c = myDisplayGetClientFromWindow(display_info, ev.window, SEARCH_WINDOW);
     if (c)
     {
         clientUnframe(c, FALSE);
+    }
+
+    if(dock_windows.count(ev.window)){
+//        if(tray_window_map.count(ev.window)){
+        Window tray = tray_window_map[ev.window];
+        log("Undock request window: %lx, tray: %lx", ev.window, tray);
+        updateSystemTrayIcon(nullptr, tray, SYSTEM_TRAY_UNDOCK);
+        tray_window_map.erase(ev.window);
+        dock_windows.erase(ev.window);
+        XDestroyWindow(display_, tray);
+        XFlush(display_);
+//        }
     }
 }
 
@@ -414,15 +434,6 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
                 // g_list_free (list_of_windows);
             }
         }
-    }
-    if(dock_windows.count(ev.window)){
-//        if(tray_window_map.count(ev.window)){
-        Window tray = tray_window_map[ev.window];
-        log("Undock request window: %lx, tray: %lx", ev.window, tray);
-        updateSystemTrayIcon(nullptr, tray, SYSTEM_TRAY_UNDOCK);
-        tray_window_map.erase(ev.window);
-        dock_windows.erase(ev.window);
-//        }
     }
 }
 
@@ -563,8 +574,8 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
 //    Atom type = getWindowType(display_, e.window);
     int isDockWindow = dock_windows.count(ev->window);
     if(isDockWindow){
-        int offsetx = (SYSTEM_TRAY_ICON_WIDTH - e.width) / 2;
-        int offsety = (SYSTEM_TRAY_ICON_WIDTH - e.height) / 2;
+        int offsetx = (system_tray_icon_width - e.width) / 2;
+        int offsety = (system_tray_icon_width - e.height) / 2;
         value_mask = CWWidth | CWHeight | CWX | CWY;
         changes.x = offsetx;
         changes.y = offsety;
@@ -1253,8 +1264,8 @@ void WindowManager::ProcessClientMessage(XEvent e)
                 attributes.background_pixel = 0x80808080;
 
                 system_tray = XCreateWindow(display_, root_,
-                    WIDTH - 254 - SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, 0,
-                    SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH,
+                    width_ - offset_right_in_statusbar - SYSTEM_TRAY_CAPACITY * system_tray_icon_width, 0,
+                    SYSTEM_TRAY_CAPACITY * system_tray_icon_width, system_tray_icon_width,
                               0,
                               CopyFromParent,
                               InputOutput,
@@ -1365,10 +1376,10 @@ void WindowManager::ReparentDockWindow(Window window)
         XSetWindowAttributes tray_attr;
         tray_attr.background_pixel = 0xC0C0C0;
         Window tray = XCreateWindow(display_, root_,
-                                    WIDTH - 254 - dock_windows.size() * STATUA_BAR_ICON_WIDTH +
-                                    (STATUA_BAR_ICON_WIDTH - SYSTEM_TRAY_ICON_WIDTH) / 2,
-                                    (STATUA_BAR_HEIGHT - SYSTEM_TRAY_ICON_WIDTH) / 2,
-                                    SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH,
+                                    width_ - offset_right_in_statusbar - dock_windows.size() * status_bar_icon_width +
+                                    (status_bar_icon_width - system_tray_icon_width) / 2,
+                                    (status_bar_height - system_tray_icon_width) / 2,
+                                    system_tray_icon_width, system_tray_icon_width,
                                0,
                                CopyFromParent,
                                InputOutput,
@@ -1376,17 +1387,24 @@ void WindowManager::ReparentDockWindow(Window window)
                                CWBackPixel,
                                &tray_attr);
 //        XSetWindowBackground(display_, tray, WhitePixel(display_, screen_));
-
-        log("ReparentDockWindow tray window：%lx  x:(%zu) y:(%d) w:(%d) h:(%d)",
-            tray,(WIDTH - 254 - dock_windows.size() * SYSTEM_TRAY_ICON_WIDTH), 0,
-            SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH)
+        long event_mask = BASE_EVENT_MASK;
+//                StructureNotifyMask |
+//                PropertyChangeMask |
+//                SubstructureNotifyMask |
+//                FocusChangeMask;
+        XSelectInput(display_, window, event_mask);
         target_wm_name = get_net_wm_name(display_, window);
+        log("ReparentDockWindow tray window：%lx  x:(%zu) y:(%d) w:(%d) h:(%d) netwmname:%s",
+            tray,(WIDTH - 254 - dock_windows.size() * system_tray_icon_width), 0,
+            system_tray_icon_width, system_tray_icon_width, target_wm_name)
         if (target_wm_name) {
             Atom utf8_string = XInternAtom(display_, "UTF8_STRING", False);
             Atom net_wm_name = XInternAtom(display_, "_NET_WM_NAME", False);
             XChangeProperty(display_, tray, net_wm_name, utf8_string, 8,
                             PropModeReplace, (unsigned char*)target_wm_name,
                             strlen(target_wm_name));
+            XFlush(display_);
+            XStoreName(display_, tray, target_wm_name);
             free(target_wm_name);
         } else {
             XStoreName(display_, tray, "tray");
@@ -1412,15 +1430,15 @@ void WindowManager::ReparentDockWindow(Window window)
 //        int offsety = (SYSTEM_TRAY_ICON_WIDTH - attrs.height) / 2;
 
         XWindowChanges changes;
-        changes.width = SYSTEM_TRAY_ICON_WIDTH;
-        changes.height = SYSTEM_TRAY_ICON_WIDTH;
+        changes.width = system_tray_icon_width;
+        changes.height = system_tray_icon_width;
         XConfigureWindow(display_, window, CWWidth | CWHeight, &changes);
         XReparentWindow(display_, window, tray,
                         0, 0);
         XMapWindow(display_, window);
         XMapWindow(display_, tray);
         tray_window_map[window] = tray;
-//        log("ReparentDockWindow dock window:%lx  x:%d y:%d w:%d h:%d", window, offsetx, offsety, attrs.width, attrs.height);
+        log("ReparentDockWindow dock window:%lx to tray:%lx  ", window, tray);
     }
 }
 

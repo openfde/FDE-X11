@@ -37,4 +37,6 @@ interface ICmdEntryInterface {
 
     void unregisterActivityCallback(long window, IActivityCallback callback);
 
+    void updateSystemViewVisible(boolean visible);
+
 }

@@ -227,7 +227,7 @@ public class XWindowService extends Service {
 
         @Override
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
-            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
+//            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
 
@@ -241,7 +241,32 @@ public class XWindowService extends Service {
             activityCallbackMap.remove(window);
         }
 
+        @Override
+        public void updateSystemViewVisible(boolean visible) throws RemoteException {
+            serviceUpdateSystemViewVisible(visible);
+        }
+
     };
+
+    private void serviceUpdateSystemViewVisible(boolean visible) {
+        Log.d(TAG, "serviceUpdateSystemViewVisible() called with: visible = [" + visible + "]");
+        mainHandler.post(() -> {
+            for(Map.Entry set: mFloatTrays.entrySet()){
+                View view = (View) set.getValue();
+                if(view.isAttachedToWindow()){
+                    view.setVisibility(visible ? View.VISIBLE :View.GONE);
+                }
+            }
+            for(Map.Entry set: mFloatTips.entrySet()){
+                View view = (View) set.getValue();
+                if(view.isAttachedToWindow()){
+                    view.setVisibility(visible ? View.VISIBLE :View.GONE);
+                }
+            }
+        });
+
+    }
+
     private Handler handler = new Handler();
 
     @SuppressLint("WrongConstant")
@@ -394,7 +419,11 @@ public class XWindowService extends Service {
 //   TODO for test             startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
                 break;
             case X_DISMISS_WINDOW:
-                if(!stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TIP)){
+                if (mFloatTrays.get(message.getWindowAttribute().getXID()) != null){
+                    stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TRAY);
+                } else if (mFloatTips.get(message.getWindowAttribute().getXID()) != null){
+                    stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TIP);
+                } else {
                     sendBroadcastAboutView(message.getWindowAttribute(),message.getProperty(), X_DISMISS_WINDOW);
                 }
                 break;
@@ -460,7 +489,7 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastSystray(WindowAttribute attr, Property property, EventType type) {
-        FLog.s(TAG, attr.getXID(), "sendBroadcastAboutView: attr:" + attr + ", type:" + type);
+        FLog.s(TAG, attr.getXID(), "sendBroadcastSystray: attr:" + attr + ", type:" + type);
         Intent intent = new Intent();
         intent.setAction(START_SYSTRAY_FROM_X);
         intent.setPackage("com.android.systemui");

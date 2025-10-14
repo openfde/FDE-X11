@@ -215,7 +215,7 @@ public class Xserver {
                 case _NET_WM_WINDOW_TYPE_TOOLTIP:
                 case _NET_WM_WINDOW_TYPE_POPUP_MENU:
                 case _NET_WM_WINDOW_TYPE_COMBO:
-//                case _WM_WINDOW_TYPE_SYSTIP:
+                case _WM_WINDOW_TYPE_SYSTIP:
                 default:
                     message = new EventMessage(EventType.X_START_VIEW,
                             "xserver show floatview as window", new WindowAttribute(x, y, w, h, index, p, xid, taskTo,
@@ -231,7 +231,7 @@ public class Xserver {
     }
 
     public static void xserverMapWindow(long window){
-        Log.d(TAG, "xserverMapWindow() called with: window = [" + window + "]");
+        Log.d(TAG, "xserverMapWindow() called with: window = [" + Long.toHexString(window) + "]");
         WindowAttribute attr = WindowManager.taskIdMap.get(window);
         if(attr != null && attr.getTaskId() != 0){
             ActivityManager am = (ActivityManager)
@@ -255,7 +255,7 @@ public class Xserver {
     }
 
     public static void configureWidget(long id, int x, int y, int w, int h){
-        FLog.s(TAG, "configureWidget() called with: id = [" + id + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "]");
+        FLog.s(TAG, "configureWidget() called with: id = [" + Long.toHexString(id) + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "]");
         EventMessage message = new EventMessage(EventType.X_CONFIGURE_WIDGET, "configure_window", new WindowAttribute(x, y, w, h, 0, 0, id), null);
         EventBus.getDefault().post(message);
     }
@@ -351,7 +351,7 @@ public class Xserver {
             Log.d(TAG, "context  == null ");
             return;
         }
-        FLog.s(TAG, window, "createBitmapFromNative: bitmap:" + bitmap + ", window:" + window + "");
+        FLog.s(TAG, window, "createBitmapFromNative: bitmap:" + bitmap + ", window:" + Long.toHexString(window) + "");
         Bitmap newBitmap = Util.scaleBitmapIfneed(bitmap);
         String targetPackage = context.get().getPackageName();
         Intent intent = new Intent(ACTION_UPDATE_ICON);

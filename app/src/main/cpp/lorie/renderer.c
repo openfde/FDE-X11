@@ -8,7 +8,7 @@
 #pragma ide diagnostic ignored "misc-no-recursion"
 #define EGL_EGLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
-#define RENDERER_LOG_ENABLE 1
+#define RENDERER_LOG_ENABLE 0
 #include <EGL/egl.h> // requires ndk r5 or newer
 #include <GLES/gl.h>
 #include <EGL/eglext.h>
@@ -843,7 +843,7 @@ int renderer_should_redraw(void) {
 }
 
 int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
-    _surface_log_traversal_window(sfWraper);
+//    _surface_log_traversal_window(sfWraper);
     int size, i  =0 ;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
     log("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);

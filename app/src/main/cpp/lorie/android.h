@@ -151,7 +151,7 @@ typedef union {
 void lorieKeysymKeyboardEvent(KeySym keysym, int down);
 
 void android_create_or_map_window(WindAttribute attribute,
-                                  WindProperty aProperty, Window taskTo, bool inbound, bool create);
+                                  WindProperty prop, Window taskTo, bool inbound, bool create);
 
 void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, bool inbound);
 

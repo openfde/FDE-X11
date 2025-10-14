@@ -3,6 +3,7 @@
 //
 
 #include "android.h"
+#include <stdlib.h>
 
 #ifndef TERMUX_X11_C_INTERFACE_H
 #define TERMUX_X11_C_INTERFACE_H

@@ -40,24 +40,6 @@ static jclass staticClass = nullptr;
 
 #define WIDTH 1920
 #define HEIGHT 1080
-#define DECORCATIONVIEW_HEIGHT 42
-//#define BASE_EVENT_MASK \
-//                        SubstructureNotifyMask |\
-//                        ExposureMask |\
-//                        StructureNotifyMask |\
-//                        PropertyChangeMask
-
-// #define BASE_EVENT_MASK       \
-//     SubstructureNotifyMask |  \
-//         StructureNotifyMask | \
-//         ButtonPressMask |     \
-//         ButtonReleaseMask |   \
-//         KeyPressMask |        \
-//         KeyReleaseMask |      \
-//         FocusChangeMask |     \
-//         PropertyChangeMask |  \
-//         ColormapChangeMask |  \
-//         SubstructureRedirectMask
 
 #define BASE_EVENT_MASK            \
     SubstructureNotifyMask |       \
@@ -198,6 +180,10 @@ private:
     int density_ = 96;
     int decorcationview_height  = 42;
     Window system_tray = 0;
+    int system_tray_icon_width = 18;
+    int status_bar_height = 24;
+    int status_bar_icon_width = 30;
+    int offset_right_in_statusbar = 254;
 
     // Event handlers.
     void OnCreateNotify(const XCreateWindowEvent &e);
