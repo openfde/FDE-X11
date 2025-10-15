@@ -114,7 +114,7 @@ public class XWindowService extends Service {
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
     private static final int DESTROY_ACTIVITY_RETRY = 1;
-    private static final int DESTROY_ACTIVITY_DELAY = 1000;
+    private static final int DESTROY_ACTIVITY_DELAY = 0;
     private static final int CREATE_ACTIVITY_DELAY = 300;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager wm;
@@ -227,7 +227,7 @@ public class XWindowService extends Service {
 
         @Override
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
-//            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
+            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
 
@@ -764,7 +764,7 @@ public class XWindowService extends Service {
             intent.setPackage(targetPackage);
             intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
             sendBroadcast(intent);
-        },DESTROY_ACTIVITY_DELAY);
+        }, DESTROY_ACTIVITY_DELAY);
 //        handler.postDelayed(()->{
 //            destroyActivitySafety(retry - 1, attr);
 //        }, DESTROY_ACTIVITY_DELAY);

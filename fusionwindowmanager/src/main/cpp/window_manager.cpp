@@ -324,7 +324,6 @@ void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {}
 
 void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &ev)
 {
-    dock_windows.erase(ev.window);
     Client *c = myDisplayGetClientFromWindow(display_info, ev.window, SEARCH_WINDOW);
     if (c)
     {
@@ -342,6 +341,7 @@ void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &ev)
         XFlush(display_);
 //        }
     }
+    dock_windows.erase(ev.window);
 }
 
 void WindowManager::OnReparentNotify(const XReparentEvent &e) {
@@ -435,6 +435,19 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
             }
         }
     }
+
+    if(dock_windows.count(ev.window)){
+//        if(tray_window_map.count(ev.window)){
+        Window tray = tray_window_map[ev.window];
+        log("Undock request window: %lx, tray: %lx", ev.window, tray);
+        updateSystemTrayIcon(nullptr, tray, SYSTEM_TRAY_UNDOCK);
+        tray_window_map.erase(ev.window);
+        dock_windows.erase(ev.window);
+        XDestroyWindow(display_, tray);
+        XFlush(display_);
+//        }
+    }
+    dock_windows.erase(ev.window);
 }
 
 void WindowManager::Unframe(Window w)

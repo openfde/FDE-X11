@@ -164,12 +164,12 @@ void android_unmap_window(Window window) {
         } else {
             log(DEBUG, "unmap activity window:%x", attribute.frame);
             android_destroy_activity(attribute.index, attribute.pWin, attribute.window,
-                                     ACTION_UNMAP,
+                                     ACTION_DESTORY,
                                      attribute.prop.support_wm_delete);
-            //            android_destroy_window(attr.window);
-            //        glDeleteTextures(1, &attr.texture_id);
-//        renderer_release_window(GetJavaEnv(), attr.window);
-//        _surface_delete_window(sfWraper, attr.window);
+            android_destroy_window(attribute.window);
+            glDeleteTextures(1, &attribute.texture_id);
+            renderer_release_window(GetJavaEnv(), attribute.window);
+            _surface_delete_window(sfWraper, attribute.window);
         }
 
     }
@@ -443,6 +443,10 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
     Window taskTo = 0;
     memset(&windProperty, 0, sizeof(WindProperty));
     property_get(pPropWin, &windProperty);
+    if(STRING_EQUAL("WPS文字", windProperty.net_wm_name))
+    {
+        windProperty.support_motif = 1;
+    }
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
     int x = pWin->drawable.x;
     int y = pWin->drawable.y;
@@ -1593,9 +1597,14 @@ int property_get_motif_hints(Atom name, uint32_t *data, unsigned long nitems, ui
                 if (hints.decorations & MWM_DECOR_MAXIMIZE) {
                     log(DEBUG, "Maxmize decoration enabled\n");
                 }
-                // 检查其他装饰位...
-                if (hints.decorations == 0) {
-                    return 1;
+                if (
+                        (hints.decorations & MWM_DECOR_ALL)
+                        || (hints.decorations & MWM_DECOR_TITLE)
+                        || (hints.decorations & MWM_DECOR_MENU)
+                        || (hints.decorations & MWM_DECOR_MINIMIZE)
+                        || (hints.decorations & MWM_DECOR_MAXIMIZE)
+                        ) {
+                    return 0;
                 }
             }
         } else {
@@ -1603,7 +1612,7 @@ int property_get_motif_hints(Atom name, uint32_t *data, unsigned long nitems, ui
                 nitems, MWM_HINTS_ELEMENTS);
         }
     }
-    return 0;
+    return 1;
 }
 
 jobject property_icon_convert_bitmap(int *data, int width, int height) {

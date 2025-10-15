@@ -182,7 +182,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private boolean isFullscreen = false;
     private int mSystemInsetTop = DECOR_CAPTION_HEIGHT;
 
-    public static int mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
+    public int mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
 
     // Used to set the contents of the clipboard.
     private android.content.ClipboardManager.OnPrimaryClipChangedListener mOnPrimaryClipChangedListener;
@@ -237,7 +237,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         getWindowManager().getDefaultDisplay().getRealMetrics(dm);
         density = dm.densityDpi;
         AppUtils.updateSystemAttr(dm.widthPixels, dm.heightPixels);
-        mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
         mSystemInsetTop = DECOR_CAPTION_HEIGHT;
         mFrameworkOperations = FrameworkFactory.create(this);
         initXParams();
@@ -269,7 +268,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         updateWindowParams();
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
+        } else {
+            mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
         }
+        Log.d(TAG, "initXParams mDecorCaptionViewHeight:" + mDecorCaptionViewHeight);
         int measuredHeight = getWindow().getDecorView().getMeasuredHeight();
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
