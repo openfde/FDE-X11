@@ -185,7 +185,7 @@ public class TouchInputHandler {
     }
 
     private boolean handleMoveTaskEvent(View view0, View view, MotionEvent e) {
-        Log.d(TAG, "handleMoveTaskEvent() called with: isMoveTask = [" + isMoveTask + "], this = [" + this + "], e = [" + e + "]");
+//        Log.d(TAG, "handleMoveTaskEvent() called with: isMoveTask = [" + isMoveTask + "], this = [" + this + "], e = [" + e + "]");
         mDragSlop = ViewConfiguration.get(mContext).getScaledTouchSlop();
         final int x = (int) e.getX();
         final int y = (int) e.getY();

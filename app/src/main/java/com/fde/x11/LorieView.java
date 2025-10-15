@@ -55,6 +55,8 @@ public class LorieView extends SurfaceView implements InputStub {
 
         void realSizeChanged(Surface sfc, int width, int height);
 
+        void onSurfaceDestroy(Surface sfc);
+
     }
 
 //    interface PixelFormat {
@@ -66,9 +68,9 @@ public class LorieView extends SurfaceView implements InputStub {
     private final SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback() {
         @Override public void surfaceCreated(@NonNull SurfaceHolder holder) {
             holder.setFormat(PixelFormat.TRANSLUCENT);
-//            Log.d(TAG, "surfaceCreated: holder:" + holder + "");
+//            Log.d(TAG, "surfaceCreated: holder:" + holder + "" + this);
             String version = GLES10.glGetString(GLES10.GL_VERSION);
-            Log.d(TAG, "egl version: " + version);
+//            Log.d(TAG, "egl version: " + version);
 
         }
 
@@ -76,7 +78,9 @@ public class LorieView extends SurfaceView implements InputStub {
             width = getMeasuredWidth();
             height = getMeasuredHeight();
 
-            Log.d(TAG, "surfaceChanged: holder:" + holder + ", f:" + f + ", width:" + width + ", height:" + height + "");
+//            Log.d(TAG, "surfaceChanged: holder:" +
+//                    holder + ", f:" + f + ", width:" +
+//                    width + ", height:" + height + "" + this);
 
             if (mCallback == null || width == 0 || height == 0)
                 return;
@@ -91,9 +95,9 @@ public class LorieView extends SurfaceView implements InputStub {
         }
 
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-//            Log.d(TAG, "surfaceDestroyed: holder:" + holder + "");
+//            Log.d(TAG, "surfaceDestroyed: holder:" + holder + "" + this);
             if (mCallback != null){
-//                mCallback.changed(holder.getSurface(), 0, 0, 0, 0);
+//                mCallback.onSurfaceDestroy(holder.getSurface());
             }
         }
     };

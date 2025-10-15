@@ -341,7 +341,7 @@ public class XWindowService extends Service {
                 } else if (mFloatTips.get(message.getWindowAttribute().getXID()) != null){
                     stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TIP);
                 } else {
-                    sendBroadcastHide(message.getWindowAttribute());
+//                    sendBroadcastHide(message.getWindowAttribute());
                     WindowAttribute unmap = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
                     Log.d(TAG, "onReceiveMsg: unmapId:" + unmap);
                     if(unmap != null && unmap.getTaskId() != 0){
@@ -370,13 +370,6 @@ public class XWindowService extends Service {
                 }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), true);
                 break;
-//            case X_UNMAP_WINDOW:
-//                sendBroadcastHide(message.getWindowAttribute());
-//                break;
-//            case X_UNMAP_WINDOW:
-//                WindowManager.updateWmStateClient(WINDOW_ACTION_MINIMIZE,
-//                        message.getWindowAttribute().getXID());
-//                break;
             case X_CONFIGURE_WINDOW:
                 sendBroadcastConfigureWindow(message.getWindowAttribute());
                 break;
@@ -501,7 +494,7 @@ public class XWindowService extends Service {
     }
 
     private void updateSystrayAndTip(WindowAttribute attr, int type) {
-        Log.d(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+//        Log.d(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
         if(type == TYPE_TRAY && rightAttr == null){
             rightAttr = attr;
         }
@@ -537,8 +530,13 @@ public class XWindowService extends Service {
                     wm.configureWindow(attr.getXID(), (int)attr.getOffsetX(),
                             (int)attr.getOffsetY(),width, height);
                 }
-                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+//                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
                 Xserver.getInstance().windowChanged(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+            }
+
+            @Override
+            public void onSurfaceDestroy(Surface sfc) {
+
             }
         }));
 
@@ -757,7 +755,18 @@ public class XWindowService extends Service {
 //            return;
 //        }
         runningMainWindow.remove(attr.getXID());
-        handler.postDelayed(() -> {
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                FLog.s(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
+//                String targetPackage = getPackageName();
+//                Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
+//                intent.setPackage(targetPackage);
+//                intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+//                sendBroadcast(intent);
+//            }
+//        }).start();
+        mainHandler.postDelayed(() -> {
             FLog.s(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
             String targetPackage = getPackageName();
             Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
@@ -797,8 +806,8 @@ public class XWindowService extends Service {
         Intent intent = new Intent(this, cls);
         if(attr.getProperty() != null){
             intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
-            Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
-            Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
+//            Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
+//            Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
             intent.putExtra("X11_titile", attr.getProperty().getNet_name());
         }
         try {

@@ -54,6 +54,9 @@ public class WindowManager  {
 
     private static final String TAG = "WindowManager";
     public static boolean ALREADY_SET_SCREEN_SIZE;
+    public static final int ACTION_UNMAP =      1;
+    public static final int ACTION_DESTORY =    2;
+    public static final int ACTION_DISMISS =    3;
 
     // Used to load the 'fusionwindowmanager' library on application startup.
     static {
@@ -139,16 +142,16 @@ public class WindowManager  {
     BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "onReceive() called with: context = [" + context + "], intent = [" + intent.getAction() + "]");
+//            Log.d(TAG, "onReceive() called with: context = [" + context + "], intent = [" + intent.getAction() + "]");
             if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_ADD)){
                 long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
                 WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
-                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
+//                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
                 taskIdMap.put(window, attr);
             } else if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_REMOVE)){
                 long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
                 WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
-                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
+//                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
                 taskIdMap.remove(window);
             } else if(TextUtils.equals(intent.getAction(), ACTION_X_UPDATE_SYSTEMTRAY_ICON)){
                 long window = intent.getLongExtra(KEY_WINDOW, -1);
@@ -156,6 +159,40 @@ public class WindowManager  {
             }
         }
     };
+
+
+    public static void unmapWindowFromX(int index, long pWin, long taskTo,long window,
+                                        int action, int support_wm_delete, int clientNum) {
+//        Log.d(TAG, "unmapWindowFromX() called with: index = [" + index + "], " +
+//                "pWin = [" + pWin + "], taskTo = [" + taskTo + "], " +
+//                "window = [" + window + "], action = [" + action + "], " +
+//                "support_wm_delete = [" + support_wm_delete + "], clientNum = [" + clientNum + "]");
+        Property property = new Property();
+        property.setSupportDeleteWindow(support_wm_delete);
+        property.setTransientfor(taskTo);
+        switch (action){
+            case ACTION_DESTORY:
+                EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
+                        "xserver finish activity", new WindowAttribute(index, pWin, window), property));
+                break;
+            case ACTION_UNMAP:
+                EventBus.getDefault().post(new EventMessage(EventType.X_UNMAP_WINDOW,
+                        "xserver hide any window", new WindowAttribute(index, pWin, window), property));
+                break;
+            case ACTION_DISMISS:
+                EventBus.getDefault().post(new EventMessage(EventType.X_DISMISS_WINDOW,
+                        "xserver dismiss any window", new WindowAttribute(index, pWin, window), property));
+
+                break;
+            default:
+                break;
+        }
+
+
+        EventBus.getDefault().post(new EventMessage(EventType.X_UNMAP_WINDOW,
+                        "xserver unmap any window",
+                new WindowAttribute(index, pWin, window), property));
+    }
 
     public void startWindowManager(String displayGlobalParam) {
         this.display = displayGlobalParam;
@@ -202,7 +239,7 @@ public class WindowManager  {
 
     //called from native code
     public static void  syncConfigureRequest(int x, int y, int width, int height, long window, int isMoving){
-        Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "]");
+//        Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "]");
         if(taskIdMap.get(window) != null  && taskIdMap.get(window).getTaskId() != -1){
             EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window, isMoving), null);
             EventBus.getDefault().post(message);
@@ -214,7 +251,7 @@ public class WindowManager  {
 
     //called from native code
     public static void  updateSystemTrayIcon(Bitmap bitmap, long window, long action){
-        Log.d(TAG, "updateSystemTrayIcon() called with: bitmap = [" + bitmap + "], window = [" + window + "], action = [" + action + "]");
+//        Log.d(TAG, "updateSystemTrayIcon() called with: bitmap = [" + bitmap + "], window = [" + window + "], action = [" + action + "]");
         Context context = contextReference.get();
         if(context != null){
             Intent intent = new Intent("com.fde.x11.update_systemtray_icon");
@@ -228,7 +265,7 @@ public class WindowManager  {
 
         //called from native code
     public static void updateWmStateClient(int action, long window){
-        Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
+//        Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
         Context context = contextReference.get();
         if((action & WINDOW_ACTION_MAXIMIZED_HORZ) > 0
                 && (action & WINDOW_ACTION_MAXIMIZED_VERT) > 0){
@@ -269,7 +306,7 @@ public class WindowManager  {
 
     //called from native code
     public static void updateXserverCliptext(String text){
-        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
+//        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
         if(contextReference.get() != null && !TextUtils.isEmpty(text)){
             ClipData mClipData = ClipData.newPlainText("x11", text);
             android.content.ClipboardManager mClipboardManager = (ClipboardManager) contextReference.get().getSystemService(Context.CLIPBOARD_SERVICE);
@@ -279,7 +316,7 @@ public class WindowManager  {
 
     //called from native code
     public static void updateXserverClipFile(String text){
-        Log.d(TAG, "updateXserverClipFile: text:" + text + "");
+//        Log.d(TAG, "updateXserverClipFile: text:" + text + "");
         if(contextReference.get() != null && !TextUtils.isEmpty(text)){
             try {
                 String decodedPath = URLDecoder.decode(text, StandardCharsets.UTF_8.toString());
@@ -302,7 +339,7 @@ public class WindowManager  {
 
 
     public void startActivityForXMainWindow(WindowAttribute attribute, Class activityClass) {
-        Log.d(TAG, "startActivityForXMainWindow: attribute:" + attribute + ", activityClass:" + activityClass + "");
+//        Log.d(TAG, "startActivityForXMainWindow: attribute:" + attribute + ", activityClass:" + activityClass + "");
         Context context = contextReference.get();
         if (context == null){
             return;
@@ -340,7 +377,7 @@ public class WindowManager  {
                     if(!TextUtils.isEmpty(filePath)){
                         filePath = filePath.replace(" ", "%20");
                     }
-                    Log.d(TAG, "MSG_START_WM isConnected:" + isConnected + " display:" + display);
+//                    Log.d(TAG, "MSG_START_WM isConnected:" + isConnected + " display:" + display);
                     isConnected = connect2Server(display, clipText, filePath,
                             mWidth, mHeight, density) > 0;
                     break;

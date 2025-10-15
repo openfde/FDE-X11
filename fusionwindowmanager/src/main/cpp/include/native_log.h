@@ -14,7 +14,7 @@
 
 // 日志开关（1=启用，0=禁用）
 #ifndef PRINT_LOG
-    #define PRINT_LOG 1
+    #define PRINT_LOG 0
 #endif
 
 // 通用日志宏（自动处理有无格式化参数）

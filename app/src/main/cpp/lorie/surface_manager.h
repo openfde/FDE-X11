@@ -27,7 +27,7 @@
 #include <android/log.h>
 #include <vector>
 extern Bool LOG_ENABLE;
-#define SURFACE_LOG_ENABLE 1
+#define SURFACE_LOG_ENABLE 0
 #define PRINT_LOG (SURFACE_LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_sm", __VA_ARGS__);}              \
 

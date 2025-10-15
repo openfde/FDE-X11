@@ -60,7 +60,7 @@ static jclass staticClass = nullptr;
 static gboolean compositor = TRUE;
 static vblankMode vblank_mode = VBLANK_AUTO;
 
-#define PRINT_LOG 1
+#define PRINT_LOG 0
 #define log(...)                                                          \
     if (PRINT_LOG)                                                        \
     {                                                                     \
@@ -89,6 +89,10 @@ static vblankMode vblank_mode = VBLANK_AUTO;
 
 #define SYSTEM_TRAY_ENABLE 0
 #define SYSTEM_TRAY_CAPACITY 10
+
+#define ACTION_UNMAP 1
+#define ACTION_DESTORY 2
+#define ACTION_DISMISS 3
 
 
 #define _NET_WM_STATE_FULLSCREEN 1

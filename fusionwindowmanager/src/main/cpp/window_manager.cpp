@@ -309,6 +309,15 @@ void updateSystemTrayIcon(jobject icon, XID window, long opcode)
     GlobalEnv->CallStaticVoidMethod(staticClass, method, icon, window, opcode);
 }
 
+void unmapWindowFromX(Window window, int action, Bool wm_delete)
+{
+    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
+                                                    "unmapWindowFromX", "(IJJJIII)V");
+    GlobalEnv->CallStaticVoidMethod(staticClass, method, 0,
+                                    (long) 0, 0L, (long) window, action, wm_delete,
+                                    0);
+}
+
 bool WindowManager::isInFrameMap(long window)
 {
     auto it = frames.find(window);
@@ -433,6 +442,9 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
                 clientUnframe(c, FALSE);
                 // g_list_free (list_of_windows);
             }
+            unmapWindowFromX(c->frame, ACTION_DESTORY, False);
+        } else {
+            unmapWindowFromX(c->frame, ACTION_UNMAP,  True);
         }
     }
 
@@ -580,7 +592,7 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
         //        log("value_mask : %lu", value_mask);
     }
 
-    loge("OnConfigureRequest x:%d y:%d w:%d h:%d border:%d above:%d stack:%d value:%d",
+    log("OnConfigureRequest x:%d y:%d w:%d h:%d border:%d above:%d stack:%d value:%d",
          e.x, e.y, e.width, e.height, e.border_width, e.above, e.detail, value_mask);
     XConfigureRequestEvent *ev = (XConfigureRequestEvent *)&e;
 
@@ -996,24 +1008,6 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e)
 void WindowManager::Run()
 {
 
-    char resource_data[1024];
-    snprintf(resource_data, sizeof(resource_data),
-             "Xft.dpi:\t%d\n"
-             "Xcursor.size:\t%d\n"
-             "Xcursor.theme:\tdark-sense\n"
-             "Xft.antialias:\t1\n"
-             "Xft.hinting:\t1\n"
-             "Xft.hintstyle:\thintslight\n"
-             "Xft.rgba:\trgb\n"
-             "Xft.lcdfilter:\tlcddefault\n",
-             density_, density_ / 4);
-    // 设置属性
-    if (SetRootResourceManager(display_, resource_data) == 0) {
-        log("RESOURCE_MANAGER属性设置成功");
-    } else {
-        log("RESOURCE_MANAGER属性设置失败");
-    }
-
     // 1. Initialization.
     //   a. Select events on root window. Use a special error handler so we can
     //   exit gracefully if another window manager is already running.
@@ -1080,6 +1074,25 @@ void WindowManager::Run()
 
     gboolean replace_wm = FALSE;
     display_info = initialize(replace_wm, display_, back_window, root_);
+
+
+        char resource_data[1024];
+    snprintf(resource_data, sizeof(resource_data),
+             "Xft.dpi:\t%d\n"
+             "Xcursor.size:\t%d\n"
+             "Xcursor.theme:\tdark-sense\n"
+             "Xft.antialias:\t1\n"
+             "Xft.hinting:\t1\n"
+             "Xft.hintstyle:\thintslight\n"
+             "Xft.rgba:\trgb\n"
+             "Xft.lcdfilter:\tlcddefault\n",
+             density_, density_ / 4);
+    // 设置属性
+    if (SetRootResourceManager(display_, resource_data) == 0) {
+        log("RESOURCE_MANAGER属性设置成功");
+    } else {
+        log("RESOURCE_MANAGER属性设置失败");
+    }
 
     // 2. Main event loop.
     while (!stoped)

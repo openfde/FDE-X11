@@ -437,6 +437,10 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     }
                 }
             }
+
+            @Override
+            public void onSurfaceDestroy(Surface sfc) {
+            }
         });
 //        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
         detectEventEditText.setOnKeyListener(mLorieKeyListener);
@@ -590,6 +594,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     protected void onStop() {
         super.onStop();
         FLog.a("lifecycle", getWindowId(), "onStop");
+//        serviceWindowChange(getLorieView().getHolder().getSurface(),
+//                0, 0,-1, -1,
+//                mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
 //        unmapXWindow();
     }
 
@@ -790,6 +797,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void closeXWindow() {
         FLog.a("window", getWindowId(), "closeXWindow");
+                serviceWindowChange(getLorieView().getHolder().getSurface(),
+                0, 0,-1, -1,
+                mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
         if(mXserviceWrapper != null){
             WindowAttribute a = mAttribute;
             mXserviceWrapper.windowChanged(null, a.getOffsetX(),
@@ -975,6 +985,11 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 } catch (Exception e) {
                     Log.e(TAG, "serviceWindowChange Exception:" + e);
                 }
+            }
+
+            @Override
+            public void onSurfaceDestroy(Surface sfc) {
+
             }
         });
         InputEventSender inputEventSender = new InputEventSender(widgetView);
