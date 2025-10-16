@@ -90,6 +90,10 @@ void android_update_texture(Window window) {
         loge( "android_update_texture not find window:%x", window);
         return;
     }
+    if(!attr->pWin->viewable){
+        loge("window:%lx no need update texture", window)
+        return;
+    }
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
     TexturePrivRecPtr ptr = dixLookupPrivate(&attr->pWin->devPrivates, &FDEWindowTexturePrivateKey);
     GLuint texture_id = 0;
@@ -97,6 +101,7 @@ void android_update_texture(Window window) {
         texture_id = ptr->texture;
 //            loge( "android_update_texture texture:%x", ptr->texture);
     }
+
     renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                             pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window,
                             texture_id);
