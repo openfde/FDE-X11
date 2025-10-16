@@ -320,7 +320,7 @@ public class AppListActivity extends AppCompatActivity {
             globalHeight = bottom - top;
             mRect = new Rect(left, top, right, bottom);
         }
-        Log.d(TAG, "checkConfig: mrect:" + mRect);
+//        Log.d(TAG, "checkConfig: mrect:" + mRect);
         mayGetApps();
     }
 
@@ -450,7 +450,7 @@ public class AppListActivity extends AppCompatActivity {
         }
         float offset = 950 - event.getY() - mRect.top;
         boolean bottom = (offset > 500) && (globalHeight - event.getY() > DimenUtils.dpToPx(210.0f));
-        Log.d(TAG, "showOptionView: offset:" + offset);
+//        Log.d(TAG, "showOptionView: offset:" + offset);
         fromY = bottom? -1.0f : 1.0f;
         gravity = bottom? Gravity.BOTTOM : Gravity.TOP;
         if (fromX != 0 || fromY != 0) {

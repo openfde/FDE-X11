@@ -2,6 +2,7 @@
 // Created by yang on 2024/5/2.
 //
 #include "surface_manager.h"
+#include "StructPrinter.h"
 
 ::SurfaceManager *SurfaceManager::create() {
     return new SurfaceManager();
@@ -12,7 +13,7 @@ int SurfaceManager::redirect_window_2_surface(Window window, WindAttribute *attr
         return -1;
     }
     int index = attr->index = get_avilable_index(type);
-    log("redirect_window index:%d", index);
+    logd("redirect_window index:%d", index);
     window_attrs[window] = *attr;
     return index;
 }
@@ -82,10 +83,10 @@ int SurfaceManager::remove_widget(Window window) {
 WindAttribute* SurfaceManager::find_window(Window window) {
     if(window_attrs.count(window)){
         WindAttribute *attr = &window_attrs[window];
-//        log("found attr window:%x", window);
+//        logd("found attr window:%x", window);
         return attr;
     } else {
-        log("not found window:%x", window);
+        logd("not found window:%x", window);
         return NULL;
     }
 }
@@ -179,9 +180,9 @@ int SurfaceManager::count_window_in_type(Window window, int type, WindAttribute 
 }
 
 int SurfaceManager::count_widget(Window window) {
-    log("count_widget %x", window);
+    logd("count_widget %x", window);
     for (auto& pair : window_attrs) {
-        log("count_widget window:%lx widget size:%d", pair.first, pair.second.widget_size);
+        logd("count_widget window:%lx widget size:%d", pair.first, pair.second.widget_size);
         for (int i = 0; i < pair.second.widget_size; ++i) {
             if(pair.second.widgets[i].window == window){
                 return TRUE;
@@ -212,57 +213,59 @@ int SurfaceManager::size(){
 
 static void printWindAttributeFormatted(const WindAttribute* attr, const char* tag) {
     if (attr == NULL) {
-        log("[%s] WindAttribute is NULL\n", tag);
+        logd("[%s] WindAttribute is NULL\n", tag);
         return;
     }
 
-    log("\n┌─── WindAttribute: %s ───\n", tag);
-    log("├─ Graphics:\n");
-    log("│   texture_id: %u, dri_texture_id: %u\n", attr->texture_id, attr->dri_texture_id);
-    log("│   size: %.1fx%.1f, offset: (%.1f,%.1f)\n", attr->width, attr->height, attr->offset_x, attr->offset_y);
+    logd("\n┌─── WindAttribute: %s ───\n", tag);
+    logd("├─ Graphics:\n");
+    logd("│   texture_id: %u, dri_texture_id: %u\n", attr->texture_id, attr->dri_texture_id);
+    logd("│   size: %.1fx%.1f, offset: (%.1f,%.1f)\n", attr->width, attr->height, attr->offset_x, attr->offset_y);
 
-    log("├─ DRI Info:\n");
-    log("│   dri_size: %dx%d, dri_pos: (%d,%d)\n", attr->dri_w, attr->dri_h, attr->dri_x, attr->dri_y);
+    logd("├─ DRI Info:\n");
+    logd("│   dri_size: %dx%d, dri_pos: (%d,%d)\n", attr->dri_w, attr->dri_h, attr->dri_x, attr->dri_y);
 
-    log("├─ Window IDs:\n");
-    log("│   window: 0x%lx, child: 0x%lx, frame: 0x%lx\n",
+    logd("├─ Window IDs:\n");
+    logd("│   window: 0x%lx, child: 0x%lx, frame: 0x%lx\n",
            (unsigned long)attr->window, (unsigned long)attr->child, (unsigned long)attr->frame);
-    log("│   pWin: %p, dri_pWin: %p\n", (void*)attr->pWin, (void*)attr->dri_pWin);
+    logd("│   pWin: %p, dri_pWin: %p\n", (void*)attr->pWin, (void*)attr->dri_pWin);
 
-    log("├─ EGL/Widgets:\n");
-    log("│   EGLSurface: %p\n", (void*)attr->sfc);
-    log("│   widget: %p, widgets: %p (size: %d)\n",
+    logd("├─ EGL/Widgets:\n");
+    logd("│   EGLSurface: %p\n", (void*)attr->sfc);
+    logd("│   widget: %p, widgets: %p (size: %d)\n",
            (void*)attr->widget, (void*)attr->widgets, attr->widget_size);
 
-    log("├─ Flags & Status:\n");
-    log("│   discard: %d, level: %d, status: %d\n", attr->discard, attr->level, attr->status);
-    log("│   system_tray: %s, dock_sent: %s\n",
+    logd("├─ Flags & Status:\n");
+    logd("│   discard: %d, level: %d, status: %d\n", attr->discard, attr->level, attr->status);
+    logd("│   system_tray: %s, dock_sent: %s\n",
            attr->system_tray ? "YES" : "NO",
            attr->dock_sent ? "YES" : "NO");
 
-    log("├─ Android:\n");
-    log("│   override_window_type: %d, android_component: %d\n",
+    logd("├─ Android:\n");
+    logd("│   override_window_type: %d, android_component: %d\n",
            attr->override_window_type, attr->android_component);
 
-    log("└────────────────────────────\n\n");
+    logd("└────────────────────────────\n\n");
 }
 
 void SurfaceManager::traversal_log_window(){
-    if(window_attrs.size() == 0){
-        log("no window for android");
+    if (window_attrs.empty()) {
+        logd("no window for android");
         return;
     }
-    log("traversal_window_attrs>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+    logd("traversal_window_attrs>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
     for (const auto& pair : window_attrs) {
         LogWindAttribute(pair.first, pair.second);
 //        printWindAttributeFormatted(&pair.second, "traversal_window_attrs");
     }
-    log("traversal_window_attrs<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+    logd("traversal_window_attrs<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
 }
 
-void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
-    log("======> this is a window xid:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f  t:%d win:%p s:%p level:%d name:%s leader:%x transient:%x",
+void SurfaceManager::LogWindAttribute(Window window, const WindAttribute &attr) {
+//    const char* str =StructPrinter::toString(attr).c_str();
+//    logd("window:%lx attr:%s", window, str)
+    logd("======> this is a window xid:%x index:%d w:%.0f h:%.0f x:%.0f y:%.0f  t:%d win:%p s:%p level:%d name:%s leader:%x transient:%x",
         attr.window,
         attr.index,
         attr.width,
@@ -280,7 +283,7 @@ void SurfaceManager::LogWindAttribute(Window window, WindAttribute attr) {
     if (attr.widget_size != 0) {
         for (int i = 0; i < attr.widget_size; i++) {
             Widget widget = attr.widgets[i];
-            log("==============> this is a widget xid:%x w:%.0f h:%.0f x:%.0f y:%.0f t:%d  s:%p ",
+            logd("==============> this is a widget xid:%x w:%.0f h:%.0f x:%.0f y:%.0f t:%d  s:%p ",
                 widget.window,
                 widget.width,
                 widget.height,
@@ -305,3 +308,5 @@ int SurfaceManager::get_avilable_index(Atom type) {
 SurfaceManager::~SurfaceManager() {
 
 }
+
+

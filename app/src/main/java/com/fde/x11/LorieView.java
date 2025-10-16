@@ -234,7 +234,7 @@ public class LorieView extends SurfaceView implements InputStub {
 
     @Override
     public boolean dispatchKeyEventPreIme(KeyEvent event) {
-        Log.d(TAG, "dispatchKeyEventPreIme: event:" + event + "");
+//        Log.d(TAG, "dispatchKeyEventPreIme: event:" + event + "");
         Activity a = getActivity();
         return (a instanceof MainActivity) && ((MainActivity) a).handleKey(event);
     }

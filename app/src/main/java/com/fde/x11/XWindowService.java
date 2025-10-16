@@ -142,7 +142,7 @@ public class XWindowService extends Service {
 
         @Override
         public ParcelFileDescriptor getXConnection() throws RemoteException {
-//            Log.d(TAG, "getXConnection: ");
+//            FLog.s(TAG, "getXConnection: ");
             return Xserver.getInstance().getXConnection();
         }
 
@@ -157,21 +157,21 @@ public class XWindowService extends Service {
             startingWindow.remove(window);
             stopingWindow.remove(window);
             if(wm != null && wm.closeWindow(window) > 0){
-//                Log.d(TAG, "closeWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
+//                FLog.s(TAG, "closeWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
             }
         }
 
         @Override
         public void unmapWindow(int index, long p, long window) throws RemoteException {
             if(wm != null && wm.unmapWindow(window) > 0){
-//                Log.d(TAG, "unmapWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
+//                FLog.s(TAG, "unmapWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
             }
         }
 
         @Override
         public void mapWindow(int index, long p, long window) throws RemoteException {
             if(wm != null && wm.mapWindow(window) > 0){
-//                Log.d(TAG, "unmapWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
+//                FLog.s(TAG, "unmapWindow: index:" + index + ", winPtr:" + winPtr + ", window:" + window + "");
             }
         }
 
@@ -185,21 +185,21 @@ public class XWindowService extends Service {
         @Override
         public void moveWindow(long winPtr, long window, int x, int y) throws RemoteException {
             if(wm != null && wm.moveWindow(window, x, y) > 0){
-//                Log.d(TAG, "moveWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + "");
+//                FLog.s(TAG, "moveWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + "");
             }
         }
 
         @Override
         public void resizeWindow(long window, int w, int h) throws RemoteException {
             if(wm != null && wm.resizeWindow(window, w, h) > 0){
-//                Log.d(TAG, "resizeWindow: window:" + window + ", w:" + w + ", h:" + h + "");
+//                FLog.s(TAG, "resizeWindow: window:" + window + ", w:" + w + ", h:" + h + "");
             }
         }
 
         @Override
         public void raiseWindow(long window) throws RemoteException {
             if(wm != null && wm.raiseWindow(window) > 0){
-//                Log.d(TAG, "raiseWindow: window:" + window + "");
+//                FLog.s(TAG, "raiseWindow: window:" + window + "");
                 Xserver.getInstance().tellFocusWindow(window);
             }
         }
@@ -207,7 +207,7 @@ public class XWindowService extends Service {
         @Override
         public void circulaSubWindows(long window, boolean lowest) throws RemoteException {
             if(wm != null && wm.circulaSubWindows(window, lowest) > 0){
-//                Log.d(TAG, "circulaSubWindows: window:" + window + ", lowest:" + lowest + "");
+//                FLog.s(TAG, "circulaSubWindows: window:" + window + ", lowest:" + lowest + "");
             }
         }
 
@@ -249,7 +249,7 @@ public class XWindowService extends Service {
     };
 
     private void serviceUpdateSystemViewVisible(boolean visible) {
-        Log.d(TAG, "serviceUpdateSystemViewVisible() called with: visible = [" + visible + "]");
+        FLog.s(TAG, "serviceUpdateSystemViewVisible() called with: visible = [" + visible + "]");
         mainHandler.post(() -> {
             for(Map.Entry set: mFloatTrays.entrySet()){
                 View view = (View) set.getValue();
@@ -310,7 +310,7 @@ public class XWindowService extends Service {
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-//        Log.d(TAG, "onConfigurationChanged() called with: newConfig = [" + newConfig + "]");
+//        FLog.s(TAG, "onConfigurationChanged() called with: newConfig = [" + newConfig + "]");
         stopSelf();
     }
 
@@ -343,7 +343,7 @@ public class XWindowService extends Service {
                 } else {
 //                    sendBroadcastHide(message.getWindowAttribute());
                     WindowAttribute unmap = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
-                    Log.d(TAG, "onReceiveMsg: unmapId:" + unmap);
+                    FLog.s(TAG, "onReceiveMsg: unmapId:" + unmap);
                     if(unmap != null && unmap.getTaskId() != 0){
                         am.moveTaskToBack(true, unmap.getTaskId());
                     }
@@ -351,7 +351,7 @@ public class XWindowService extends Service {
                 break;
             case X_MAP_ACTIVITY:{
 //                WindowAttribute mapAttr = WindowManager.taskIdMap.get( message.getWindowAttribute().getXID());
-//                Log.d(TAG, "X_MAP_ACTIVITY: map:" + mapAttr);
+//                FLog.s(TAG, "X_MAP_ACTIVITY: map:" + mapAttr);
 //                if(mapAttr != null && mapAttr.getTaskId() != 0){
 //                    am.moveTaskToFront(mapAttr.getTaskId(), MOVE_TASK_NO_USER_ACTION);
 //                }
@@ -382,7 +382,7 @@ public class XWindowService extends Service {
 //                            attr.getRect().top,
                             attr.getRect().right,
                             attr.getRect().bottom);
-                    Log.d(TAG, "resizeTask: "  + " " + resize + " " + rect);
+                    FLog.s(TAG, "resizeTask: "  + " " + resize + " " + rect);
                     IActivityCallback callback = activityCallbackMap.get(attr.getXID());
                     if(callback != null && attr.getIsMoving() != 2){
                         try {
@@ -434,7 +434,7 @@ public class XWindowService extends Service {
     }
 
     private boolean stopFloatTrayAndTip(WindowAttribute attr, int type) {
-        Log.d(TAG, "stopFloatTrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+        FLog.s(TAG, "stopFloatTrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
         Map<Long, View> floatViews;
         if(type == TYPE_TRAY){
             floatViews = mFloatTrays;
@@ -443,13 +443,13 @@ public class XWindowService extends Service {
         }
 
         if(attr == null || floatViews.isEmpty()){
-            Log.d(TAG, "stopFloatTrayAndTip: isEmpty");
+            FLog.s(TAG, "stopFloatTrayAndTip: isEmpty");
             return false;
         }
         View floatView = floatViews.get(attr.getXID());
         if(systemWindowManager != null && floatView != null && floatView.isAttachedToWindow()){
             systemWindowManager.removeView(floatView);
-            Log.d(TAG, "stopFloatTrayAndTip: successful");
+            FLog.s(TAG, "stopFloatTrayAndTip: successful");
             if(type == TYPE_TIP){
                 mFloatTips.remove(attr.getXID());
                 return true;
@@ -494,7 +494,7 @@ public class XWindowService extends Service {
     }
 
     private void updateSystrayAndTip(WindowAttribute attr, int type) {
-//        Log.d(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+//        FLog.s(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
         if(type == TYPE_TRAY && rightAttr == null){
             rightAttr = attr;
         }
@@ -530,7 +530,7 @@ public class XWindowService extends Service {
                     wm.configureWindow(attr.getXID(), (int)attr.getOffsetX(),
                             (int)attr.getOffsetY(),width, height);
                 }
-//                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+//                FLog.s(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
                 Xserver.getInstance().windowChanged(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
             }
 
@@ -568,7 +568,7 @@ public class XWindowService extends Service {
         );
         floatView.setTag(attr);
         floatViews.put(attr.getXID(), floatView);
-        Log.d(TAG, "updateSystrayAndTip: " + floatViews.size());
+        FLog.s(TAG, "updateSystrayAndTip: " + floatViews.size());
     }
 
     @NonNull
@@ -806,8 +806,8 @@ public class XWindowService extends Service {
         Intent intent = new Intent(this, cls);
         if(attr.getProperty() != null){
             intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
-//            Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
-//            Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
+//            FLog.s(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
+//            FLog.s(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
             intent.putExtra("X11_titile", attr.getProperty().getNet_name());
         }
         try {
@@ -819,7 +819,7 @@ public class XWindowService extends Service {
         intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent, options.toBundle());
-        Log.d(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
 //        }
     }
 

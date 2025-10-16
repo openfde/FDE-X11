@@ -324,7 +324,7 @@ public class EasyEditText extends View implements NumberKeyboardListener {
 
     @Override
     public void onComplete() {
-        Log.d("TAG", "onComplete: " + getText());
+//        Log.d("TAG", "onComplete: " + getText());
     }
 
     @Override

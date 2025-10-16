@@ -2,6 +2,7 @@ package com.fde;
 
 import android.app.Activity;
 import android.util.Log;
+import com.fde.x11.utils.FLog;
 
 import com.android.internal.policy.DecorView;
 
@@ -16,27 +17,27 @@ public class FrameworkImpl implements FrameworkOperations {
 
     @Override
     public void hideDecorCaptionView(Activity activity) {
-        Log.d(TAG, "hideDecorCaptionView() called with: activity = [" + activity + "]");
+        FLog.e(TAG, "hideDecorCaptionView() called with: activity = [" + activity + "]");
         activity.setWindowDecorationStatus(1);
     }
 
     @Override
     public void setDecorCaptionViewFocuseable(Activity activity, boolean focusable) {
-        Log.d(TAG, "setDecorCaptionViewFocuseable() called with: activity = [" + activity + "], focusable = [" + focusable + "]");
+        FLog.e(TAG, "setDecorCaptionViewFocuseable() called with: activity = [" + activity + "], focusable = [" + focusable + "]");
     }
 
     @Override
     public void exitFullScreenWindow(Activity activity) {
         DecorView decorView = (DecorView) activity.getWindow().getDecorView();
         decorView.exitFullScreenWindow();
-        Log.d(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
+        FLog.e(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
     }
 
     @Override
     public void startFullScreenWindow(Activity activity) {
         DecorView decorView = (DecorView) activity.getWindow().getDecorView();
         decorView.startFullScreenWindow(false);
-        Log.d(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
+        FLog.e(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
     }
 
     @Override

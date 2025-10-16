@@ -71,13 +71,13 @@ public class Util {
         if (files != null && files.length > 0) {
             File dir = new File(context.getFilesDir(), targetDir);
             if (dir.exists()) {
-                Log.d(TAG, "copyAssetsToFiles: exists, return");
+//                Log.d(TAG, "copyAssetsToFiles: exists, return");
                 return;
             }
 
             if (!dir.exists()) {
                 if (!dir.mkdirs()) {
-                    Log.e("AssetCopy", "Failed to create directory: " + dir.getAbsolutePath());
+//                    Log.e("AssetCopy", "Failed to create directory: " + dir.getAbsolutePath());
                     return;
                 }
             }
@@ -191,7 +191,7 @@ public class Util {
     }
 
     public static void copyFileUriToClipboard(Context context, String fileUrl) {
-        Log.d(TAG, "copyFileUriToClipboard: " + fileUrl);
+//        Log.d(TAG, "copyFileUriToClipboard: " + fileUrl);
         String filePath = fileUrl.substring(7);
         String sdCardPath = convertToSdCardPath(filePath, context);
 //        copyFileToClipboard(context, sdCardPath);
@@ -201,17 +201,17 @@ public class Util {
     private static String convertToSdCardPath(String originalPath, Context context) {
         String internalStoragePath = Environment.getExternalStorageDirectory().getAbsolutePath();
         String userName = LinuxRootFileUtils.getUserName(context);
-        Log.d(TAG, "convertToSdCardPath() originalPath = [" + originalPath + "], userName = [" + userName + "]");
+//        Log.d(TAG, "convertToSdCardPath() originalPath = [" + originalPath + "], userName = [" + userName + "]");
         if (originalPath.startsWith("/home/" + userName + "/openfde")) {
-            Log.d(TAG, "convertToSdCardPath: contains");
+//            Log.d(TAG, "convertToSdCardPath: contains");
             return originalPath.replace("/home/" + userName  + "/openfde", internalStoragePath);
         }
-        Log.d(TAG, "convertToSdCardPath: not contains");
+//        Log.d(TAG, "convertToSdCardPath: not contains");
         return originalPath;
     }
 
     public static void copyFileToClipboard(Context context, String path) {
-        Log.d(TAG, "copyFileToClipboard: path:" + path);
+//        Log.d(TAG, "copyFileToClipboard: path:" + path);
         // 获取文件的 URI
         Uri fileUri;
         File file = new File(path.trim());

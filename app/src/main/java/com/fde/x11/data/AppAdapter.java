@@ -25,6 +25,7 @@ import com.fde.x11.AppListActivity;
 import com.fde.x11.R;
 import com.fde.x11.RightClickView;
 import com.fde.x11.utils.AppUtils;
+import com.fde.x11.utils.FLog;
 import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.callback.JsonCallBack;
 import java.util.List;
@@ -95,7 +96,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
                 .execute(new JsonCallBack<VncResult.GetPortResult>() {
                     @Override
                     public void onFailure(Call call, Exception e) {
-                        Log.d(TAG, "onFailure() called with: call = [" + call + "], e = [" + e + "]");
+                        FLog.l(TAG, "onFailure() called with: call = [" + call + "], e = [" + e + "]");
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
@@ -106,7 +107,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
 
                     @Override
                     public void onSuccess(Call call, VncResult.GetPortResult response) {
-                        Log.d(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
+                        FLog.l(TAG, "onSuccess() called with: call = [" + call + "], response = [" + response + "]");
                         Activity activity = (Activity) context;
                         handler.post(new Runnable() {
                             @Override

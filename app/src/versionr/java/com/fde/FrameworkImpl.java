@@ -27,7 +27,7 @@ public class FrameworkImpl implements FrameworkOperations{
 
     @Override
     public void hideDecorCaptionView(Activity activity) {
-        Log.d(TAG, "hideDecorCaptionView() called with: activity = [" + activity + "]");
+        FLog.e(TAG, "hideDecorCaptionView() called with: activity = [" + activity + "]");
         if(Build.VERSION.SDK_INT == 30  ){
             activity.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                     WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -36,7 +36,7 @@ public class FrameworkImpl implements FrameworkOperations{
 
     @Override
     public void setDecorCaptionViewFocuseable(Activity activity, boolean focusable) {
-        Log.d(TAG, "setDecorCaptionViewFocuseable() called with: activity = [" + activity + "], focusable = [" + focusable + "]");
+        FLog.e(TAG, "setDecorCaptionViewFocuseable() called with: activity = [" + activity + "], focusable = [" + focusable + "]");
         Window window = activity.getWindow();
         ViewGroup decor = (ViewGroup) window.getDecorView();
         DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
@@ -56,7 +56,7 @@ public class FrameworkImpl implements FrameworkOperations{
 
     @Override
     public void exitFullScreenWindow(Activity activity) {
-        Log.d(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
+        FLog.e(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
         DecorCaptionView captionView = getCaptionView(activity);
         if(captionView == null){
             return;
@@ -75,7 +75,7 @@ public class FrameworkImpl implements FrameworkOperations{
             captionView.exitFullScreenWindow();
             captionView.toggleFreeformWindowingMode();
         }
-        Log.d(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
+        FLog.e(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
     }
 
 

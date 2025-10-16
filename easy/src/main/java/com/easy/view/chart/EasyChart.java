@@ -246,7 +246,7 @@ public class EasyChart extends View {
             min = Math.min(min, entry.getValue());
             max = Math.max(max, entry.getValue());
         }
-        Log.d("TAG", "setData: min：" + min + "，max：" + max);
+//        Log.d("TAG", "setData: min：" + min + "，max：" + max);
         mYPointList = new ArrayList<>();
         //添加Y轴刻度值
         mYPointList.add(String.valueOf(min));

@@ -25,6 +25,7 @@
 #include "c_interface.h"
 #include <android/log.h>
 #include <drm_fourcc.h>
+#include "native_log.h"
 
 extern ScreenPtr pScreenPtr;
 extern Bool GL_CHECK_ERROR;
@@ -32,10 +33,10 @@ extern Window focusWindow;
 extern JavaVM *jniVM;
 extern jclass JavaCmdEntryPointClass;
 bool cursor_drawn;
-extern Bool LOG_ENABLE;
-#define PRINT_LOG (RENDERER_LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_renderer", __VA_ARGS__);}
-#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_renderer", __VA_ARGS__);}
+//extern Bool LOG_ENABLE;
+//#define PRINT_LOG (RENDERER_LOG_ENABLE)
+//#define logd(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_renderer", __VA_ARGS__);}
+//#define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_renderer", __VA_ARGS__);}
 
 static GLuint create_program(const char *p_vertex_source, const char *p_fragment_source);
 
@@ -66,7 +67,7 @@ static int eglCheckError(int line) {
     }
 
     if (desc)
-        log("Xlorie: egl error on line %d: %s\n", line, desc);
+        logd("Xlorie: egl error on line %d: %s\n", line, desc);
 
     return err;
 }
@@ -99,7 +100,7 @@ static const char *eglErrorLabel(int code) {
 
 static void checkGlError(int line) {
 //    if(!GL_CHECK_ERROR){
-//        log("do not check error")
+//        logd("do not check error")
 //        return;
 //    }
 
@@ -120,7 +121,7 @@ static void checkGlError(int line) {
                 continue;
 #undef E
         }
-        log("Xlorie: GLES %d ERROR: %s.\n", line, desc);
+        logd("Xlorie: GLES %d ERROR: %s.\n", line, desc);
         return;
     }
 }
@@ -224,37 +225,37 @@ int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
 
     global_egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (global_egl_display == EGL_NO_DISPLAY) {
-        log("Xlorie: Got no EGL display.\n");
+        logd("Xlorie: Got no EGL display.\n");
         eglCheckError(__LINE__);
         return 0;
     }
 
     if (eglInitialize(global_egl_display, &major, &minor) != EGL_TRUE) {
-        log("Xlorie: Unable to initialize EGL\n");
+        logd("Xlorie: Unable to initialize EGL\n");
         eglCheckError(__LINE__);
         return 0;
     }
-    log("Xlorie: Initialized EGL version %d.%d\n", major, minor);
+    logd("Xlorie: Initialized EGL version %d.%d\n", major, minor);
     eglBindAPI(EGL_OPENGL_ES_API);
 
     if (eglChooseConfig(global_egl_display, configAttribs, &global_config, 1, &numConfigs) !=
         EGL_TRUE &&
         eglChooseConfig(global_egl_display, configAttribs2, &global_config, 1, &numConfigs) !=
         EGL_TRUE) {
-        log("Xlorie: eglChooseConfig failed.\n");
+        logd("Xlorie: eglChooseConfig failed.\n");
         eglCheckError(__LINE__);
         return 0;
     }
 
     global_ctx = eglCreateContext(global_egl_display, global_config, NULL, ctxattribs);
     if (global_ctx == EGL_NO_CONTEXT) {
-        log("Xlorie: eglCreateContext failed.\n");
+        logd("Xlorie: eglCreateContext failed.\n");
         eglCheckError(__LINE__);
         return 0;
     }
     if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
         EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
+        logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
         return 0;
     }
@@ -333,14 +334,14 @@ int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
             GLuint fbo = 0, texture = 0;
             if (eglChooseConfig(global_egl_display, configAttributes, &checkcfg, 1, &numConfigs) !=
                 EGL_TRUE) {
-                log("Xlorie: check eglChooseConfig failed.\n");
+                logd("Xlorie: check eglChooseConfig failed.\n");
                 eglCheckError(__LINE__);
                 return 0;
             }
 
             EGLContext testctx = eglCreateContext(global_egl_display, checkcfg, NULL, ctxattribs);
             if (testctx == EGL_NO_CONTEXT) {
-                log("Xlorie: check eglCreateContext failed.\n");
+                logd("Xlorie: check eglCreateContext failed.\n");
                 eglCheckError(__LINE__);
                 return 0;
             }
@@ -354,7 +355,7 @@ int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
                                                           pbufferAttributes);
 
             if (eglMakeCurrent(global_egl_display, checksfc, checksfc, testctx) != EGL_TRUE) {
-                log("Xlorie: check eglMakeCurrent failed.\n");
+                logd("Xlorie: check eglMakeCurrent failed.\n");
                 eglCheckError(__LINE__);
                 return 0;
             }
@@ -385,10 +386,10 @@ int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
             glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &pixel);
             checkGlError();
             if (pixel[0] == 0xAABBCCDD) {
-                log("Xlorie: GLES draws pixels unchanged, probably system does not support AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM. Forcing bgra.\n");
+                logd("Xlorie: GLES draws pixels unchanged, probably system does not support AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM. Forcing bgra.\n");
                 *flip = 1;
             } else if (pixel[0] != 0xAADDCCBB) {
-                log("Xlorie: GLES receives broken pixels. Forcing legacy drawing. 0x%X\n",
+                logd("Xlorie: GLES receives broken pixels. Forcing legacy drawing. 0x%X\n",
                     pixel[0]);
                 *legacy_drawing = 1;
             }
@@ -404,7 +405,7 @@ static void renderer_unset_buffer(void) {
         return;
     }
 
-    log("renderer_set_buffer0");
+    logd("renderer_set_buffer0");
     if (image)
         eglDestroyImageKHR(global_egl_display, image);
     if (buffer)
@@ -414,7 +415,7 @@ static void renderer_unset_buffer(void) {
 }
 
 void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
-    log("renderer_set_buffer");
+    logd("renderer_set_buffer");
     const EGLint imageAttributes[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
     EGLClientBuffer clientBuffer;
     AHardwareBuffer_Desc desc = {0};
@@ -439,12 +440,12 @@ void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
     checkGlError();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     checkGlError();
-    log("renderer_set_buffer 1");
+    logd("renderer_set_buffer 1");
 
     if (buffer) {
         AHardwareBuffer_acquire(buffer);
         AHardwareBuffer_describe(buffer, &desc);
-        log("renderer_set_buffer width:%d height:%d", desc.width, desc.height);
+        logd("renderer_set_buffer width:%d height:%d", desc.width, desc.height);
         display_rect.width = (float) desc.width;
         display_rect.height = (float) desc.height;
 
@@ -480,11 +481,11 @@ void renderer_set_buffer(JNIEnv *env, AHardwareBuffer *buf) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, &data);
         checkGlError();
     }
-    log("renderer_set_buffer 2");
+    logd("renderer_set_buffer 2");
 
     renderer_redraw(env, flip, false);
 
-    log("renderer_set_buffer %p %d %d", buffer, desc.width, desc.height);
+    logd("renderer_set_buffer %p %d %d", buffer, desc.width, desc.height);
 }
 
 
@@ -492,13 +493,13 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
         if (!g_texture_program) {
-            log("Xlorie: GLESv2: Unable to create shader program.\n");
+            logd("Xlorie: GLESv2: Unable to create shader program.\n");
             eglCheckError(__LINE__);
             return;
         }
         g_texture_program_bgra = create_program(vertex_shader, fragment_shader_bgra);
         if (!g_texture_program_bgra) {
-            log("Xlorie: GLESv2: Unable to create bgra shader program.\n");
+            logd("Xlorie: GLESv2: Unable to create bgra shader program.\n");
             eglCheckError(__LINE__);
             return;
         }
@@ -527,14 +528,14 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
 }
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
-    log("renderer_set_window_each 1")
+    logd("renderer_set_window_each 1")
     if(!res->surface){
         return;
     }
-    log("renderer_set_window_each 2")
+    logd("renderer_set_window_each 2")
     bool isWidget = false;
     if(_surface_count_window(sfWraper, res->window)){
-        log("set window attr")
+        logd("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
         attr->status = 6;
 //        if(attr->discard){
@@ -548,7 +549,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         attr->index = res->id;
         attr->window = res->window;
     } else if(_surface_count_widget(sfWraper, res->window)){
-        log("set widget attr")
+        logd("set widget attr")
         isWidget = true;
         Widget *widget = _surface_find_widget(sfWraper, res->window);
         widget->offset_x = res->offset_x;
@@ -564,7 +565,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     EGLNativeWindowType window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
-    log("renderer_set_window_each window:%p width:%d height:%d index:%d p:%x surface:%p new_surface:%p",
+    logd("renderer_set_window_each window:%p width:%d height:%d index:%d p:%x surface:%p new_surface:%p",
         window, width, height, res->id, res->pWin, res->surface, new_surface);
     EGLSurface sfc;
     WindAttribute *attr;
@@ -580,19 +581,19 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     if (sfc != EGL_NO_SURFACE) {
         if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
             EGL_TRUE) {
-            log("Xlorie: eglMakeCurrent (EGL_NO_SURFACE) failed.\n");
+            logd("Xlorie: eglMakeCurrent (EGL_NO_SURFACE) failed.\n");
             eglCheckError(__LINE__);
             return;
         }
         if (eglDestroySurface(global_egl_display, sfc) != EGL_TRUE) {
-            log("Xlorie: eglDestoySurface failed.\n");
+            logd("Xlorie: eglDestoySurface failed.\n");
             eglCheckError(__LINE__);
             return;
         }
     }
     sfc = EGL_NO_SURFACE;
     if (window && (width <= 0 || height <= 0)) {
-        log("Xlorie: We've got invalid surface. Probably it became invalid before we started working with it.\n");
+        logd("Xlorie: We've got invalid surface. Probably it became invalid before we started working with it.\n");
         ANativeWindow_release(window);
         window = NULL;
         if (new_surface) {
@@ -606,13 +607,13 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         return;
     sfc = eglCreateWindowSurface(global_egl_display, global_config, window, NULL);
     if (sfc == EGL_NO_SURFACE) {
-        log("Xlorie: eglCreateWindowSurface failed.\n");
+        logd("Xlorie: eglCreateWindowSurface failed.\n");
         eglCheckError(__LINE__);
         return;
     }
 
     if (eglMakeCurrent(global_egl_display, sfc, sfc, global_ctx) != EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
+        logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
         return;
     }
@@ -621,17 +622,17 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     } else {
         attr->sfc = sfc;
     }
-    log("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
+    logd("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
         if (!g_texture_program) {
-            log("Xlorie: GLESv2: Unable to create shader program.\n");
+            logd("Xlorie: GLESv2: Unable to create shader program.\n");
             eglCheckError(__LINE__);
             return;
         }
         g_texture_program_bgra = create_program(vertex_shader, fragment_shader_bgra);
         if (!g_texture_program_bgra) {
-            log("Xlorie: GLESv2: Unable to create bgra shader program.\n");
+            logd("Xlorie: GLESv2: Unable to create bgra shader program.\n");
             eglCheckError(__LINE__);
             return;
         }
@@ -668,7 +669,7 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
     }
-    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+    logd("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
         w, h, data, flip, display_rect.width, display_rect.height );
     if (display_rect.width != (float) w || display_rect.height != (float) h) {
         display_rect.width = (float) w;
@@ -693,7 +694,7 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
                         GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
-    log("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
+    logd("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
         w, h, data, flip, display_rect.width, display_rect.height);
 
 }
@@ -732,7 +733,7 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
-    log("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d flip:%d",
+    logd("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d flip:%d",
         x, y, w, h, window,
         attr->texture_id, flip);
 }
@@ -745,7 +746,7 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
     if(!widget){
         return;
     }
-    log("renderer_update_widget_texture x:%d y:%d w:%d h:%d window:%x tid:%d", x, y, w, h, widget->window,
+    logd("renderer_update_widget_texture x:%d y:%d w:%d h:%d window:%x tid:%d", x, y, w, h, widget->window,
         widget->texture_id);
     widget->offset_x = (float) x;
     widget->offset_y = (float) y;
@@ -798,7 +799,7 @@ GLuint renderer_gen_bind_texture(int x, int y, int w, int h, void *data, uint8_t
 }
 
 void renderer_update_cursor(int w, int h, int xhot, int yhot, void *data) {
-    log("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
+    logd("Xlorie: updating cursor w:%d  h:%d xhot:%d yhot:%d \n", w, h, xhot, yhot);
     cursor.width = (float) w;
     cursor.height = (float) h;
     cursor.xhot = (float) xhot;
@@ -824,7 +825,7 @@ void renderer_update_cursor(int w, int h, int xhot, int yhot, void *data) {
 }
 
 void renderer_set_cursor_coordinates(int x, int y) {
-//    log("set_cursor x:%d, y :%d", x , y);
+//    logd("set_cursor x:%d, y :%d", x , y);
     cursor.x = (float) x;
     cursor.y = (float) y;
 }
@@ -846,7 +847,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 //    _surface_log_traversal_window(sfWraper);
     int size, i  =0 ;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
-    log("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
+    logd("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
     while (i < size ) {
         renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
         i++;
@@ -856,7 +857,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window, bool empty) {
-    log("renderer_redraw_traversal_1 index:%d window:%x", index, window);
+    logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
     int id, dri_id;
@@ -876,23 +877,23 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     }
 
     if (!eglSurface ) {
-        log("renderer_redraw_traversal_1 bad egl ");
+        logd("renderer_redraw_traversal_1 bad egl ");
         return FALSE;
     }
     if ( eglGetCurrentContext() == EGL_NO_CONTEXT ) {
-        log("renderer_redraw_traversal_1 bad context ")
+        logd("renderer_redraw_traversal_1 bad context ")
         return FALSE;
     }
     if (!id) {
-        log("renderer_redraw_traversal_1 id:%d ", id)
+        logd("renderer_redraw_traversal_1 id:%d ", id)
         return FALSE;
     }
 
-    // log("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+    // logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
         // index, width, height, attr->offset_x, attr->offset_y, id);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
+        logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
 //    if(!empty){
@@ -918,14 +919,14 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
 //        // glViewport(viewport_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
 //        glViewport(relative_x, viewport_y, dri_pWin->drawable.width, dri_pWin->drawable.height);
 //
-//        log("renderer_redraw_traversal_1 relative_y:%d", relative_y);
-//        log("renderer_redraw_traversal_1 relative_x:%d", relative_x);
-//        log("renderer_redraw_traversal_1 dri_height:%d", dri_pWin->drawable.height);
-//        log("renderer_redraw_traversal_1 dri_width:%d", dri_pWin->drawable.width);
-//        log("renderer_redraw_traversal_1 window_offsetx:%d", window_offsetx);
-//        log("renderer_redraw_traversal_1 window_offsety:%d", window_offsety);
-//        log("renderer_redraw_traversal_1 window_drioffsetx:%d", window_drioffsetx);
-//        log("renderer_redraw_traversal_1 window_drioffsety:%d", window_drioffsety);
+//        logd("renderer_redraw_traversal_1 relative_y:%d", relative_y);
+//        logd("renderer_redraw_traversal_1 relative_x:%d", relative_x);
+//        logd("renderer_redraw_traversal_1 dri_height:%d", dri_pWin->drawable.height);
+//        logd("renderer_redraw_traversal_1 dri_width:%d", dri_pWin->drawable.width);
+//        logd("renderer_redraw_traversal_1 window_offsetx:%d", window_offsetx);
+//        logd("renderer_redraw_traversal_1 window_offsety:%d", window_offsety);
+//        logd("renderer_redraw_traversal_1 window_drioffsetx:%d", window_drioffsetx);
+//        logd("renderer_redraw_traversal_1 window_drioffsety:%d", window_drioffsety);
 //
 //        draw(dri_id, -1.f, -1.f, 1.f, 1.f, flip);
 
@@ -938,10 +939,10 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
         float x1 = x0 + w / width * 2.0f;
         float y1 = y0 + h / height * 2.0f;
-        log("renderer_redraw_traversal_dri x:%d", attr->dri_x);
-        log("renderer_redraw_traversal_dri y:%d", attr->dri_y);
-        log("renderer_redraw_traversal_dri w:%d", dri_pWin->drawable.width);
-        log("renderer_redraw_traversal_dri h:%d", dri_pWin->drawable.height);
+        logd("renderer_redraw_traversal_dri x:%d", attr->dri_x);
+        logd("renderer_redraw_traversal_dri y:%d", attr->dri_y);
+        logd("renderer_redraw_traversal_dri w:%d", dri_pWin->drawable.width);
+        logd("renderer_redraw_traversal_dri h:%d", dri_pWin->drawable.height);
 
         draw(dri_id, x0, y0, x1, y1, flip);
     }
@@ -950,16 +951,16 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     if(attr->widget_size > 0){
         for(int i = 0 ; i < attr->widget_size ; i ++){
             Widget widget = attr->widgets[i];
-            log("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+            logd("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
                 widget.texture_id);
             if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
                || !widget.inbounds || !widget.width || !widget.height
                || !widget.pWin->realized){
                 continue;
             }
-            log("renderer_redraw_traversal_1 text 1")
+            logd("renderer_redraw_traversal_1 text 1")
             android_update_widget_texture(&widget);
-            log("renderer_redraw_traversal_1 text 2")
+            logd("renderer_redraw_traversal_1 text 2")
             float x = widget.offset_x;
             float y = widget.offset_y;
             float w = widget.width;
@@ -969,8 +970,8 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             float x1 = x0 + w / width * 2.0f;
             float y1 = y0 + h / height * 2.0f;
             draw(widget.texture_id, x0, y0, x1, y1, flip);
-            log("renderer_redraw_traversal_1 text 3")
-//            log("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
+            logd("renderer_redraw_traversal_1 text 3")
+//            logd("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
         }
     }
 //    }
@@ -979,7 +980,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         err = eglGetError();
         eglCheckError(__LINE__);
         if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
-            log("We've got %s so window is to be destroyed. "
+            logd("We've got %s so window is to be destroyed. "
                 "Native window disconnected/abandoned, probably activity is destroyed or in background",
                 eglErrorLabel(err));
 //            renderer_clear_window(env, index);
@@ -1012,25 +1013,25 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
     int id = widget.texture_id;
     float width = widget.width;
     float height = widget.height;
-    log("renderer_redraw_traversal_inner widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
+    logd("renderer_redraw_traversal_inner widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
         widget.texture_id);
 
     if (!eglSurface ) {
-        log("renderer_redraw_traversal_1 bad egl ");
+        logd("renderer_redraw_traversal_1 bad egl ");
         return FALSE;
     }
     if (eglGetCurrentContext() == EGL_NO_CONTEXT ) {
-        log("renderer_redraw_traversal_1 bad context ")
+        logd("renderer_redraw_traversal_1 bad context ")
         return FALSE;
     }
     if (!id) {
-        log("renderer_redraw_traversal_1 id:%d ", id)
+        logd("renderer_redraw_traversal_1 id:%d ", id)
         return FALSE;
     }
     glViewport(0, 0, width, height);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
+        logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
     draw(id, -1.f, -1.f, 1.f, 1.f, flip);
@@ -1039,7 +1040,7 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
         err = eglGetError();
         eglCheckError(__LINE__);
         if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
-            log("We've got %s so window is to be destroyed. "
+            logd("We've got %s so window is to be destroyed. "
                 "Native window disconnected/abandoned, probably activity is destroyed or in background",
                 eglErrorLabel(err));
             return FALSE;
@@ -1050,7 +1051,7 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
 
 void renderer_print_fps(float millis) {
     if (renderedFrames)
-        log("%d frames in %.1f seconds = %.1f FPS",
+        logd("%d frames in %.1f seconds = %.1f FPS",
             renderedFrames, millis / 1000, (float) renderedFrames * 1000 / millis);
     renderedFrames = 0;
 }
@@ -1075,7 +1076,7 @@ static GLuint load_shader(GLenum shaderType, const char *pSource) {
                 if (buf) {
                     glGetShaderInfoLog(shader, infoLen, NULL, buf);
                     checkGlError();
-                    log("Xlorie: Could not compile shader %d:\n%s\n", shaderType, buf);
+                    logd("Xlorie: Could not compile shader %d:\n%s\n", shaderType, buf);
                     free(buf);
                 }
                 glDeleteShader(shader);
@@ -1116,7 +1117,7 @@ static GLuint create_program(const char *p_vertex_source, const char *p_fragment
                 if (buf) {
                     glGetProgramInfoLog(program, bufLength, NULL, buf);
                     checkGlError();
-                    log("Xlorie: Could not link program:\n%s\n", buf);
+                    logd("Xlorie: Could not link program:\n%s\n", buf);
                     free(buf);
                 }
             }
@@ -1129,7 +1130,7 @@ static GLuint create_program(const char *p_vertex_source, const char *p_fragment
 }
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip) {
-    // log(ERROR, "draw textureid:%d x0:%.0f y0:%.0f x1:%.0f y1:%.0f flip:%d", id, x0, y0, x1, y1, flip);
+    // logd(ERROR, "draw textureid:%d x0:%.0f y0:%.0f x1:%.0f y1:%.0f flip:%d", id, x0, y0, x1, y1, flip);
     float coords[20] = {
 
             x0, -y0, 0.f, 0.f, 0.f,
@@ -1155,10 +1156,10 @@ static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip
     checkGlError();
     glEnableVertexAttribArray(c);
     checkGlError();
-    log("glDrawArraysInstancedNV 1")
+    logd("glDrawArraysInstancedNV 1")
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 //    glDrawArraysInstanced(GL_TRIANGLES, 0, 4, 1);
-    log("glDrawArraysInstancedNV 2")
+    logd("glDrawArraysInstancedNV 2")
     checkGlError();
 //    GLfloat vVertices[] = {
 //            0.0f,  0.5f, 0.0f,
@@ -1202,7 +1203,7 @@ maybe_unused static bool draw_cursor_1(int index, Window window) {
     float cursor_y = cursor.y;
     float cursor_xhot = cursor.xhot;
     float cursor_yhot = cursor.yhot;
-    log("draw_cursor cursor_x:%.0f cursor_y:%.0f ", cursor_x, cursor_y);
+    logd("draw_cursor cursor_x:%.0f cursor_y:%.0f ", cursor_x, cursor_y);
 
     if (attr) {
         width = attr->width;
@@ -1215,7 +1216,7 @@ maybe_unused static bool draw_cursor_1(int index, Window window) {
     w = 2.f * cursor.width / width;
     h = 2.f * cursor.height / height;
 
-//    log("draw_cursor x:%.5f y:%.5f w:%.5f h:%.5f", x, y, x + w, y + h);
+//    logd("draw_cursor x:%.5f y:%.5f w:%.5f h:%.5f", x, y, x + w, y + h);
     glEnable(GL_BLEND);
     checkGlError();
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1230,14 +1231,14 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
                                           const CARD32 *strides, const CARD32 *offsets, CARD8 depth,
                                           __unused CARD8 bpp, CARD64 modifier) {
     if (global_ctx == EGL_NO_CONTEXT) {
-        log("egl_no_context")
+        logd("egl_no_context")
     }
     if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx) !=
         EGL_TRUE) {
-        log("Xlorie: eglMakeCurrent failed.\n");
+        logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-    log("renderer_create_image fd:%d width:%ld height:%ld strides:%d offset:%d depth:%d bpp:%d modifier:%d",
+    logd("renderer_create_image fd:%d width:%ld height:%ld strides:%d offset:%d depth:%d bpp:%d modifier:%d",
         fd, width, height,
         strides[0], offsets[0], depth, bpp, modifier)
     EGLint attrs[] = {
@@ -1254,7 +1255,7 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
                                        EGL_LINUX_DMA_BUF_EXT,
                                        NULL, attrs);
     if (image == NULL) {
-        log("image is NULL")
+        logd("image is NULL")
     }
     checkGlError();
     GLuint texture;
@@ -1265,7 +1266,7 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
     checkGlError();
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, image);
     glBindTexture(GL_TEXTURE_2D, 0);
-    log("renderer_create_image texture:%d", texture)
+    logd("renderer_create_image texture:%d", texture)
     checkGlError();
     return texture;
 }
@@ -1316,7 +1317,7 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
         return FALSE;
     }
     if (global_ctx == EGL_NO_CONTEXT) {
-        log("egl_no_context")
+        logd("egl_no_context")
     }
     if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx) !=
         EGL_TRUE) {

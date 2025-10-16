@@ -14,6 +14,8 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.EditText;
 
+import com.fde.x11.utils.FLog;
+
 
 public class DetectEventEditText extends EditText {
     private static final String TAG = "DetectText_ime";
@@ -55,14 +57,14 @@ public class DetectEventEditText extends EditText {
     @Override
     public boolean onKeyPreIme(int keyCode, KeyEvent event) {
         if(DEBUG){
-            Log.d(TAG, "onKeyPreIme() called with: keyCode = [" + keyCode + "], event = [" + event + "]");
+            FLog.e(TAG, "onKeyPreIme() called with: keyCode = [" + keyCode + "], event = [" + event + "]");
         }
         return super.onKeyPreIme(keyCode, event);
     }
 
     @Override
     public boolean dispatchKeyEventPreIme(KeyEvent event) {
-        Log.d(TAG, "dispatchKeyEventPreIme() called with: event = [" + event + "]");
+        FLog.e(TAG, "dispatchKeyEventPreIme() called with: event = [" + event + "]");
         return super.dispatchKeyEventPreIme(event);
     }
 
@@ -75,7 +77,7 @@ public class DetectEventEditText extends EditText {
 
             @Override
             public boolean onKeyDown(View view, Editable text, int keyCode, KeyEvent event) {
-                Log.d(TAG, "onKeyDown text = [" + text + "], keyCode = [" + keyCode + "], event = [" + event + "]");
+                FLog.e(TAG, "onKeyDown text = [" + text + "], keyCode = [" + keyCode + "], event = [" + event + "]");
                 return false;
             }
 
@@ -87,7 +89,7 @@ public class DetectEventEditText extends EditText {
 
             @Override
             public boolean onKeyOther(View view, Editable text, KeyEvent event) {
-                Log.d(TAG, "onKeyOther text = [" + text + "], event = [" + event + "]");
+                FLog.e(TAG, "onKeyOther text = [" + text + "], event = [" + event + "]");
                 return false;
             }
 

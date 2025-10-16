@@ -271,7 +271,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         } else {
             mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
         }
-        Log.d(TAG, "initXParams mDecorCaptionViewHeight:" + mDecorCaptionViewHeight);
+        FLog.a(TAG, "initXParams mDecorCaptionViewHeight:" + mDecorCaptionViewHeight);
         int measuredHeight = getWindow().getDecorView().getMeasuredHeight();
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
@@ -314,7 +314,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             getWindowManager().getDefaultDisplay().getRealSize(point);
             AppUtils.GLOBAL_SCREEN_WIDTH = point.x;
             AppUtils.GLOBAL_SCREEN_HEIGHT = point.y;
-            Log.d(TAG, "updateWindowParams: " + AppUtils.GLOBAL_SCREEN_WIDTH  + " x "
+            FLog.a(TAG, "updateWindowParams: " + AppUtils.GLOBAL_SCREEN_WIDTH  + " x "
                     + AppUtils.GLOBAL_SCREEN_HEIGHT);
         }
     }
@@ -412,7 +412,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 mInputHandler.handleHostSizeChanged(width, height);
                 mInputHandler.handleClientSizeChanged(width, height);
                 LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
-                Log.d(TAG, "realSizeChanged() called with: isFullscreen = [" + isFullscreen + "], width = [" + width + "], height = [" + height + "]");
+                FLog.a(TAG, "realSizeChanged() called with: isFullscreen = [" + isFullscreen + "], width = [" + width + "], height = [" + height + "]");
                 WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
                 if(attribute != null && width != 0 && height !=0 ){
                     if(isFullscreen){
@@ -663,7 +663,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         String clipText = com.fde.fusionwindowmanager.Util.getClipText(mClipboardManager, this);
         if(!TextUtils.isEmpty(filePath)){
             String replace = filePath.replace(" ", "%20");
-            Log.d(TAG, "getClipText: " + replace);
+            FLog.a(TAG, "getClipText: " + replace);
             mXserviceWrapper.sendClipFile(replace);
         } else if(!TextUtils.isEmpty(clipText)){
             mClipText = clipText;
@@ -722,7 +722,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
 
             float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
-//            Log.d(TAG, "topMargin: " + topMargin);
+//            FLog.a(TAG, "topMargin: " + topMargin);
             Rect rect = new Rect(left, (int) (top + topMargin), right, bottom);
             FLog.a("window", getWindowId(), "checkConfigBeforeExec configure:" + rect +
                     " mDecorCaptionViewHeight:" + mDecorCaptionViewHeight +
@@ -979,7 +979,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
             @Override
             public void realSizeChanged(Surface sfc, int width, int height) {
-                Log.d(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+                FLog.a(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
                 try {
                     serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
                 } catch (Exception e) {
@@ -1289,7 +1289,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if (mAttribute != null && mAttribute.getXID() == window) {
 //                if (mFrameworkOperations.startDecorMovingTask(startX, startY)) {
                 isTaskMoving = true;
-                Log.d(TAG, "startDecorMovingTask() called with: startX = [" + startX + "], startY = [" + startY + "], isTaskMoving = [" + isTaskMoving + "]");
+                FLog.a(TAG, "startDecorMovingTask() called with: startX = [" + startX + "], startY = [" + startY + "], isTaskMoving = [" + isTaskMoving + "]");
                 mInputHandler.setMoveTask(isTaskMoving);
                 return true;
 //                }
@@ -1301,7 +1301,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         public void finisDecorMovingTask(long window) throws RemoteException {
             if(mAttribute != null && mAttribute.getXID() == window){
 //                mFrameworkOperations.finisDecorMovingTask();
-                Log.d(TAG, "finisDecorMovingTask: isTaskMoving:" + isTaskMoving);
+                FLog.a(TAG, "finisDecorMovingTask: isTaskMoving:" + isTaskMoving);
                 isTaskMoving = false;
                 mInputHandler.setMoveTask(isTaskMoving);
             }
@@ -1350,8 +1350,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     Intent actIntent = new Intent(MainActivity.this, MainActivity.MainActivity11.class);
                     if (attr.getProperty() != null) {
                         actIntent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
-                        Log.d(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
-                        Log.d(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
+                        FLog.a(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
+                        FLog.a(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
                         actIntent.putExtra("X11_titile", attr.getProperty().getNet_name());
                     }
                     try {
@@ -1424,7 +1424,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 }
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
-                Log.d(TAG, "ACTION_UPDATE_ICON: " + getTitle() + ", windowId:" + windowId + " " + mAttribute) ;
+                FLog.a(TAG, "ACTION_UPDATE_ICON: " + getTitle() + ", windowId:" + windowId + " " + mAttribute) ;
                 if(mAttribute !=  null && (windowId == mAttribute.getXID() || windowId == mAttribute.getWindow())){
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
                     ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
@@ -1583,7 +1583,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if(FLog.SHOW_DEBUG_TITLE){
                 return false;
             }
-            Log.d("TAG", "hideDecorCaptionView");
+            FLog.a("TAG", "hideDecorCaptionView");
             if(mFrameworkOperations != null ){
                 mFrameworkOperations.hideDecorCaptionView(this);
                 captionShowing = false;

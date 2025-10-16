@@ -35,13 +35,13 @@ public class FLog {
     public static final int ASSERT = 7;
 
     private static final boolean LogEnable = BuildConfig.DEBUG;
-    private static final boolean LogAppListEnable = true;
-    private static final boolean LogEventEnable = false;
-    private static final boolean LogMainEnable = true;
-    private static final boolean LogServerEnable = true;
-    private static final boolean LogFileEnable = true;
+    private static final boolean LogAppListEnable = LogEnable && true;
+    private static final boolean LogEventEnable = LogEnable && true;
+    private static final boolean LogMainEnable = LogEnable && true;
+    private static final boolean LogServerEnable = LogEnable && true;
+    private static final boolean LogFileEnable = LogEnable && true;
 
-    public static final boolean LogXserverNativeEnable = LogEnable && false;
+    public static final boolean LogXserverNativeEnable = LogEnable && true;
 
     public static final boolean SHOW_DEBUG_TITLE = false ;//BuildConfig.DEBUG;
 

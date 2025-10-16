@@ -90,7 +90,7 @@ public class ControlActivity extends Activity implements View.OnClickListener {
             connection.startActivityForXserver(0, 0 , 300, 600, 0 , 0);
         } else if ( v == btMoveNative){
             int ret = windowManager.moveWindow(1000, 50, 50);
-            Log.d("TAG", "moveWindow: ret = [" + ret + "]");
+//            Log.d("TAG", "moveWindow: ret = [" + ret + "]");
         } else if ( v == btResizeNative){
             try {
                 service.resizeWindow(1000, 800, 600);

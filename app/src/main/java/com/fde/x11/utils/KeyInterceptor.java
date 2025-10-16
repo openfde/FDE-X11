@@ -29,7 +29,7 @@ public class KeyInterceptor extends AccessibilityService {
 
     @Override
     public boolean onKeyEvent(KeyEvent event) {
-        Log.d("TAG", "onKeyEvent: event:" + event + "");
+//        Log.d("TAG", "onKeyEvent: event:" + event + "");
         boolean ret = false;
 //        MainActivity instance = MainActivity.getInstance();
 //
@@ -51,7 +51,7 @@ public class KeyInterceptor extends AccessibilityService {
 //        if (event.getAction() == KeyEvent.ACTION_UP)
 //            pressedKeys.remove(event.getKeyCode());
 
-        Log.d("KeyInterceptor", "" + (event.getUnicodeChar() != 0 ? (char) event.getUnicodeChar() : "") + " " + (event.getCharacters() != null ? event.getCharacters() : "") + " " + (ret ? " " : " not ") + "intercepted event " + event);
+//        Log.d("KeyInterceptor", "" + (event.getUnicodeChar() != 0 ? (char) event.getUnicodeChar() : "") + " " + (event.getCharacters() != null ? event.getCharacters() : "") + " " + (ret ? " " : " not ") + "intercepted event " + event);
 
         return ret;
     }

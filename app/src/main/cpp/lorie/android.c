@@ -30,12 +30,13 @@
 #include <android/bitmap.h>
 #include <signal.h>
 #include <arpa/inet.h>
+#include "native_log.h"
 
 Bool LOG_ENABLE;
-Bool GL_CHECK_ERROR = FALSE;
-#define ANDROID_LOG_ENABLE 0
-#define PRINT_LOG (ANDROID_LOG_ENABLE)
-#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_android", __VA_ARGS__);}
+//Bool GL_CHECK_ERROR = FALSE;
+//#define ANDROID_LOG_ENABLE 0
+//#define PRINT_LOG (ANDROID_LOG_ENABLE)
+//#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_android", __VA_ARGS__);}
 const Atom _NET_WM_WINDOW_TYPE = 267;
 const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
 const Atom _NET_WM_WINDOW_TYPE_DIALOG = 269;
@@ -66,9 +67,9 @@ extern int ucs2keysym(long ucs);
 
 extern int clientNum;
 
-#define CHECK_WITH_PROP      if(!pWin){log(ERROR, "LOG_PROPERTIES pWin null");return;}\
-                             if(!pWin->optional){log(ERROR, "LOG_PROPERTIES optional null");return;}\
-                             if(!pWin->optional->userProps){log(ERROR, "LOG_PROPERTIES userProps null");return;}
+#define CHECK_WITH_PROP      if(!pWin){loge( "LOG_PROPERTIES pWin null");return;}\
+                             if(!pWin->optional){loge( "LOG_PROPERTIES optional null");return;}\
+                             if(!pWin->optional->userProps){loge( "LOG_PROPERTIES userProps null");return;}
 #define CHECK_CHILD     pWin = pWin->firstChild; CHECK_WITH_PROP
 #define STRCPY   char * atom_value = (char *)calloc(pProper->size + 1, sizeof(char));strncpy(atom_value, propData, pProper->size);
 #define STRING_EQUAL(str1, str2) (strcmp((str1), (str2)) == 0 ? 1 : 0)
@@ -83,10 +84,10 @@ static inline JNIEnv *GetJavaEnv(void) {
 }
 
 void android_update_texture(Window window) {
-//    log(ERROR, "android_update_texture window:%x", window);
+//    loge( "android_update_texture window:%x", window);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (!attr) {
-        log(ERROR, "android_update_texture not find window:%x", window);
+        loge( "android_update_texture not find window:%x", window);
         return;
     }
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
@@ -94,7 +95,7 @@ void android_update_texture(Window window) {
     GLuint texture_id = 0;
     if (ptr) {
         texture_id = ptr->texture;
-//            log(ERROR, "android_update_texture texture:%x", ptr->texture);
+//            loge( "android_update_texture texture:%x", ptr->texture);
     }
     renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                             pixmap->drawable.height, pixmap->devPrivate.ptr, 0, window,
@@ -103,14 +104,14 @@ void android_update_texture(Window window) {
 
 void android_update_widget_texture(Widget *widget) {
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget->pWin);
-//    log(ERROR, "android_update_texture pixmap:%x", pixmap->drawable.id)
+//    loge( "android_update_texture pixmap:%x", pixmap->drawable.id)
     TexturePrivRecPtr ptr = dixLookupPrivate(&widget->pWin->devPrivates, &FDEWindowTexturePrivateKey);
     GLuint texture_id = 0;
     if (ptr) {
         texture_id = ptr->texture;
-//        log(ERROR, "android_update_texture texture:%x", ptr->texture);
+//        loge( "android_update_texture texture:%x", ptr->texture);
     }
-//    log(ERROR, "android_update_widget_texture window:%x pixmap:%x", widget->window, pixmap->drawable.id);
+//    loge( "android_update_widget_texture window:%x pixmap:%x", widget->window, pixmap->drawable.id);
     renderer_update_widget_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
                                    pixmap->drawable.height, pixmap->devPrivate.ptr, 1, widget,
                                    texture_id);
@@ -118,10 +119,10 @@ void android_update_widget_texture(Widget *widget) {
 }
 
 //void android_destroy_window(Window window) {
-//    log(DEBUG, "android_destroy_window %x", window);
+//    logd( "android_destroy_window %x", window);
 //    WindAttribute attribute = {0};
 //    if (_surface_count_window_in_type(sfWraper, window, TYPE_WINDOW, &attribute)) {
-//        log(DEBUG, "destroy_activity type window %x", window);
+//        logd( "destroy_activity type window %x", window);
 //        WindAttribute *attr = _surface_find_window(sfWraper, attribute.frame);
 //        attr->discard = 1;
 //        android_destroy_activity(attr->index, attr->pWin, attr->window, ACTION_DESTORY,
@@ -130,7 +131,7 @@ void android_update_widget_texture(Widget *widget) {
 //        _surface_delete_window(sfWraper, attr->window);
 //        glDeleteTextures(1, &attr->texture_id);
 //    } else if (_surface_count_window_in_type(sfWraper, window, TYPE_ANY, &attribute)) {
-//        log(DEBUG, "destroy_activity type any %x", window);
+//        logd( "destroy_activity type any %x", window);
 //        attribute.discard = 1;
 //        android_destroy_activity(attribute.index, attribute.pWin, attribute.window, ACTION_DESTORY,
 //                                 attribute.prop.support_wm_delete);
@@ -138,7 +139,7 @@ void android_update_widget_texture(Widget *widget) {
 //        _surface_delete_window(sfWraper, attribute.window);
 //        glDeleteTextures(1, &attribute.texture_id);
 //    } else if (_surface_count_widget(sfWraper, window)) {
-//        log(DEBUG, "destroy widget");
+//        logd( "destroy widget");
 //        Widget *widget = _surface_find_widget(sfWraper, window);
 //        widget->discard = 1;
 //        glDeleteTextures(1, &widget->texture_id);
@@ -148,21 +149,21 @@ void android_update_widget_texture(Widget *widget) {
 //}
 
 void android_destroy_window(Window window) {
-    log(DEBUG, "android_destroy_window %x", window);
+    logd( "android_destroy_window %x", window);
     _surface_log_traversal_window(sfWraper);
     WindAttribute attribute = {0};
     if(_surface_count_window_in_type(sfWraper, window, TYPE_ANY, &attribute))
     {
-        log(DEBUG, "destroy attribute:%0x", window);
+        logd( "destroy attribute:%0x", window);
         if(attribute.android_component == ANDROID_COMPONENT_VIEW){
-            log(DEBUG, "destroy view window:%x", attribute.window);
+            logd( "destroy view window:%x", attribute.window);
             android_destroy_view(0, attribute.pWin, attribute.prop.transient, attribute.window, ACTION_DISMISS);
             attribute.discard = 1;
             glDeleteTextures(1, &attribute.texture_id);
             renderer_release_window(GetJavaEnv(), window);
             _surface_delete_window(sfWraper, attribute.window);
         } else {
-            log(DEBUG, "destroy activity window:%x", attribute.frame);
+            logd( "destroy activity window:%x", attribute.frame);
             android_destroy_activity(attribute.index, attribute.pWin, attribute.window,
                                      ACTION_DESTORY,
                                      attribute.prop.support_wm_delete);
@@ -175,7 +176,7 @@ void android_destroy_window(Window window) {
     }
     else if (_surface_count_widget(sfWraper, window))
     {
-        log(DEBUG, "unmap widget:%0x", window);
+        logd( "unmap widget:%0x", window);
         Widget *widget = _surface_find_widget(sfWraper, window);
         if (!widget->inbounds) {
             android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
@@ -188,14 +189,14 @@ void android_destroy_window(Window window) {
 }
 
 void android_unmap_window(Window window) {
-    log(DEBUG, "android_unmap_window %x", window);
+    logd( "android_unmap_window %x", window);
     _surface_log_traversal_window(sfWraper);
     WindAttribute attribute = {0};
     if(_surface_count_window_in_type(sfWraper, window, TYPE_ANY, &attribute))
     {
-        log(DEBUG, "unmap attribute:%0x", window);
+        logd( "unmap attribute:%0x", window);
         if(attribute.android_component == ANDROID_COMPONENT_VIEW){
-            log(DEBUG, "unmap view window:%x", attribute.window);
+            logd( "unmap view window:%x", attribute.window);
             android_destroy_view(0, attribute.pWin, attribute.prop.transient, attribute.window, ACTION_DISMISS);
             attribute.discard = 1;
             glDeleteTextures(1, &attribute.texture_id);
@@ -204,7 +205,7 @@ void android_unmap_window(Window window) {
         } else {
             if(STRING_EQUAL("WPS文字", attribute.prop.net_wm_name))
             {
-                log(DEBUG, "unmap activity window:%x", attribute.prop.net_wm_name);
+                logd( "unmap activity window:%x", attribute.prop.net_wm_name);
                 //            android_destroy_activity(attribute.index, attribute.pWin, attribute.window,
 //                                     ACTION_DESTORY,
 //                                     attribute.prop.support_wm_delete);
@@ -218,7 +219,7 @@ void android_unmap_window(Window window) {
     }
     else if (_surface_count_widget(sfWraper, window))
     {
-        log(DEBUG, "unmap widget:%0x", window);
+        logd( "unmap widget:%0x", window);
         Widget *widget = _surface_find_widget(sfWraper, window);
         if (!widget->inbounds) {
             android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
@@ -231,7 +232,7 @@ void android_unmap_window(Window window) {
 }
 
 void android_redirect_window_1(WindowPtr pWin) {
-    log(DEBUG, "android_redirect_window  %lx", pWin->drawable.id)
+    logd( "android_redirect_window  %lx", pWin->drawable.id)
     //fill some properties
     int redirect = pWin->overrideRedirect;
     bool intransient_bounds = false;
@@ -261,7 +262,7 @@ void android_redirect_window_1(WindowPtr pWin) {
         }
     }
 
-    log(ERROR, "android_redirect_window %x redirect:%d atom:%d transient:%x, "
+    loge( "android_redirect_window %x redirect:%d atom:%d transient:%x, "
                "taskTo:%x inbounds:%d mapped:%d clientNum:%d prop.window_type %d",
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
         intransient_bounds, pWin->mapped, clientNum, aProperty.window_type);
@@ -283,7 +284,7 @@ void android_redirect_window_1(WindowPtr pWin) {
 
 
     if (_surface_count_window(sfWraper, pWin->drawable.id)) {
-        log(DEBUG, "already redirect_window window:%lx", pWin->drawable.id)
+        logd( "already redirect_window window:%lx", pWin->drawable.id)
         WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
 //        if( attr->frame) {
 //            android_create_or_map_window(*attr, attr->prop, taskTo, intransient_bounds, true);
@@ -324,7 +325,7 @@ void android_redirect_window_1(WindowPtr pWin) {
             windAttribute.child = pWin->firstChild->drawable.id;
             windAttribute.frame = pWin->drawable.id;
         }
-        log(DEBUG, "android_redirect_window  %x to redirect", pWin->drawable.id)
+        logd( "android_redirect_window  %x to redirect", pWin->drawable.id)
 //        printWindAttribute(&windAttribute);
         _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
         android_create_or_map_window(windAttribute, aProperty, taskTo, intransient_bounds, true);
@@ -406,7 +407,7 @@ if (already_redirected) {
 void android_redirect_window(WindowPtr pWin) {
     //already redirect to android
     if(_surface_count_window_any(sfWraper, pWin->drawable.id)){
-        log(DEBUG, "already redirect_window window:%lx", pWin->drawable.id)
+        logd( "already redirect_window window:%lx", pWin->drawable.id)
         WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
         JNIEnv *JavaEnv = GetJavaEnv();
         if (JavaEnv && JavaCmdEntryPointClass) {
@@ -421,9 +422,9 @@ void android_redirect_window(WindowPtr pWin) {
     int rc = property_lookup(&pProp, pWin, XA_WM_NAME);
     char *wm_name = property_copy_data(pProp->data, pProp->size);
     if(rc && STRING_EQUAL(wm_name, "android_frame")){
-        log(DEBUG, "ready to redirect_activity %lx", pWin->drawable.id)
-        log(DEBUG, "redirect_window frame %lx should lunch activity", pWin->drawable.id)
-        log(DEBUG, "     get property from its first child", pWin->drawable.id)
+        logd( "ready to redirect_activity %lx", pWin->drawable.id)
+        logd( "redirect_window frame %lx should lunch activity", pWin->drawable.id)
+        logd( "     get property from its first child", pWin->drawable.id)
         WindowPtr p;
         if (!pWin->firstChild->overrideRedirect) {
             p = pWin->firstChild;
@@ -437,14 +438,14 @@ void android_redirect_window(WindowPtr pWin) {
         return;
     }
 
-    log(DEBUG, "ready to redirect_view %lx", pWin->drawable.id)
+    logd( "ready to redirect_view %lx", pWin->drawable.id)
     //lunch system view
     PropertyPtr pType;
     rc = property_lookup_string(&pType, pWin, WINDOW_TYPE);
     ATOM type = ((ATOM*)(pType->data))[0];
-    log(DEBUG, "window type %d ", type)
+    logd( "window type %d ", type)
     if(rc && type >= _WM_WINDOW_TYPE_SYSTRAY){
-        log(DEBUG, "redirect_view %lx for systemtray ", pWin->drawable.id)
+        logd( "redirect_view %lx for systemtray ", pWin->drawable.id)
         WindAttribute *attr = android_create_attr(pWin, pWin);
         attr->android_component = ANDROID_COMPONENT_VIEW;
         attr->override_window_type = _WM_WINDOW_TYPE_SYSTRAY;
@@ -457,7 +458,7 @@ void android_redirect_window(WindowPtr pWin) {
         WindProperty windProperty;
         memset(&windProperty, 0, sizeof(WindProperty));
         property_get(pWin, &windProperty);
-        log(DEBUG, "redirect_view %lx for overrideRedirect transient:%lx leader:%lx",
+        logd( "redirect_view %lx for overrideRedirect transient:%lx leader:%lx",
             pWin->drawable.id, windProperty.transient, windProperty.leader)
         _surface_log_traversal_window(sfWraper);
         WindAttribute* attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , windProperty.transient);
@@ -465,12 +466,12 @@ void android_redirect_window(WindowPtr pWin) {
             attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , windProperty.leader);
         }
         if(attr && attr->status >= ANDROID_STATUS_FOCUSED && attr->android_component > ANDROID_COMPONENT_VIEW){
-            log(DEBUG, "redirect_widget  %lx should create view for widget", pWin->drawable.id)
+            logd( "redirect_widget  %lx should create view for widget", pWin->drawable.id)
             android_redirect_widget(pWin, windProperty, attr->window);
             property_cleanup(&windProperty);
             return;
         } else {
-            log(DEBUG, "transient window not resumed redirect_widget  %lx should create view for attr", pWin->drawable.id)
+            logd( "transient window not resumed redirect_widget  %lx should create view for attr", pWin->drawable.id)
             WindAttribute *create_attr = android_create_attr(pWin, pWin);
             create_attr->override_window_type = _WM_WINDOW_TYPE_SYSTIP;
             create_attr->android_component = ANDROID_COMPONENT_VIEW;
@@ -498,7 +499,7 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
     GLuint tid = renderer_gen_bind_texture(x, y, w, h, pixmap->devPrivate.ptr, 0);
     WindAttribute *windAttribute = (WindAttribute *)malloc(sizeof(WindAttribute));
     if (!windAttribute) {
-        log(ERROR, "Failed to allocate WindAttribute");
+        loge( "Failed to allocate WindAttribute");
         return NULL;
     }
     memset(windAttribute, 0, sizeof(WindAttribute));
@@ -518,7 +519,7 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
         windAttribute->child = pWin->firstChild->drawable.id;
         windAttribute->frame = pWin->drawable.id;
     }
-    log(DEBUG, "android_create_attr %lx redirect:%d atom:%d transient:%lx, "
+    logd( "android_create_attr %lx redirect:%d atom:%d transient:%lx, "
                "taskTo:%lx mapped:%d clientNum:%d prop.window_type %d",
         pWin->drawable.id, pWin->overrideRedirect, windProperty.window_type,
         windProperty.transient, taskTo, pWin->mapped, clientNum, windProperty.window_type);
@@ -535,7 +536,7 @@ void property_update_android(WindowPtr pWin, Atom prop, ClientPtr client) {
     }
     CHECK_WITH_PROP;
     if (STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)) {
-        log(ERROR, "property_update_android window:%lx name:%s", pWin->drawable.id, NameForAtom(prop))
+        loge( "property_update_android window:%lx name:%s", pWin->drawable.id, NameForAtom(prop))
         PropertyPtr pProp;
         int rc = dixLookupProperty(&pProp, pWin, prop, client,
                                    DixReadAccess);
@@ -552,29 +553,29 @@ void property_update_android(WindowPtr pWin, Atom prop, ClientPtr client) {
 
 void android_icon_update(int *data, int width, int height, long window) {
     if (!data || width <= 0 || height <= 0) {
-        log(ERROR, "Invalid input parameters: data=%p, width=%d, height=%d", data, width, height);
+        loge( "Invalid input parameters: data=%p, width=%d, height=%d", data, width, height);
         return;
     }
     JNIEnv *env = GetJavaEnv();
     if (!env) {
-        log(ERROR, "Failed to get JavaEnv");
+        loge( "Failed to get JavaEnv");
         return;
     }
     int dataLength = width * height;
     jintArray javaData = (*env)->NewIntArray(env, dataLength);
     if (!javaData) {
-        log(ERROR, "Failed to create jintArray");
+        loge( "Failed to create jintArray");
         return;
     }
     (*env)->SetIntArrayRegion(env, javaData, 0, dataLength, data);
     if (!JavaCmdEntryPointClass) {
-        log(ERROR, "Failed to find class com/fde/x11/Xserver");
+        loge( "Failed to find class com/fde/x11/Xserver");
         return;
     }
     jmethodID mid = (*env)->GetStaticMethodID(env, JavaCmdEntryPointClass, "createBitmapFromNative",
                                               "([IIIJ)V");
     if (!mid) {
-        log(ERROR, "Failed to get method ID for createBitmapFromNative");
+        loge( "Failed to get method ID for createBitmapFromNative");
         (*env)->DeleteLocalRef(env, javaData);
         return;
     }
@@ -583,7 +584,7 @@ void android_icon_update(int *data, int width, int height, long window) {
 }
 
 bool util_check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
-    log(DEBUG, "util_check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
+    logd( "util_check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
         x, y, w, h, x1, y1, w1, h1);
     if (x < x1 || y < y1 || (x + w) > (x1 + w1) || (y + h) > (y1 + h1)) {
         return FALSE;
@@ -601,14 +602,14 @@ bool util_check_window_bounds(WindowPtr pWindow, WindAttribute *attr) {
     int w1 = attr->width;
     int h1 = attr->height;
     bool inbound = util_check_bounds(x, y, w, h, x1, y1, w1, h1);
-    log(DEBUG, "util_check_window_bounds inbound:%d", inbound);
+    logd( "util_check_window_bounds inbound:%d", inbound);
     return inbound;
 }
 
 void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
-    log(ERROR, "android_redirect_widget window:%lx taskto:%lx", pWin->drawable.id, window);
+    loge( "android_redirect_widget window:%lx taskto:%lx", pWin->drawable.id, window);
     if (attr) {
         GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
                                               pixmap->drawable.width,
@@ -631,11 +632,11 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
         }
 
         if (attr->widgets == NULL) {
-            log(ERROR, "widget malloc failed")
+            loge( "widget malloc failed")
         }
         attr->widgets[attr->widget_size] = widget;
         attr->widget_size++;
-//        log(ERROR, "android_redirect_widget texture:%d", id);
+//        loge( "android_redirect_widget texture:%d", id);
         if (!inBound) {
             android_create_view(widget, prop, window, inBound);
         }
@@ -643,11 +644,11 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
 }
 
 void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, bool inbound) {
-    log(DEBUG, "android_create_view window:%lx wm_name:%s net_wm_name:%s inbound:%d",
+    logd( "android_create_view window:%lx wm_name:%s net_wm_name:%s inbound:%d",
         widget.window, aProperty.wm_name, aProperty.net_wm_name, inbound);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
-        log(DEBUG, "ready to create view");
+        logd( "ready to create view");
         Window aWindow = aProperty.window;
         Window aTransient = aProperty.transient;
         Window aLeader = aProperty.leader;
@@ -684,11 +685,11 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
 }
 
 void android_create_or_map_window(WindAttribute attribute, WindProperty prop, Window taskTo, bool inbound, bool create) {
-    log(DEBUG, "android_create_window window:%x wm_name:%s net_wm_name:%s inbound:%d",
+    logd( "android_create_window window:%x wm_name:%s net_wm_name:%s inbound:%d",
         attribute.window, prop.wm_name, prop.net_wm_name, inbound);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
-        log(DEBUG, "ready to create window %x", attribute.window);
+        logd( "ready to create window %x", attribute.window);
         Window aid = attribute.window;
         Window aTransient = prop.transient;
         Window aLeader = prop.leader;
@@ -730,7 +731,7 @@ void android_create_or_map_window(WindAttribute attribute, WindProperty prop, Wi
 void android_configure_window(WindowPtr pWin, short x, short y, short w, short h) {
 //    _surface_log_traversal_window(sfWraper);
 //    WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
-    log(DEBUG, "android_configure_window rediret:%d pWin:%lx x:%d y:%d w:%d h:%d",
+    logd( "android_configure_window rediret:%d pWin:%lx x:%d y:%d w:%d h:%d",
         pWin->overrideRedirect, pWin->drawable.id, x, y, w, h)
     if (!pWin->overrideRedirect) {
         return;
@@ -746,7 +747,7 @@ void android_configure_window(WindowPtr pWin, short x, short y, short w, short h
 }
 
 void android_destroy_activity(int index, WindowPtr pWin, Window window, int action, Bool wm_delete) {
-    log(DEBUG, "android_destroy_activity index:%d action:%d window:%lx clientNum:%d", index, action,
+    logd( "android_destroy_activity index:%d action:%d window:%lx clientNum:%d", index, action,
         window, clientNum);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
@@ -759,7 +760,7 @@ void android_destroy_activity(int index, WindowPtr pWin, Window window, int acti
 }
 
 void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window window, int action) {
-    log(DEBUG, "android_destroy_view index%d task_to:%p window:%lx", index, task_to, window);
+    logd( "android_destroy_view index%d task_to:%p window:%lx", index, task_to, window);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
@@ -829,7 +830,7 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
             CPU_SET(i, &mask);
 
         if (sched_setaffinity(0, sizeof(cpu_set_t), &mask) == -1)
-            log(ERROR, "Failed to set process affinity: %s", strerror(errno));
+            loge( "Failed to set process affinity: %s", strerror(errno));
     }
 
     if (getenv("TERMUX_X11_DEBUG") && !fork()) {
@@ -854,7 +855,7 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 
     if (!getenv("TMPDIR")) {
         char *error = (char *) "$TMPDIR is not set. Normally it is pointing to /tmp of a container.";
-        log(ERROR, "%s", error);
+        loge( "%s", error);
         dprintf(2, "%s\n", error);
         return JNI_FALSE;
     }
@@ -910,14 +911,14 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 
     if (!getenv("XKB_CONFIG_ROOT")) {
         char *error = (char *) "$XKB_CONFIG_ROOT is not set. Normally it is pointing to /usr/share/X11/xkb of a container.";
-        log(ERROR, "%s", error);
+        loge( "%s", error);
         dprintf(2, "%s\n", error);
         return JNI_FALSE;
     }
 
     XkbBaseDirectory = getenv("XKB_CONFIG_ROOT");
     if (access(XkbBaseDirectory, F_OK) != 0) {
-        log(ERROR, "%s is unaccessible: %s\n", XkbBaseDirectory, strerror(errno));
+        loge( "%s is unaccessible: %s\n", XkbBaseDirectory, strerror(errno));
         printf("%s is unaccessible: %s\n", XkbBaseDirectory, strerror(errno));
         return JNI_FALSE;
     }
@@ -927,16 +928,16 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
     JavaVM *vm = NULL;
     pthread_t t = 0;
     if ((*env)->GetJavaVM(env, &vm) != JNI_OK) {
-        log(ERROR, "GetJavaVM fail")
+        loge( "GetJavaVM fail")
         return JNI_TRUE;
     }
-    log(DEBUG, "vm address is %p ", vm)
+    logd( "vm address is %p ", vm)
     if (vm == NULL) {
-        log(ERROR, "VM isNULL")
+        loge( "VM isNULL")
     }
-    log(DEBUG, "t address is %p ", &t)
+    logd( "t address is %p ", &t)
     if (pthread_create(&t, NULL, startServer, vm) != 0) {
-        log(DEBUG, "t address is %p ", &t)
+        logd( "t address is %p ", &t)
         return JNI_TRUE;
     }
     return JNI_FALSE;
@@ -945,7 +946,7 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls, jobject surface, jfloat offsetX, jfloat offsetY, jfloat width, jfloat height, jint index, jlong windowPtr, jlong window) {
     jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
-    log(DEBUG, "windowChanged index:%d surface:%p", index, sfc);
+    logd( "windowChanged index:%d surface:%p", index, sfc);
     SurfaceRes *res = (SurfaceRes *) malloc(sizeof(SurfaceRes));
     res->id = (int) index;
     res->surface = sfc;
@@ -986,7 +987,7 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
     if (read(fd, &e, sizeof(e)) == sizeof(e)) {
         switch (e.type) {
             case EVENT_SCREEN_SIZE:
-                log(DEBUG, "tx11-request", "window changed: %d %d",
+                logd( "tx11-request", "window changed: %d %d",
                                     e.screenSize.width, e.screenSize.height);
                 lorieConfigureNotify(e.screenSize.width, e.screenSize.height,
                                      e.screenSize.framerate);
@@ -994,7 +995,7 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             case EVENT_TOUCH: {
                 double x, y;
                 DDXTouchPointInfoPtr touch = TouchFindByDDXID(lorieTouch, e.touch.id, FALSE);
-                log(ERROR, "EVENT_TOUCH ");
+                loge( "EVENT_TOUCH ");
                 x = (float) e.touch.x * 0xFFFF /
                     (float) pScreenPtr->GetScreenPixmap(pScreenPtr)->drawable.width;
                 y = (float) e.touch.y * 0xFFFF /
@@ -1021,14 +1022,14 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
                                     e.touch.type, e.touch.id, e.touch.x, e.touch.y);
                 valuator_mask_set_double(&mask, 0, x);
                 valuator_mask_set_double(&mask, 1, y);
-//                log(ERROR, "EVENT_TOUCH button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
+//                loge( "EVENT_TOUCH button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
 //                    e.mouse.y);
                 QueueTouchEvents(lorieTouch, e.touch.type, e.touch.id, 0, &mask);
                 break;
             }
             case EVENT_MOUSE: {
                 int flags;
-                log(ERROR, "EVENT_MOUSE button %d x:%.0f y:%.0f, down:%d", e.mouse.detail,
+                loge( "EVENT_MOUSE button %d x:%.0f y:%.0f, down:%d", e.mouse.detail,
                     e.mouse.x,
                     e.mouse.y, e.mouse.down);
                 switch (e.mouse.detail) {
@@ -1129,7 +1130,7 @@ int util_is_valid_utf8(const char *string) {
 
 void lorieSendClipboardData(const char *data) {
     if (data && conn_fd != -1) {
-        log(DEBUG, "lorieSendClipboardData data:%s", data);
+        logd( "lorieSendClipboardData data:%s", data);
         write(conn_fd, data, strlen(data));
         JNIEnv *JavaEnv = GetJavaEnv();
         if (JavaEnv && JavaCmdEntryPointClass && util_is_valid_utf8(data)) {
@@ -1206,7 +1207,7 @@ static inline void checkConnection(JNIEnv *env) {
         return;
 
     if ((retval = recv(conn_fd, &b, 1, MSG_PEEK)) <= 0 && errno != EAGAIN) {
-        log(DEBUG, "recv %d %s", retval, strerror(errno));
+        logd( "recv %d %s", retval, strerror(errno));
         jclass cls = (*env)->FindClass(env, "com/fde/x11/Xserver");
         jmethodID method = !cls ? NULL : (*env)->GetStaticMethodID(env, cls, "requestConnection",
                                                                    "()V");
@@ -1223,7 +1224,7 @@ Java_com_fde_x11_LorieView_connect(unused JNIEnv *env, unused jobject cls, jint 
     conn_fd = fd;
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
     checkConnection(env);
-    log(DEBUG, "XCB connection is successfull");
+    logd( "XCB connection is successfull");
 }
 
 static char clipboard[1024 * 1024] = {0};
@@ -1242,7 +1243,7 @@ Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls
     if (conn_fd != -1) {
         __android_log_print(ANDROID_LOG_ERROR, "native_android",
                             "lorieview sendmouseevent: x:%.0f y:%.0f", x, y);
-        log(ERROR, "lorieview sendmouseevent x:%.0f y:%.0f detail:%d down:%d", x, y, which_button,
+        loge( "lorieview sendmouseevent x:%.0f y:%.0f detail:%d down:%d", x, y, which_button,
             button_down);
         lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
         write(conn_fd, &e, sizeof(e));
@@ -1263,7 +1264,7 @@ JNIEXPORT jboolean JNICALL
 Java_com_fde_x11_LorieView_sendKeyEvent(unused JNIEnv *env, unused jobject cls, jint scan_code, jint key_code, jboolean key_down) {
     if (conn_fd != -1) {
         int code = (scan_code) ?: android_to_linux_keycode[key_code];
-        log(DEBUG, "Sending key: %d (%d %d %d)", code + 8, scan_code, key_code, key_down);
+        logd( "Sending key: %d (%d %d %d)", code + 8, scan_code, key_code, key_down);
         lorieEvent e = {.key = {.t = EVENT_KEY, .key = code + 8, .state = key_down}};
         write(conn_fd, &e, sizeof(e));
         checkConnection(env);
@@ -1278,21 +1279,21 @@ Java_com_fde_x11_LorieView_sendTextEvent(JNIEnv *env, unused jobject thiz, jbyte
         jbyte *str = (*env)->GetByteArrayElements(env, text, JNI_FALSE);
         char *p = (char *) str;
         mbstate_t state = {0};
-        log(DEBUG, "Parsing text: %.*s", length, str);
+        logd( "Parsing text: %.*s", length, str);
 
         while (*p) {
             wchar_t wc;
             size_t len = mbrtowc(&wc, p, MB_CUR_MAX, &state);
 
             if (len == (size_t) -1 || len == (size_t) -2) {
-                log(ERROR, "Invalid UTF-8 sequence encountered");
+                loge( "Invalid UTF-8 sequence encountered");
                 break;
             }
 
             if (len == 0)
                 break;
 
-            log(DEBUG, "Sending unicode event: %lc (U+%X)", wc, wc);
+            logd( "Sending unicode event: %lc (U+%X)", wc, wc);
             lorieEvent e = {.unicode = {.t = EVENT_UNICODE, .code = wc}};
             write(conn_fd, &e, sizeof(e));
             p += len;
@@ -1309,7 +1310,7 @@ Java_com_fde_x11_LorieView_sendTextEvent(JNIEnv *env, unused jobject thiz, jbyte
 JNIEXPORT void JNICALL
 Java_com_fde_x11_LorieView_sendUnicodeEvent(JNIEnv *env, unused jobject thiz, jint code) {
     if (conn_fd != -1) {
-        log(DEBUG, "Sending unicode event: %lc (U+%X)", code, code);
+        logd( "Sending unicode event: %lc (U+%X)", code, code);
         lorieEvent e = {.unicode = {.t = EVENT_UNICODE, .code = code}};
         write(conn_fd, &e, sizeof(e));
         checkConnection(env);
@@ -1328,7 +1329,7 @@ void exit(int code) {
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window) {
-    log(DEBUG, "tellFocusWindow window:%lx", window);
+    logd( "tellFocusWindow window:%lx", window);
     focusWindow = window;
     if (_surface_count_window(sfWraper, window)) {
         WindAttribute *attr = _surface_find_window(sfWraper, window);
@@ -1340,7 +1341,7 @@ Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,jint which_button, jboolean button_down, jboolean relative, jint index) {
-//    log(DEBUG, "MouseEvent x:%.0f y:%.0f detail:%d  down:%s relative:%d", x, y, which_button,
+//    logd( "MouseEvent x:%.0f y:%.0f detail:%d  down:%s relative:%d", x, y, which_button,
 //        button_down == 1 ? "true" : "false", relative);
     lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
     ValuatorMask mask;
@@ -1441,7 +1442,7 @@ int property_lookup(PropertyPtr *result, WindowPtr pWin, Atom name)
     PropertyPtr pProp;
     for (pProp = wUserProps(pWin); pProp; pProp = pProp->next)
     {
-        log(DEBUG, "检查属性: pProp=%p, propertyName=%s, 目标name=%s",
+        logd( "检查属性: pProp=%p, propertyName=%s, 目标name=%s",
             pProp, NameForAtom(pProp->propertyName), NameForAtom(name));
         if (pProp->propertyName == name)
         {
@@ -1473,18 +1474,18 @@ void property_get(WindowPtr pWin, WindProperty *prop) {
     unsigned char *propData;
     prop->window = pWin->drawable.id;
     bool overrideRedirect = pWin->overrideRedirect;
-//    log(ERROR, "prop start================================>");
-//    log(ERROR, "prop window:%lx realized:%d", pWin->drawable.id, pWin->realized);
-//    log(ERROR, "prop window:%lx overrideRedirect:%d", pWin->drawable.id, overrideRedirect);
+//    loge( "prop start================================>");
+//    loge( "prop window:%lx realized:%d", pWin->drawable.id, pWin->realized);
+//    loge( "prop window:%lx overrideRedirect:%d", pWin->drawable.id, overrideRedirect);
     while (pProper) {
         ATOM name = pProper->propertyName;
         propData = pProper->data;
-//        log(ERROR, "GET property NAME:%s", NameForAtom(name))
+//        loge( "GET property NAME:%s", NameForAtom(name))
         if (STRING_EQUAL(NameForAtom(name), WINDOW_TYPE)) {
             Atom *atoms = (Atom *) propData;
             for (int i = 0; i < pProper->size; i++) {
                 char *type = NameForAtom(atoms[i]);
-//                log(ERROR, "prop window:%lx type:%s atom:%d", pWin->drawable.id, type, atoms[i]);
+//                loge( "prop window:%lx type:%s atom:%d", pWin->drawable.id, type, atoms[i]);
                 if (atoms[i] == _WM_WINDOW_TYPE_SYSTRAY) {
                     prop->window_type = _WM_WINDOW_TYPE_SYSTRAY;
                     break;
@@ -1531,26 +1532,26 @@ void property_get(WindowPtr pWin, WindProperty *prop) {
                 } else {
                     prop->window_type = atoms[i];
                 }
-//                log(ERROR, "get_window_property window:%lx type:%d", prop->window, prop->window_type)
+//                loge( "get_window_property window:%lx type:%d", prop->window, prop->window_type)
             }
         } else if (STRING_EQUAL(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
             prop->transient = ((Window *) propData)[0];
-            // log(ERROR, "prop window:%x transient:%x", pWin->drawable.id, prop->transient);
+            // loge( "prop window:%x transient:%x", pWin->drawable.id, prop->transient);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLIENT_LEADER)) {
             prop->leader = ((Window *) propData)[0];
-//             log(ERROR, "prop window:%x leader:%x", pWin->drawable.id, prop->leader);
+//             loge( "prop window:%x leader:%x", pWin->drawable.id, prop->leader);
         } else if (STRING_EQUAL(NameForAtom(name), NET_WINDOW_NAME)) {
             char *name_copy = property_copy_data(propData, pProper->size);
             prop->net_wm_name = name_copy;
-//             log(ERROR, "prop_window:%x net_wm_name:%s", pWin->drawable.id, prop->net_wm_name);
+//             loge( "prop_window:%x net_wm_name:%s", pWin->drawable.id, prop->net_wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)) {
             char *name_copy = property_copy_data(propData, pProper->size);
             prop->wm_class = name_copy;
-//              log(ERROR, "prop_window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
+//              loge( "prop_window:%x wm_class:%s", pWin->drawable.id, prop->wm_class);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
             char *name_copy = property_copy_data(propData, pProper->size);
             prop->wm_name = name_copy;
-//             log(ERROR, "prop_window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
+//             loge( "prop_window:%x wm_name:%s", pWin->drawable.id, prop->wm_name);
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_ICON)) {
             int *icon_data = (int *) propData;
             int width = *icon_data;
@@ -1563,11 +1564,11 @@ void property_get(WindowPtr pWin, WindProperty *prop) {
                 if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_DELETE_WINDOW)) {
                     prop->support_wm_delete = TRUE;
                 }
-                // log(ERROR, "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
+                // loge( "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
             }
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_X11_PID)) {
             unsigned long pid = *((unsigned long *) propData);
-//            log(ERROR, "prop window:%x pid:%ld", pWin->drawable.id, pid);
+//            loge( "prop window:%x pid:%ld", pWin->drawable.id, pid);
             //TODO revert from steam
 //        } else if(STRING_EQUAL(NameForAtom(name), "STEAM_GAME")) {
 //            prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
@@ -1582,7 +1583,7 @@ void property_get(WindowPtr pWin, WindProperty *prop) {
 //    if(prop->window_type == 0){
 //        prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
 //    }
-    // log(ERROR, "prop end================================>");
+    // loge( "prop end================================>");
 }
 
 char *property_copy_data(const char *propData, int size) {
@@ -1603,52 +1604,52 @@ int property_get_motif_hints(Atom name, uint32_t *data, unsigned long nitems, ui
             hints.flags = data[0];
             hints.functions = data[1];
             hints.decorations = data[2];
-            log(DEBUG, "properyt_get_motif_hints - Flags: 0x%lx, Functions: 0x%lx, Decorations: 0x%lx\n",
+            logd( "properyt_get_motif_hints - Flags: 0x%lx, Functions: 0x%lx, Decorations: 0x%lx\n",
                 hints.flags, hints.functions, hints.decorations);
             if (hints.flags & MWM_HINTS_FUNCTIONS) {
-                log(DEBUG, "Functions hint present\n");
+                logd( "Functions hint present\n");
                 if (hints.functions & MWM_FUNC_ALL) {
-                    log(DEBUG, "All functions enabled\n");
+                    logd( "All functions enabled\n");
                 }
                 if (hints.functions & MWM_FUNC_RESIZE) {
-                    log(DEBUG, "Resize function enabled\n");
+                    logd( "Resize function enabled\n");
                 }
                 if (hints.functions & MWM_FUNC_MOVE) {
-                    log(DEBUG, "Move function enabled\n");
+                    logd( "Move function enabled\n");
                 }
                 if (hints.functions & MWM_FUNC_MINIMIZE) {
-                    log(DEBUG, "Minimize function enabled\n");
+                    logd( "Minimize function enabled\n");
                 }
                 if (hints.functions & MWM_FUNC_MAXIMIZE) {
-                    log(DEBUG, "Maxmize function enabled\n");
+                    logd( "Maxmize function enabled\n");
                 }
                 if (hints.functions & MWM_FUNC_CLOSE) {
-                    log(DEBUG, "Close function enabled\n");
+                    logd( "Close function enabled\n");
                 }
             }
 
             if (hints.flags & MWM_HINTS_DECORATIONS) {
-                log(DEBUG, "Decorations hint present\n");
+                logd( "Decorations hint present\n");
                 if (hints.decorations & MWM_DECOR_ALL) {
-                    log(DEBUG, "All decorations enabled\n");
+                    logd( "All decorations enabled\n");
                 }
                 if (hints.decorations & MWM_DECOR_BORDER) {
-                    log(DEBUG, "Border decoration enabled\n");
+                    logd( "Border decoration enabled\n");
                 }
                 if (hints.decorations & MWM_DECOR_RESIZE) {
-                    log(DEBUG, "Resize decoration enabled\n");
+                    logd( "Resize decoration enabled\n");
                 }
                 if (hints.decorations & MWM_DECOR_TITLE) {
-                    log(DEBUG, "Title decoration enabled\n");
+                    logd( "Title decoration enabled\n");
                 }
                 if (hints.decorations & MWM_DECOR_MENU) {
-                    log(DEBUG, "Menu decoration enabled\n");
+                    logd( "Menu decoration enabled\n");
                 }
                 if (hints.decorations & MWM_DECOR_MINIMIZE) {
-                    log(DEBUG, "Minimize decoration enabled\n");
+                    logd( "Minimize decoration enabled\n");
                 }
                 if (hints.decorations & MWM_DECOR_MAXIMIZE) {
-                    log(DEBUG, "Maxmize decoration enabled\n");
+                    logd( "Maxmize decoration enabled\n");
                 }
                 if (
                         (hints.decorations & MWM_DECOR_ALL)
@@ -1661,7 +1662,7 @@ int property_get_motif_hints(Atom name, uint32_t *data, unsigned long nitems, ui
                 }
             }
         } else {
-            log(DEBUG, "Insufficient data for MOTIF_WM_HINTS: got %lu, need %ld\n",
+            logd( "Insufficient data for MOTIF_WM_HINTS: got %lu, need %ld\n",
                 nitems, MWM_HINTS_ELEMENTS);
         }
     }
@@ -1670,32 +1671,32 @@ int property_get_motif_hints(Atom name, uint32_t *data, unsigned long nitems, ui
 
 jobject property_icon_convert_bitmap(int *data, int width, int height) {
     if (!data || width <= 0 || height <= 0) {
-        log(ERROR, "Invalid input parameters: data=%p, width=%d, height=%d", data, width, height);
+        loge( "Invalid input parameters: data=%p, width=%d, height=%d", data, width, height);
         return NULL;
     }
-//    log(DEBUG, "CONVERT_ICON width:%d height:%d", width, height);
+//    logd( "CONVERT_ICON width:%d height:%d", width, height);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (!JavaEnv) {
-        log(ERROR, "Failed to get JavaEnv");
+        loge( "Failed to get JavaEnv");
         return NULL;
     }
     jclass bitmapClass = (*JavaEnv)->FindClass(JavaEnv, "android/graphics/Bitmap");
     if (!bitmapClass) {
-        log(ERROR, "Failed to find class android/graphics/Bitmap");
+        loge( "Failed to find class android/graphics/Bitmap");
         return NULL;
     }
     jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass,
                                                                  "createBitmap",
                                                                  "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
     if (!createBitmapMethod) {
-        log(ERROR, "Failed to get method ID for createBitmap");
+        loge( "Failed to get method ID for createBitmap");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
         return NULL;
     }
     jstring configName = (*JavaEnv)->NewStringUTF(JavaEnv, "ARGB_8888");
     jclass bitmapConfigClass = (*JavaEnv)->FindClass(JavaEnv, "android/graphics/Bitmap$Config");
     if (!bitmapConfigClass) {
-        log(ERROR, "Failed to find class android/graphics/Bitmap$Config");
+        loge( "Failed to find class android/graphics/Bitmap$Config");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
         return NULL;
@@ -1704,7 +1705,7 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
     jmethodID valueOfMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapConfigClass, "valueOf",
                                                             "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
     if (!valueOfMethod) {
-        log(ERROR, "Failed to get method ID for valueOf");
+        loge( "Failed to get method ID for valueOf");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
@@ -1714,7 +1715,7 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
     jobject bitmapConfig = (*JavaEnv)->CallStaticObjectMethod(JavaEnv, bitmapConfigClass,
                                                               valueOfMethod, configName);
     if (!bitmapConfig) {
-        log(ERROR, "Failed to create Bitmap$Config object");
+        loge( "Failed to create Bitmap$Config object");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
@@ -1724,7 +1725,7 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
     jobject bitmap = (*JavaEnv)->CallStaticObjectMethod(JavaEnv, bitmapClass, createBitmapMethod,
                                                         width, height, bitmapConfig);
     if (!bitmap) {
-        log(ERROR, "Failed to create Bitmap object");
+        loge( "Failed to create Bitmap object");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
@@ -1734,7 +1735,7 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
 
     void *bitmapPixels;
     if (AndroidBitmap_lockPixels(JavaEnv, bitmap, &bitmapPixels) < 0) {
-        log(ERROR, "Failed to lock bitmap pixels");
+        loge( "Failed to lock bitmap pixels");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
@@ -1744,7 +1745,7 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
     }
 
     if (!bitmapPixels) {
-        log(ERROR, "Bitmap pixels pointer is NULL");
+        loge( "Bitmap pixels pointer is NULL");
         AndroidBitmap_unlockPixels(JavaEnv, bitmap);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfigClass);
@@ -1772,7 +1773,7 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
     (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
     (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
 
-    log(DEBUG, "property_icon_convert_bitmap success width: %d, height: %d", width, height)
+    logd( "property_icon_convert_bitmap success width: %d, height: %d", width, height)
     return bitmap;
 }
 #endif

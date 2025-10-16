@@ -13,7 +13,7 @@
 #endif
 
 #define log(level, fmt, ...) \
-    if (PRINT_LOG) { \
+    if (APP_LOG) { \
         if (strchr(fmt, '%') == NULL) { \
             __android_log_print(level, "cc_" __FILENAME__, "[%s] %s", __func__, fmt); \
         } else { \
@@ -21,7 +21,7 @@
         } \
     }
 
-#ifdef PRINT_LOG
+#ifdef APP_LOG
     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
     #define logi(...) log(ANDROID_LOG_INFO, __VA_ARGS__)     // INFO
     #define logw(...) log(ANDROID_LOG_WARN, __VA_ARGS__)     // WARN

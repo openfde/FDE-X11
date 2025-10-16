@@ -203,7 +203,7 @@ public class Xserver {
                     message = new EventMessage(EventType.X_START_VIEW, "start some view as systip",
                             new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
                             new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete, support_motif, bitmap)));
-                    Log.d(TAG, "startOrUpdateWindow: " + message.getProperty());
+                    FLog.s(TAG, "startOrUpdateWindow: " + message.getProperty());
                     break;
                 default:
                     break;
@@ -224,14 +224,14 @@ public class Xserver {
             }
         }
 
-//        Log.d(TAG, "startOrUpdateWindow: " + message.getProperty());
+//        FLog.s(TAG, "startOrUpdateWindow: " + message.getProperty());
         if (message != null) {
             EventBus.getDefault().post(message);
         }
     }
 
     public static void xserverMapWindow(long window){
-        Log.d(TAG, "xserverMapWindow() called with: window = [" + Long.toHexString(window) + "]");
+        FLog.s(TAG, "xserverMapWindow() called with: window = [" + Long.toHexString(window) + "]");
         WindowAttribute attr = WindowManager.taskIdMap.get(window);
         if(attr != null && attr.getTaskId() != 0){
             ActivityManager am = (ActivityManager)
@@ -312,7 +312,7 @@ public class Xserver {
      * @param text
      */
     public static void updateXserverCliptext(String text){
-//        Log.d(TAG, "updateXserverCliptext: text:" + text + "");
+//        FLog.s(TAG, "updateXserverCliptext: text:" + text + "");
         if(context.get() != null && !TextUtils.isEmpty(text)){
             ClipData mClipData = ClipData.newPlainText("x11", text);
             android.content.ClipboardManager mClipboardManager = (ClipboardManager) context.get().getSystemService(Context.CLIPBOARD_SERVICE);
@@ -329,7 +329,7 @@ public class Xserver {
     public static void setWindowIconFromManager(Bitmap bitmap, long window){
         Context ctx = context.get();
         if(ctx == null){
-            Log.d(TAG, "context  == null ");
+            FLog.s(TAG, "context  == null ");
             return;
         }
         FLog.s(TAG, window, "getWindowIconFromManager: bitmap:" + bitmap + ", window:" + window + "");
@@ -348,7 +348,7 @@ public class Xserver {
         Bitmap bitmap = Bitmap.createBitmap(data, width, height, Bitmap.Config.ARGB_8888);
         Context ctx = context.get();
         if(ctx == null){
-            Log.d(TAG, "context  == null ");
+            FLog.s(TAG, "context  == null ");
             return;
         }
         FLog.s(TAG, window, "createBitmapFromNative: bitmap:" + bitmap + ", window:" + Long.toHexString(window) + "");
@@ -363,7 +363,7 @@ public class Xserver {
 
     //called from native code
     public static void  updateSystemTrayIcon(Bitmap bitmap, long window, long action, String title){
-        Log.d(TAG, "updateSystemTrayIcon() called with: bitmap = [" + bitmap + "], window = [" + window + "], " +
+        FLog.s(TAG, "updateSystemTrayIcon() called with: bitmap = [" + bitmap + "], window = [" + window + "], " +
                 "action = [" + action + "], title = [" + title + "]");
         Context ctx = context.get();
         if(ctx != null){

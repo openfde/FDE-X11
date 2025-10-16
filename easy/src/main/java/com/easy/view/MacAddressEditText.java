@@ -350,7 +350,7 @@ public class MacAddressEditText extends View implements HexKeyboardListener {
 
     @Override
     public void onComplete() {
-        Log.d("TAG", "onComplete: " + getMacAddress());
+//        Log.d("TAG", "onComplete: " + getMacAddress());
     }
 
     /**

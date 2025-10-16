@@ -10,6 +10,14 @@ cmake_minimum_required(VERSION 3.22.1)
 # with ${CMAKE_PROJECT_NAME} (both CMake variables are in-sync within the top level
 # build script scope).
 project("fusionwindowmanager")
+if(PRINT_LOG)
+        add_compile_definitions(PRINT_LOG=1)
+        add_compile_definitions(LOGGING_ENABLED=1)
+else()
+        add_compile_definitions(PRINT_LOG=0)
+        add_compile_definitions(LOGGING_ENABLED=0)
+endif()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 # Creates and names a library, sets it as either STATIC

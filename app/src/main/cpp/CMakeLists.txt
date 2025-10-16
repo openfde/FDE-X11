@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 project(lorie)
-
+if(APP_LOG)
+    add_compile_definitions(APP_LOG=1)
+    add_compile_definitions(LOGGING_ENABLED=1)
+else()
+    add_compile_definitions(APP_LOG=0)
+    add_compile_definitions(LOGGING_ENABLED=0)
+endif()
 set(can_use_assembler TRUE)
 enable_language(ASM)
 

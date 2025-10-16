@@ -15,6 +15,7 @@ android {
             cmake {
 //                arguments "-DANDROID_STL=c++_shared"
 //                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
+                arguments "-DPRINT_LOG=1"
             }
         }
 
@@ -27,6 +28,20 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            externalNativeBuild {
+                cmake {
+                    arguments "-DPRINT_LOG=0" // Debug模式开启日志
+                }
+            }
+        }
+
+        debug {
+            // 在Debug构建类型中，可以覆盖或传递特定的宏定义
+            externalNativeBuild {
+                cmake {
+                    arguments "-DPRINT_LOG=1" // Debug模式开启日志
+                }
+            }
         }
     }
     externalNativeBuild {

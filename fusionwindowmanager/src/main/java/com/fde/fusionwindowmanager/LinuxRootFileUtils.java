@@ -41,7 +41,7 @@ public class LinuxRootFileUtils {
 
     public static String getUserName(Context context){
         String homeDir = getLinuxRootFileName(context) + File.separator + "home";
-        Log.d("TAG", "getUserName: " + homeDir);
+//        Log.d("TAG", "getUserName: " + homeDir);
         File homeFile = new File(homeDir);
         if(!homeFile.exists()){
             return null;

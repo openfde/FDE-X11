@@ -79,17 +79,18 @@ from The Open Group.
 #include "inpututils.h"
 #include "lorie.h"
 #include "../xserver/dix/enterleave.h"
+#include "native_log.h"
 
 #define unused __attribute__((unused))
 #define wrap(priv, real, mem, func) { priv->mem = real->mem; real->mem = func; }
 #define unwrap(priv, real, mem) { real->mem = priv->mem; }
 #define USAGE (AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN)
-#define INITOUTPUT_LOG_ENABLE 0
-extern Bool LOG_ENABLE;
-#define PRINT_LOG INITOUTPUT_LOG_ENABLE
-#define log(prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "native_InitOutput", __VA_ARGS__);}
-
-#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "native_InitOutput", __VA_ARGS__);}
+//#define INITOUTPUT_LOG_ENABLE 0
+//extern Bool LOG_ENABLE;
+//#define PRINT_LOG INITOUTPUT_LOG_ENABLE
+//#define logd((prio, ...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ ## prio, "native_InitOutput", __VA_ARGS__);}
+//
+//#define logh(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_DEBUG, "native_InitOutput", __VA_ARGS__);}
 
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern void android_update_cursor(int w, int h, int xhot, int yhot, void *data);
@@ -132,8 +133,8 @@ static void lorieInitSelectionCallback();
 
 void
 ddxGiveUp(unused enum ExitCode error) {
-    logh("ddxGiveUp");
-    log(ERROR, "Server stopped (%d)", error);
+    logd("ddxGiveUp");
+    loge( "Server stopped (%d)", error);
     CloseWellKnownConnections();
     UnlockServer();
     exit(error);
@@ -142,7 +143,7 @@ ddxGiveUp(unused enum ExitCode error) {
 static void* ddxReadyThread(unused void* cookie) {
     if (xstartup && serverGeneration == 1) {
         pid_t pid = fork();
-        logh("ddxReadyThread pid:%d", pid);
+        logd("ddxReadyThread pid:%d", pid);
         if (!pid) {
             char DISPLAY[16] = "";
             sprintf(DISPLAY, ":%s", display);
@@ -178,7 +179,7 @@ static void* ddxReadyThread(unused void* cookie) {
 
 void
 ddxReady(void) {
-    logh("ddxReady");
+    logd("ddxReady");
     pthread_t t;
     pthread_create(&t, NULL, ddxReadyThread, NULL);
 }
@@ -189,7 +190,7 @@ OsVendorInit(void) {
 
 void
 OsVendorFatalError(unused const char *f, unused va_list args) {
-    log(ERROR, f, args);
+    loge("reson %s",f, args);
 }
 
 #if defined(DDXBEFORERESET)
@@ -214,7 +215,7 @@ void ddxUseMsg(void) {
 }
 
 int ddxProcessArgument(unused int argc, unused char *argv[], unused int i) {
-    logh("ddxProcessArgument argc:%d argv:%s i:%d", argc, argv[i], i);
+    logd("ddxProcessArgument argc:%d argv:%s i:%d", argc, argv[i], i);
 
 
     if (strcmp(argv[i], "-xstartup") == 0) {  /* -xstartup "command" */
@@ -257,7 +258,7 @@ static RRModePtr lorieCvt(int width, int height, int framerate) {
     char name[128];
     xRRModeInfo modeinfo = {0};
     RRModePtr mode;
-    logh("lorieCvt width:%d height:%d framerate:%d", width, height, framerate);
+    logd("lorieCvt width:%d height:%d framerate:%d", width, height, framerate);
 
     info = libxcvt_gen_mode_info(width, height, 30, 0, 0);
 
@@ -318,7 +319,7 @@ static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, Curs
         CARD32 data[bits->width * bits->height * 4];
 
         lorieConvertCursor(pCurs, data);
-        logh("lorieSetCursor: updating cursor w:%d  h:%d xhot:%d yhot:%d \n",
+        logd("lorieSetCursor: updating cursor w:%d  h:%d xhot:%d yhot:%d \n",
              bits->width, bits->height, bits->xhot, bits->yhot);
 //        renderer_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
         android_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
@@ -328,7 +329,7 @@ static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, Curs
 
     if (x0 >= 0 && y0 >= 0) {
         init_cusor++;
-//        logh("lorieSetCursor >=0 x0:%d y0:%d", x0, y0);
+//        logd("lorieSetCursor >=0 x0:%d y0:%d", x0, y0);
         if (init_cusor > 1) {
             lorieMoveCursor(NULL, NULL, x0, y0);
         }
@@ -351,7 +352,7 @@ static miPointerScreenFuncRec loriePointerCursorFuncs = {
 };
 
 static void lorieUpdateBuffer(void) {
-    logh("lorieUpdateBuffer legacydraw %d", pvfb->root.legacyDrawing);
+    logd("lorieUpdateBuffer legacydraw %d", pvfb->root.legacyDrawing);
     AHardwareBuffer_Desc d0 = {}, d1 = {};
     AHardwareBuffer *new = NULL, *old = pvfb->root.buffer;
     int status, wasLocked = pvfb->root.locked;
@@ -390,7 +391,7 @@ static void lorieUpdateBuffer(void) {
         status = AHardwareBuffer_lock(new, USAGE, -1, NULL, &data0);
         if (status != 0)
             FatalError("Failed to lock root window pixmap (error %d)", status);
-        logh("lorieUpdateBuffer pvfb->root.buffer = %p", new);
+        logd("lorieUpdateBuffer pvfb->root.buffer = %p", new);
         pvfb->root.buffer = new;
         pvfb->root.locked = TRUE;
 
@@ -430,7 +431,7 @@ static void lorieUpdateBuffer(void) {
 }
 
 static inline void loriePixmapUnlock(PixmapPtr pixmap) {
-    logh("loriePixmapUnlock");
+    logd("loriePixmapUnlock");
     if (pvfb->root.legacyDrawing)
         return renderer_update_root(pixmap->drawable.width, pixmap->drawable.height, pixmap->devPrivate.ptr, pvfb->root.flip);
 
@@ -442,7 +443,7 @@ static inline void loriePixmapUnlock(PixmapPtr pixmap) {
 }
 
 static inline Bool loriePixmapLock(PixmapPtr pixmap) {
-    logh("loriePixmapLock");
+    logd("loriePixmapLock");
     AHardwareBuffer_Desc desc = {};
     void *data;
     int status;
@@ -467,22 +468,22 @@ static inline Bool loriePixmapLock(PixmapPtr pixmap) {
 }
 
 static void lorieTimerCallback(int fd, unused int r, void *arg) {
-//    logh("lorieTimerCallback");
+//    logd("lorieTimerCallback");
     char dummy[8];
     read(fd, dummy, 8);
     if (renderer_should_redraw() && RegionNotEmpty(DamageRegion(pvfb->damage))) {
-        logh("RegionNotEmpty");
+        logd("RegionNotEmpty");
         int redrawn = FALSE;
         ScreenPtr pScreen = (ScreenPtr) arg;
 
         loriePixmapUnlock(pScreen->GetScreenPixmap(pScreen));
         redrawn = renderer_redraw(pvfb->env, pvfb->root.flip, false);
         if (loriePixmapLock(pScreen->GetScreenPixmap(pScreen)) && redrawn){
-//            logh("DamageEmpty");
+//            logd("DamageEmpty");
             DamageEmpty(pvfb->damage);
         }
     } else if (pvfb->cursorMoved){
-        logh("RegionEmpty");
+        logd("RegionEmpty");
 //        renderer_redraw(pvfb->env, pvfb->root.flip, true);
     }
 
@@ -497,7 +498,7 @@ static CARD32 lorieFramecounter(unused OsTimerPtr timer, unused CARD32 time, unu
 static Bool lorieCreateScreenResources(ScreenPtr pScreen) {
     Bool ret;
     pScreen->CreateScreenResources = pvfb->CreateScreenResources;
-    logh("lorieCreateScreenResources");
+    logd("lorieCreateScreenResources");
     ret = pScreen->CreateScreenResources(pScreen);
     if (!ret)
         return FALSE;
@@ -526,7 +527,7 @@ lorieCloseScreen(ScreenPtr pScreen) {
 static Bool
 lorieRRScreenSetSize(ScreenPtr pScreen, CARD16 width, CARD16 height, unused CARD32 mmWidth, unused CARD32 mmHeight) {
     SetRootClip(pScreen, ROOT_CLIP_NONE);
-    logh("lorieRRScreenSetSize width:%d height:%d", width, height);
+    logd("lorieRRScreenSetSize width:%d height:%d", width, height);
     pvfb->root.width = pScreen->width = width;
     pvfb->root.height = pScreen->height = height;
     pScreen->mmWidth = ((double) (width)) * 25.4 / monitorResolution;
@@ -562,7 +563,7 @@ lorieRandRInit(ScreenPtr pScreen) {
     RROutputPtr output;
     RRCrtcPtr crtc;
     RRModePtr mode;
-    logh("lorieRandRInit");
+    logd("lorieRandRInit");
 
     if (!RRScreenInit(pScreen))
         return FALSE;
@@ -609,7 +610,7 @@ static int lorieGetModifiers(unused ScreenPtr screen, unused uint32_t format, ui
 
 static Bool
 lorieScreenInit(ScreenPtr pScreen, unused int argc, unused char **argv) {
-    logh("lorieScreenInit");
+    logd("lorieScreenInit");
     static int timerFd = -1;
     pScreenPtr = pScreen;
     if (timerFd == -1) {
@@ -671,7 +672,7 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
         res->pWin = pScreenPtr->root;
     }
     init_cusor = 0;
-    logh("lorieChangeWindow buffer:%p  id:%d surface:%p ",
+    logd("lorieChangeWindow buffer:%p  id:%d surface:%p ",
          pvfb->root.buffer, res->id, surface);
     renderer_set_window_each(pvfb->env, res, pvfb->root.buffer);
 //    renderer_set_window(pvfb->env, surface, pvfb->root.buffer);
@@ -687,7 +688,7 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
 void lorieConfigureNotify(int width, int height, int framerate) {
     ScreenPtr pScreen = pScreenPtr;
     RROutputPtr output = RRFirstOutput(pScreen);
-    logh("lorieConfigureNotify");
+    logd("lorieConfigureNotify");
     if (output && width && height && (pScreen->width != width || pScreen->height != height)) {
         CARD32 mmWidth, mmHeight;
         RRModePtr mode = lorieCvt(width, height, framerate);
@@ -713,7 +714,7 @@ InitOutput(ScreenInfo * screen_info, int argc, char **argv) {
     int depths[] = { 1, 4, 8, 15, 16, 24, 32 };
     int bpp[] =    { 1, 8, 8, 16, 16, 32, 32 };
     int i;
-    logh("InitOutput");
+    logd("InitOutput");
 
     if (monitorResolution == 0)
         monitorResolution = 96;
@@ -815,13 +816,13 @@ static Atom xaCLIPBOARD = 0, xaTARGETS = 0, xaSTRING = 0, xaUTF8_STRING = 0;
 static Bool clipboardEnabled = FALSE;
 
 void lorieEnableClipboardSync(Bool enable) {
-    logh("lorieEnableClipboardSync enable:%d", enable);
+    logd("lorieEnableClipboardSync enable:%d", enable);
     clipboardEnabled = enable;
 }
 
 static void lorieSelectionRequest(Atom selection, Atom target) {
     Selection *pSel;
-    log(DEBUG, "lorieSelectionRequest selection:%s target:%s \n", NameForAtom(selection),
+    logd( "lorieSelectionRequest selection:%s target:%s \n", NameForAtom(selection),
         NameForAtom(target));
 
     if (clipboardEnabled && dixLookupSelection(&pSel, selection, serverClient, DixGetAttrAccess) == Success) {
@@ -897,12 +898,12 @@ static void lorieHandleSelection(Atom target) {
     if (dixLookupProperty(&prop, pScreenPtr->root, target, serverClient, DixReadAccess) != Success)
         return;
 
-    log(DEBUG, "Selection notification for CLIPBOARD (target %s, type %s)\n", NameForAtom(target), NameForAtom(prop->type));
+    logd( "Selection notification for CLIPBOARD (target %s, type %s)\n", NameForAtom(target), NameForAtom(prop->type));
 
     if (target == xaTARGETS && prop->type == XA_ATOM && prop->format == 32) {
         Atom *list = (const Atom*)prop->data;
         for (size_t i = 0; i < prop->size; i++){
-            log(ERROR, "list selection:%s", NameForAtom(list[i]));
+            loge( "list selection:%s", NameForAtom(list[i]));
         }
 
         if (lorieHasAtom(xaUTF8_STRING, (const Atom*)prop->data, prop->size))
@@ -919,7 +920,7 @@ static void lorieHandleSelection(Atom target) {
 
         lorieConvertLF(prop->data,  filtered, prop->size);
         lorieLatin1ToUTF8((unsigned char*) utf8, (unsigned char*) filtered);
-        log(DEBUG, "Sending clipboard to clients astring (%zu bytes)\n", strlen(utf8));
+        logd( "Sending clipboard to clients astring (%zu bytes)\n", strlen(utf8));
         lorieSendClipboardData(utf8);
     } else if (target == xaUTF8_STRING && prop->type == xaUTF8_STRING && prop->format == 8) {
         char filtered[prop->size + 1];
@@ -932,7 +933,7 @@ static void lorieHandleSelection(Atom target) {
         memset(filtered, 0, prop->size + 1);
         lorieConvertLF(prop->data, filtered, prop->size);
 
-        log(DEBUG, "Sending clipboard to clients utf8 (%zu bytes) \n", strlen(filtered));
+        logd( "Sending clipboard to clients utf8 (%zu bytes) \n", strlen(filtered));
         lorieSendClipboardData(filtered);
     }
 }

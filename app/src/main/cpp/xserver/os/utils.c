@@ -230,7 +230,7 @@ OsSignal(int sig, OsSigHandlerPtr handler)
 #endif
 }
 extern Bool LOG_ENABLE;
-#define PRINT_LOG (1 && LOG_ENABLE)
+#define PRINT_LOG (0 && LOG_ENABLE)
 #define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_utils", __VA_ARGS__);}
 #define loge(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_ERROR, "native_utils", __VA_ARGS__);}
 

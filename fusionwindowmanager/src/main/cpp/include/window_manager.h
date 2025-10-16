@@ -19,9 +19,9 @@
 #include <android/log.h>
 #include <set>
 #include <jni.h>
-// #include "ewmh_icccm.h"
 #include <X11/Xatom.h>
 #include <android/bitmap.h>
+#include "native_log.h"
 
 extern "C"
 {
@@ -55,32 +55,20 @@ static jclass staticClass = nullptr;
         PointerMotionMask 
 
 #define MAIN_EVENT_MASK BASE_EVENT_MASK | ExposureMask
-#define MAIN_EVENT_MASK BASE_EVENT_MASK
 
 static gboolean compositor = TRUE;
 static vblankMode vblank_mode = VBLANK_AUTO;
 
-#define PRINT_LOG 0
-#define log(...)                                                          \
-    if (PRINT_LOG)                                                        \
-    {                                                                     \
-        __android_log_print(ANDROID_LOG_DEBUG, "native_wm", __VA_ARGS__); \
-    }
-#define loge(...)                                                         \
-    if (PRINT_LOG)                                                        \
-    {                                                                     \
-        __android_log_print(ANDROID_LOG_ERROR, "native_wm", __VA_ARGS__); \
-    }
 #define PRINT_XERROR 0
 #define CHECK(condition)         \
     if (condition)               \
     {                            \
-        log("#condition fatal"); \
+        logd("#condition fatal"); \
     }
 #define CHECK_EQ(val1, val2) \
     if (val1 != val2)        \
     {                        \
-        log("not equal");    \
+        logd("not equal");    \
     }
 #define CLIPMANAGER_ENABLE 1
 #define _NET_WM_STATE_REMOVE 0
@@ -114,11 +102,7 @@ static vblankMode vblank_mode = VBLANK_AUTO;
 #define SYSTEM_TRAY_CANCEL_MESSAGE  2
 #define SYSTEM_TRAY_UNDOCK          3
 
-#define SYSTEM_TRAY_ICON_WIDTH 18
-#define STATUA_BAR_HEIGHT 24
-#define STATUA_BAR_ICON_WIDTH 30
-
-#define MWM_HINTS_DECORATIONS    (1L << 1) // 使用decorations字段
+#define MWM_HINTS_DECORATIONS    (1L << 1)
 
 typedef struct {
     unsigned long flags;
@@ -156,27 +140,17 @@ public:
     int mapWindow(long window);
     int raiseWindow(long window);
     bool isNormalWindow(long window);
-    bool isInFrameMap(long window);
     void initCompositor();
     int stoped = False;
     jint sendClipText(const char *pJstring);
     jint sendClipFile(const char *pJstring);
-
     jint circulaSubWindows(jlong window, jboolean lowest);
-
     void setClipData(char *text, char *path);
 
 private:
-    // Handle to the underlying Xlib Display struct.
     Display *display_;
-    // new Handle to the window manager's display info.
     DisplayInfo *display_info;
-    // Handle to root window.
     const Window root_;
-    // Frames a top-level window.
-    void Frame(Window w, bool was_created_before_window_manager);
-    // Unframes a client window.
-    void Unframe(Window w);
     int screen_;
     Window back_window;
     int width_ = 1920;

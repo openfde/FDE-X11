@@ -26,12 +26,14 @@
 #include <iomanip>
 #include <android/log.h>
 #include <vector>
-extern Bool LOG_ENABLE;
-#define SURFACE_LOG_ENABLE 0
-#define PRINT_LOG (SURFACE_LOG_ENABLE)
-#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_sm", __VA_ARGS__);}              \
+#include "native_log.h"
 
-#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "native_sm", __VA_ARGS__);}              \
+//extern Bool LOG_ENABLE;
+//#define SURFACE_LOG_ENABLE 0
+//#define PRINT_LOG (SURFACE_LOG_ENABLE)
+//#define log(...) if(PRINT_LOG){ __android_log_print(ANDROID_LOG_DEBUG, "native_sm", __VA_ARGS__);}              \
+//
+//#define loge(...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ERROR, "native_sm", __VA_ARGS__);}              \
 
 //const Atom _NET_WM_WINDOW_TYPE = 267;
 //const Atom _NET_WM_WINDOW_TYPE_COMBO = 268;
@@ -77,7 +79,7 @@ public:
 private:
     std::map<Window, WindAttribute> window_attrs;
     int get_avilable_index(Atom atom);
-    void LogWindAttribute(Window window,WindAttribute attr);
+    static void LogWindAttribute(Window window, const WindAttribute  &attr);
     int index_normal = 0;
 
 };

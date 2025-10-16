@@ -2,7 +2,6 @@
 #include <string>
 #include "include/xcb/xcb.h"
 #include "include/X11/Xlib.h"
-#include <android/log.h>
 #include "include/window_manager.h"
 WindowManager *window_manager;
 extern JavaVM *jniVM;
@@ -22,7 +21,7 @@ JNIEXPORT void JNICALL createXWindow(JNIEnv * env, jobject obj)
     // 连接到 X 服务器
     display = XOpenDisplay(NULL);
     if (display == NULL) {
-        log("Cannot open display\n");
+        logd("Cannot open display\n");
         exit(1);
     }
 
@@ -80,7 +79,7 @@ JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display
         window_manager->sendClipFile(file);
     }
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     window_manager->Run();
@@ -89,7 +88,7 @@ JNIEXPORT jint JNICALL connect2Server(JNIEnv * env, jobject obj, jstring display
 
 JNIEXPORT jint JNICALL moveWindow(JNIEnv * env, jobject obj, jlong ptr, jint x, jint y){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->moveWindow(ptr, x, y);
@@ -97,7 +96,7 @@ JNIEXPORT jint JNICALL moveWindow(JNIEnv * env, jobject obj, jlong ptr, jint x, 
 
 JNIEXPORT jint JNICALL configureWindow(JNIEnv * env, jobject obj, jlong wid, jint x, jint y, jint w, jint h){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->configureWindow(wid, x, y, w, h);
@@ -105,7 +104,7 @@ JNIEXPORT jint JNICALL configureWindow(JNIEnv * env, jobject obj, jlong wid, jin
 
 JNIEXPORT jint JNICALL resizeWindow(JNIEnv * env, jobject obj, jlong ptr, jint x, jint y){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->resizeWindow(ptr, x, y);
@@ -113,7 +112,7 @@ JNIEXPORT jint JNICALL resizeWindow(JNIEnv * env, jobject obj, jlong ptr, jint x
 
 JNIEXPORT jint JNICALL closeWindow(JNIEnv * env, jobject obj, jlong xid){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->closeWindow(xid);
@@ -121,7 +120,7 @@ JNIEXPORT jint JNICALL closeWindow(JNIEnv * env, jobject obj, jlong xid){
 
 JNIEXPORT jint JNICALL unmapWindow(JNIEnv * env, jobject obj, jlong xid){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->unmapWindow(xid);
@@ -129,7 +128,7 @@ JNIEXPORT jint JNICALL unmapWindow(JNIEnv * env, jobject obj, jlong xid){
 
 JNIEXPORT jint JNICALL mapWindow(JNIEnv * env, jobject obj, jlong xid){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->mapWindow(xid);
@@ -137,7 +136,7 @@ JNIEXPORT jint JNICALL mapWindow(JNIEnv * env, jobject obj, jlong xid){
 
 JNIEXPORT jint JNICALL raiseWindow(JNIEnv * env, jobject obj, jlong ptr){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->raiseWindow(ptr);
@@ -146,7 +145,7 @@ JNIEXPORT jint JNICALL raiseWindow(JNIEnv * env, jobject obj, jlong ptr){
 
 JNIEXPORT jint JNICALL circulaSubWindows(JNIEnv * env, jobject obj, jlong window, jboolean lowest){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     return window_manager->circulaSubWindows(window, lowest);
@@ -154,7 +153,7 @@ JNIEXPORT jint JNICALL circulaSubWindows(JNIEnv * env, jobject obj, jlong window
 
 JNIEXPORT jint JNICALL sendClipText(JNIEnv * env, jobject obj, jstring string){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     jboolean isCopy = false;
@@ -164,7 +163,7 @@ JNIEXPORT jint JNICALL sendClipText(JNIEnv * env, jobject obj, jstring string){
 
 JNIEXPORT jint JNICALL sendClipFile(JNIEnv * env, jobject obj, jstring string){
     if(!window_manager){
-        log("Failed to initialize window manager.");
+        logd("Failed to initialize window manager.");
         return False;
     }
     jboolean isCopy = false;
@@ -174,7 +173,7 @@ JNIEXPORT jint JNICALL sendClipFile(JNIEnv * env, jobject obj, jstring string){
 
 JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
     if(window_manager){
-        log("disconnect2Server");
+        logd("disconnect2Server");
         window_manager->stoped = True;
         delete window_manager;
         window_manager = NULL;

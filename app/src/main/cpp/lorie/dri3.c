@@ -72,14 +72,15 @@
 #include <present.h>
 #include "lorie.h"
 #include "c_interface.h"
+#include "native_log.h"
 
 #define NSEC_PER_SEC 1000000000ULL
 #define DEFAULT_REFRESH_RATE 60  // 默认60Hz
 #define REFRESH_INTERVAL (NSEC_PER_SEC / DEFAULT_REFRESH_RATE)
-extern Bool LOG_ENABLE;
-#define ANDROID_LOG_ENABLE 0
-#define PRINT_LOG (ANDROID_LOG_ENABLE)
-#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_dri3", __VA_ARGS__);}
+//extern Bool LOG_ENABLE;
+//#define ANDROID_LOG_ENABLE 0
+//#define PRINT_LOG (ANDROID_LOG_ENABLE)
+//#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_dri3", __VA_ARGS__);}
 
 #define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
@@ -239,7 +240,7 @@ static void lorieFillSpans(DrawablePtr pDrawable, GCPtr pGC, int nInit, DDXPoint
 }
 
 static void lorieSetSpans(DrawablePtr pDrawable, GCPtr pGC, char * psrc, DDXPointPtr ppt, int * pwidth, int nspans, int fSorted) {
-//    log(ERROR, "DRI3: lorieSetSpans");
+//    logd( "DRI3: lorieSetSpans");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -249,7 +250,7 @@ static void lorieSetSpans(DrawablePtr pDrawable, GCPtr pGC, char * psrc, DDXPoin
 }
 
 static void loriePutImage(DrawablePtr pDrawable, GCPtr pGC, int depth, int x, int y, int w, int h, int leftPad, int format, char * pBits) {
-//    log(ERROR, "DRI3: loriePutImage pDrawable id:%x type:%d", pDrawable->id, pDrawable->type);
+//    logd( "DRI3: loriePutImage pDrawable id:%x type:%d", pDrawable->id, pDrawable->type);
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -289,7 +290,7 @@ static RegionPtr fde_gc_copy_area(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC,
 }
 
 static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, int srcx, int srcy, int w, int h, int dstx, int dsty) {
-    log(ERROR, "DRI3: copyarea pSrc id:%x type:%d pDst id:%x type:%d srcx:%d, srcy:%d w:%d h:%d dstx:%d dsty:%d",
+    logd( "DRI3: copyarea pSrc id:%x type:%d pDst id:%x type:%d srcx:%d, srcy:%d w:%d h:%d dstx:%d dsty:%d",
         pSrc->id, pSrc->type,  pDst->id, pDst->type, srcx, srcy, w, h, dstx, dsty);
     if(pSrc->type == DRAWABLE_PIXMAP && pDst->type == DRAWABLE_WINDOW ){
         PixmapPtr pPixmap = (PixmapPtr)pSrc;
@@ -301,7 +302,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
             TexturePrivRecPtr pTexturePriv = calloc(1, sizeof(TexturePrivRec));
             pTexturePriv->texture = ptr->texture;
             dixSetPrivate(&pWin->devPrivates, &FDEWindowTexturePrivateKey, pTexturePriv);
-            log(ERROR, "copyarea pixmap:%x tid:%d window:%x", pPixmap->drawable.id, ptr->texture, pWin->drawable.id);
+            logd( "copyarea pixmap:%x tid:%d window:%x", pPixmap->drawable.id, ptr->texture, pWin->drawable.id);
             int size;
             WindAttribute * attrs = _surface_all_window(sfWraper, &size);
             //TODO revert from steam
@@ -319,7 +320,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
                     }
                 }
 //            }
-            log(ERROR, "copyarea copy texture_id:%d to window:%x ", ptr->texture, pWin->drawable.id);
+            logd( "copyarea copy texture_id:%d to window:%x ", ptr->texture, pWin->drawable.id);
             WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
             if(attr){
                 attr->dri_pWin = pDst;
@@ -334,7 +335,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
         WindAttribute *attr = _surface_find_window(sfWraper, pDstWin->drawable.id);
         TexturePrivRecPtr ptr = dixLookupPrivate(&pSrcWin->devPrivates, &FDEWindowTexturePrivateKey);
         if(attr && ptr){
-            log(ERROR, "copyarea copy window:%x to window:%x dstx:%d dsty:%d texture_id:%d",pSrcWin->drawable.id, pDstWin->drawable.id,  dstx, dsty, ptr->texture);
+            logd( "copyarea copy window:%x to window:%x dstx:%d dsty:%d texture_id:%d",pSrcWin->drawable.id, pDstWin->drawable.id,  dstx, dsty, ptr->texture);
             attr->dri_pWin = pSrcWin;
             attr->dri_x = dstx;
             attr->dri_y = dsty;
@@ -349,7 +350,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
 }
 
 static RegionPtr lorieCopyPlane(DrawablePtr pSrcDrawable, DrawablePtr pDstDrawable, GCPtr pGC, int srcx, int srcy, int width, int height, int dstx, int dsty, unsigned long bitPlane) {
-//    log(ERROR, "DRI3: lorieCopyPlane");
+//    logd( "DRI3: lorieCopyPlane");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pSrcDrawable, 0);
     loriePixFromDrawable(pDstDrawable, 1);
@@ -363,7 +364,7 @@ static RegionPtr lorieCopyPlane(DrawablePtr pSrcDrawable, DrawablePtr pDstDrawab
 }
 
 static void loriePolyPoint(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, DDXPointPtr pptInit) {
-//    log(ERROR, "DRI3: loriePolyPoint");
+//    logd( "DRI3: loriePolyPoint");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -373,7 +374,7 @@ static void loriePolyPoint(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, 
 }
 
 static void loriePolylines(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, DDXPointPtr pptInit) {
-//    log(ERROR, "DRI3: loriePolylines");
+//    logd( "DRI3: loriePolylines");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -383,7 +384,7 @@ static void loriePolylines(DrawablePtr pDrawable, GCPtr pGC, int mode, int npt, 
 }
 
 static void loriePolySegment(DrawablePtr pDrawable, GCPtr pGC, int nseg, xSegment * pSegs) {
-//    log(ERROR, "DRI3: loriePolySegment");
+//    logd( "DRI3: loriePolySegment");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -393,7 +394,7 @@ static void loriePolySegment(DrawablePtr pDrawable, GCPtr pGC, int nseg, xSegmen
 }
 
 static void loriePolyRectangle(DrawablePtr pDrawable, GCPtr pGC, int nrects, xRectangle * pRects) {
-//    log(ERROR, "DRI3: loriePolyRectangle");
+//    logd( "DRI3: loriePolyRectangle");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -403,7 +404,7 @@ static void loriePolyRectangle(DrawablePtr pDrawable, GCPtr pGC, int nrects, xRe
 }
 
 static void loriePolyArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc * parcs) {
-//    log(ERROR, "DRI3: loriePolyArc");
+//    logd( "DRI3: loriePolyArc");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -413,7 +414,7 @@ static void loriePolyArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc * par
 }
 
 static void lorieFillPolygon(DrawablePtr pDrawable, GCPtr pGC, int shape, int mode, int count, DDXPointPtr pPts) {
-//    log(ERROR, "DRI3: lorieFillPolygon");
+//    logd( "DRI3: lorieFillPolygon");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -423,7 +424,7 @@ static void lorieFillPolygon(DrawablePtr pDrawable, GCPtr pGC, int shape, int mo
 }
 
 static void loriePolyFillRect(DrawablePtr pDrawable, GCPtr pGC, int nrectFill, xRectangle * prectInit) {
-//    log(ERROR, "DRI3: loriePolyFillRect");
+//    logd( "DRI3: loriePolyFillRect");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -433,7 +434,7 @@ static void loriePolyFillRect(DrawablePtr pDrawable, GCPtr pGC, int nrectFill, x
 }
 
 static void loriePolyFillArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc * parcs) {
-//    log(ERROR, "DRI3: loriePolyFillArc");
+//    logd( "DRI3: loriePolyFillArc");
     LORIE_GC_OP_PROLOGUE(pGC)
     loriePixFromDrawable(pDrawable, 0);
     loriePixPriv(pDrawable, 0);
@@ -443,7 +444,7 @@ static void loriePolyFillArc(DrawablePtr pDrawable, GCPtr pGC, int narcs, xArc *
 }
 
 static int loriePolyText8(DrawablePtr pDrawable, GCPtr pGC, int x, int y, int count, char * chars) {
-//    log(ERROR, "DRI3: loriePolyText8");
+//    logd( "DRI3: loriePolyText8");
     LORIE_GC_OP_PROLOGUE(pGC)
     int r = x;
     loriePixFromDrawable(pDrawable, 0);
@@ -455,7 +456,7 @@ static int loriePolyText8(DrawablePtr pDrawable, GCPtr pGC, int x, int y, int co
 }
 
 static int loriePolyText16(DrawablePtr pDrawable, GCPtr pGC, int x, int y, int count, unsigned short * chars) {
-//    log(ERROR, "DRI3: loriePolyText8");
+//    logd( "DRI3: loriePolyText8");
     LORIE_GC_OP_PROLOGUE(pGC)
     int r = x;
     loriePixFromDrawable(pDrawable, 0);
@@ -527,7 +528,7 @@ static const GCOps lorieGCOps = {
 
 static Bool
 lorieCreateGC(GCPtr pGC) {
-//    log(ERROR, "DRI3: lorieCreateGC");
+//    logd( "DRI3: lorieCreateGC");
     ScreenPtr pScreen = pGC->pScreen;
 
     lorieScrPriv(pScreen);
@@ -583,7 +584,7 @@ static int FdsFromPixmap(ScreenPtr screen,
                          uint32_t *strides,
                          uint32_t *offsets,
                          uint64_t *modifier){
-    log(ERROR, "DRI3: FdsFromPixmap pixmap:%d fd:%d stride:%d offset:%d modifier:%d",
+    logd( "DRI3: FdsFromPixmap pixmap:%d fd:%d stride:%d offset:%d modifier:%d",
         pixmap->drawable.id,
         fds[0],
         strides[0],
@@ -594,29 +595,29 @@ static int FdsFromPixmap(ScreenPtr screen,
 
 static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *fds, CARD16 width, CARD16 height,
                                     const CARD32 *strides, const CARD32 *offsets, CARD8 depth, __unused CARD8 bpp, CARD64 modifier) {
-    log(ERROR, "DRI3: loriePixmapFromFds num_fds:%d modifier:%d fd:%d width:%d height:%d",
+    logd( "DRI3: loriePixmapFromFds num_fds:%d modifier:%d fd:%d width:%d height:%d",
         num_fds, modifier, fds[0], width, height);
     if (num_fds > 1) {
-        log(ERROR, "DRI3: More than 1 fd");
+        logd( "DRI3: More than 1 fd");
         return NULL;
     }
     TexturePrivRecPtr pTexturePriv = calloc(1, sizeof(TexturePrivRec));
     GLuint texture = renderer_create_image(fds[0], width, height, strides, offsets, depth, bpp, modifier);
     if (!pTexturePriv) {
-        log(ERROR, "DRI3: pTexturePriv: failed to allocate TexturePrivRecPtr");
+        logd( "DRI3: pTexturePriv: failed to allocate TexturePrivRecPtr");
         return NULL;
     }
 
     PixmapPtr pixmap = fbCreatePixmap(screen, width, height, depth, 0);
     if (!pixmap) {
-        log(ERROR, "DRI3: failed to create pixmap");
+        logd( "DRI3: failed to create pixmap");
         goto fail;
     }
     dixSetPrivate(&pixmap->devPrivates, &FDETexturePrivateKey, pTexturePriv);
     pTexturePriv->texture = texture;
     TexturePrivRecPtr ptr = dixLookupPrivate(&pixmap->devPrivates, &FDETexturePrivateKey);
     if (!pTexturePriv->texture) {
-        log(ERROR, "DRI3: pTexturePriv: get a texture");
+        logd( "DRI3: pTexturePriv: get a texture");
         goto fail;
     }
 
@@ -632,14 +633,14 @@ static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *
 }
 
 static int lorieGetFormats(__unused ScreenPtr screen, CARD32 *num_formats, CARD32 **formats) {
-    log(ERROR, "lorieGetFormats");
+    logd( "lorieGetFormats");
 //    *num_formats = 0;
 //    *formats = NULL;
     return renderer_get_format(screen, num_formats, formats);
 }
 
 static int lorieGetModifiers(__unused ScreenPtr screen, __unused uint32_t format, uint32_t *num_modifiers, uint64_t **modifiers) {
-    log(ERROR, "lorieGetModifiers");
+    logd( "lorieGetModifiers");
 //    *num_modifiers = 0;
 //    *modifiers = NULL;
     return renderer_get_modifier(screen, format, num_modifiers, modifiers);
@@ -650,12 +651,12 @@ static int openClient(__unused ClientPtr client,
                       __unused RRProviderPtr provider,
                       __unused int *fdp) {
     int fd;
-    fd = open(DRI3_DEVICE_PATH_UBUNTU, O_RDWR|O_CLOEXEC);
+    fd = open(DRI3_DEVICE_PATH_KYLIN, O_RDWR|O_CLOEXEC);
     if (fd < 0) {
-        log(ERROR, "openClient fdp %d fail", &fdp);
+        logd( "openClient fdp %d fail", &fdp);
         return BadAlloc;
     }
-    log(ERROR, "openClient fd %d success", fd);
+    logd( "openClient fd %d success", fd);
     *fdp = fd;
     return Success;
 }
@@ -838,7 +839,7 @@ bool syncInit(ScreenPtr pScreen);
 
 Bool lorieInitDri3(ScreenPtr pScreen) {
     LorieScrPrivPtr pScrPriv;
-    log(ERROR, "DRI3: lorieInitDri3");
+    logd( "DRI3: lorieInitDri3");
 
     if (!dixRegisterPrivateKey(&lorieScrPrivateKey, PRIVATE_SCREEN, 0))
         return FALSE;
