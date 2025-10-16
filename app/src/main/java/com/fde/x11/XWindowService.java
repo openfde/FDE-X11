@@ -303,8 +303,10 @@ public class XWindowService extends Service {
         int densityDpi = displayMetrics.densityDpi;
 
         float d = (float)( densityDpi  * 96 / lcd_density);
-        float xFactor = mWidht == 1920 ? 1.f : 1.75f ;
-        return  (int)(d * xFactor);
+        return (int)d;
+//        float xFactor = 1.f;
+//        float xFactor = mWidht == 1920 ? 1.f : (1.0f/1.75f) ;
+//        return  (int)(d * xFactor);
     }
 
     @Override

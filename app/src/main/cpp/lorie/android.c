@@ -189,7 +189,7 @@ void android_destroy_window(Window window) {
 }
 
 void android_unmap_window(Window window) {
-    logd( "android_unmap_window %x", window);
+    logd( "%x", window);
     _surface_log_traversal_window(sfWraper);
     WindAttribute attribute = {0};
     if(_surface_count_window_in_type(sfWraper, window, TYPE_ANY, &attribute))
@@ -232,7 +232,7 @@ void android_unmap_window(Window window) {
 }
 
 void android_redirect_window_1(WindowPtr pWin) {
-    logd( "android_redirect_window  %lx", pWin->drawable.id)
+    logd( "%lx", pWin->drawable.id)
     //fill some properties
     int redirect = pWin->overrideRedirect;
     bool intransient_bounds = false;
@@ -262,7 +262,7 @@ void android_redirect_window_1(WindowPtr pWin) {
         }
     }
 
-    loge( "android_redirect_window %x redirect:%d atom:%d transient:%x, "
+    loge( "%x redirect:%d atom:%d transient:%x, "
                "taskTo:%x inbounds:%d mapped:%d clientNum:%d prop.window_type %d",
         pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
         intransient_bounds, pWin->mapped, clientNum, aProperty.window_type);
@@ -325,7 +325,7 @@ void android_redirect_window_1(WindowPtr pWin) {
             windAttribute.child = pWin->firstChild->drawable.id;
             windAttribute.frame = pWin->drawable.id;
         }
-        logd( "android_redirect_window  %x to redirect", pWin->drawable.id)
+        logd("%x to redirect", pWin->drawable.id)
 //        printWindAttribute(&windAttribute);
         _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
         android_create_or_map_window(windAttribute, aProperty, taskTo, intransient_bounds, true);
@@ -519,7 +519,7 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
         windAttribute->child = pWin->firstChild->drawable.id;
         windAttribute->frame = pWin->drawable.id;
     }
-    logd( "android_create_attr %lx redirect:%d atom:%d transient:%lx, "
+    logd( "%lx redirect:%d atom:%d transient:%lx, "
                "taskTo:%lx mapped:%d clientNum:%d prop.window_type %d",
         pWin->drawable.id, pWin->overrideRedirect, windProperty.window_type,
         windProperty.transient, taskTo, pWin->mapped, clientNum, windProperty.window_type);
@@ -536,7 +536,7 @@ void property_update_android(WindowPtr pWin, Atom prop, ClientPtr client) {
     }
     CHECK_WITH_PROP;
     if (STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)) {
-        loge( "property_update_android window:%lx name:%s", pWin->drawable.id, NameForAtom(prop))
+        loge("window:%lx name:%s", pWin->drawable.id, NameForAtom(prop))
         PropertyPtr pProp;
         int rc = dixLookupProperty(&pProp, pWin, prop, client,
                                    DixReadAccess);
@@ -584,7 +584,7 @@ void android_icon_update(int *data, int width, int height, long window) {
 }
 
 bool util_check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
-    logd( "util_check_bounds x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
+    logd( "x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
         x, y, w, h, x1, y1, w1, h1);
     if (x < x1 || y < y1 || (x + w) > (x1 + w1) || (y + h) > (y1 + h1)) {
         return FALSE;
@@ -602,14 +602,14 @@ bool util_check_window_bounds(WindowPtr pWindow, WindAttribute *attr) {
     int w1 = attr->width;
     int h1 = attr->height;
     bool inbound = util_check_bounds(x, y, w, h, x1, y1, w1, h1);
-    logd( "util_check_window_bounds inbound:%d", inbound);
+    logd( "inbound:%d", inbound);
     return inbound;
 }
 
 void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
-    loge( "android_redirect_widget window:%lx taskto:%lx", pWin->drawable.id, window);
+    loge( "window:%lx taskto:%lx", pWin->drawable.id, window);
     if (attr) {
         GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
                                               pixmap->drawable.width,
@@ -644,7 +644,7 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
 }
 
 void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, bool inbound) {
-    logd( "android_create_view window:%lx wm_name:%s net_wm_name:%s inbound:%d",
+    logd( "window:%lx wm_name:%s net_wm_name:%s inbound:%d",
         widget.window, aProperty.wm_name, aProperty.net_wm_name, inbound);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
@@ -685,7 +685,7 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
 }
 
 void android_create_or_map_window(WindAttribute attribute, WindProperty prop, Window taskTo, bool inbound, bool create) {
-    logd( "android_create_window window:%x wm_name:%s net_wm_name:%s inbound:%d",
+    logd( "window:%x wm_name:%s net_wm_name:%s inbound:%d",
         attribute.window, prop.wm_name, prop.net_wm_name, inbound);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
@@ -731,7 +731,7 @@ void android_create_or_map_window(WindAttribute attribute, WindProperty prop, Wi
 void android_configure_window(WindowPtr pWin, short x, short y, short w, short h) {
 //    _surface_log_traversal_window(sfWraper);
 //    WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
-    logd( "android_configure_window rediret:%d pWin:%lx x:%d y:%d w:%d h:%d",
+    logd( "rediret:%d pWin:%lx x:%d y:%d w:%d h:%d",
         pWin->overrideRedirect, pWin->drawable.id, x, y, w, h)
     if (!pWin->overrideRedirect) {
         return;
@@ -747,7 +747,7 @@ void android_configure_window(WindowPtr pWin, short x, short y, short w, short h
 }
 
 void android_destroy_activity(int index, WindowPtr pWin, Window window, int action, Bool wm_delete) {
-    logd( "android_destroy_activity index:%d action:%d window:%lx clientNum:%d", index, action,
+    logd( "index:%d action:%d window:%lx clientNum:%d", index, action,
         window, clientNum);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
@@ -760,7 +760,7 @@ void android_destroy_activity(int index, WindowPtr pWin, Window window, int acti
 }
 
 void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window window, int action) {
-    logd( "android_destroy_view index%d task_to:%p window:%lx", index, task_to, window);
+    logd( "index%d task_to:%p window:%lx", index, task_to, window);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
         jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
@@ -1604,7 +1604,7 @@ int property_get_motif_hints(Atom name, uint32_t *data, unsigned long nitems, ui
             hints.flags = data[0];
             hints.functions = data[1];
             hints.decorations = data[2];
-            logd( "properyt_get_motif_hints - Flags: 0x%lx, Functions: 0x%lx, Decorations: 0x%lx\n",
+            logd( "- Flags: 0x%lx, Functions: 0x%lx, Decorations: 0x%lx\n",
                 hints.flags, hints.functions, hints.decorations);
             if (hints.flags & MWM_HINTS_FUNCTIONS) {
                 logd( "Functions hint present\n");
@@ -1773,7 +1773,7 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
     (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapConfig);
     (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
 
-    logd( "property_icon_convert_bitmap success width: %d, height: %d", width, height)
+    logd( " success width: %d, height: %d", width, height)
     return bitmap;
 }
 #endif
