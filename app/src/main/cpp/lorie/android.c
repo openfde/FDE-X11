@@ -487,7 +487,7 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
     Window taskTo = 0;
     memset(&windProperty, 0, sizeof(WindProperty));
     property_get(pPropWin, &windProperty);
-    if(STRING_EQUAL("WPS文字", windProperty.net_wm_name))
+    if(windProperty.net_wm_name && STRING_EQUAL("WPS文字", windProperty.net_wm_name))
     {
         windProperty.support_motif = 1;
     }
