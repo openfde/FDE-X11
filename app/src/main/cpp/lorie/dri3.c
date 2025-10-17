@@ -646,16 +646,34 @@ static int lorieGetModifiers(__unused ScreenPtr screen, __unused uint32_t format
     return renderer_get_modifier(screen, format, num_modifiers, modifiers);
 }
 
+//#define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
+//#define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
+//#define DRI3_DEVICE_PATH_UBUNTU "/dev/dri/renderD128"
+//#define DRI3_DEVICE_PATH_X100 "/dev/dri/card1"
+
 static int openClient(__unused ClientPtr client,
                       __unused ScreenPtr screen,
                       __unused RRProviderPtr provider,
                       __unused int *fdp) {
     int fd;
-    fd = open(DRI3_DEVICE_PATH_KYLIN, O_RDWR|O_CLOEXEC);
+    char* path = DRI3_DEVICE_PATH_X100;
+    fd = open(path, O_RDWR|O_CLOEXEC);
+    logd( "openClient %s fd %d ", path, fd);
     if (fd < 0) {
-        logd( "openClient fdp %d fail", &fdp);
+        path = DRI3_DEVICE_PATH_KYLIN;
+        fd = open(path, O_RDWR|O_CLOEXEC);
+        logd( "openClient %s fd %d ", path, fd);
+    }
+    if (fd < 0) {
+        path = DRI3_DEVICE_PATH_UOS;
+        fd = open(path, O_RDWR|O_CLOEXEC);
+        logd( "openClient %s fd %d ", path, fd);
+    }
+
+    if(fd < 0){
         return BadAlloc;
     }
+
     logd( "openClient fd %d success", fd);
     *fdp = fd;
     return Success;

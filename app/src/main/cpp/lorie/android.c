@@ -426,7 +426,7 @@ void android_redirect_window(WindowPtr pWin) {
     PropertyPtr pProp;
     int rc = property_lookup(&pProp, pWin, XA_WM_NAME);
     char *wm_name = property_copy_data(pProp->data, pProp->size);
-    if(rc && STRING_EQUAL(wm_name, "android_frame")){
+    if(rc &&  wm_name && STRING_EQUAL(wm_name, "android_frame")){
         logd( "ready to redirect_activity %lx", pWin->drawable.id)
         logd( "redirect_window frame %lx should lunch activity", pWin->drawable.id)
         logd( "     get property from its first child", pWin->drawable.id)
