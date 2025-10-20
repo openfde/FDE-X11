@@ -1,0 +1,271 @@
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preVersionuDebugBuild UP-TO-DATE
+> Task :app:mergeVersionuDebugNativeDebugMetadata NO-SOURCE
+> Task :app:compileVersionuDebugAidl UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsVersionuDebug UP-TO-DATE
+> Task :app:generateVersionuDebugResValues UP-TO-DATE
+> Task :app:generateVersionuDebugResources UP-TO-DATE
+> Task :dialogtiplib:preBuild UP-TO-DATE
+> Task :dialogtiplib:preDebugBuild UP-TO-DATE
+> Task :dialogtiplib:generateDebugResValues UP-TO-DATE
+> Task :dialogtiplib:generateDebugResources UP-TO-DATE
+> Task :dialogtiplib:packageDebugResources UP-TO-DATE
+> Task :easy:preBuild UP-TO-DATE
+> Task :easy:preDebugBuild UP-TO-DATE
+> Task :easy:generateDebugResValues UP-TO-DATE
+> Task :easy:generateDebugResources UP-TO-DATE
+> Task :easy:packageDebugResources UP-TO-DATE
+> Task :fusionwindowmanager:preBuild UP-TO-DATE
+> Task :fusionwindowmanager:preDebugBuild UP-TO-DATE
+> Task :fusionwindowmanager:generateDebugResValues UP-TO-DATE
+> Task :fusionwindowmanager:generateDebugResources UP-TO-DATE
+> Task :fusionwindowmanager:packageDebugResources UP-TO-DATE
+> Task :x_recyclerview:preBuild UP-TO-DATE
+> Task :x_recyclerview:preDebugBuild UP-TO-DATE
+> Task :x_recyclerview:generateDebugResValues UP-TO-DATE
+> Task :x_recyclerview:generateDebugResources UP-TO-DATE
+> Task :x_recyclerview:packageDebugResources UP-TO-DATE
+> Task :app:mergeVersionuDebugResources UP-TO-DATE
+> Task :app:packageVersionuDebugResources UP-TO-DATE
+> Task :app:parseVersionuDebugLocalResources UP-TO-DATE
+> Task :dialogtiplib:parseDebugLocalResources UP-TO-DATE
+> Task :dialogtiplib:processDebugManifest UP-TO-DATE
+> Task :dialogtiplib:generateDebugRFile UP-TO-DATE
+> Task :easy:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :easy:parseDebugLocalResources UP-TO-DATE
+> Task :easy:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :easy:processDebugManifest UP-TO-DATE
+> Task :easy:generateDebugRFile UP-TO-DATE
+> Task :fusionwindowmanager:parseDebugLocalResources UP-TO-DATE
+> Task :fusionwindowmanager:processDebugManifest UP-TO-DATE
+> Task :fusionwindowmanager:generateDebugRFile UP-TO-DATE
+> Task :x_recyclerview:parseDebugLocalResources UP-TO-DATE
+> Task :x_recyclerview:processDebugManifest UP-TO-DATE
+> Task :x_recyclerview:generateDebugRFile UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesVersionuDebug UP-TO-DATE
+> Task :app:generateVersionuDebugBuildConfig UP-TO-DATE
+> Task :app:javaPreCompileVersionuDebug UP-TO-DATE
+> Task :dialogtiplib:writeDebugAarMetadata UP-TO-DATE
+> Task :easy:writeDebugAarMetadata UP-TO-DATE
+> Task :fusionwindowmanager:writeDebugAarMetadata UP-TO-DATE
+> Task :x_recyclerview:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkVersionuDebugAarMetadata UP-TO-DATE
+> Task :app:mapVersionuDebugSourceSetPaths UP-TO-DATE
+> Task :app:createVersionuDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksVersionuDebug UP-TO-DATE
+> Task :dialogtiplib:extractDeepLinksDebug UP-TO-DATE
+> Task :easy:extractDeepLinksDebug UP-TO-DATE
+> Task :fusionwindowmanager:extractDeepLinksDebug UP-TO-DATE
+> Task :x_recyclerview:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processVersionuDebugMainManifest UP-TO-DATE
+> Task :app:processVersionuDebugManifest UP-TO-DATE
+> Task :app:processVersionuDebugManifestForPackage UP-TO-DATE
+> Task :dialogtiplib:compileDebugLibraryResources UP-TO-DATE
+> Task :easy:compileDebugLibraryResources UP-TO-DATE
+> Task :fusionwindowmanager:compileDebugLibraryResources UP-TO-DATE
+> Task :x_recyclerview:compileDebugLibraryResources UP-TO-DATE
+> Task :app:processVersionuDebugResources UP-TO-DATE
+> Task :dialogtiplib:javaPreCompileDebug UP-TO-DATE
+> Task :dialogtiplib:compileDebugJavaWithJavac UP-TO-DATE
+> Task :dialogtiplib:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :easy:javaPreCompileDebug UP-TO-DATE
+> Task :easy:compileDebugJavaWithJavac UP-TO-DATE
+> Task :easy:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :fusionwindowmanager:javaPreCompileDebug UP-TO-DATE
+> Task :fusionwindowmanager:compileDebugJavaWithJavac UP-TO-DATE
+> Task :fusionwindowmanager:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :x_recyclerview:javaPreCompileDebug UP-TO-DATE
+> Task :x_recyclerview:compileDebugJavaWithJavac UP-TO-DATE
+> Task :x_recyclerview:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:compileVersionuDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeVersionuDebugShaders UP-TO-DATE
+> Task :app:compileVersionuDebugShaders NO-SOURCE
+> Task :app:generateVersionuDebugAssets UP-TO-DATE
+> Task :dialogtiplib:mergeDebugShaders UP-TO-DATE
+> Task :dialogtiplib:compileDebugShaders NO-SOURCE
+> Task :dialogtiplib:generateDebugAssets UP-TO-DATE
+> Task :dialogtiplib:packageDebugAssets UP-TO-DATE
+> Task :easy:mergeDebugShaders UP-TO-DATE
+> Task :easy:compileDebugShaders NO-SOURCE
+> Task :easy:generateDebugAssets UP-TO-DATE
+> Task :easy:packageDebugAssets UP-TO-DATE
+> Task :fusionwindowmanager:mergeDebugShaders UP-TO-DATE
+> Task :fusionwindowmanager:compileDebugShaders NO-SOURCE
+> Task :fusionwindowmanager:generateDebugAssets UP-TO-DATE
+> Task :fusionwindowmanager:packageDebugAssets UP-TO-DATE
+> Task :x_recyclerview:mergeDebugShaders UP-TO-DATE
+> Task :x_recyclerview:compileDebugShaders NO-SOURCE
+> Task :x_recyclerview:generateDebugAssets UP-TO-DATE
+> Task :x_recyclerview:packageDebugAssets UP-TO-DATE
+> Task :app:mergeVersionuDebugAssets UP-TO-DATE
+> Task :app:compressVersionuDebugAssets UP-TO-DATE
+> Task :app:checkVersionuDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarVersionuDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexVersionuDebug UP-TO-DATE
+> Task :x_recyclerview:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :fusionwindowmanager:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :dialogtiplib:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :easy:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :dialogtiplib:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:mergeLibDexVersionuDebug UP-TO-DATE
+> Task :easy:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :fusionwindowmanager:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :x_recyclerview:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:dexBuilderVersionuDebug UP-TO-DATE
+> Task :app:mergeProjectDexVersionuDebug UP-TO-DATE
+> Task :app:processVersionuDebugJavaRes NO-SOURCE
+> Task :dialogtiplib:processDebugJavaRes NO-SOURCE
+> Task :easy:processDebugJavaRes NO-SOURCE
+> Task :fusionwindowmanager:processDebugJavaRes NO-SOURCE
+> Task :x_recyclerview:processDebugJavaRes NO-SOURCE
+> Task :app:mergeVersionuDebugJavaResource UP-TO-DATE
+> Task :app:preVersionrDebugBuild UP-TO-DATE
+> Task :app:configureCMakeDebug[arm64-v8a]
+> Task :app:buildCMakeDebug[arm64-v8a]
+> Task :app:mergeVersionuDebugJniLibFolders UP-TO-DATE
+> Task :dialogtiplib:mergeDebugJniLibFolders UP-TO-DATE
+> Task :dialogtiplib:mergeDebugNativeLibs NO-SOURCE
+> Task :dialogtiplib:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :easy:mergeDebugJniLibFolders UP-TO-DATE
+> Task :easy:mergeDebugNativeLibs NO-SOURCE
+> Task :easy:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :fusionwindowmanager:configureCMakeDebug[arm64-v8a]
+
+> Task :fusionwindowmanager:buildCMakeDebug[arm64-v8a]
+C/C++: ninja: Entering directory `/home/huyang/trunk/FDE-X11/fusionwindowmanager/.cxx/Debug/r3s3z634/arm64-v8a'
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:92:13: warning: ignoring return value of function declared with 'warn_unused_result' attribute [-Wunused-result]
+C/C++:             g_slist_append(display_info->screens, screen_info);
+C/C++:             ^~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:100:67: warning: format specifies type 'void *' but the argument has type 'Window' (aka 'unsigned long') [-Wformat]
+C/C++:         logd(" display_info  %p   back_window %p ", display_info, back_window);
+C/C++:                                               ~~                  ^~~~~~~~~~~
+C/C++:                                               %lu
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:406:55: warning: format specifies type 'int' but the argument has type 'Window' (aka 'unsigned long') [-Wformat]
+C/C++:          e.x, e.y, e.width, e.height, e.border_width, e.above, e.detail, value_mask);
+C/C++:                                                       ^~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:406:74: warning: format specifies type 'int' but the argument has type 'unsigned long' [-Wformat]
+C/C++:          e.x, e.y, e.width, e.height, e.border_width, e.above, e.detail, value_mask);
+C/C++:                                                                          ^~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:738:28: warning: equality comparison with extraneous parentheses [-Wparentheses-equality]
+C/C++:         else if ((ev->atom == display_info->atoms[NET_WM_ICON]))
+C/C++:                   ~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:738:28: note: remove extraneous parentheses around the comparison to silence this warning
+C/C++:         else if ((ev->atom == display_info->atoms[NET_WM_ICON]))
+C/C++:                  ~         ^                                  ~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:738:28: note: use '=' to turn this equality comparison into an assignment
+C/C++:         else if ((ev->atom == display_info->atoms[NET_WM_ICON]))
+C/C++:                            ^~
+C/C++:                            =
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:787:37: warning: format specifies type 'unsigned int' but the argument has type 'XID' (aka 'unsigned long') [-Wformat]
+C/C++:         loge("    Resource ID: %x", e->resourceid);
+C/C++:                                ~~   ^~~~~~~~~~~~~
+C/C++:                                %lx
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:36:42: note: expanded from macro 'loge'
+C/C++: #define loge(...) log(ANDROID_LOG_ERROR, __VA_ARGS__)    // ERROR
+C/C++:                                          ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:843:46: warning: format specifies type 'unsigned int' but the argument has type 'Window' (aka 'unsigned long') [-Wformat]
+C/C++:         logd("top_level_window %x to frame", top_level_windows[i]);
+C/C++:                                ~~            ^~~~~~~~~~~~~~~~~~~~
+C/C++:                                %lx
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:854:26: warning: format specifies type 'unsigned int' but the argument has type 'Window' (aka 'unsigned long') [-Wformat]
+C/C++:         logd("owner:%x", owner);
+C/C++:                     ~~   ^~~~~
+C/C++:                     %lx
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:1762:62: warning: format specifies type 'unsigned int' but the argument has type 'Window' (aka 'unsigned long') [-Wformat]
+C/C++:     logd("OnSelectionClear start--------- request:0x:%x>\n", request);
+C/C++:                                                      ~~      ^~~~~~~
+C/C++:                                                      %lx
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:1893:38: warning: format specifies type 'unsigned int' but the argument has type 'long' [-Wformat]
+C/C++:     logd("moveWindow %x: x:%d y:%d", window, x, y);
+C/C++:                      ~~              ^~~~~~
+C/C++:                      %lx
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:1979:28: warning: format specifies type 'unsigned int' but the argument has type 'long' [-Wformat]
+C/C++:     logd("raiseWindow %x", window);
+C/C++:                       ~~   ^~~~~~
+C/C++:                       %lx
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/window_manager.cpp:1985:32: warning: format specifies type 'unsigned int' but the argument has type 'Window' (aka 'unsigned long') [-Wformat]
+C/C++:         logd("raiseWindow %x", c->window);
+C/C++:                           ~~   ^~~~~~~~~
+C/C++:                           %lx
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:25:46: note: expanded from macro 'logd'
+C/C++:     #define logd(...) log(ANDROID_LOG_DEBUG, __VA_ARGS__)    // DEBUG
+C/C++:                                              ^~~~~~~~~~~
+C/C++: /home/huyang/trunk/FDE-X11/fusionwindowmanager/src/main/cpp/include/native_log.h:20:85: note: expanded from macro 'log'
+C/C++:             __android_log_print(level, "cc_" __FILENAME__, "[%s] " fmt, __func__, ##__VA_ARGS__); \
+C/C++:                                                                    ~~~              ^~~~~~~~~~~
+C/C++: 12 warnings generated.
+
+> Task :fusionwindowmanager:mergeDebugJniLibFolders UP-TO-DATE
+> Task :x_recyclerview:mergeDebugJniLibFolders UP-TO-DATE
+> Task :x_recyclerview:mergeDebugNativeLibs NO-SOURCE
+> Task :x_recyclerview:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:validateSigningVersionuDebug UP-TO-DATE
+> Task :app:writeVersionuDebugAppMetadata UP-TO-DATE
+> Task :app:writeVersionuDebugSigningConfigVersions UP-TO-DATE
+> Task :fusionwindowmanager:mergeDebugNativeLibs
+> Task :fusionwindowmanager:copyDebugJniLibsProjectOnly
+> Task :app:mergeVersionuDebugNativeLibs
+> Task :app:stripVersionuDebugDebugSymbols
+> Task :app:packageVersionuDebug
+> Task :app:createVersionuDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleVersionuDebug
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 7s
+111 actionable tasks: 9 executed, 102 up-to-date

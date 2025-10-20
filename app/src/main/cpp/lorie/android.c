@@ -208,16 +208,16 @@ void android_unmap_window(Window window) {
             renderer_release_window(GetJavaEnv(), window);
             _surface_delete_window(sfWraper, attribute.window);
         } else {
-            if(STRING_EQUAL("WPS文字", attribute.prop.net_wm_name))
+            if(attribute.prop.net_wm_name && STRING_EQUAL("WPS文字", attribute.prop.net_wm_name))
             {
                 logd( "unmap activity window:%x", attribute.prop.net_wm_name);
-                //            android_destroy_activity(attribute.index, attribute.pWin, attribute.window,
+//                            android_destroy_activity(attribute.index, attribute.pWin, attribute.window,
 //                                     ACTION_DESTORY,
 //                                     attribute.prop.support_wm_delete);
-//            android_destroy_window(attribute.window);
-//            glDeleteTextures(1, &attribute.texture_id);
-//            renderer_release_window(GetJavaEnv(), attribute.window);
-//            _surface_delete_window(sfWraper, attribute.window);
+//                android_destroy_window(attribute.window);
+//                glDeleteTextures(1, &attribute.texture_id);
+//                renderer_release_window(GetJavaEnv(), attribute.window);
+//                _surface_delete_window(sfWraper, attribute.window);
             }
         }
 
@@ -236,109 +236,109 @@ void android_unmap_window(Window window) {
     }
 }
 
-void android_redirect_window_1(WindowPtr pWin) {
-    logd( "%lx", pWin->drawable.id)
-    //fill some properties
-    int redirect = pWin->overrideRedirect;
-    bool intransient_bounds = false;
-    Window taskTo = 0;
-    // get real property (name leader transient)
-    WindProperty aProperty;
-    memset(&aProperty, 0, sizeof(WindProperty));
-
-    //got a tray window
-    property_get(pWin, &aProperty);
-    if (pWin->firstChild && !redirect && aProperty.window_type != _WM_WINDOW_TYPE_SYSTRAY) {
-        if (!pWin->firstChild->overrideRedirect) {
-            property_get(pWin->firstChild, &aProperty);
-        } else {
-            property_get(pWin->firstChild->nextSib, &aProperty);
-        }
-    } else {
-        property_get(pWin, &aProperty);
-    }
-    _surface_log_traversal_window(sfWraper);
-    Atom win_type = aProperty.window_type;
-    if (aProperty.transient != 0) {
-        WindAttribute *attr = _surface_find_window(sfWraper, aProperty.transient);
-        if (attr) {
-            taskTo = attr->window;
-            intransient_bounds = util_check_window_bounds(pWin, attr);
-        }
-    }
-
-    loge( "%x redirect:%d atom:%d transient:%x, "
-               "taskTo:%x inbounds:%d mapped:%d clientNum:%d prop.window_type %d",
-        pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
-        intransient_bounds, pWin->mapped, clientNum, aProperty.window_type);
-    //TODO revert from steam
-
-
-    if (redirect) {
-        if (taskTo != 0) {
-            taskTo = focusWindow;
-        }
-        if (_surface_count_window(sfWraper, taskTo)) {
-            android_redirect_widget(pWin, aProperty, taskTo);
-            property_cleanup(&aProperty);
-            return;
-        } else {
-            aProperty.window_type = _WM_WINDOW_TYPE_SYSTIP;
-        }
-    }
-
-
-    if (_surface_count_window(sfWraper, pWin->drawable.id)) {
-        logd( "already redirect_window window:%lx", pWin->drawable.id)
-        WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
-//        if( attr->frame) {
-//            android_create_or_map_window(*attr, attr->prop, taskTo, intransient_bounds, true);
+//void android_redirect_window_1(WindowPtr pWin) {
+//    logd( "%lx", pWin->drawable.id)
+//    //fill some properties
+//    int redirect = pWin->overrideRedirect;
+//    bool intransient_bounds = false;
+//    Window taskTo = 0;
+//    // get real property (name leader transient)
+//    WindProperty aProperty;
+//    memset(&aProperty, 0, sizeof(WindProperty));
+//
+//    //got a tray window
+//    property_get(pWin, &aProperty);
+//    if (pWin->firstChild && !redirect && aProperty.window_type != _WM_WINDOW_TYPE_SYSTRAY) {
+//        if (!pWin->firstChild->overrideRedirect) {
+//            property_get(pWin->firstChild, &aProperty);
 //        } else {
-        JNIEnv *JavaEnv = GetJavaEnv();
-        if (JavaEnv && JavaCmdEntryPointClass) {
-            jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                             "xserverMapWindow",
-                                                             "(J)V");
-            (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass,
-                                             method, (long) pWin->drawable.id);
-
-//            }
-        }
-
-//        property_cleanup(&prop);
-        return;
-    } else if (!redirect || aProperty.window_type == _WM_WINDOW_TYPE_SYSTIP) {
-        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
-        int x = pWin->drawable.x;
-        int y = pWin->drawable.y;
-        int w = pixmap->drawable.width;
-        int h = pixmap->drawable.height;
-        GLuint tid = renderer_gen_bind_texture(x, y, w, h, pixmap->devPrivate.ptr, 0);
-        WindAttribute windAttribute = {
-                .offset_x = x,
-                .offset_y = y,
-                .width = w,
-                .height = h,
-                .pWin = pWin,
-                .window = pWin->drawable.id,
-                .texture_id = tid,
-                .widget_size = 0,
-//                .prop = prop
-        };
-        property_win_copy(&windAttribute.prop, &aProperty);  // ✅ 深拷贝
-        if (pWin->firstChild) {
-            windAttribute.child = pWin->firstChild->drawable.id;
-            windAttribute.frame = pWin->drawable.id;
-        }
-        logd("%x to redirect", pWin->drawable.id)
-//        printWindAttribute(&windAttribute);
-        _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
-        android_create_or_map_window(windAttribute, aProperty, taskTo, intransient_bounds, true);
-        _surface_log_traversal_window(sfWraper);
-//        property_cleanup(&prop);
-        return;
-    }
-}
+//            property_get(pWin->firstChild->nextSib, &aProperty);
+//        }
+//    } else {
+//        property_get(pWin, &aProperty);
+//    }
+//    _surface_log_traversal_window(sfWraper);
+//    Atom win_type = aProperty.window_type;
+//    if (aProperty.transient != 0) {
+//        WindAttribute *attr = _surface_find_window(sfWraper, aProperty.transient);
+//        if (attr) {
+//            taskTo = attr->window;
+//            intransient_bounds = util_check_window_bounds(pWin, attr);
+//        }
+//    }
+//
+//    loge( "%x redirect:%d atom:%d transient:%x, "
+//               "taskTo:%x inbounds:%d mapped:%d clientNum:%d prop.window_type %d",
+//        pWin->drawable.id, redirect, win_type, aProperty.transient, taskTo,
+//        intransient_bounds, pWin->mapped, clientNum, aProperty.window_type);
+//    //TODO revert from steam
+//
+//
+//    if (redirect) {
+//        if (taskTo != 0) {
+//            taskTo = focusWindow;
+//        }
+//        if (_surface_count_window(sfWraper, taskTo)) {
+//            android_redirect_widget(pWin, aProperty, taskTo);
+//            property_cleanup(&aProperty);
+//            return;
+//        } else {
+//            aProperty.window_type = _WM_WINDOW_TYPE_SYSTIP;
+//        }
+//    }
+//
+//
+//    if (_surface_count_window(sfWraper, pWin->drawable.id)) {
+//        logd( "already redirect_window window:%lx", pWin->drawable.id)
+//        WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
+////        if( attr->frame) {
+////            android_create_or_map_window(*attr, attr->prop, taskTo, intransient_bounds, true);
+////        } else {
+//        JNIEnv *JavaEnv = GetJavaEnv();
+//        if (JavaEnv && JavaCmdEntryPointClass) {
+//            jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+//                                                             "xserverMapWindow",
+//                                                             "(J)V");
+//            (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass,
+//                                             method, (long) pWin->drawable.id);
+//
+////            }
+//        }
+//
+////        property_cleanup(&prop);
+//        return;
+//    } else if (!redirect || aProperty.window_type == _WM_WINDOW_TYPE_SYSTIP) {
+//        PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
+//        int x = pWin->drawable.x;
+//        int y = pWin->drawable.y;
+//        int w = pixmap->drawable.width;
+//        int h = pixmap->drawable.height;
+//        GLuint tid = renderer_gen_bind_texture(x, y, w, h, pixmap->devPrivate.ptr, 0);
+//        WindAttribute windAttribute = {
+//                .offset_x = x,
+//                .offset_y = y,
+//                .width = w,
+//                .height = h,
+//                .pWin = pWin,
+//                .window = pWin->drawable.id,
+//                .texture_id = tid,
+//                .widget_size = 0,
+////                .prop = prop
+//        };
+//        property_win_copy(&windAttribute.prop, &aProperty);  // ✅ 深拷贝
+//        if (pWin->firstChild) {
+//            windAttribute.child = pWin->firstChild->drawable.id;
+//            windAttribute.frame = pWin->drawable.id;
+//        }
+//        logd("%x to redirect", pWin->drawable.id)
+////        printWindAttribute(&windAttribute);
+//        _surface_redirect_window(sfWraper, pWin->drawable.id, &windAttribute, win_type);
+//        android_create_or_map_window(windAttribute, aProperty, taskTo, intransient_bounds, true);
+//        _surface_log_traversal_window(sfWraper);
+////        property_cleanup(&prop);
+//        return;
+//    }
+//}
 
 /**
  * // start to redirect

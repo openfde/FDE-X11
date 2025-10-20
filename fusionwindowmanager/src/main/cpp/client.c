@@ -2218,7 +2218,7 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
     {
         if (c->window == w)
         {
-            logd ("found \"%s\" (mode WINDOW)", c->name);
+//            logd ("found \"%s\" (mode WINDOW)", c->name);
             return (c);
         }
     }
@@ -2227,7 +2227,7 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
     {
         if (c->frame == w)
         {
-            logd ("found \"%s\" (mode FRAME)", c->name);
+//            logd ("found \"%s\" (mode FRAME)", c->name);
             return (c);
         }
     }
@@ -2236,7 +2236,7 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
     {
         if (c->user_time_win == w)
         {
-            logd ("found \"%s\" (mode WIN_USER_TIME)", c->name);
+//            logd ("found \"%s\" (mode WIN_USER_TIME)", c->name);
             return (c);
         }
     }
@@ -2247,7 +2247,7 @@ clientGetFromWindow (Client *c, Window w, unsigned short mode)
         {
             if ((c->buttons[b]).window == w)
             {
-                logd ("found \"%s\" (mode BUTTON)", c->name);
+//                logd ("found \"%s\" (mode BUTTON)", c->name);
                 return (c);
             }
         }
@@ -2401,7 +2401,7 @@ clientShow (Client *c, gboolean deiconify)
         FLAG_SET (c->xfwm_flags, XFWM_FLAG_VISIBLE);
         myDisplayErrorTrapPush (display_info);
         XMapWindow (display_info->dpy, c->frame);
-        // if (!FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
+    // if (!FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
         // {
             XMapWindow (display_info->dpy, c->window);
         // }
@@ -2431,13 +2431,14 @@ clientWithdrawSingle (Client *c, GList *exclude_list, gboolean iconify)
     display_info = screen_info->display_info;
 
     // clientPassFocus(c->screen_info, c, exclude_list);
-    if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
-    {
+//    if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_VISIBLE))
+//    {
+        logd ("client \"%s\" (0x%lx) ignore_unmap++", c->name, c->window);
         FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_VISIBLE);
         c->ignore_unmap++;
         /* Adjust to urgency state as the window is not visible */
         // clientUpdateUrgency (c);
-    }
+//    }
 
     myDisplayErrorTrapPush (display_info);
     XUnmapWindow (display_info->dpy, c->frame);

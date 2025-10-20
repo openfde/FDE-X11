@@ -163,25 +163,25 @@ public class WindowManager  {
 
     public static void unmapWindowFromX(int index, long pWin, long taskTo,long window,
                                         int action, int support_wm_delete, int clientNum) {
-//        Log.d(TAG, "unmapWindowFromX() called with: index = [" + index + "], " +
-//                "pWin = [" + pWin + "], taskTo = [" + taskTo + "], " +
-//                "window = [" + window + "], action = [" + action + "], " +
-//                "support_wm_delete = [" + support_wm_delete + "], clientNum = [" + clientNum + "]");
+        Log.d(TAG, "unmapWindowFromX() called with: index = [" + index + "], " +
+                "pWin = [" + Long.toHexString(pWin) + "], taskTo = [" + Long.toHexString(taskTo) + "], " +
+                "window = [" + Long.toHexString(window) + "], action = [" + action + "], " +
+                "support_wm_delete = [" + support_wm_delete + "], clientNum = [" + clientNum + "]");
         Property property = new Property();
         property.setSupportDeleteWindow(support_wm_delete);
         property.setTransientfor(taskTo);
         switch (action){
             case ACTION_DESTORY:
                 EventBus.getDefault().post(new EventMessage(EventType.X_DESTROY_ACTIVITY,
-                        "xserver finish activity", new WindowAttribute(index, pWin, window), property));
+                        "wm finish activity", new WindowAttribute(index, pWin, window), property));
                 break;
             case ACTION_UNMAP:
                 EventBus.getDefault().post(new EventMessage(EventType.X_UNMAP_WINDOW,
-                        "xserver hide any window", new WindowAttribute(index, pWin, window), property));
+                        "wm hide any window", new WindowAttribute(index, pWin, window), property));
                 break;
             case ACTION_DISMISS:
                 EventBus.getDefault().post(new EventMessage(EventType.X_DISMISS_WINDOW,
-                        "xserver dismiss any window", new WindowAttribute(index, pWin, window), property));
+                        "wm dismiss any window", new WindowAttribute(index, pWin, window), property));
 
                 break;
             default:

@@ -268,26 +268,32 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
     ScreenInfo *screen_info;
     logd("OnUnmapNotify window:0x%lx event:0x%lx send:%d", ev.window, ev.event, ev.send_event);
     c = myDisplayGetClientFromWindow(display_info, ev.window, SEARCH_WINDOW);
-    if (c)
-    {
+    if (c) {
         screen_info = c->screen_info;
-        if ((ev.event == screen_info->xroot) && (ev.send_event))
-        {
-            if (!FLAG_TEST(c->xfwm_flags, XFWM_FLAG_VISIBLE))
-            {
+        if ((ev.event == screen_info->xroot) && (ev.send_event)) {
+            if (!FLAG_TEST(c->xfwm_flags, XFWM_FLAG_VISIBLE)) {
                 // TRACE ("ICCCM UnmapNotify for \"%s\"", c->name);
                 // list_of_windows = clientListTransientOrModal (c);
                 // clientPassFocus (screen_info, c, list_of_windows);
-                clientUnframe(c, FALSE);
+//                clientUnframe(c, FALSE);
                 // g_list_free (list_of_windows);
             }
-            unmapWindowFromX(c->frame, ACTION_DESTORY, False);
-        } else {
-            unmapWindowFromX(c->frame, ACTION_UNMAP,  True);
-        }
-    }
 
-    if(dock_windows.count(ev.window)){
+
+//        } else {
+//            unmapWindowFromX(c->frame, ACTION_UNMAP,  True);
+        } else if ((ev.event == c->frame)) {
+            if (c->ignore_unmap) {
+                c->ignore_unmap--;
+                logd ("ignore_unmap for \"%s\" is now %i", c->name, c->ignore_unmap);
+                unmapWindowFromX(c->frame, ACTION_UNMAP, True);
+            } else {
+                unmapWindowFromX(c->frame, ACTION_DESTORY, False);
+            }
+        }
+
+    }
+    if (dock_windows.count(ev.window)) {
         Window tray = tray_window_map[ev.window];
         logd("Undock request window: %lx, tray: %lx", ev.window, tray);
         updateSystemTrayIcon(nullptr, tray, SYSTEM_TRAY_UNDOCK);
@@ -296,7 +302,7 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
         XDestroyWindow(display_, tray);
         XFlush(display_);
     }
-    dock_windows.erase(ev.window);
+
 }
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent &e)
