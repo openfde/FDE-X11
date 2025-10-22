@@ -119,6 +119,11 @@ WindAttribute* SurfaceManager::find_window_in_type(Window window, int type) {
                 return &pair.second;
             }
         }
+        if(type & TYPE_PID){
+            if(pair.second.prop.pid == window){
+                return &pair.second;
+            }
+        }
     }
     return nullptr;
 }

@@ -461,17 +461,39 @@ void android_redirect_window(WindowPtr pWin) {
 
     if(pWin->overrideRedirect){
         WindProperty windProperty;
+        WindAttribute* attr;
         memset(&windProperty, 0, sizeof(WindProperty));
         property_get(pWin, &windProperty);
-        logd( "redirect_view %lx for overrideRedirect transient:%lx leader:%lx",
-            pWin->drawable.id, windProperty.transient, windProperty.leader)
+        logd( "redirect_view %x for overrideRedirect transient:%x leader:%x, pid:%ld, windowtype:%d",
+            pWin->drawable.id, windProperty.transient, windProperty.leader, windProperty.pid, windProperty.window_type)
         _surface_log_traversal_window(sfWraper);
-        WindAttribute* attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , windProperty.transient);
-        if(!attr){
+        if(windProperty.transient){
+            attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , windProperty.transient);
+            if(attr)
+            {
+                logd( "redirect_view %x for transient found attr:%x", pWin->drawable.id, attr->window)
+            }
+        } else if(windProperty.leader){
             attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , windProperty.leader);
+            if(attr)
+            {
+                logd( "redirect_view %x for leader found attr:%x", pWin->drawable.id, attr->window)
+            }
+        } else if(focusWindow){
+            attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , focusWindow);
+            if(attr)
+            {
+                logd( "redirect_view %x for focusWindow found attr:%x", pWin->drawable.id, attr->window)
+            }
+        } else if (windProperty.pid) {
+            attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , windProperty.pid);
+            if(attr)
+            {
+                logd( "redirect_view %x for pid found attr:%x", pWin->drawable.id, attr->window)
+            }
         }
         if(attr && attr->status >= ANDROID_STATUS_FOCUSED && attr->android_component > ANDROID_COMPONENT_VIEW){
-            logd( "redirect_widget  %lx should create view for widget", pWin->drawable.id)
+            logd( "redirect_widget  %x should create view for widget", pWin->drawable.id)
             android_redirect_widget(pWin, windProperty, attr->window);
             property_cleanup(&windProperty);
             return;
@@ -614,7 +636,7 @@ bool util_check_window_bounds(WindowPtr pWindow, WindAttribute *attr) {
 void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
-    loge( "window:%lx taskto:%lx", pWin->drawable.id, window);
+//    loge( "window:%lx taskto:%lx", pWin->drawable.id, window);
     if (attr) {
         GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
                                               pixmap->drawable.width,
@@ -1572,8 +1594,10 @@ void property_get(WindowPtr pWin, WindProperty *prop) {
                 // loge( "prop window:%x protocol:%s", pWin->drawable.id, NameForAtom(atoms[i]));
             }
         } else if (STRING_EQUAL(NameForAtom(name), WINDOW_X11_PID)) {
-            unsigned long pid = *((unsigned long *) propData);
-//            loge( "prop window:%x pid:%ld", pWin->drawable.id, pid);
+            long pid = (propData[0]);
+            prop->pid = *propData;
+//            loge( "prop window:%x pid:%d size:%d format:%d pid:%ld",
+//            pWin->drawable.id, prop->pid, pProper->size, pProper->format, pid);
             //TODO revert from steam
 //        } else if(STRING_EQUAL(NameForAtom(name), "STEAM_GAME")) {
 //            prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;

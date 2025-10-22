@@ -27,7 +27,8 @@ typedef struct {
     Bool support_wm_delete;     //WM_PROTOCOLS              WM_DELETE_WINDOW
     Bool support_motif;
     jobject icon;               //_NET_WM_ICON
-    unsigned long pid;          //_NET_WM_PID               CARDINAL
+//    unsigned long pid;          //_NET_WM_PID               CARDINAL
+    pid_t pid;
 } WindProperty;
 
 typedef struct {
@@ -120,8 +121,9 @@ typedef union {
 #define TYPE_FRAME      1 << 1
 #define TYPE_LEADER     1 << 2
 #define TYPE_CHILD      1 << 3
+#define TYPE_PID        1 << 4
 
-#define TYPE_ANY  (TYPE_WINDOW|TYPE_FRAME|TYPE_LEADER|TYPE_CHILD)
+#define TYPE_ANY  (TYPE_WINDOW|TYPE_FRAME|TYPE_LEADER|TYPE_CHILD|TYPE_PID)
 //HARD CODE NOW
 #define OBLIQUE_CROSS_WIDTH 7
 #define CURSOR_MOVE_XHOT_R 20
