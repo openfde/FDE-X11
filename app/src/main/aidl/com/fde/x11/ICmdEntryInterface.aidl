@@ -19,6 +19,8 @@ interface ICmdEntryInterface {
 
     void configureWindow(long winPtr, long window, int x, int y, int w, int h);
 
+    void setWindowingMode(long frame, long window, int mode);
+
     void moveWindow(long winPtr, long window, int x, int y);
 
     void resizeWindow(long window, int w, int h);

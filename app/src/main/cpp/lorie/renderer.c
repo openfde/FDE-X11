@@ -733,9 +733,9 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
-    logd("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d flip:%d",
-        x, y, w, h, window,
-        attr->texture_id, flip);
+//    logd("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d flip:%d",
+//        x, y, w, h, window,
+//        attr->texture_id, flip);
 }
 
 void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, void *window, GLuint texture_id) {
@@ -847,7 +847,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 //    _surface_log_traversal_window(sfWraper);
     int size, i  =0 ;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
-    logd("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
+//    logd("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
     while (i < size ) {
         renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
         i++;
@@ -857,7 +857,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window, bool empty) {
-    logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
+//    logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
     int id, dri_id;
@@ -899,7 +899,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
 //    if(!empty){
     if(id){
         glViewport(0, 0, width, height);
-        loge("renderer_redraw_traversal_1 id:%d", id);
+//        loge("renderer_redraw_traversal_1 id:%d", id);
         draw(id, -1.f, -1.f, 1.f, 1.f, flip);
     }
     if(dri_id && attr->dri_pWin){
@@ -939,10 +939,10 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
         float x1 = x0 + w / width * 2.0f;
         float y1 = y0 + h / height * 2.0f;
-        logd("renderer_redraw_traversal_dri x:%d", attr->dri_x);
-        logd("renderer_redraw_traversal_dri y:%d", attr->dri_y);
-        logd("renderer_redraw_traversal_dri w:%d", dri_pWin->drawable.width);
-        logd("renderer_redraw_traversal_dri h:%d", dri_pWin->drawable.height);
+//        logd("renderer_redraw_traversal_dri x:%d", attr->dri_x);
+//        logd("renderer_redraw_traversal_dri y:%d", attr->dri_y);
+//        logd("renderer_redraw_traversal_dri w:%d", dri_pWin->drawable.width);
+//        logd("renderer_redraw_traversal_dri h:%d", dri_pWin->drawable.height);
 
         draw(dri_id, x0, y0, x1, y1, flip);
     }
@@ -1156,10 +1156,10 @@ static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip
     checkGlError();
     glEnableVertexAttribArray(c);
     checkGlError();
-    logd("glDrawArraysInstancedNV 1")
+//    logd("glDrawArraysInstancedNV 1")
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 //    glDrawArraysInstanced(GL_TRIANGLES, 0, 4, 1);
-    logd("glDrawArraysInstancedNV 2")
+//    logd("glDrawArraysInstancedNV 2")
     checkGlError();
 //    GLfloat vVertices[] = {
 //            0.0f,  0.5f, 0.0f,

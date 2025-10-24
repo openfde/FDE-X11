@@ -141,11 +141,11 @@ void                     getDesktopLayout                       (DisplayInfo *,
 void                     setNetSupportedHint                    (DisplayInfo *,
                                                                  Window,
                                                                  Window);
-// gboolean                 getAtomList                            (DisplayInfo *,
-//                                                                  Window,
-//                                                                  int,
-//                                                                  Atom **,
-//                                                                  int *);
+ gboolean                 getAtomList                            (DisplayInfo *,
+                                                                  Window,
+                                                                  int,
+                                                                  Atom **,
+                                                                  int *);
 // gboolean                 getCardinalList                        (DisplayInfo *,
 //                                                                  Window,
 //                                                                  int,

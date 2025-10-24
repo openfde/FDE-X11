@@ -133,6 +133,7 @@ public:
     WindowManager(Display *display, jint i, jint i1, jint i2);
     void Run();
     int configureWindow(long window, int x, int y, int w, int h);
+    int setWindowingMode(long frame, long window, int mode);
     int moveWindow(long window, int x, int y);
     int resizeWindow(long window, int x, int y);
     int closeWindow(long window);
@@ -162,6 +163,7 @@ private:
     int status_bar_height = 24;
     int status_bar_icon_width = 30;
     int offset_right_in_statusbar = 254;
+    int navigation_bar_height = 68;
 
     // Event handlers.
     void OnCreateNotify(const XCreateWindowEvent &e);

@@ -365,7 +365,7 @@ clientResize (Client * c, int handle, XfwmEventButton *event)
     {
         if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
         {
-            clientRemoveMaximizeFlag (c);
+//            clientRemoveMaximizeFlag (c);
             passdata.configure_flags = CFG_FORCE_REDRAW;
         }
         if (FLAG_TEST (c->flags, CLIENT_FLAG_RESTORE_SIZE_POS))

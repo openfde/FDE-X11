@@ -750,7 +750,13 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
                         mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
             },200);
+
         }
+
+        if(mXserviceWrapper == null /*|| isTaskMoving*/){
+            return;
+        }
+        mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
     }
 
     private void updateAttribueOnly(Rect rect) {
@@ -1481,7 +1487,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                     || WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(intent.getAction())){
                 long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
                 FLog.a("event", getWindowId(), "onReceive: "  +
-                        "WINDOW_ACTION_MAXIMIZED change"  + " windowID:" + windowID );
+                        "WINDOW_ACTION_MAXIMIZED change"  + " windowID:" + windowID +
+                        " action:" + intent.getAction() );
                 if(windowID == Objects.requireNonNull(mAttribute).getXID()){
                     updateWmStateInner(intent.getAction());
                 }

@@ -431,7 +431,7 @@ static void lorieUpdateBuffer(void) {
 }
 
 static inline void loriePixmapUnlock(PixmapPtr pixmap) {
-    logd("loriePixmapUnlock");
+//    logd("loriePixmapUnlock");
     if (pvfb->root.legacyDrawing)
         return renderer_update_root(pixmap->drawable.width, pixmap->drawable.height, pixmap->devPrivate.ptr, pvfb->root.flip);
 
@@ -443,7 +443,7 @@ static inline void loriePixmapUnlock(PixmapPtr pixmap) {
 }
 
 static inline Bool loriePixmapLock(PixmapPtr pixmap) {
-    logd("loriePixmapLock");
+//    logd("loriePixmapLock");
     AHardwareBuffer_Desc desc = {};
     void *data;
     int status;
@@ -472,7 +472,7 @@ static void lorieTimerCallback(int fd, unused int r, void *arg) {
     char dummy[8];
     read(fd, dummy, 8);
     if (renderer_should_redraw() && RegionNotEmpty(DamageRegion(pvfb->damage))) {
-        logd("RegionNotEmpty");
+//        logd("RegionNotEmpty");
         int redrawn = FALSE;
         ScreenPtr pScreen = (ScreenPtr) arg;
 
@@ -483,7 +483,7 @@ static void lorieTimerCallback(int fd, unused int r, void *arg) {
             DamageEmpty(pvfb->damage);
         }
     } else if (pvfb->cursorMoved){
-        logd("RegionEmpty");
+//        logd("RegionEmpty");
 //        renderer_redraw(pvfb->env, pvfb->root.flip, true);
     }
 

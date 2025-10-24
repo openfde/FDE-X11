@@ -51,6 +51,7 @@
 // #include "workspaces.h"
 #include "native_log.h"
 #include "device.h"
+#include "transients.h"
 
 
 Client *
@@ -99,80 +100,80 @@ clientSetNetState (Client * c)
     int i;
 
     g_return_if_fail (c != NULL);
-    // TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
 
     i = 0;
     if (FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
     {
-        //TRACE ("shaded");
+        logd ("shaded");
         data[i++] = display_info->atoms[NET_WM_STATE_SHADED];
     }
     if (FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
     {
-        //TRACE ("sticky");
+        logd ("sticky");
         data[i++] = display_info->atoms[NET_WM_STATE_STICKY];
     }
     if (FLAG_TEST (c->flags, CLIENT_FLAG_STATE_MODAL))
     {
-        //TRACE ("modal");
+        logd ("modal");
         data[i++] = display_info->atoms[NET_WM_STATE_MODAL];
     }
     if (FLAG_TEST (c->flags, CLIENT_FLAG_SKIP_PAGER))
     {
-        //TRACE ("skip_pager");
+        logd ("skip_pager");
         data[i++] = display_info->atoms[NET_WM_STATE_SKIP_PAGER];
     }
     if (FLAG_TEST (c->flags, CLIENT_FLAG_SKIP_TASKBAR))
     {
-        //TRACE ("skip_taskbar");
+        logd ("skip_taskbar");
         data[i++] = display_info->atoms[NET_WM_STATE_SKIP_TASKBAR];
     }
     if (FLAG_TEST_ALL (c->flags, CLIENT_FLAG_MAXIMIZED))
     {
-        //TRACE ("maximize vert + horiz");
+        logd ("maximize vert + horiz");
         data[i++] = display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ];
         data[i++] = display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT];
     }
     else if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ))
     {
-        //TRACE ("maximize horiz");
+        logd ("maximize horiz");
         data[i++] = display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ];
     }
     else if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT))
     {
-        //TRACE ("vert");
+        logd ("vert");
         data[i++] = display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT];
     }
     if (FLAG_TEST (c->flags, CLIENT_FLAG_FULLSCREEN))
     {
-        //TRACE ("fullscreen");
+        logd ("fullscreen");
         data[i++] = display_info->atoms[NET_WM_STATE_FULLSCREEN];
     }
     else if (FLAG_TEST (c->flags, CLIENT_FLAG_ABOVE))
     {
-        //TRACE ("above");
+        logd ("above");
         data[i++] = display_info->atoms[NET_WM_STATE_ABOVE];
     }
     else if (FLAG_TEST (c->flags, CLIENT_FLAG_BELOW))
     {
-        //TRACE ("below");
+        logd ("below");
         data[i++] = display_info->atoms[NET_WM_STATE_BELOW];
     }
     if (FLAG_TEST (c->flags, CLIENT_FLAG_ICONIFIED))
     {
-        //TRACE ("hidden");
+        logd ("hidden");
         data[i++] = display_info->atoms[NET_WM_STATE_HIDDEN];
     }
     if (FLAG_TEST (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION))
     {
-        //TRACE ("demands_attention");
+        logd ("demands_attention");
         data[i++] = display_info->atoms[NET_WM_STATE_DEMANDS_ATTENTION];
     }
     if (c == clientGetFocus () || c->type & WINDOW_TYPE_STATE_FOCUSED)
     {
-        //TRACE ("focused");
+        logd ("focused");
         data[i++] = display_info->atoms[NET_WM_STATE_FOCUSED];
     }
 
@@ -192,7 +193,7 @@ clientGetNetState (Client * c)
     Atom *atoms;
 
     g_return_if_fail (c != NULL);
-    //TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
     screen_info = c->screen_info;
     display_info = screen_info->display_info;
@@ -203,22 +204,22 @@ clientGetNetState (Client * c)
     {
         if (FLAG_TEST (c->flags, CLIENT_FLAG_SHADED))
         {
-            //TRACE ("shaded from session management");
+            logd ("shaded from session management");
             FLAG_SET (c->flags, CLIENT_FLAG_SHADED);
         }
         if (FLAG_TEST (c->flags, CLIENT_FLAG_STICKY))
         {
-            //TRACE ("sticky from session management");
+            logd ("sticky from session management");
             FLAG_SET (c->flags, CLIENT_FLAG_STICKY);
         }
         if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ))
         {
-            //TRACE ("maximized horiz from session management");
+            logd ("maximized horiz from session management");
             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ | CLIENT_FLAG_RESTORE_SIZE_POS);
         }
         if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT))
         {
-            //TRACE ("maximized vert from session management");
+            logd ("maximized vert from session management");
             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT | CLIENT_FLAG_RESTORE_SIZE_POS);
         }
     }
@@ -226,36 +227,36 @@ clientGetNetState (Client * c)
     if (getAtomList (display_info, c->window, NET_WM_STATE, &atoms, &n_atoms))
     {
         int i;
-        //TRACE ("%i atoms detected", n_atoms);
+        logd ("%i atoms detected", n_atoms);
 
         i = 0;
         while (i < n_atoms)
         {
             if (atoms[i] == display_info->atoms[NET_WM_STATE_SHADED])
             {
-                //TRACE ("shaded");
+                logd ("shaded");
                 FLAG_SET (c->flags, CLIENT_FLAG_SHADED);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_STICKY])
             {
-                //TRACE ("sticky");
+                logd ("sticky");
                 FLAG_SET (c->flags, CLIENT_FLAG_STICKY);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ])
             {
-                //TRACE ("maximized horiz");
+                logd ("maximized horiz");
                 FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ | CLIENT_FLAG_RESTORE_SIZE_POS);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT])
             {
-                //TRACE ("maximized vert");
+                logd ("maximized vert");
                 FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT | CLIENT_FLAG_RESTORE_SIZE_POS);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_FULLSCREEN])
             {
                 if (!FLAG_TEST_ALL (c->flags, CLIENT_FLAG_ABOVE | CLIENT_FLAG_BELOW))
                 {
-                    //TRACE ("fullscreen");
+                    logd ("fullscreen");
                     FLAG_SET (c->flags, CLIENT_FLAG_FULLSCREEN);
                 }
             }
@@ -263,7 +264,7 @@ clientGetNetState (Client * c)
             {
                 if (!FLAG_TEST_ALL (c->flags, CLIENT_FLAG_FULLSCREEN | CLIENT_FLAG_BELOW))
                 {
-                    //TRACE ("above");
+                    logd ("above");
                     FLAG_SET (c->flags, CLIENT_FLAG_ABOVE);
                 }
             }
@@ -271,38 +272,38 @@ clientGetNetState (Client * c)
             {
                 if (!FLAG_TEST_ALL (c->flags, CLIENT_FLAG_ABOVE | CLIENT_FLAG_FULLSCREEN))
                 {
-                    //TRACE ("below");
+                    logd ("below");
                     FLAG_SET (c->flags, CLIENT_FLAG_BELOW);
                 }
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_MODAL])
             {
-                //TRACE ("modal");
+                logd ("modal");
                 FLAG_SET (c->flags, CLIENT_FLAG_STATE_MODAL);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_SKIP_PAGER])
             {
-                //TRACE ("skip_pager");
+                logd ("skip_pager");
                 FLAG_SET (c->flags, CLIENT_FLAG_SKIP_PAGER);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_SKIP_TASKBAR])
             {
-                //TRACE ("skip_taskbar");
+                logd ("skip_taskbar");
                 FLAG_SET (c->flags, CLIENT_FLAG_SKIP_TASKBAR);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_HIDDEN])
             {
-                //TRACE ("state_hidden");
+                logd ("state_hidden");
                 FLAG_SET (c->flags, CLIENT_FLAG_ICONIFIED);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_DEMANDS_ATTENTION])
             {
-                //TRACE ("demands_attention");
+                logd ("demands_attention");
                 FLAG_SET (c->flags, CLIENT_FLAG_DEMANDS_ATTENTION);
             }
             else if (atoms[i] == display_info->atoms[NET_WM_STATE_FOCUSED])
             {
-                //TRACE ("focused, ignored...");
+                logd ("focused, ignored...");
             }
             else
             {
@@ -375,8 +376,8 @@ clientUpdateNetState (Client * c, XClientMessageEvent * ev)
     first  = ev->data.l[1];
     second = ev->data.l[2];
     mode = 0;
-    logd ("client \"%s\" (0x%lx) action:%s first:%s second:%s", c->name, c->window,
-          XGetAtomName(display_info->dpy, action),
+    logd ("client \"%s\" (0x%lx) action:%lu first:%s second:%s", c->name, c->window,
+          action,
           XGetAtomName(display_info->dpy, first),
           XGetAtomName(display_info->dpy, second));
 
@@ -1152,7 +1153,7 @@ clientSetNetActions (Client * c)
     int i;
 
     g_return_if_fail (c != NULL);
-    //TRACE ("client \"%s\" (0x%lx)", c->name, c->window);
+    logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
     screen_info = c->screen_info;
     display_info = screen_info->display_info;

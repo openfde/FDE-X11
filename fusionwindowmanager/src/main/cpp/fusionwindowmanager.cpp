@@ -102,6 +102,14 @@ JNIEXPORT jint JNICALL configureWindow(JNIEnv * env, jobject obj, jlong wid, jin
     return window_manager->configureWindow(wid, x, y, w, h);
 }
 
+JNIEXPORT jint JNICALL setWindowingMode(JNIEnv * env, jobject obj, jlong frame, jlong window, int mode){
+    if(!window_manager){
+        logd("Failed to initialize window manager.");
+        return False;
+    }
+    return window_manager->setWindowingMode(frame, window, mode);
+}
+
 JNIEXPORT jint JNICALL resizeWindow(JNIEnv * env, jobject obj, jlong ptr, jint x, jint y){
     if(!window_manager){
         logd("Failed to initialize window manager.");
@@ -186,6 +194,7 @@ static JNINativeMethod method_table[] = {
         {"connect2Server", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;III)I", (void *) connect2Server},
         {"moveWindow","(JII)I", (void *) moveWindow},
         {"configureWindow","(JIIII)I", (void *) configureWindow},
+        {"setWindowingMode","(JJI)I", (void *) setWindowingMode},
         {"resizeWindow","(JII)I", (void *) resizeWindow},
         {"closeWindow","(J)I", (void *) closeWindow},
         {"unmapWindow","(J)I", (void *) unmapWindow},

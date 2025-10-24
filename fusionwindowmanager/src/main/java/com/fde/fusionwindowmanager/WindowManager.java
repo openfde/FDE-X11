@@ -221,6 +221,8 @@ public class WindowManager  {
 
     public native int configureWindow(long window, int x, int y, int width, int height);
 
+    public native int setWindowingMode(long frame, long window, int mode);
+
     public native int moveWindow(long window, int x, int y);
 
     public native int resizeWindow(long window, int width, int height);
@@ -239,7 +241,7 @@ public class WindowManager  {
 
     //called from native code
     public static void  syncConfigureRequest(int x, int y, int width, int height, long window, int isMoving){
-//        Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "]");
+        Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "]");
         if(taskIdMap.get(window) != null  && taskIdMap.get(window).getTaskId() != -1){
             EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window, isMoving), null);
             EventBus.getDefault().post(message);
@@ -265,13 +267,15 @@ public class WindowManager  {
 
         //called from native code
     public static void updateWmStateClient(int action, long window){
-//        Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
+        Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
         Context context = contextReference.get();
-        if((action & WINDOW_ACTION_MAXIMIZED_HORZ) > 0
+
+        if (action ==  WINDOW_ACTION_MAXIMIZED_REMOVE) {
+        } if((action & WINDOW_ACTION_MAXIMIZED_HORZ) > 0
                 && (action & WINDOW_ACTION_MAXIMIZED_VERT) > 0){
             action = WINDOW_ACTION_MAXIMIZED;
         } else {
-            action = WINDOW_ACTION_MAXIMIZED_REMOVE;
+//            action = WINDOW_ACTION_MAXIMIZED_REMOVE;
         }
 
         if(context == null){

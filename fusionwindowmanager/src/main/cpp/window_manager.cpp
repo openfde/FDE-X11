@@ -49,7 +49,7 @@ WindowManager::WindowManager(Display *display, jint width, jint height, jint den
     status_bar_height = density_ * status_bar_height / 96;
     status_bar_icon_width = density_ * status_bar_icon_width / 96;
     offset_right_in_statusbar = density_ * offset_right_in_statusbar / 96;
-
+    navigation_bar_height = density_ * navigation_bar_height / 96;
     logd("WindowManager::WindowManager %d %d %d %d %d", decorcationview_height, system_tray_icon_width,
         status_bar_height, status_bar_icon_width, offset_right_in_statusbar);
     back_window = XCreateSimpleWindow(display_, root_, 0, 0, width_, height_, 0,
@@ -59,7 +59,8 @@ WindowManager::WindowManager(Display *display, jint width, jint height, jint den
 }
 
 static DisplayInfo *
-initialize(gboolean replace_wm, Display *display_, Window back_window, Window root_)
+initialize(gboolean replace_wm, Display *display_, Window back_window, Window root_,
+           int navigation_bar_height, int status_bar_height)
 {
 
     DisplayInfo *display_info;
@@ -92,6 +93,8 @@ initialize(gboolean replace_wm, Display *display_, Window back_window, Window ro
             g_slist_append(display_info->screens, screen_info);
         }
         screen_info->xfwm4_win = back_window;
+        screen_info->navigation_bar_height = navigation_bar_height;
+        screen_info->status_bar_height = status_bar_height;
         myDisplayAddScreen(display_info, screen_info);
 
         // setUTF8StringHint(display_info, back_window, NET_WM_NAME, "FDE-XWM");
@@ -307,7 +310,7 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent &e)
 {
-    //    logd("OnConfigureNotify window:%lx above:%lx", e.window, e.above);
+        logd("OnConfigureNotify window:%lx above:%lx", e.window, e.above);
     if (clients_.count(e.above))
     {
         //        logd("OnConfigureNotify %lx", e.window);
@@ -858,7 +861,8 @@ void WindowManager::Run()
     }
 
     gboolean replace_wm = FALSE;
-    display_info = initialize(replace_wm, display_, back_window, root_);
+    display_info = initialize(replace_wm, display_, back_window, root_, navigation_bar_height,
+                              status_bar_height);
 
 
         char resource_data[1024];
@@ -999,8 +1003,13 @@ void WindowManager::ProcessClientMessage(XEvent e)
         else if ((ev->message_type == display_info->atoms[NET_WM_STATE]) && (ev->format == 32))
         {
             //TODO operation in decoration
-            logd("client \"%s\" (0x%lx) has received a NET_WM_STATE event", c->name, c->window);
             int wm_action = clientUpdateNetState (c, ev);
+            if(wm_action == WINDOW_ACTION_MAXIMIZED_REMOVE){
+                setMaximizedState(ev->window, FALSE);
+            } else {
+                setMaximizedState(ev->window, TRUE);
+            }
+            logd("client \"%s\" (0x%lx) has received a NET_WM_STATE event action:%d", c->name, c->window, wm_action);
             jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                             "updateWmStateClient", "(IJ)V");
             GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, c->frame);
@@ -1614,6 +1623,21 @@ int WindowManager::setMaximizedState(Window window, Bool maximized)
                 9);
     }
     XSync(display_, False);
+
+    Client *c;
+    c = myDisplayGetClientFromWindow (display_info, window, SEARCH_WINDOW);
+    if(c)
+    {
+        if(maximized)
+        {
+            FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
+            FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ);
+        } else
+        {
+            FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
+            FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ);
+        }
+    }
     return true;
 }
 
@@ -1925,6 +1949,23 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h)
         myDisplayErrorTrapPush (display_info);
         ret = XConfigureWindow (display_info->dpy, window, value_mask, &changes);
         myDisplayErrorTrapPopIgnored (display_info);
+    }
+    XFlush(display_);
+    return ret;
+}
+
+int WindowManager::setWindowingMode(long frame, long window, int mode)
+{
+    logd ("setWindowingMode %lx %lx %d", frame, window, mode)
+    int ret;
+    Client *c;
+    c = myDisplayGetClientFromWindow(display_info, window, SEARCH_WINDOW);
+    if(c){
+        if(mode){
+            ret = setMaximizedState(c->window, true);
+        } else {
+            ret = setMaximizedState(c->window, false);
+        }
     }
     XFlush(display_);
     return ret;

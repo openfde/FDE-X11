@@ -242,6 +242,10 @@ typedef enum
 }
 tilePositionType;
 
+struct GRectangle {
+    int x,y, width, height;
+};
+
 struct _Client
 {
     /* Reference to our screen structure */
@@ -283,7 +287,7 @@ struct _Client
     gint gravity;
     guint win_workspace;
     // GdkRectangle applied_geometry;
-    // GdkRectangle saved_geometry;
+     struct GRectangle saved_geometry;
     // GdkRectangle pre_fullscreen_geometry;
     gint pre_fullscreen_layer;
     gint pre_relayout_x;    /* to restore original location with XRandR */

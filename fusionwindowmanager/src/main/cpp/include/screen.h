@@ -205,6 +205,8 @@ struct _ScreenInfo
     // XSyncFence fence[N_BUFFERS];
     gboolean present_pending;
     MoveResizeData passdata;
+    int navigation_bar_height;
+    int status_bar_height;
 };
 
 gboolean                 myScreenCheckWMAtom                    (ScreenInfo *,

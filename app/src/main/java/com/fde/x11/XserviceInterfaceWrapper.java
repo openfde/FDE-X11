@@ -112,6 +112,14 @@ public class XserviceInterfaceWrapper implements InputStub {
         }
     }
 
+    public void setWindowingMode(long frame, long window, int mode){
+        try {
+            if(isAviable()){service.setWindowingMode(frame, window, mode);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "setWindowingMode failed" + e.getMessage());
+        }
+    }
+
     public void moveWindow(long p, long window, int x, int y) throws android.os.RemoteException{
 
     }

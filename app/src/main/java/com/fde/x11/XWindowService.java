@@ -183,6 +183,13 @@ public class XWindowService extends Service {
         }
 
         @Override
+        public void setWindowingMode(long frame, long window, int mode) throws RemoteException {
+            if(wm != null && wm.setWindowingMode(frame, window, mode) > 0){
+                FLog.s(TAG, "configureWindow: frame:" + frame + ", window:" + window + ", mode:" + mode + "");
+            }
+        }
+
+        @Override
         public void moveWindow(long winPtr, long window, int x, int y) throws RemoteException {
             if(wm != null && wm.moveWindow(window, x, y) > 0){
 //                FLog.s(TAG, "moveWindow: winPtr:" + winPtr + ", window:" + window + ", x:" + x + ", y:" + y + "");

@@ -239,21 +239,21 @@ clientUpdateName (Client *c)
     // }
 }
 
-// static void
-// clientRecomputeMaximizeSize (Client *c)
-// {
-//     unsigned long maximization_flags = 0L;
+ static void
+ clientRecomputeMaximizeSize (Client *c)
+ {
+     unsigned long maximization_flags = 0L;
 
-//     g_return_if_fail (c != NULL);
-//     logd ("client \"%s\" (0x%lx)", c->name, c->window);
+     g_return_if_fail (c != NULL);
+     logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
-//     /* Recompute size and position of maximized windows */
-//     maximization_flags = c->flags & CLIENT_FLAG_MAXIMIZED;
+     /* Recompute size and position of maximized windows */
+     maximization_flags = c->flags & CLIENT_FLAG_MAXIMIZED;
 
-//     /* Force an update by clearing the internal flags */
-//     FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED);
-//     clientToggleMaximized (c, maximization_flags, FALSE);
-// }
+     /* Force an update by clearing the internal flags */
+     FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED);
+     clientToggleMaximized (c, maximization_flags, FALSE);
+ }
 
 // void
 // clientUpdateAllFrames (ScreenInfo *screen_info, int mask)
@@ -923,7 +923,7 @@ clientMoveResizeWindow (Client *c, XWindowChanges * wc, unsigned long mask)
 
         if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
         {
-            clientRemoveMaximizeFlag (c);
+//            clientRemoveMaximizeFlag (c);
             flags |= CFG_FORCE_REDRAW;
         }
 
@@ -1552,19 +1552,19 @@ clientApplyInitialState (Client *c)
 //     }
 // }
 
-// void
-// clientSaveSizePos (Client *c)
-// {
-//     g_return_if_fail (c != NULL);
+ void
+ clientSaveSizePos (Client *c)
+ {
+     g_return_if_fail (c != NULL);
 
-//     if (!FLAG_TEST (c->flags, CLIENT_FLAG_RESTORE_SIZE_POS))
-//     {
-//         c->saved_geometry.x = c->x;
-//         c->saved_geometry.width = c->width;
-//         c->saved_geometry.y = c->y;
-//         c->saved_geometry.height = c->height;
-//     }
-// }
+     if (!FLAG_TEST (c->flags, CLIENT_FLAG_RESTORE_SIZE_POS))
+     {
+         c->saved_geometry.x = c->x;
+         c->saved_geometry.width = c->width;
+         c->saved_geometry.y = c->y;
+         c->saved_geometry.height = c->height;
+     }
+ }
 
 // gboolean
 // clientRestoreSizePos (Client *c)
@@ -3181,19 +3181,19 @@ clientUnstick (Client *c, gboolean include_transients)
 //     }
 // }
 
-// void
-// clientUpdateMaximizeSize (Client *c)
-// {
-//     g_return_if_fail (c != NULL);
-//     logd ("client \"%s\" (0x%lx)", c->name, c->window);
+ void
+ clientUpdateMaximizeSize (Client *c)
+ {
+     g_return_if_fail (c != NULL);
+     logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
-//     /* Recompute size and position of maximized windows */
-//     if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
-//     {
-//         clientRecomputeMaximizeSize (c);
-//         clientReconfigure (c, CFG_NOTIFY);
-//     }
-// }
+     /* Recompute size and position of maximized windows */
+     if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
+     {
+         clientRecomputeMaximizeSize (c);
+         clientReconfigure (c, CFG_NOTIFY);
+     }
+ }
 
 void
 clientRemoveMaximizeFlag (Client *c)
@@ -3207,78 +3207,78 @@ clientRemoveMaximizeFlag (Client *c)
     clientSetNetState (c);
 }
 
-// static void
-// clientNewMaxState (Client *c, XWindowChanges *wc, int mode)
-// {
-//     if (FLAG_TEST_ALL (mode, CLIENT_FLAG_MAXIMIZED))
-//     {
-//         /*
-//          * We need to test specifically for full de-maximization
-//          * otherwise it's too confusing when the window changes
-//          * from horiz to vertical maximization or vice-versa.
-//          */
-//         if (FLAG_TEST_ALL (c->flags, CLIENT_FLAG_MAXIMIZED))
-//         {
-//             FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED | CLIENT_FLAG_RESTORE_SIZE_POS);
-//             wc->x = c->saved_geometry.x;
-//             wc->y = c->saved_geometry.y;
-//             wc->width = c->saved_geometry.width;
-//             wc->height = c->saved_geometry.height;
+ static void
+ clientNewMaxState (Client *c, XWindowChanges *wc, int mode)
+ {
+     if (FLAG_TEST_ALL (mode, CLIENT_FLAG_MAXIMIZED))
+     {
+         /*
+          * We need to test specifically for full de-maximization
+          * otherwise it's too confusing when the window changes
+          * from horiz to vertical maximization or vice-versa.
+          */
+         if (FLAG_TEST_ALL (c->flags, CLIENT_FLAG_MAXIMIZED))
+         {
+             FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED | CLIENT_FLAG_RESTORE_SIZE_POS);
+             wc->x = c->saved_geometry.x;
+             wc->y = c->saved_geometry.y;
+             wc->width = c->saved_geometry.width;
+             wc->height = c->saved_geometry.height;
 
-//             return;
-//         }
-//         else if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ))
-//         {
-//             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
-//             return;
-//         }
-//         else if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT))
-//         {
-//             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ);
-//             return;
-//         }
-//     }
+             return;
+         }
+         else if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ))
+         {
+             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
+             return;
+         }
+         else if (FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT))
+         {
+             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ);
+             return;
+         }
+     }
 
-//     if (FLAG_TEST (mode, CLIENT_FLAG_MAXIMIZED_HORIZ))
-//     {
-//         if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ))
-//         {
-//             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ | CLIENT_FLAG_RESTORE_SIZE_POS);
-//         }
-//         else
-//         {
-//             FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ);
-//             if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
-//             {
-//                 FLAG_UNSET (c->flags, CLIENT_FLAG_RESTORE_SIZE_POS);
-//             }
-//             wc->x = c->saved_geometry.x;
-//             wc->y = c->saved_geometry.y;
-//             wc->width = c->saved_geometry.width;
-//             wc->height = c->saved_geometry.height;
-//         }
-//     }
+     if (FLAG_TEST (mode, CLIENT_FLAG_MAXIMIZED_HORIZ))
+     {
+         if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ))
+         {
+             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ | CLIENT_FLAG_RESTORE_SIZE_POS);
+         }
+         else
+         {
+             FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED_HORIZ);
+             if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
+             {
+                 FLAG_UNSET (c->flags, CLIENT_FLAG_RESTORE_SIZE_POS);
+             }
+             wc->x = c->saved_geometry.x;
+             wc->y = c->saved_geometry.y;
+             wc->width = c->saved_geometry.width;
+             wc->height = c->saved_geometry.height;
+         }
+     }
 
-//     if (FLAG_TEST (mode, CLIENT_FLAG_MAXIMIZED_VERT))
-//     {
-//         if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT))
-//         {
-//             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT | CLIENT_FLAG_RESTORE_SIZE_POS);
-//         }
-//         else
-//         {
-//             FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
-//             if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
-//             {
-//                 FLAG_UNSET (c->flags, CLIENT_FLAG_RESTORE_SIZE_POS);
-//             }
-//             wc->x = c->saved_geometry.x;
-//             wc->y = c->saved_geometry.y;
-//             wc->width = c->saved_geometry.width;
-//             wc->height = c->saved_geometry.height;
-//         }
-//     }
-// }
+     if (FLAG_TEST (mode, CLIENT_FLAG_MAXIMIZED_VERT))
+     {
+         if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED_VERT))
+         {
+             FLAG_SET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT | CLIENT_FLAG_RESTORE_SIZE_POS);
+         }
+         else
+         {
+             FLAG_UNSET (c->flags, CLIENT_FLAG_MAXIMIZED_VERT);
+             if (!FLAG_TEST (c->flags, CLIENT_FLAG_MAXIMIZED))
+             {
+                 FLAG_UNSET (c->flags, CLIENT_FLAG_RESTORE_SIZE_POS);
+             }
+             wc->x = c->saved_geometry.x;
+             wc->y = c->saved_geometry.y;
+             wc->width = c->saved_geometry.width;
+             wc->height = c->saved_geometry.height;
+         }
+     }
+ }
 
 // static gboolean
 // clientNewTileSize (Client *c, XWindowChanges *wc, GdkRectangle *rect, tilePositionType tile)
@@ -4687,7 +4687,8 @@ clientToggleMaximizedAtPoint (Client *c, gint cx, gint cy, int mode, gboolean re
     unsigned long old_flags;
 
     g_return_val_if_fail (c != NULL, FALSE);
-    logd ("client \"%s\" (0x%lx)", c->name, c->window);
+    logd ("client \"%s\" (0x%lx) mode:%d x:%d y:%d w:%d h:%d ",
+          c->name, c->window, mode, c->x, c->y, c->width, c->height);
 
     if (!CLIENT_CAN_MAXIMIZE_WINDOW (c))
     {
@@ -4704,20 +4705,21 @@ clientToggleMaximizedAtPoint (Client *c, gint cx, gint cy, int mode, gboolean re
     // myScreenFindMonitorAtPoint (screen_info, cx, cy, &rect);
 
     wc.x = 0;//c->x;
-    wc.y = 67;//c->y;
-    wc.width = 1920;//c->width;
-    wc.height = 945;//c->height;
+    wc.y = screen_info->status_bar_height + 1;//c->y;
+    wc.width = screen_info->width;//c->width;
+    wc.height = screen_info->height - screen_info->status_bar_height
+                                      - screen_info->navigation_bar_height ;//c->height;
 
-    // if (restore_position &&
-    //     FLAG_TEST (mode, CLIENT_FLAG_MAXIMIZED))
-    // {
-    //     clientSaveSizePos (c);
-    // }
+     if (restore_position &&
+         FLAG_TEST (mode, CLIENT_FLAG_MAXIMIZED))
+     {
+         clientSaveSizePos (c);
+     }
 
-    // old_flags = c->flags;
+     old_flags = c->flags;
 
     // /* 1) Compute the new state */
-    // clientNewMaxState (c, &wc, mode);
+     clientNewMaxState (c, &wc, mode);
 
     // /* 2) Compute the new size, based on the state */
     // if (!clientNewMaxSize (c, &wc, &rect))
@@ -4752,11 +4754,12 @@ clientToggleMaximizedAtPoint (Client *c, gint cx, gint cy, int mode, gboolean re
         clientConfigure (c, &wc, CWWidth | CWHeight | CWX | CWY, CFG_FORCE_REDRAW);
     }
     /* Do not update the state while moving/resizing, CSD windows may resize */
-    if (!FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))
-    {
+//    if (!FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))
+//    {
         clientSetNetState (c);
-    }
+//    }
 
+    logd ("togglemaximized true")
     return TRUE;
 }
 
