@@ -8,10 +8,8 @@ import static com.fde.fusionwindowmanager.WindowManager.KEY_ICON;
 import static com.fde.fusionwindowmanager.WindowManager.KEY_TITLE;
 import static com.fde.fusionwindowmanager.WindowManager.KEY_WINDOW;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
-import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Service;
 import android.content.ClipData;
@@ -36,7 +34,6 @@ import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
-import com.fde.x11.data.Constants;
 import com.fde.x11.input.InputManager;
 import com.fde.x11.utils.AppUtils;
 import com.fde.x11.utils.FLog;
@@ -155,8 +152,7 @@ public class Xserver {
                         ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +
                         " , inbound:" + inbound + " clientNum:" + clientNum
                         + ",  window:" + Long.toHexString(window)
-                        + ",  start: " + start,
-                FLog.WARN);
+                        + ",  start: " + start, FLog.WARN);
         X_ClientNum = clientNum;
         EventMessage message = null;
         if(bitmap != null){
@@ -232,7 +228,7 @@ public class Xserver {
 
     public static void xserverMapWindow(long window){
         FLog.s(TAG, "xserverMapWindow() called with: window = [" + Long.toHexString(window) + "]");
-        WindowAttribute attr = WindowManager.taskIdMap.get(window);
+        WindowAttribute attr = WindowManager.existTaskMap.get(window);
         if(attr != null && attr.getTaskId() != 0){
             ActivityManager am = (ActivityManager)
                     context.get().getSystemService(Context.ACTIVITY_SERVICE);

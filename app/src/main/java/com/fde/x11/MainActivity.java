@@ -756,7 +756,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(mXserviceWrapper == null /*|| isTaskMoving*/){
             return;
         }
-        mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
     }
 
     private void updateAttribueOnly(Rect rect) {
@@ -920,6 +919,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         if(mXserviceWrapper != null){
             FLog.a("window", getWindowId(),"serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
             mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
+            mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
         }
     }
 
@@ -1311,6 +1311,21 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 isTaskMoving = false;
                 mInputHandler.setMoveTask(isTaskMoving);
             }
+        }
+
+        @Override
+        public boolean finishActivity(long window) throws RemoteException {
+            if(mAttribute != null && mAttribute.getXID() == window){
+                FLog.a(TAG, getWindowId(),"finisActivity: window:" + Long.toHexString(window));
+                finish();
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean configureActivity(long window) throws RemoteException {
+            return false;
         }
     };
 

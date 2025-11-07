@@ -1,33 +1,22 @@
 package com.fde.fusionwindowmanager;
 
-import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.ActivityOptions;
-import android.app.Dialog;
-import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.View;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.FileProvider;
 
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
@@ -40,8 +29,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +39,7 @@ import java.util.Set;
 
 public class WindowManager  {
 
-    private static final String TAG = "WindowManager";
+    private static final String TAG = "fusionwm";
     public static boolean ALREADY_SET_SCREEN_SIZE;
     public static final int ACTION_UNMAP =      1;
     public static final int ACTION_DESTORY =    2;
@@ -116,7 +103,7 @@ public class WindowManager  {
     public static final long SYSTEM_TRAY_CLICK = 4;
 
 
-    public static HashMap<Long, WindowAttribute> taskIdMap = new HashMap<>();
+    public static HashMap<Long, WindowAttribute> existTaskMap = new HashMap<>();
     IntentFilter intentFilter;
     public WindowManager() {
         mThread = new HandlerThread("WM");
@@ -142,21 +129,22 @@ public class WindowManager  {
     BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-//            Log.d(TAG, "onReceive() called with: context = [" + context + "], intent = [" + intent.getAction() + "]");
+            long window = 0;
             if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_ADD)){
-                long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
+                window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
                 WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
-//                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
-                taskIdMap.put(window, attr);
+                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
+                existTaskMap.put(window, attr);
             } else if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_REMOVE)){
-                long window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
+                window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
                 WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
 //                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
-                taskIdMap.remove(window);
+                existTaskMap.remove(window);
             } else if(TextUtils.equals(intent.getAction(), ACTION_X_UPDATE_SYSTEMTRAY_ICON)){
-                long window = intent.getLongExtra(KEY_WINDOW, -1);
+                window = intent.getLongExtra(KEY_WINDOW, -1);
                 long action = intent.getLongExtra(KEY_ACTION, -1);
             }
+//            Log.d(TAG, "onReceive() called with: window = [" + Long.toHexString(window) + "], intent = [" + intent.getAction() + "]");
         }
     };
 
@@ -242,7 +230,7 @@ public class WindowManager  {
     //called from native code
     public static void  syncConfigureRequest(int x, int y, int width, int height, long window, int isMoving){
         Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "]");
-        if(taskIdMap.get(window) != null  && taskIdMap.get(window).getTaskId() != -1){
+        if(existTaskMap.get(window) != null  && existTaskMap.get(window).getTaskId() != -1){
             EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window, isMoving), null);
             EventBus.getDefault().post(message);
         } else {
@@ -361,6 +349,12 @@ public class WindowManager  {
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent, options.toBundle());
         }
+    }
+
+    public boolean shouldFinishWindow(WindowAttribute attr) {
+//        Log.d(TAG, "shouldFinishWindow() called with: attr = [" + attr + "]");
+        WindowAttribute finishAttr = existTaskMap.get(attr.getXID());
+        return finishAttr != null && finishAttr.getWindowPtr() == attr.getWindowPtr();
     }
 
     private class TaskHandler extends Handler {

@@ -9,4 +9,9 @@ interface IActivityCallback {
 
     void finisDecorMovingTask(long window);
 
+    boolean finishActivity(long window);
+
+    boolean configureActivity(long window);
+
+
 }

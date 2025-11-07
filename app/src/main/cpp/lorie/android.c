@@ -447,18 +447,19 @@ void android_redirect_window(WindowPtr pWin) {
     //lunch system view
     PropertyPtr pType;
     rc = property_lookup_string(&pType, pWin, WINDOW_TYPE);
-    ATOM type = ((ATOM*)(pType->data))[0];
-    logd( "window type %d ", type)
-    if(rc && type >= _WM_WINDOW_TYPE_SYSTRAY){
-        logd( "redirect_view %lx for systemtray ", pWin->drawable.id)
-        WindAttribute *attr = android_create_attr(pWin, pWin);
-        attr->android_component = ANDROID_COMPONENT_VIEW;
-        attr->override_window_type = _WM_WINDOW_TYPE_SYSTRAY;
-        _surface_redirect_window(sfWraper, pWin->drawable.id, attr, attr->prop.window_type);
-        android_create_or_map_window(*attr, attr->prop, 0, false, true);
-        return;
+    if(rc){
+        ATOM type = ((ATOM*)(pType->data))[0];
+        logd( "window type %d ", type)
+        if(rc && type >= _WM_WINDOW_TYPE_SYSTRAY){
+            logd( "redirect_view %lx for systemtray ", pWin->drawable.id)
+            WindAttribute *attr = android_create_attr(pWin, pWin);
+            attr->android_component = ANDROID_COMPONENT_VIEW;
+            attr->override_window_type = _WM_WINDOW_TYPE_SYSTRAY;
+            _surface_redirect_window(sfWraper, pWin->drawable.id, attr, attr->prop.window_type);
+            android_create_or_map_window(*attr, attr->prop, 0, false, true);
+            return;
+        }
     }
-
     if(pWin->overrideRedirect){
         WindProperty windProperty;
         WindAttribute* attr;
@@ -523,6 +524,7 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
     int y = pWin->drawable.y;
     int w = pixmap->drawable.width;
     int h = pixmap->drawable.height;
+    logd( " %lx x:%d y:%d w:%d h:%d", pWin->drawable.id, x, y, w, h)
     GLuint tid = renderer_gen_bind_texture(x, y, w, h, pixmap->devPrivate.ptr, 0);
     WindAttribute *windAttribute = (WindAttribute *)malloc(sizeof(WindAttribute));
     if (!windAttribute) {
@@ -546,9 +548,9 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
         windAttribute->child = pWin->firstChild->drawable.id;
         windAttribute->frame = pWin->drawable.id;
     }
-    logd( "%lx redirect:%d atom:%d transient:%lx, "
+    logd( "%lx redirect:%d x:%d y:%d w:%d h:%d atom:%d transient:%lx, "
                "taskTo:%lx mapped:%d clientNum:%d prop.window_type %d",
-        pWin->drawable.id, pWin->overrideRedirect, windProperty.window_type,
+        pWin->drawable.id, x, y, w, h, pWin->overrideRedirect, windProperty.window_type,
         windProperty.transient, taskTo, pWin->mapped, clientNum, windProperty.window_type);
 
     return windAttribute;
@@ -1486,12 +1488,14 @@ int property_lookup_string(PropertyPtr *result, WindowPtr pWin, char* name)
     int rc = FALSE;
     PropertyPtr pProp;
     for (pProp = wUserProps(pWin); pProp; pProp = pProp->next)
+    {
         if (STRING_EQUAL(NameForAtom(pProp->propertyName), name))
         {
             *result = pProp;
             rc = TRUE;
             break;
         }
+    }
     return rc;
 }
 
