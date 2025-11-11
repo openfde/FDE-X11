@@ -70,7 +70,7 @@ static vblankMode vblank_mode = VBLANK_AUTO;
     {                        \
         logd("not equal");    \
     }
-#define CLIPMANAGER_ENABLE 1
+#define CLIPMANAGER_ENABLE 0
 #define _NET_WM_STATE_REMOVE 0
 #define _NET_WM_STATE_ADD 1
 #define _NET_WM_STATE_TOGGLE 2

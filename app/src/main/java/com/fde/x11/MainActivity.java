@@ -985,7 +985,27 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
             @Override
             public void realSizeChanged(Surface sfc, int width, int height) {
-                FLog.a(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
+                int[] location = new int[2];
+                widgetView.getLocationOnScreen(location);
+                int x = location[0];
+                int y = location[1];
+                int w = widgetView.getMeasuredWidth();
+                int h = widgetView.getMeasuredHeight();
+                attr.setOffsetX(x);
+                attr.setOffsetY(y);
+                attr.setWidth(w);
+                attr.setHeight(h);
+                widgetView.updateCoordinate(attr);
+//                if (mXserviceWrapper != null /*&& !isTaskMoving*/) {
+//                    mXserviceWrapper.configureWindow(
+//                            mAttribute.getWindowPtr(),
+//                            mAttribute.getXID(),
+//                            (int) attr.getOffsetX(),
+//                            (int) attr.getOffsetY(),
+//                            (int) attr.getWidth(),
+//                            (int) attr.getHeight()
+//                    );
+//                }
                 try {
                     serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
                 } catch (Exception e) {
@@ -1077,6 +1097,17 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             LorieView widgetView = floatView.findViewById(R.id.widget_view);
             widgetView.updateCoordinate(attr);
             floatWindow.updateViewLayout(floatView, params);
+            Surface surface = widgetView.getHolder().getSurface();
+            if (mXserviceWrapper != null /*&& !isTaskMoving*/) {
+                mXserviceWrapper.configureWindow(
+                        attr.getWindowPtr(),
+                        attr.getXID(),
+                        (int) attr.getOffsetX(),
+                        (int) attr.getOffsetY(),
+                        (int) attr.getWidth(),
+                        (int) attr.getHeight()
+                );
+            }
         }
 //        }
     }

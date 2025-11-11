@@ -129,7 +129,7 @@ public class XWindowService extends Service {
     public final HashMap<Long, WindowAttribute> shouldDestroyMap = new HashMap<>();
     public final HashMap<Long, WindowAttribute> shouldResizeMap = new HashMap<>();
 
-    private int mWidht = 1920;
+    private int mWidth = 1920;
     private int mHeight = 1080;
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
@@ -234,7 +234,7 @@ public class XWindowService extends Service {
 
         @Override
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
-            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
+//            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
 
@@ -291,14 +291,14 @@ public class XWindowService extends Service {
         Xserver.getInstance().registerContext(new WeakReference<>(this));
         String height = AppUtils.getProperty("openfde.display_height", "1080");
         String width = AppUtils.getProperty("openfde.display_width", "1920");
-        mWidht = Integer.parseInt(width);
+        mWidth = Integer.parseInt(width);
         mHeight = Integer.parseInt(height);
         Xserver.getInstance().startXserver(width, height);
         Xserver.X_ClientNum = 0;
         int density = getSystemDensity();
         if (DWM_START_DEFAULT) {
             fusionWindowManager = new WindowManager(new WeakReference<>(this),
-                    mWidht, mHeight, density);
+                    mWidth, mHeight, density);
             fusionWindowManager.startWindowManager(DISPLAY_GLOBAL + "");
         }
         FLog.s(TAG, "onCreate density:%d", density);
@@ -314,7 +314,7 @@ public class XWindowService extends Service {
         float d = (float) (densityDpi * 96 / lcd_density);
 //        return (int)d;
 //        float xFactor = 1.f;
-        float xFactor = mWidht == 1920 ? 1.f : 1.75f;
+        float xFactor = mWidth == 1920 ? 1.f : 1.75f;
         return (int) (d * xFactor);
     }
 
@@ -397,7 +397,7 @@ public class XWindowService extends Service {
             }
             break;
             case X_CONFIGURE_WIDGET:
-//                sendBroadcastConfigureWidget(message.getWindowAttribute());
+                sendBroadcastConfigureWidget(message.getWindowAttribute());
                 break;
             case X_START_VIEW:
                 if (message.getProperty() != null && message.getProperty().getType() == _WM_WINDOW_TYPE_SYSTIP) {
@@ -618,31 +618,12 @@ public class XWindowService extends Service {
         }));
 
         InputEventSender inputEventSender = getInputEventSender(attr, widgetView);
-        TouchInputHandler inputHandler = new TouchInputHandler(this, new TouchInputHandler.RenderStub.NullStub() {
-            @Override
-            public void swipeDown() {
-            }
-        }, inputEventSender);
-        floatView.setOnTouchListener((v, e) -> {
-                    return inputHandler.handleTouchEvent(floatView, widgetView, e);
-                }
-        );
-        floatView.setOnHoverListener((v, e) -> {
-                    return inputHandler.handleTouchEvent(floatView, widgetView, e);
-                }
-        );
-        floatView.setOnGenericMotionListener((v, e) -> {
-                    return inputHandler.handleTouchEvent(floatView, widgetView, e);
-                }
-        );
-        widgetView.setOnCapturedPointerListener((v, e) -> {
-                    return inputHandler.handleTouchEvent(widgetView, widgetView, e);
-                }
-        );
-        floatView.setOnCapturedPointerListener((v, e) -> {
-                    return inputHandler.handleTouchEvent(widgetView, widgetView, e);
-                }
-        );
+        TouchInputHandler inputHandler = new TouchInputHandler(this, new TouchInputHandler.RenderStub.NullStub() {}, inputEventSender);
+        floatView.setOnTouchListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        floatView.setOnHoverListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        floatView.setOnGenericMotionListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
+        widgetView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
+        floatView.setOnCapturedPointerListener((v, e) -> inputHandler.handleTouchEvent(widgetView, widgetView, e));
         floatView.setTag(attr);
         floatViews.put(attr.getXID(), floatView);
         FLog.s(TAG, "updateSystrayAndTip: " + floatViews.size());
@@ -747,11 +728,46 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastConfigureWidget(WindowAttribute attr) {
+        if(outOfScreen(attr)){
+            insetsIntoScreen(attr);
+            if(fusionWindowManager != null){
+                fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
+                        (int) attr.getWidth(), (int) attr.getHeight());
+            }
+            return;
+        }
         String targetPackage = getPackageName();
         Intent intent = new Intent(CONFIGURE_WIDGET_FROM_X);
         intent.setPackage(targetPackage);
         intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
         sendBroadcast(intent);
+    }
+
+    private void insetsIntoScreen(WindowAttribute attr) {
+        int x = (int) attr.getOffsetX();
+        int y = (int) attr.getOffsetY();
+        int w = (int) attr.getWidth();
+        int h = (int) attr.getHeight();
+        if(x < 0){
+            attr.setOffsetX(0);
+        }
+        if(y < 0){
+            attr.setOffsetY(0);
+        }
+        if(x + w > mWidth){
+            attr.setOffsetX(mWidth - w);
+        }
+        if(y + h > mHeight){
+            attr.setOffsetY(mHeight - h);
+        }
+    }
+
+    private boolean outOfScreen(WindowAttribute attr) {
+        int x = (int) attr.getOffsetX();
+        int y = (int) attr.getOffsetY();
+        int w = (int) attr.getWidth();
+        int h = (int) attr.getHeight();
+        return x < 0 || y < 0 || x + w > mWidth || y + h > mHeight;
     }
 
     private void sendBroadcastAboutView(WindowAttribute attr, Property property, EventType type) {
