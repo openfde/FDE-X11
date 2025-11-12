@@ -74,6 +74,7 @@ import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
@@ -199,6 +200,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private boolean needSurface;
     private boolean isTaskMoving;
     private int density = 160;
+    private long lastHoverExitTime;
 
     public static final String NAME_MATE_TERMINAL = "mate-terminal";
     public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
@@ -372,8 +374,28 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             }
             return mInputHandler.sendKeyEvent(v, e);
         };
-        lorieParent.setOnTouchListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
-        lorieParent.setOnHoverListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
+//        lorieParent.setOnTouchListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
+        lorieParent.setOnTouchListener((v, event) -> {
+            lastHoverExitTime = 0;
+            return mInputHandler.handleTouchEvent(lorieParent, lorieView, event);
+        });
+        lorieParent.setOnHoverListener((v, event) -> {
+            long currentTimeMillis = System.currentTimeMillis();
+            if(event.getAction() == MotionEvent.ACTION_HOVER_EXIT ){
+                lastHoverExitTime = System.currentTimeMillis();
+                MainActivity.this.handler.postDelayed(() -> {
+                    if(mXserviceWrapper != null && lastHoverExitTime != 0){
+                        mXserviceWrapper.sendMouseEvent(-5, -5,
+                                InputStub.BUTTON_UNDEFINED, false, false, 0);
+                    }
+                    lastHoverExitTime = 0;
+                }, 5);
+            } else {
+                lastHoverExitTime = 0;
+            }
+            return mInputHandler.handleTouchEvent(lorieParent, lorieView, event);
+        });
+//        lorieParent.setOnHoverListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
         lorieParent.setOnGenericMotionListener((v, e) -> mInputHandler.handleTouchEvent(lorieParent, lorieView, e));
         lorieView.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
         lorieParent.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
