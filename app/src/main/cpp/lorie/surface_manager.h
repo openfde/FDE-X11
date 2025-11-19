@@ -77,7 +77,7 @@ public:
     int size();
 
 private:
-    std::map<Window, WindAttribute> window_attrs;
+    std::unordered_map<Window, WindAttribute> window_attrs;
     int get_avilable_index(Atom atom);
     static void LogWindAttribute(Window window, const WindAttribute  &attr);
     int index_normal = 0;

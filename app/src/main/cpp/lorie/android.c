@@ -526,12 +526,12 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
     int h = pixmap->drawable.height;
     logd( " %lx x:%d y:%d w:%d h:%d", pWin->drawable.id, x, y, w, h)
     GLuint tid = renderer_gen_bind_texture(x, y, w, h, pixmap->devPrivate.ptr, 0);
-    WindAttribute *windAttribute = (WindAttribute *)malloc(sizeof(WindAttribute));
+    // 使用 calloc 替代 malloc + memset
+    WindAttribute *windAttribute = (WindAttribute *)calloc(1, sizeof(WindAttribute));
     if (!windAttribute) {
-        loge( "Failed to allocate WindAttribute");
+        loge("Failed to allocate WindAttribute");
         return NULL;
     }
-    memset(windAttribute, 0, sizeof(WindAttribute));
     windAttribute->offset_x = x;
     windAttribute->offset_y = y;
     windAttribute->width = w;
@@ -613,12 +613,9 @@ void android_icon_update(int *data, int width, int height, long window) {
 }
 
 bool util_check_bounds(int x, int y, int w, int h, int x1, int y1, int w1, int h1) {
-    logd( "x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
+    logd("x:%d y:%d w:%d h:%d x1:%d y1:%d w1:%d h1:%d ",
         x, y, w, h, x1, y1, w1, h1);
-    if (x < x1 || y < y1 || (x + w) > (x1 + w1) || (y + h) > (y1 + h1)) {
-        return FALSE;
-    }
-    return TRUE;
+    return (x >= x1 && y >= y1 && (x + w) <= (x1 + w1) && (y + h) <= (y1 + h1));
 }
 
 bool util_check_window_bounds(WindowPtr pWindow, WindAttribute *attr) {
@@ -638,37 +635,49 @@ bool util_check_window_bounds(WindowPtr pWindow, WindAttribute *attr) {
 void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
     PixmapPtr pixmap = (*pScreenPtr->GetWindowPixmap)(pWin);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
-//    loge( "window:%lx taskto:%lx", pWin->drawable.id, window);
-    if (attr) {
-        GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
-                                              pixmap->drawable.width,
-                                              pixmap->drawable.height, pixmap->devPrivate.ptr, 0);
-        bool inBound =
-                util_check_window_bounds(pWin, attr) && prop.window_type != _NET_WM_WINDOW_TYPE_DND;
-        Widget widget = {
-                .texture_id = id,
-                .offset_x = pWin->drawable.x,
-                .offset_y = pWin->drawable.y,
-                .width = pWin->drawable.width,
-                .height = pWin->drawable.height,
-                .window = pWin->drawable.id,
-                .pWin = pWin,
-                .task_to = window,
-                .inbounds = inBound
-        };
-        if (!attr->widgets) {
-            attr->widgets = malloc(sizeof(Widget) * 10);
-        }
+    if (!attr) {
+        loge("window:%lx taskto:%lx - attribute not found", pWin->drawable.id, window);
+        return;
+    }
 
-        if (attr->widgets == NULL) {
-            loge( "widget malloc failed")
+    GLuint id = renderer_gen_bind_texture(pWin->drawable.x, pWin->drawable.y,
+                                          pixmap->drawable.width,
+                                          pixmap->drawable.height, pixmap->devPrivate.ptr, 0);
+    bool inBound = util_check_window_bounds(pWin, attr) &&
+                   prop.window_type != _NET_WM_WINDOW_TYPE_DND;
+
+    Widget widget = {
+            .texture_id = id,
+            .offset_x = pWin->drawable.x,
+            .offset_y = pWin->drawable.y,
+            .width = pWin->drawable.width,
+            .height = pWin->drawable.height,
+            .window = pWin->drawable.id,
+            .pWin = pWin,
+            .task_to = window,
+            .inbounds = inBound
+    };
+
+    // 动态调整 widgets 数组大小，而不是固定 10 个元素
+    if (!attr->widgets) {
+        size_t new_size = attr->widgets ? (attr->widget_size + 10) : 10;
+        Widget *new_widgets = realloc(attr->widgets, sizeof(Widget) * new_size);
+        if (!new_widgets) {
+            loge("widget realloc failed");
+            // 清理已分配的纹理资源
+            if (id) {
+                glDeleteTextures(1, &id);
+            }
+            return;
         }
-        attr->widgets[attr->widget_size] = widget;
-        attr->widget_size++;
-//        loge( "android_redirect_widget texture:%d", id);
-        if (!inBound) {
-            android_create_view(widget, prop, window, inBound);
-        }
+        attr->widgets = new_widgets;
+    }
+
+    attr->widgets[attr->widget_size] = widget;
+    attr->widget_size++;
+
+    if (!inBound) {
+        android_create_view(widget, prop, window, inBound);
     }
 }
 
@@ -710,6 +719,11 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
                                          aProperty.support_wm_delete, aProperty.support_motif,
                                          aProperty.icon ? aProperty.icon : NULL, inbound, clientNum,
                                          false, aWindow, true);
+        // 清理局部引用
+        if (wm_name) (*JavaEnv)->DeleteLocalRef(JavaEnv, wm_name);
+        if (net_wm_name) (*JavaEnv)->DeleteLocalRef(JavaEnv, net_wm_name);
+        if (wm_class) (*JavaEnv)->DeleteLocalRef(JavaEnv, wm_class);
+
     }
 }
 

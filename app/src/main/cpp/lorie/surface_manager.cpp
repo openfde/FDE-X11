@@ -2,7 +2,52 @@
 // Created by yang on 2024/5/2.
 //
 #include "surface_manager.h"
-#include "StructPrinter.h"
+
+
+// 优化后的 printWindAttributeFormatted 函数
+static void printWindAttributeFormatted(const WindAttribute* attr, const char* tag) {
+    if (attr == nullptr) {
+        logd("[%s] WindAttribute is NULL\n", tag);
+        return;
+    }
+
+    logd("┌─── WindAttribute: %s ───", tag);
+    logd("├─ Graphics:");
+    logd("│   texture_id: %u, dri_texture_id: %u", attr->texture_id, attr->dri_texture_id);
+    logd("│   size: %.1fx%.1f, offset: (%.1f,%.1f)", attr->width, attr->height, attr->offset_x, attr->offset_y);
+
+    logd("├─ DRI Info:");
+    logd("│   dri_size: %dx%d, dri_pos: (%d,%d)", attr->dri_w, attr->dri_h, attr->dri_x, attr->dri_y);
+
+    logd("├─ Window IDs:");
+    logd("│   window: 0x%lx, child: 0x%lx, frame: 0x%lx",
+         static_cast<unsigned long>(attr->window),
+         static_cast<unsigned long>(attr->child),
+         static_cast<unsigned long>(attr->frame));
+    logd("│   pWin: %p, dri_pWin: %p",
+         static_cast<void*>(attr->pWin),
+         static_cast<void*>(attr->dri_pWin));
+
+    logd("├─ EGL/Widgets:");
+    logd("│   EGLSurface: %p", static_cast<void*>(attr->sfc));
+    logd("│   widget: %p, widgets: %p (size: %d)",
+         static_cast<void*>(attr->widget),
+         static_cast<void*>(attr->widgets),
+         attr->widget_size);
+
+    logd("├─ Flags & Status:");
+    logd("│   discard: %d, level: %d, status: %d", attr->discard, attr->level, attr->status);
+    logd("│   system_tray: %s, dock_sent: %s",
+         attr->system_tray ? "YES" : "NO",
+         attr->dock_sent ? "YES" : "NO");
+
+    logd("├─ Android:");
+    logd("│   override_window_type: %d, android_component: %d",
+         attr->override_window_type, attr->android_component);
+
+    logd("└────────────────────────────");
+
+}
 
 ::SurfaceManager *SurfaceManager::create() {
     return new SurfaceManager();
@@ -20,7 +65,7 @@ int SurfaceManager::redirect_window_2_surface(Window window, WindAttribute *attr
 
 void SurfaceManager::update_window(Window window, WindAttribute attr) {
     WindAttribute *pAttr =  &window_attrs[window];
-    if(pAttr){
+    if(pAttr != nullptr){
         pAttr->offset_x = attr.offset_x;
         pAttr->offset_y = attr.offset_y;
         pAttr->width = attr.width;
@@ -32,53 +77,64 @@ void SurfaceManager::update_window(Window window, WindAttribute attr) {
 }
 
 int SurfaceManager::remove_widget(Window window) {
-    for (auto &pair: window_attrs) {
+    for (auto &pair : window_attrs) {
         if (pair.second.widget_size == 0) {
             continue;
-        } else {
-            bool update = false;
-            size_t size = pair.second.widget_size;
-            for (int i = 0; i < pair.second.widget_size; ++i) {
-                Widget* widget = &pair.second.widgets[i];
-                if (widget->window == window) {
-                    update = true;
-//                    memset(widget, 0, sizeof(Widget));
-//                    widget->window = 0;
-//                    widget->texture_id = 0;
-                    widget->width = 0;
-                    widget->sfc = NULL;
-                    widget->height = 0;
-                    widget->offset_x = 0;
-                    widget->offset_y = 0;
-                    widget->task_to = 0;
-                    widget->pWin = NULL;
-                    size --;
-//                    pair.second.widget_size--;
-                }
-            }
-            if(update){
-                Widget *filtered_widgets = (Widget *)malloc(10 * sizeof(Widget));
-                if(filtered_widgets == NULL){
-                    return FALSE;
-                }
-                size_t index = 0;
-                for (size_t i = 0; i < pair.second.widget_size; i++) {
-                    Widget* widget = &pair.second.widgets[i];
-                    if (!widget->discard && widget->window != 0 && widget->width != 0 && widget->height != 0) {
-                        filtered_widgets[index] = *widget;
-                        index++;
-                    }
-                }
-                Widget *old_widget = find_window(pair.first)->widgets;
-                free(old_widget);
-                find_window(pair.first)->widgets = filtered_widgets;
-                find_window(pair.first)->widget_size = index;
+        }
+
+        bool update = false;
+        size_t valid_count = 0;
+
+        // 第一步：统计有效 widget 数目
+        for (size_t i = 0; i < pair.second.widget_size; ++i) {
+            Widget* widget = &pair.second.widgets[i];
+            if (widget->window == window) {
+                update = true;
+                // 不再清空 widget 数据，仅标记为无效
+            } else if (!widget->discard && widget->window != 0 && widget->width != 0 && widget->height != 0) {
+                valid_count++;
             }
         }
-        LogWindAttribute(pair.first, pair.second);
+
+        if (update) {
+            WindAttribute* win_info = find_window(pair.first);  // 缓存查找结果
+            if (!win_info) {
+                return FALSE;  // 安全起见做判空处理
+            }
+
+            Widget* old_widgets = win_info->widgets;
+            Widget* new_widgets = nullptr;
+
+            if (valid_count > 0) {
+                new_widgets = (Widget*)malloc(valid_count * sizeof(Widget));
+                if (new_widgets == nullptr) {
+                    return FALSE;  // 内存不足
+                }
+
+                size_t index = 0;
+                for (size_t i = 0; i < pair.second.widget_size; ++i) {
+                    Widget* widget = &pair.second.widgets[i];
+                    if (widget->window != window &&
+                        !widget->discard &&
+                        widget->window != 0 &&
+                        widget->width != 0 &&
+                        widget->height != 0) {
+
+                        new_widgets[index++] = *widget;
+                    }
+                }
+            }
+
+            free(old_widgets);
+            win_info->widgets = new_widgets;
+            win_info->widget_size = valid_count;
+        }
+        printWindAttributeFormatted(&pair.second, "remove_widget");  // 移动到循环末尾统一打日志
     }
+
     return TRUE;
 }
+
 
 WindAttribute* SurfaceManager::find_window(Window window) {
     if(window_attrs.count(window)){
@@ -93,36 +149,22 @@ WindAttribute* SurfaceManager::find_window(Window window) {
 
 WindAttribute* SurfaceManager::find_window_in_type(Window window, int type) {
     for (auto& pair : window_attrs) {
-//        if(type & TYPE_ANY){
-//            if(pair.second.child == window || pair.second.window == window
-//               || pair.second.frame == window || pair.second.prop.leader == window){
-//                return &pair.second;
-//            }
-//        }
-        if(type & TYPE_WINDOW){
-            if(pair.second.window == window){
-                return &pair.second;
-            }
+        const WindAttribute& attr = pair.second;
+
+        if ((type & TYPE_WINDOW) && attr.window == window) {
+            return &pair.second;
         }
-        if(type & TYPE_FRAME){
-            if(pair.second.frame == window){
-                return &pair.second;
-            }
+        if ((type & TYPE_FRAME) && attr.frame == window) {
+            return &pair.second;
         }
-        if(type & TYPE_CHILD){
-            if(pair.second.child == window){
-                return &pair.second;
-            }
+        if ((type & TYPE_CHILD) && attr.child == window) {
+            return &pair.second;
         }
-        if(type & TYPE_LEADER){
-            if(pair.second.prop.leader == window){
-                return &pair.second;
-            }
+        if ((type & TYPE_LEADER) && attr.prop.leader == window) {
+            return &pair.second;
         }
-        if(type & TYPE_PID){
-            if(pair.second.prop.pid == window){
-                return &pair.second;
-            }
+        if ((type & TYPE_PID) && attr.prop.pid == window) {
+            return &pair.second;
         }
     }
     return nullptr;
@@ -199,15 +241,14 @@ int SurfaceManager::count_widget(Window window) {
 
 
 void SurfaceManager::delete_window(Window window) {
-    WindAttribute *attr = find_window(window);
-    if(attr){
-        if(attr->widget_size){
-            free(attr->widgets);
+    auto it = window_attrs.find(window);
+    if (it != window_attrs.end()) {
+        WindAttribute& attr = it->second;
+        if (attr.widgets) {
+            free(attr.widgets);
+            attr.widgets = nullptr;
         }
-        attr->pWin = nullptr;
-        attr->texture_id = 0;
-        attr->widgets = nullptr;
-        window_attrs.erase(window);
+        window_attrs.erase(it);
     }
 }
 
@@ -216,56 +257,23 @@ int SurfaceManager::size(){
     return window_attrs.size();
 }
 
-static void printWindAttributeFormatted(const WindAttribute* attr, const char* tag) {
-    if (attr == NULL) {
-        logd("[%s] WindAttribute is NULL\n", tag);
-        return;
-    }
-
-    logd("\n┌─── WindAttribute: %s ───\n", tag);
-    logd("├─ Graphics:\n");
-    logd("│   texture_id: %u, dri_texture_id: %u\n", attr->texture_id, attr->dri_texture_id);
-    logd("│   size: %.1fx%.1f, offset: (%.1f,%.1f)\n", attr->width, attr->height, attr->offset_x, attr->offset_y);
-
-    logd("├─ DRI Info:\n");
-    logd("│   dri_size: %dx%d, dri_pos: (%d,%d)\n", attr->dri_w, attr->dri_h, attr->dri_x, attr->dri_y);
-
-    logd("├─ Window IDs:\n");
-    logd("│   window: 0x%lx, child: 0x%lx, frame: 0x%lx\n",
-           (unsigned long)attr->window, (unsigned long)attr->child, (unsigned long)attr->frame);
-    logd("│   pWin: %p, dri_pWin: %p\n", (void*)attr->pWin, (void*)attr->dri_pWin);
-
-    logd("├─ EGL/Widgets:\n");
-    logd("│   EGLSurface: %p\n", (void*)attr->sfc);
-    logd("│   widget: %p, widgets: %p (size: %d)\n",
-           (void*)attr->widget, (void*)attr->widgets, attr->widget_size);
-
-    logd("├─ Flags & Status:\n");
-    logd("│   discard: %d, level: %d, status: %d\n", attr->discard, attr->level, attr->status);
-    logd("│   system_tray: %s, dock_sent: %s\n",
-           attr->system_tray ? "YES" : "NO",
-           attr->dock_sent ? "YES" : "NO");
-
-    logd("├─ Android:\n");
-    logd("│   override_window_type: %d, android_component: %d\n",
-           attr->override_window_type, attr->android_component);
-
-    logd("└────────────────────────────\n\n");
-}
-
 void SurfaceManager::traversal_log_window(){
-    if (window_attrs.empty()) {
+    if (window_attrs.empty())
+    {
         logd("no window for android");
         return;
     }
-    logd("traversal_window_attrs>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-    for (const auto& pair : window_attrs) {
-        LogWindAttribute(pair.first, pair.second);
-//        printWindAttributeFormatted(&pair.second, "traversal_window_attrs");
+//    logd("traversal_window_attrs>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+    for (const auto& pair : window_attrs)
+    {
+//        LogWindAttribute(pair.first, pair.second);
+        printWindAttributeFormatted(&pair.second, "traversal_window_attrs");
     }
-    logd("traversal_window_attrs<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+//    logd("traversal_window_attrs<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 
 }
+
+
 
 void SurfaceManager::LogWindAttribute(Window window, const WindAttribute &attr) {
 //    const char* str =StructPrinter::toString(attr).c_str();
@@ -285,8 +293,10 @@ void SurfaceManager::LogWindAttribute(Window window, const WindAttribute &attr) 
         attr.prop.leader,
         attr.prop.transient
         )
-    if (attr.widget_size != 0) {
-        for (int i = 0; i < attr.widget_size; i++) {
+    if (attr.widget_size != 0)
+    {
+        for (int i = 0; i < attr.widget_size; i++)
+        {
             Widget widget = attr.widgets[i];
             logd("==============> this is a widget xid:%x w:%.0f h:%.0f x:%.0f y:%.0f t:%d  s:%p ",
                 widget.window,

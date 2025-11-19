@@ -607,7 +607,6 @@ public class XWindowService extends Service {
                     fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(),
                             (int) attr.getOffsetY(), width, height);
                 }
-//                FLog.s(TAG, "realSizeChanged() called with: sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
                 Xserver.getInstance().windowChanged(sfc, attr.getOffsetX(), attr.getOffsetY(), attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
             }
 
@@ -844,21 +843,7 @@ public class XWindowService extends Service {
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
-//        if(retry == 0){
-//            return;
-//        }
         runningMainWindow.remove(attr.getXID());
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                FLog.s(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
-//                String targetPackage = getPackageName();
-//                Intent intent = new Intent(DESTROY_ACTIVITY_FROM_X);
-//                intent.setPackage(targetPackage);
-//                intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
-//                sendBroadcast(intent);
-//            }
-//        }).start();
         mainHandler.postDelayed(() -> {
             FLog.s(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
             String targetPackage = getPackageName();
@@ -867,9 +852,6 @@ public class XWindowService extends Service {
             intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
             sendBroadcast(intent);
         }, DESTROY_ACTIVITY_DELAY);
-//        handler.postDelayed(()->{
-//            destroyActivitySafety(retry - 1, attr);
-//        }, DESTROY_ACTIVITY_DELAY);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {
@@ -884,13 +866,6 @@ public class XWindowService extends Service {
         runningMainWindow.add(attr.getXID());
         startingWindow.add(attr.getXID());
         FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
-//        if(attr.getTaskTo() != 0){
-//            String targetPackage = getPackageName();
-//            Intent intent = new Intent(START_ACTIVITY_FROM_X);
-//            intent.setPackage(targetPackage);
-//            intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
-//            sendBroadcast(intent);
-//        } else {
         ActivityOptions options = ActivityOptions.makeBasic();
         options.setLaunchBounds(new Rect((int) attr.getOffsetX(),
                 (int) (attr.getOffsetY() - decorHeight),
@@ -899,8 +874,6 @@ public class XWindowService extends Service {
         Intent intent = new Intent(this, cls);
         if (attr.getProperty() != null) {
             intent.putExtra(X_WINDOW_PROPERTY, attr.getProperty());
-//            FLog.s(TAG, "startActLikeWindowWithDecorHeight: netname:" + attr.getProperty().getNet_name());
-//            FLog.s(TAG, "startActLikeWindowWithDecorHeight: wmclass:" + attr.getProperty().getWm_class());
             intent.putExtra("X11_titile", attr.getProperty().getNet_name());
         }
         try {
@@ -918,7 +891,6 @@ public class XWindowService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-//        FLog.s(TAG, "onStartCommand:" + intent);
         return Service.START_STICKY;
     }
 
@@ -933,7 +905,6 @@ public class XWindowService extends Service {
     public boolean onUnbind(Intent intent) {
         mBound = false;
         FLog.s(TAG, "onUnbind:" + intent);
-//        checkIfShouldStopSelf();
         return true;
     }
 
@@ -947,7 +918,6 @@ public class XWindowService extends Service {
     public void onDestroy() {
         super.onDestroy();
         FLog.s(TAG, "onDestroy");
-//        EventBus.getDefault().unregister(this);
         Util.deleteRecursive(new File("/tmp/fde"));
         if (DWM_START_DEFAULT) {
             fusionWindowManager.stopWindowManager();

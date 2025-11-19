@@ -145,11 +145,11 @@ bool WindowManager::isNormalWindow(long window)
     unsigned long nItems, bytesAfter;
     unsigned char *propData = NULL;
     char *atomName = XGetAtomName(display_, _NET_WM_WINDOW_TYPE);
-    Atom type = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
-    Atom type_nomarl = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_NORMAL", False);
-    Atom type_menu = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_MENU", False);
-    Atom type_dialog = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_DIALOG", False);
-    Atom type_popup = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
+    Atom type = display_info->atoms[NET_WM_WINDOW_TYPE];
+    Atom type_nomarl = display_info->atoms[NET_WM_WINDOW_TYPE_NORMAL];
+    Atom type_menu = display_info->atoms[NET_WM_WINDOW_TYPE_MENU];
+    Atom type_dialog = display_info->atoms[NET_WM_WINDOW_TYPE_DIALOG];
+    Atom type_popup = display_info->atoms[NET_WM_WINDOW_TYPE_MENU];
     //    logd("isNormalWindow ? %lx", window);
     if (XGetWindowProperty(display_, window, type, 0, 1024, False, AnyPropertyType,
                            &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
@@ -368,7 +368,7 @@ Atom getWindowType(Display *display, Window window) {
     Atom *prop = NULL;
     Atom type = None;
 
-    Atom wm_window_type = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
+    Atom wm_window_type =  XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
 
     if (XGetWindowProperty(display, window, wm_window_type,
                            0, 1, False, XA_ATOM,
@@ -1096,7 +1096,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
 //                              WIDTH - 254 - SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, 0,
 //                              SYSTEM_TRAY_CAPACITY * SYSTEM_TRAY_ICON_WIDTH, SYSTEM_TRAY_ICON_WIDTH, 0, 0, 0);
                 MotifWmHints hints;
-                Atom motif_hints_atom = XInternAtom(display_, "_MOTIF_WM_HINTS", False);
+                Atom motif_hints_atom = display_info->atoms[MOTIF_WM_HINTS];
                 hints.flags = MWM_HINTS_DECORATIONS;
                 hints.functions = 2;
                 hints.decorations = 0;
@@ -1104,14 +1104,14 @@ void WindowManager::ProcessClientMessage(XEvent e)
                 hints.status = 0;
                 XChangeProperty(display_, system_tray, motif_hints_atom, motif_hints_atom, 32,
                                 PropModeReplace, (unsigned char*)&hints, 5);
-                Atom prop_atom = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
+                Atom prop_atom = display_info->atoms[NET_WM_WINDOW_TYPE];
                 Atom type_atom;
                 type_atom = _NET_WM_WINDOW_TYPE_TRAY;
                 XChangeProperty(display_, system_tray, prop_atom, XA_ATOM, 32,
                                 PropModeReplace, (unsigned char*)&type_atom, 1);
                 XMapWindow(display_, system_tray);
-                    Atom utf8_string = XInternAtom(display_, "UTF8_STRING", False);
-                    Atom net_wm_name = XInternAtom(display_, "_NET_WM_NAME", False);
+                    Atom utf8_string = display_info->atoms[UTF8_STRING];
+                    Atom net_wm_name = display_info->atoms[NET_WM_NAME];
                     XChangeProperty(display_, system_tray, net_wm_name, utf8_string, 8,
                                     PropModeReplace, (unsigned char*)"x11_tray",
                                     strlen("x11_tray"));
@@ -1210,8 +1210,8 @@ void WindowManager::ReparentDockWindow(Window window)
             tray,(WIDTH - 254 - dock_windows.size() * system_tray_icon_width), 0,
             system_tray_icon_width, system_tray_icon_width, target_wm_name)
         if (target_wm_name) {
-            Atom utf8_string = XInternAtom(display_, "UTF8_STRING", False);
-            Atom net_wm_name = XInternAtom(display_, "_NET_WM_NAME", False);
+            Atom utf8_string = display_info->atoms[UTF8_STRING];
+            Atom net_wm_name = display_info->atoms[NET_WM_NAME];
             XChangeProperty(display_, tray, net_wm_name, utf8_string, 8,
                             PropModeReplace, (unsigned char*)target_wm_name,
                             strlen(target_wm_name));
@@ -1222,7 +1222,7 @@ void WindowManager::ReparentDockWindow(Window window)
             XStoreName(display_, tray, "tray");
         }
         MotifWmHints hints;
-        Atom motif_hints_atom = XInternAtom(display_, "_MOTIF_WM_HINTS", False);
+        Atom motif_hints_atom = display_info->atoms[MOTIF_WM_HINTS];
         hints.flags = MWM_HINTS_DECORATIONS;
         hints.functions = 0;
         hints.decorations = 0;
@@ -1231,7 +1231,7 @@ void WindowManager::ReparentDockWindow(Window window)
         XChangeProperty(display_, tray, motif_hints_atom, motif_hints_atom, 32,
                         PropModeReplace, (unsigned char*)&hints, 5);
 
-        Atom prop_atom = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
+        Atom prop_atom = display_info->atoms[NET_WM_WINDOW_TYPE];
         Atom type_atom;
         type_atom = _NET_WM_WINDOW_TYPE_TRAY;
 
@@ -1262,7 +1262,7 @@ jobject WindowManager::GetWindowIcon(Window target_window) {
         logd("Window does not exist or cannot be accessed");
         return bitmap;
     }
-    Atom net_wm_icon = XInternAtom(display_, "_NET_WM_ICON", False);
+    Atom net_wm_icon = display_info->atoms[NET_WM_ICON];
     Atom actual_type;
     int actual_format;
     unsigned long nitems;
@@ -1512,7 +1512,7 @@ void WindowManager::HandleClientMessage(XEvent e)
             // setMaximizedState(e.xclient.window, false);
         }
     }
-    else if (e.xclient.message_type == XInternAtom(display_, "_NET_ACTIVE_WINDOW", False))
+    else if (e.xclient.message_type == display_info->atoms[NET_ACTIVE_WINDOW])
     {
         Window active_window = e.xclient.data.l[0];
         //        logd("HandleClientMessage w1:%lx w2:%s w3:%lx", e.xclient.data.l[0], XGetAtomName(display_, e.xclient.data.l[1] ), e.xclient.data.l[2]);
@@ -1533,9 +1533,9 @@ void WindowManager::setWindowType(Window window, Atom type)
 int WindowManager::setMaximizedState(Window window, Bool maximized)
 {
     logd("setMaximizedState window:%lx maximized:%d", window, maximized);
-    Atom net_wm_state = XInternAtom(display_, "_NET_WM_STATE", False);
-    Atom vert_max = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_VERT", False);
-    Atom horz_max = XInternAtom(display_, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    Atom net_wm_state = display_info->atoms[NET_WM_STATE];
+    Atom vert_max = display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT];
+    Atom horz_max = display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ];
     Atom type;
     int format;
     unsigned long num_items, bytes_after;
@@ -1583,27 +1583,28 @@ int WindowManager::setMaximizedState(Window window, Bool maximized)
             XA_ATOM, 32, PropModeReplace,
             reinterpret_cast<unsigned char *>(new_atoms.data()), new_atoms.size());
     Atom actions_normal[] = {
-            XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
-            XInternAtom(display_, "_NET_WM_ACTION_RESIZE", False),
-            XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
-            XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
-            XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_HORZ", False),
-            XInternAtom(display_, "_NET_WM_ACTION_MAXIMIZE_VERT", False),
-            XInternAtom(display_, "_NET_WM_ACTION_FULLSCREEN", False),
-            XInternAtom(display_, "_NET_WM_ACTION_CHANGE_DESKTOP", False),
-            XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)};
+            display_info->atoms[NET_WM_ACTION_MOVE],
+            display_info->atoms[NET_WM_ACTION_RESIZE],
+            display_info->atoms[NET_WM_ACTION_MINIMIZE],
+            display_info->atoms[NET_WM_ACTION_SHADE],
+            display_info->atoms[NET_WM_ACTION_MAXIMIZE_HORZ],
+            display_info->atoms[NET_WM_ACTION_MAXIMIZE_VERT],
+            display_info->atoms[NET_WM_ACTION_FULLSCREEN],
+            display_info->atoms[NET_WM_ACTION_CHANGE_DESKTOP],
+            display_info->atoms[NET_WM_ACTION_CLOSE],
+    };
     Atom actions_maximized[] = {
-            XInternAtom(display_, "_NET_WM_ACTION_MOVE", False),
-            XInternAtom(display_, "_NET_WM_ACTION_MINIMIZE", False),
-            XInternAtom(display_, "_NET_WM_ACTION_SHADE", False),
-            XInternAtom(display_, "_NET_WM_ACTION_CLOSE", False)
+            display_info->atoms[NET_WM_ACTION_MOVE],
+            display_info->atoms[NET_WM_ACTION_MINIMIZE],
+            display_info->atoms[NET_WM_ACTION_SHADE],
+            display_info->atoms[NET_WM_ACTION_CLOSE],
     };
     if (maximized)
     {
         XChangeProperty(
                 display_,
                 window,
-                XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
+                display_info->atoms[NET_WM_ALLOWED_ACTIONS],
                 XA_ATOM,
                 32,
                 PropModeReplace,
@@ -1615,7 +1616,7 @@ int WindowManager::setMaximizedState(Window window, Bool maximized)
         XChangeProperty(
                 display_,
                 window,
-                XInternAtom(display_, "_NET_WM_ALLOWED_ACTIONS", False),
+                display_info->atoms[NET_WM_ALLOWED_ACTIONS],
                 XA_ATOM,
                 32,
                 PropModeReplace,
@@ -1647,7 +1648,7 @@ void WindowManager::OnSelectionRequest(XEvent e)
 //    logd("OnSelectionRequest start-------->");
 //    logd("OnSelectionRequest owner:%lx requestor:%lx ", sev->owner, sev->requestor);
     sel = XInternAtom(display_, "CLIPBOARD", False);
-    utf8 = XInternAtom(display_, "UTF8_STRING", False);
+    utf8 = display_info->atoms[UTF8_STRING];
     Atom targets = XInternAtom(display_, "TARGETS", False);
     Atom type_qt = XInternAtom(display_, "peony-qt/encoded-uris", False);
     Atom type_texturi = XInternAtom(display_, "text/uri-list", False);
@@ -1878,7 +1879,8 @@ void WindowManager::ConvertAllTarget()
                                 isText = true;
                                 text_data = data;
                             }
-                            else if (selection_property_list[i] == XInternAtom(display_, "text/uri-list", False) || selection_property_list[i] == XInternAtom(display_, "peony-qt/encoded-uris", False))
+                            else if (selection_property_list[i] == XInternAtom(display_, "text/uri-list", False)
+                            || selection_property_list[i] == XInternAtom(display_, "peony-qt/encoded-uris", False))
                             {
                                 isFile = true;
                                 file_data = data;

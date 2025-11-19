@@ -149,6 +149,17 @@ public:
     void setClipData(char *text, char *path);
 
 private:
+    // 缓存常用Atom值
+//    struct AtomsCache {
+//        Atom atom_wm_protocols;
+//        Atom atom_wm_delete_window;
+//        Atom atom_net_wm_window_type;
+//        Atom atom_net_wm_window_type_normal;
+//        Atom atom_net_wm_window_type_menu;
+//        Atom atom_net_wm_window_type_dialog;
+//        Atom atom_net_wm_window_type_popup_menu;
+//    } atoms_cache_;
+
     Display *display_;
     DisplayInfo *display_info;
     const Window root_;
