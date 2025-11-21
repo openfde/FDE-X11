@@ -570,6 +570,9 @@ public class TouchInputHandler {
 
     public boolean sendKeyEvent(View view, KeyEvent event) {
         Log.d(TAG, "sendKeyEvent: view:" + view + ", event:" + event + "");
+        if(event.getKeyCode() == KeyEvent.KEYCODE_SYSRQ){
+            return false;
+        }
         return mInjector.sendKeyEvent(view, event);
     }
 
