@@ -282,6 +282,9 @@ public final class InputEventSender {
         if (pointerCapture && keyCode == KEYCODE_ESCAPE && !pressed)
             v.releasePointerCapture();
 
+        if(keyCode == KEYCODE_ESCAPE && !pressed){
+            mInjector.sendKeyEvent(scancode, keyCode, true);
+        }
         // We try to send all other key codes to the host directly.
         return mInjector.sendKeyEvent(scancode, keyCode, pressed);
     }
