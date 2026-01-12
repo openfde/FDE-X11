@@ -690,6 +690,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         } else if(!TextUtils.isEmpty(clipText)){
             mClipText = clipText;
             mXserviceWrapper.sendClipText(mClipText);
+        } else {
+            mXserviceWrapper.sendClipText(" ");
         }
         FLog.a("window", getWindowId(), "getClipText end");
     }
