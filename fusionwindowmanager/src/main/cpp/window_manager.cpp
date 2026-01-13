@@ -182,6 +182,7 @@ bool WindowManager::isNormalWindow(long window)
 
 void syncConfigureRequest(int x, int y, int w, int h, XID window, int isMoving)
 {
+    logd("syncConfigureRequest %d %d %d %d %lx %d", x, y, w, h, window, isMoving);
     jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                     "syncConfigureRequest", "(IIIIJI)V");
     GlobalEnv->CallStaticVoidMethod(staticClass, method, x, y, w, h, window, isMoving);
@@ -1025,6 +1026,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
             logd("client \"%s\" (0x%lx) has received a NET_WM_MOVERESIZE event", c->name, c->window);
             //TODO operation in decoration
             clientNetMoveResize (c, ev);
+            syncConfigureRequest(0, 0, 0, 0, c->frame, true);
         }
         else if ((ev->message_type == display_info->atoms[NET_MOVERESIZE_WINDOW]) && (ev->format == 32))
         {
