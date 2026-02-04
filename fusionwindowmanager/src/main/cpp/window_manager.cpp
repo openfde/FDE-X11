@@ -44,6 +44,7 @@ WindowManager::WindowManager(Display *display, jint width, jint height, jint den
       WM_DELETE_WINDOW(XInternAtom(display_, "WM_DELETE_WINDOW", false)),
       stoped(False)
 {
+    logd("WindowManager::WindowManager width:%d height:%d density:%d ", width, height, density);
     decorcationview_height = density_ * decorcationview_height / 96;
     system_tray_icon_width = density_ * system_tray_icon_width / 96;
     status_bar_height = density_ * status_bar_height / 96;

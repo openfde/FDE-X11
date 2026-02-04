@@ -118,6 +118,7 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
@@ -125,7 +126,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import android.openfde.AppTaskControllerProxy;
+import android.openfde.AppTaskStatusListener;
 
 /**
  * This is an Activity that behaves like a window in XServer. It receives user
@@ -240,7 +242,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         density = dm.densityDpi;
         AppUtils.updateSystemAttr(dm.widthPixels, dm.heightPixels);
         mSystemInsetTop = DECOR_CAPTION_HEIGHT;
-        mFrameworkOperations = FrameworkFactory.create(this);
         initXParams();
 //        Util.setBaseContext(this);
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -826,7 +827,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     private void closeXWindow() {
         FLog.a("window", getWindowId(), "closeXWindow");
-                serviceWindowChange(getLorieView().getHolder().getSurface(),
+        serviceWindowChange(getLorieView().getHolder().getSurface(),
                 0, 0,-1, -1,
                 mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
         if(mXserviceWrapper != null){
@@ -1083,7 +1084,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
                 | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
 //        if (Build.VERSION.SDK_INT >= 26) {
-            params.type = 2024; //WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        params.type = 2024; //WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
 //        } else {
 //            params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
 //        }
@@ -1644,6 +1645,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      *============================================ other activity  ==================================================
      */
     protected boolean hideDecorCaptionView() {
+        mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
+                false,
+                (windowingMode, isSystemBarVisible) -> Log.d(TAG, "onStatusChanged() called with: windowingMode = [" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]"));
         this.captionShowing = true;
         return false;
     }
@@ -1660,6 +1664,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if(FLog.SHOW_DEBUG_TITLE){
                 return false;
             }
+            mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
+                    true,
+                    (windowingMode, isSystemBarVisible) -> Log.d("MainActivity11", "onStatusChanged() called with: windowingMode = [" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]"));
             FLog.a("TAG", "hideDecorCaptionView");
             if(mFrameworkOperations != null ){
                 mFrameworkOperations.hideDecorCaptionView(this);

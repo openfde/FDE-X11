@@ -12,7 +12,10 @@ import android.app.ActivityManager;
 import android.app.ActivityOptions;
 import android.app.ActivityTaskManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.os.Build;
@@ -291,38 +294,36 @@ public class XWindowService extends Service {
         Xserver.getInstance().registerContext(new WeakReference<>(this));
         String height = AppUtils.getProperty("openfde.display_height", "1080");
         String width = AppUtils.getProperty("openfde.display_width", "1920");
-        mWidth = Integer.parseInt(width);
-        mHeight = Integer.parseInt(height);
+        int density = getSystemDensity();
         Xserver.getInstance().startXserver(width, height);
         Xserver.X_ClientNum = 0;
-        int density = getSystemDensity();
         if (DWM_START_DEFAULT) {
             fusionWindowManager = new WindowManager(new WeakReference<>(this),
                     mWidth, mHeight, density);
             fusionWindowManager.startWindowManager(DISPLAY_GLOBAL + "");
         }
-        FLog.s(TAG, "onCreate density:%d", density);
     }
 
     private int getSystemDensity() {
-        String pDensity = AppUtils.getProperty("ro.sf.lcd_density", "160");
-        int lcd_density = Integer.parseInt(pDensity);
-
-        DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
+//        String pDensity = AppUtils.getProperty("ro.sf.lcd_density", "160");
+//        int lcd_density = Integer.parseInt(pDensity);
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        if (SDK_INT >= Build.VERSION_CODES.R) {
+            getDisplay().getRealMetrics(displayMetrics);
+        }
+        mWidth = displayMetrics.widthPixels;
+        mHeight = displayMetrics.heightPixels;
         int densityDpi = displayMetrics.densityDpi;
-
-        float d = (float) (densityDpi * 96 / lcd_density);
-//        return (int)d;
-//        float xFactor = 1.f;
-        float xFactor = mWidth == 1920 ? 1.f : 1.75f;
+        float d = (float) (densityDpi * 96 / 160);
+        float xFactor = 1.f;
+//        float xFactor = mWidth == 1920 ? 1.f : 1.75f; //TODO for d3000M
         return (int) (d * xFactor);
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-//        FLog.s(TAG, "onConfigurationChanged() called with: newConfig = [" + newConfig + "]");
-        stopSelf();
+        android.os.Process.killProcess(android.os.Process.myPid());
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN, priority = 1)

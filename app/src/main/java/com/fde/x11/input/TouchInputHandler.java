@@ -495,7 +495,7 @@ public class TouchInputHandler {
             }
 
             if (button != InputStub.BUTTON_LEFT || !(mInjector.tapToMove && mInputStrategy instanceof InputStrategyInterface.TrackpadInputStrategy))
-                mInputStrategy.onTap(button);
+                mInputStrategy.onTap(button, x, y);
             else
                 mGestureListenerHandler.sendEmptyMessageDelayed(InputStub.BUTTON_LEFT, ViewConfiguration.getDoubleTapTimeout());
         }

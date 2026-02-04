@@ -3,6 +3,8 @@ package com.fde.x11;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -61,10 +63,10 @@ public class App extends Application {
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
                 if(activity instanceof MainActivity){
 //                    Log.d(TAG, "onActivityCreated: activity:" + activity + ", savedInstanceState:" + savedInstanceState + "");
-                   WindowAttribute attribute = ((MainActivity) activity).mAttribute;
-                   if(attribute != null){
-                       App.getApp().aliveActivityWindow.add(attribute.getXID());
-                   }
+                    WindowAttribute attribute = ((MainActivity) activity).mAttribute;
+                    if(attribute != null){
+                        App.getApp().aliveActivityWindow.add(attribute.getXID());
+                    }
                 }
             }
 

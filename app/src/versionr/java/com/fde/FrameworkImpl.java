@@ -1,6 +1,7 @@
 package com.fde;
 
 import android.app.Activity;
+import android.openfde.AppTaskStatusListener;
 import android.os.Build;
 import android.util.Log;
 import android.view.View;
@@ -12,15 +13,19 @@ import com.android.internal.policy.DecorView;
 import com.android.internal.widget.DecorCaptionView;
 import com.fde.x11.utils.FLog;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.ref.WeakReference;
 
 public class FrameworkImpl implements FrameworkOperations{
     private static final String TAG = "FrameworkImpl30";
 
-    private Activity activity;
+    private WeakReference<Activity> activity;
 
-    public FrameworkImpl(Activity activity) {
+    public FrameworkImpl(WeakReference<Activity> activity,
+                         boolean hideDecorCaptionView,
+                         AppTaskStatusListener listener) {
         this.activity = activity;
     }
 

@@ -134,6 +134,7 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs/impl')
     versionuCompileOnly files('libs/versionu/framework.jar')
     versionrCompileOnly files('libs/versionr/framework.jar')
+    compileOnly files('libs/openfde_sdk.jar')
 
 //    compileOnly files('libs/framework.jar')
     //noinspection DifferentStdlibGradleVersion

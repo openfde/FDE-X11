@@ -23,6 +23,8 @@ public interface InputStrategyInterface {
      */
     void onTap(int button);
 
+    void onTap(int button, float x, float y);
+
     /**
      * Called when the user has put one or more fingers down on the screen for a period of time.
      *
@@ -49,6 +51,10 @@ public interface InputStrategyInterface {
 
     class NullInputStrategy implements InputStrategyInterface {
         @Override public void onTap(int button) {}
+
+        @Override
+        public void onTap(int button, float x, float y) {}
+
         @Override public boolean onPressAndHold(int button) { return false; }
         @Override public void onScroll(float distanceX, float distanceY) {}
         @Override public void onMotionEvent(MotionEvent event) {}
@@ -152,6 +158,9 @@ public interface InputStrategyInterface {
         }
 
         @Override
+        public void onTap(int button, float x, float y) {}
+
+        @Override
         public boolean onPressAndHold(int button) {
             mInjector.sendMouseDown(button, false);
             mHeldButton = button;
@@ -207,6 +216,11 @@ public interface InputStrategyInterface {
         @Override
         public void onTap(int button) {
             mInjector.sendMouseClick(button, true);
+        }
+
+        @Override
+        public void onTap(int button, float x, float y) {
+            mInjector.sendMouseClick(button, true, x, y);
         }
 
         @Override
