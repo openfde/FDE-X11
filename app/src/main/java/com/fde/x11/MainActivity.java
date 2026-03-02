@@ -268,7 +268,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private void initXParams() {
-        updateWindowParams();
+//        updateWindowParams();
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         } else {
@@ -873,29 +873,16 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     private void onSurfaceRealSizeChanged(Surface sfc, int width, int height) {
         FLog.a("window", getWindowId(), "onSurfaceRealSizeChanged "
                 + "sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
-        final int screenWidth = AppUtils.GLOBAL_SCREEN_WIDTH;
-        final int screenHeight = AppUtils.GLOBAL_SCREEN_HEIGHT;
-        final int statusBarHeight = AppUtils.STATUSBAR_HEIGHT_U;
-        final int navBarHeight = AppUtils.NAVIGATION_BAR_HEIGHT_U;
-        final int captionHeight = isCaptionShowing() ? DECOR_CAPTION_HEIGHT : 0;
-        final int MAXIMIZE_HEIGHT = screenHeight - statusBarHeight - captionHeight - navBarHeight;
-//        if (height != MAXIMIZE_HEIGHT && height != screenHeight) {
-//            return;
-//        }
-
+//        final int screenWidth = AppUtils.GLOBAL_SCREEN_WIDTH;
+//        final int screenHeight = AppUtils.GLOBAL_SCREEN_HEIGHT;
+//        final int statusBarHeight = AppUtils.STATUSBAR_HEIGHT_U;
+//        final int navBarHeight = AppUtils.NAVIGATION_BAR_HEIGHT_U;
+//        final int captionHeight = isCaptionShowing() ? DECOR_CAPTION_HEIGHT : 0;
+//        final int MAXIMIZE_HEIGHT = screenHeight - statusBarHeight - captionHeight - navBarHeight;
         LorieView lorieView = getLorieView();
         int[] location = new int[2];
         lorieView.getLocationOnScreen(location);
         Rect rect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
-//        if (height == MAXIMIZE_HEIGHT) {
-//            int top = statusBarHeight + captionHeight;
-//            int bottom = screenHeight - navBarHeight;
-//            rect = new Rect(0, top, screenWidth, bottom);
-//            FLog.a("window", getWindowId(), "in MAXIMIZE_HEIGHT rect:" + rect);
-//        } else {
-//            rect = new Rect(0, 0, screenWidth, screenHeight);
-//            FLog.a("window", getWindowId(), "in FULLSCREEN_HEIGHT rect:" + rect);
-//        }
         View decorView = getWindow().getDecorView();
         decorView.getLocationOnScreen(location);
         Rect decorRect = new Rect(location[0], location[1], location[0] + width, location[1] + height);

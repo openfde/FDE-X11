@@ -120,6 +120,14 @@ public class App extends Application {
                 }
             }
         });
+        initConfig();
+    }
+
+    private void initConfig() {
+        String height = AppUtils.getProperty("openfde.display_height", "1080");
+        String width = AppUtils.getProperty("openfde.display_width", "1920");
+        AppUtils.GLOBAL_SCREEN_WIDTH = Integer.parseInt(width);
+        AppUtils.GLOBAL_SCREEN_HEIGHT = Integer.parseInt(height);
     }
 
     public static App getApp(){
