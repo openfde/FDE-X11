@@ -576,7 +576,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             detectViewRequestFocus();
             ThreadPoolManager.getInstance().execute(this::getClipText);
         } else {
-            if(mInputHandler != null && !mFloatViews.isEmpty()){
+//             mouse click to hide floating window
+            if(mInputHandler != null){
                 mInputHandler.mouseClick();
             }
         }

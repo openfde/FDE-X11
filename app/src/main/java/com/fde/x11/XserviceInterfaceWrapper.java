@@ -65,6 +65,14 @@ public class XserviceInterfaceWrapper implements InputStub {
         }
     }
 
+    public void onWindowFocusChanged(long window, boolean hasFocus) {
+        try {
+            if(isAviable()){service.onWindowFocusChanged(window, hasFocus);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "onWindowFocusChanged failed" + e.getMessage());
+        }
+    }
+
     public android.os.ParcelFileDescriptor getXConnection(){
         try {
             if(isAviable()){ return service.getXConnection();}

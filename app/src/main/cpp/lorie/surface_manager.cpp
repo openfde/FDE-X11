@@ -77,64 +77,53 @@ void SurfaceManager::update_window(Window window, WindAttribute attr) {
 }
 
 int SurfaceManager::remove_widget(Window window) {
-    for (auto &pair : window_attrs) {
+    for (auto &pair: window_attrs) {
         if (pair.second.widget_size == 0) {
             continue;
-        }
-
-        bool update = false;
-        size_t valid_count = 0;
-
-        // 第一步：统计有效 widget 数目
-        for (size_t i = 0; i < pair.second.widget_size; ++i) {
-            Widget* widget = &pair.second.widgets[i];
-            if (widget->window == window) {
-                update = true;
-                // 不再清空 widget 数据，仅标记为无效
-            } else if (!widget->discard && widget->window != 0 && widget->width != 0 && widget->height != 0) {
-                valid_count++;
-            }
-        }
-
-        if (update) {
-            WindAttribute* win_info = find_window(pair.first);  // 缓存查找结果
-            if (!win_info) {
-                return FALSE;  // 安全起见做判空处理
-            }
-
-            Widget* old_widgets = win_info->widgets;
-            Widget* new_widgets = nullptr;
-
-            if (valid_count > 0) {
-                new_widgets = (Widget*)malloc(valid_count * sizeof(Widget));
-                if (new_widgets == nullptr) {
-                    return FALSE;  // 内存不足
+        } else {
+            bool update = false;
+            size_t size = pair.second.widget_size;
+            for (int i = 0; i < pair.second.widget_size; ++i) {
+                Widget* widget = &pair.second.widgets[i];
+                if (widget->window == window) {
+                    update = true;
+//                    memset(widget, 0, sizeof(Widget));
+//                    widget->window = 0;
+//                    widget->texture_id = 0;
+                    widget->width = 0;
+                    widget->sfc = NULL;
+                    widget->height = 0;
+                    widget->offset_x = 0;
+                    widget->offset_y = 0;
+                    widget->task_to = 0;
+                    widget->pWin = NULL;
+                    size --;
+//                    pair.second.widget_size--;
                 }
-
+            }
+            if(update){
+                Widget *filtered_widgets = (Widget *)malloc(10 * sizeof(Widget));
+                if(filtered_widgets == NULL){
+                    return FALSE;
+                }
                 size_t index = 0;
-                for (size_t i = 0; i < pair.second.widget_size; ++i) {
+                for (size_t i = 0; i < pair.second.widget_size; i++) {
                     Widget* widget = &pair.second.widgets[i];
-                    if (widget->window != window &&
-                        !widget->discard &&
-                        widget->window != 0 &&
-                        widget->width != 0 &&
-                        widget->height != 0) {
-
-                        new_widgets[index++] = *widget;
+                    if (!widget->discard && widget->window != 0 && widget->width != 0 && widget->height != 0) {
+                        filtered_widgets[index] = *widget;
+                        index++;
                     }
                 }
+                Widget *old_widget = find_window(pair.first)->widgets;
+                free(old_widget);
+                find_window(pair.first)->widgets = filtered_widgets;
+                find_window(pair.first)->widget_size = index;
             }
-
-            free(old_widgets);
-            win_info->widgets = new_widgets;
-            win_info->widget_size = valid_count;
         }
-        printWindAttributeFormatted(&pair.second, "remove_widget");  // 移动到循环末尾统一打日志
+//        LogWindAttribute(pair.first, pair.second);
     }
-
     return TRUE;
 }
-
 
 WindAttribute* SurfaceManager::find_window(Window window) {
     if(window_attrs.count(window)){
@@ -267,7 +256,7 @@ void SurfaceManager::traversal_log_window(){
     for (const auto& pair : window_attrs)
     {
 //        LogWindAttribute(pair.first, pair.second);
-        printWindAttributeFormatted(&pair.second, "traversal_window_attrs");
+//        printWindAttributeFormatted(&pair.second, "traversal_window_attrs");
     }
 //    logd("traversal_window_attrs<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 

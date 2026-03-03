@@ -41,4 +41,7 @@ interface ICmdEntryInterface {
 
     void updateSystemViewVisible(boolean visible);
 
+//unused  interface
+    void onWindowFocusChanged(long window, boolean hasFocus);
+
 }

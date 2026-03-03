@@ -313,11 +313,11 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
 void WindowManager::OnConfigureNotify(const XConfigureEvent &e)
 {
         logd("OnConfigureNotify window:%lx above:%lx", e.window, e.above);
-    if (clients_.count(e.above))
-    {
-        //        logd("OnConfigureNotify %lx", e.window);
-        configedTopWindow[e.window] = e;
-    }
+//    if (clients_.count(e.above))
+//    {
+//        //        logd("OnConfigureNotify %lx", e.window);
+//        configedTopWindow[e.window] = e;
+//    }
 }
 
 void WindowManager::OnMapRequest(const XMapRequestEvent &e)

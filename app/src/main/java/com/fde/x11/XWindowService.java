@@ -131,7 +131,7 @@ public class XWindowService extends Service {
     private final HashMap<Long, IActivityCallback> activityCallbackMap = new HashMap<>();
     public final HashMap<Long, WindowAttribute> shouldDestroyMap = new HashMap<>();
     public final HashMap<Long, WindowAttribute> shouldResizeMap = new HashMap<>();
-
+    private final HashMap<Long, Long> transientForMap = new HashMap<>();
     private int mWidth = 1920;
     private int mHeight = 1080;
 
@@ -258,7 +258,24 @@ public class XWindowService extends Service {
             serviceUpdateSystemViewVisible(visible);
         }
 
+        @Override
+        public void onWindowFocusChanged(long window, boolean hasFocus) throws RemoteException {
+            activityOnWindowFocusChanged(window, hasFocus);
+        }
+
     };
+
+    private void activityOnWindowFocusChanged(long xid, boolean hasFocus) {
+//        FLog.s(TAG, "activityOnWindowFocusChanged() called with: xid = [" + xid + "], hasFocus = [" + hasFocus + "]");
+//        if(!hasFocus){
+//            View floatView = mFloatTips.get(xid);
+//            if (systemWindowManager != null && floatView != null && floatView.isAttachedToWindow()) {
+//                systemWindowManager.removeView(floatView);
+//                FLog.s(TAG, "stopFloatTrayAndTip: successful");
+//                mFloatTips.remove(xid);
+//            }
+//        }
+    }
 
     private void serviceUpdateSystemViewVisible(boolean visible) {
         FLog.s(TAG, "serviceUpdateSystemViewVisible() called with: visible = [" + visible + "]");
@@ -572,7 +589,7 @@ public class XWindowService extends Service {
     }
 
     private void updateSystrayAndTip(WindowAttribute attr, int type) {
-//        FLog.s(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+        FLog.s(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
         if (type == TYPE_TRAY && rightAttr == null) {
             rightAttr = attr;
         }
