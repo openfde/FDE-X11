@@ -538,9 +538,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         logd("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
         attr->status = 6;
-//        if(attr->discard){
-//            return;
-//        }
+        attr->discard = 0;
         attr->offset_x = res->offset_x;
         attr->offset_y = res->offset_y;
         attr->width = res->width;
@@ -876,6 +874,13 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
+    if(attr->discard){
+        return FALSE;
+    }
+    if(width == 0 || height == 0){
+        return FALSE;
+    }
+
     if (!eglSurface ) {
         logd("renderer_redraw_traversal_1 bad egl ");
         return FALSE;
@@ -895,6 +900,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
+        return FALSE;
     }
 //    if(!empty){
     if(id){
@@ -987,6 +993,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
 //            renderer_set_window(env, NULL, NULL);
 //            return FALSE;
         }
+        return FALSE;
     }
 //    if(!empty){
     if(attr->widget_size > 0){
@@ -1033,6 +1040,7 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
+        return FALSE;
     }
     draw(id, -1.f, -1.f, 1.f, 1.f, flip);
 //    draw_cursor_1(index, window);

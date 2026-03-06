@@ -1004,8 +1004,8 @@ Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls, jobject 
         if(attr){
             attr->discard = 1;
 //            glDeleteTextures(1, &attr->texture_id);
-            renderer_release_window(GetJavaEnv(), attr->window);
-            _surface_delete_window(sfWraper, attr->window);
+//            renderer_release_window(GetJavaEnv(), attr->window);
+//            _surface_delete_window(sfWraper, attr->window);
         }
         return;
     }
