@@ -168,13 +168,13 @@ private:
     int width_ = 1920;
     int height_ = 1080;
     int density_ = 96;
-    int decorcationview_height  = 42;
+    int decorcationview_height  = 44;
     Window system_tray = 0;
     int system_tray_icon_width = 18;
-    int status_bar_height = 24;
+    int status_bar_height = 30;
     int status_bar_icon_width = 30;
-    int offset_right_in_statusbar = 254;
-    int navigation_bar_height = 68;
+    int offset_right_in_statusbar = 270;
+    int navigation_bar_height = 70;
 
     // Event handlers.
     void OnCreateNotify(const XCreateWindowEvent &e);

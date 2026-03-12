@@ -155,7 +155,7 @@ import android.openfde.AppTaskStatusListener;
 
 @SuppressLint("ApplySharedPref")
 @SuppressWarnings({"deprecation", "unused"})
-public class MainActivity extends Activity implements View.OnApplyWindowInsetsListener {
+public class MainActivity extends Activity {
     static final String ACTION_STOP = "com.fde.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
     public  Handler handler = new Handler();
@@ -206,6 +206,8 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 
     public static final String NAME_MATE_TERMINAL = "mate-terminal";
     public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
+    private int mWindowMode = 5;
+    private boolean mSystembarVisible = true;
 
     protected long getWindowId() {
         return WindowCode;
@@ -247,7 +249,22 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
         initView();
         initEvent();
+        initTaskStatus();
         broadcastTaskId(true);
+    }
+
+    private void initTaskStatus() {
+        mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
+                !isCaptionShowing(), this::onWindowStatusChanged);
+    }
+
+    private void onWindowStatusChanged(int windowmode, boolean systembarVisible) {
+        mWindowMode = windowmode;
+        mSystembarVisible = systembarVisible;
+        Log.d(TAG, "onWindowStatusChanged() called with: windowmode = [" + windowmode + "], systembarVisible = [" + systembarVisible + "]");
+        if(mXserviceWrapper != null){
+            mXserviceWrapper.updateSystemViewVisible(windowmode != 1 || systembarVisible);
+        }
     }
 
     private void broadcastTaskId(boolean isAdd){
@@ -471,18 +488,18 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
         EasyDialog.Builder builder = new EasyDialog.Builder(this);
         initStylusAuxButtons();
 
-        ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), new OnApplyWindowInsetsListener() {
-            @NonNull
-            @Override
-            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
-//                androidx.core.graphics.Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars());
-//                androidx.core.graphics.Insets naviInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
-                androidx.core.graphics.Insets systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-//                androidx.core.graphics.Insets captionInsets = insets.getInsets(WindowInsetsCompat.Type.captionBar());
-                mSystemInsetTop = systemInsets.top;
-                return insets;
-            }
-        });
+//        ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), new OnApplyWindowInsetsListener() {
+//            @NonNull
+//            @Override
+//            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
+////                androidx.core.graphics.Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars());
+////                androidx.core.graphics.Insets naviInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+//                androidx.core.graphics.Insets systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+////                androidx.core.graphics.Insets captionInsets = insets.getInsets(WindowInsetsCompat.Type.captionBar());
+//                mSystemInsetTop = systemInsets.top;
+//                return insets;
+//            }
+//        });
     }
 
 
@@ -584,8 +601,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
     }
 
     private boolean isWindowMaximized() {
-        return (isFullscreen && mSystemInsetTop == 0 )
-                || mFrameworkOperations.isWindowMaximized();
+        return mWindowMode == 1;
+//        return (isFullscreen && mSystemInsetTop == 0 )
+//                || mFrameworkOperations.isWindowMaximized();
     }
 
     private void configureWindowDelayWithOffsetY(int y, long delay){
@@ -662,13 +680,6 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             finish();
             App.getApp().stopingActivityWindow.add(mAttribute.getXID());
         }
-    }
-
-    @NonNull
-    @Override
-    public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-        FLog.a("lifecycle", getWindowId(), "onApplyWindowInsets");
-        return insets;
     }
 
     @Override
@@ -1633,10 +1644,7 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
      *============================================ other activity  ==================================================
      */
     protected boolean hideDecorCaptionView() {
-        mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
-                false,
-                (windowingMode, isSystemBarVisible) -> Log.d(TAG, "onStatusChanged() called with: windowingMode = [" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]"));
-        this.captionShowing = true;
+           this.captionShowing = true;
         return false;
     }
     public static class MainActivity1 extends MainActivity {
@@ -1652,9 +1660,9 @@ public class MainActivity extends Activity implements View.OnApplyWindowInsetsLi
             if(FLog.SHOW_DEBUG_TITLE){
                 return false;
             }
-            mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
-                    true,
-                    (windowingMode, isSystemBarVisible) -> Log.d("MainActivity11", "onStatusChanged() called with: windowingMode = [" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]"));
+//            mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
+//                    true,
+//                    (windowingMode, isSystemBarVisible) -> Log.d("MainActivity11", "onStatusChanged() called with: windowingMode = [" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]"));
             FLog.a("TAG", "hideDecorCaptionView");
             if(mFrameworkOperations != null ){
                 mFrameworkOperations.hideDecorCaptionView(this);

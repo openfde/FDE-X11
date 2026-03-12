@@ -213,4 +213,12 @@ public class XserviceInterfaceWrapper implements InputStub {
             FLog.e(TAG, "registerActivityCallback failed" + e.getMessage());
         }
     }
+
+    public void updateSystemViewVisible(boolean visible) {
+        try {
+            if(isAviable()){service.updateSystemViewVisible(visible);}
+        }catch (RemoteException e){
+            FLog.e(TAG, "updateSystemViewVisible failed" + e.getMessage());
+        }
+    }
 }

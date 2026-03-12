@@ -70,7 +70,7 @@ public final class InputEventSender {
         if (!buttons.contains(button))
             return;
         FLog.event(TAG, "sendMouseEvent() relative  = [" + relative + "], down = [" + down + "]");
-        if(button == 3 && down){
+        if(button == BUTTON_RIGHT && down){
             InputStub input = mEventInterface != null ? mEventInterface: mInjector;
             input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
                     ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
