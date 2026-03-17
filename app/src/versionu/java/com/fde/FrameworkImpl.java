@@ -34,10 +34,16 @@ public class FrameworkImpl implements FrameworkOperations {
     }
 
     @Override
-    public void exitFullScreenWindow(Activity activity) {
+    public void exitMaxmizeWindow(Activity activity) {
 //        DecorView decorView = (DecorView) activity.getWindow().getDecorView();
 //        decorView.exitFullScreenWindow();
         proxy.maximizeOrNot();
+        FLog.e(TAG, "exitMaxmizeWindow() called with: activity = [" + activity + "]");
+    }
+
+    @Override
+    public void exitFullScreenWindow(Activity activity) {
+        proxy.enterOrExitFullscreen();
         FLog.e(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
     }
 

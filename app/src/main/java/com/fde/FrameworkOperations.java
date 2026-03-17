@@ -11,6 +11,8 @@ public interface FrameworkOperations {
     void exitFullScreenWindow(Activity activity);
     void startFullScreenWindow(Activity activity);
 
+    void exitMaxmizeWindow(Activity activity);
+
     boolean isWindowMaximized();
 
     boolean startDecorMovingTask(float startX, float startY);

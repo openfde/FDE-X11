@@ -206,8 +206,8 @@ public class MainActivity extends Activity {
 
     public static final String NAME_MATE_TERMINAL = "mate-terminal";
     public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
-    private int mWindowMode = 5;
-    private boolean mSystembarVisible = true;
+    private int mWindowingMode = 5;
+    private boolean mSystemBarVisible = true;
 
     protected long getWindowId() {
         return WindowCode;
@@ -249,22 +249,10 @@ public class MainActivity extends Activity {
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
         initView();
         initEvent();
-        initTaskStatus();
-        broadcastTaskId(true);
-    }
-
-    private void initTaskStatus() {
         mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
-                !isCaptionShowing(), this::onWindowStatusChanged);
-    }
-
-    private void onWindowStatusChanged(int windowmode, boolean systembarVisible) {
-        mWindowMode = windowmode;
-        mSystembarVisible = systembarVisible;
-        Log.d(TAG, "onWindowStatusChanged() called with: windowmode = [" + windowmode + "], systembarVisible = [" + systembarVisible + "]");
-        if(mXserviceWrapper != null){
-            mXserviceWrapper.updateSystemViewVisible(windowmode != 1 || systembarVisible);
-        }
+                !captionShowing,
+                this::onStatusChanged);
+        broadcastTaskId(true);
     }
 
     private void broadcastTaskId(boolean isAdd){
@@ -455,7 +443,7 @@ public class MainActivity extends Activity {
                 FLog.a(TAG, "realSizeChanged() called with: isFullscreen = [" + isFullscreen + "], width = [" + width + "], height = [" + height + "]");
                 WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
                 if(attribute != null && width != 0 && height !=0 ){
-                    if(isFullscreen){
+                    if(mWindowingMode == 1){
                         onSurfaceRealSizeChanged(sfc, width, height);
                     } else {
                         try {
@@ -601,7 +589,7 @@ public class MainActivity extends Activity {
     }
 
     private boolean isWindowMaximized() {
-        return mWindowMode == 1;
+        return !mSystemBarVisible;
 //        return (isFullscreen && mSystemInsetTop == 0 )
 //                || mFrameworkOperations.isWindowMaximized();
     }
@@ -790,9 +778,6 @@ public class MainActivity extends Activity {
 
         }
 
-        if(mXserviceWrapper == null /*|| isTaskMoving*/){
-            return;
-        }
     }
 
     private void updateAttribueOnly(Rect rect) {
@@ -1575,23 +1560,26 @@ public class MainActivity extends Activity {
     }
 
     private void updateWmStateInner(String action) {
-        if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && !isWindowMaximized()){
+        if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mWindowingMode == 5){
             return;
         }
 
-        if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(action) && isWindowMaximized()) {
+        if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(action) && mWindowingMode == 1) {
             return;
         }
 
         if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {
-            mFrameworkOperations.exitFullScreenWindow(this);
+            if(!mSystemBarVisible){
+                mFrameworkOperations.exitFullScreenWindow(this);
+            } else {
+                mFrameworkOperations.exitMaxmizeWindow(this);
+            }
         }
 
         if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
             mFrameworkOperations.startFullScreenWindow(this);
         }
     }
-
     private DecorCaptionView getCaptionView() {
         DecorView decorView = (DecorView) getWindow().getDecorView();
         if(decorView.getChildCount() > 0){
@@ -1640,13 +1628,24 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void onStatusChanged(int windowingMode, boolean isSystemBarVisible) {
+        this.mWindowingMode = windowingMode;
+        this.mSystemBarVisible = isSystemBarVisible;
+//        this.isFullscreen = !isSystemBarVisible;
+        Log.d(TAG, "onStatusChanged() called with: windowingMode = " +
+                "[" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]");
+    }
+
     /**
      *============================================ other activity  ==================================================
      */
     protected boolean hideDecorCaptionView() {
-           this.captionShowing = true;
+        this.captionShowing = true;
         return false;
     }
+
+
+
     public static class MainActivity1 extends MainActivity {
     }
 

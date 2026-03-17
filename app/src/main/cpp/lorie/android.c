@@ -987,9 +987,10 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 }
 
 JNIEXPORT void JNICALL
-Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls, jobject surface, jfloat offsetX, jfloat offsetY, jfloat width, jfloat height, jint index, jlong windowPtr, jlong window) {
+Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls, jobject surface,
+       jfloat offsetX, jfloat offsetY, jfloat width, jfloat height, jint index, jlong windowPtr, jlong window) {
     jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
-    logd( "windowChanged index:%d surface:%p", index, sfc);
+    logd( "windowChanged index:%d surface:%p x:%f y:%f w:%f h:%f", index, sfc, offsetX, offsetY, width, height);
     SurfaceRes *res = (SurfaceRes *) malloc(sizeof(SurfaceRes));
     res->id = (int) index;
     res->surface = sfc;

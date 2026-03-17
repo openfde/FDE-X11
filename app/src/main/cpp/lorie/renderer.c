@@ -703,9 +703,11 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         return;
     }
     WindAttribute *attr = (WindAttribute *) _surface_find_window(sfWraper, window);
-    if(attr->prop.window_type == 1000 && !attr->dock_sent){
-//        android_update_system_tray(attr);
+    if(attr->width != w || attr->height != h){
+        logw("may avoid flick do not update texture")
+//        return;
     }
+    logd("width:%d|%.0f height:%d|%.0f", w, attr->width, h, attr->height)
     attr->offset_x = (float) x;
     attr->offset_y = (float) y;
     attr->width = (float) w;
@@ -731,9 +733,6 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
-//    logd("renderer_update_texture x:%d y:%d w:%d h:%d window:%x tid:%d flip:%d",
-//        x, y, w, h, window,
-//        attr->texture_id, flip);
 }
 
 void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, void *window, GLuint texture_id) {
