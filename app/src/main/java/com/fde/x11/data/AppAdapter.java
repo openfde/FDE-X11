@@ -3,6 +3,7 @@ package com.fde.x11.data;
 
 
 import static com.fde.x11.data.Constants.URL_STOPAPP;
+import static com.fde.x11.data.Constants.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -45,12 +46,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
     AppListActivity.ItemClickListener itemClickListener;
     private String filter;
     private List<AppListResult.DataBeanX.DataBean> filteredList;
+    private String languageCode;
 
     public AppAdapter(@NonNull Context context, List<AppListResult.DataBeanX.DataBean> list, AppListActivity.ItemClickListener listener) {
         this.context = context;
         this.filteredList = list;
         this.list = list;
         this.itemClickListener = listener;
+        this.languageCode = context.getResources().getConfiguration().getLocales().get(0).getLanguage();
     }
 
     @NonNull
@@ -66,7 +69,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
         final AppListResult.DataBeanX.DataBean app = filteredList.get(position);
         app.id = position;
         TextView textView = holder.textView;
-        textView.setText(app.Name);
+        if("zh".equals(languageCode) && !TextUtils.isEmpty(app.getZhName())){
+            textView.setText(app.getZhName());
+        } else {
+            textView.setText(app.Name);
+        }
         textView.setTypeface(null, Typeface.NORMAL);
         textView.setTextColor(ContextCompat.getColor(context, R.color.black));
         ImageView imageView =holder.imageView;
@@ -135,7 +142,30 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
         if(TextUtils.isEmpty(filter)){
             this.filteredList = list;
         } else if(list!= null && !list.isEmpty()){
-            this.filteredList = list.stream().filter(app -> app.Name.toLowerCase().contains(filter.toLowerCase())).collect(Collectors.toList());
+            String lowerFilter = filter.toLowerCase(); // 将过滤词转为小写，避免重复转换
+
+            this.filteredList = list.stream()
+                    .filter(app -> {
+                        // 如果过滤词为空，默认全部保留
+                        if (filter == null || filter.isEmpty()) return true;
+
+                        if ("zh".equals(languageCode)) {
+                            // 中文环境：先检查中文名
+                            String zhName = app.getZhName();
+                            if (zhName != null && !zhName.isEmpty() && zhName.toLowerCase().contains(lowerFilter)) {
+                                return true; // 中文名匹配，直接通过
+                            }
+                            // 中文名不匹配（或为空），再检查英文名
+                            return app.Name != null && app.Name.toLowerCase().contains(lowerFilter);
+                        } else {
+                            // 非中文环境：同时检查两个字段（短路优化）
+                            boolean matchEn = app.Name != null && app.Name.toLowerCase().contains(lowerFilter);
+                            if (matchEn) return true;
+                            String zhName = app.getZhName();
+                            return zhName != null && !zhName.isEmpty() && zhName.toLowerCase().contains(lowerFilter);
+                        }
+                    })
+                    .collect(Collectors.toList());
         }
         notifyDataSetChanged();
     }

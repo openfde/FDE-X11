@@ -707,7 +707,7 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         logw("may avoid flick do not update texture")
 //        return;
     }
-    logd("width:%d|%.0f height:%d|%.0f", w, attr->width, h, attr->height)
+//    logd("width:%d|%.0f height:%d|%.0f", w, attr->width, h, attr->height)
     attr->offset_x = (float) x;
     attr->offset_y = (float) y;
     attr->width = (float) w;
@@ -881,15 +881,15 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     }
 
     if (!eglSurface ) {
-        logd("renderer_redraw_traversal_1 bad egl ");
+//        logd("renderer_redraw_traversal_1 bad egl ");
         return FALSE;
     }
     if ( eglGetCurrentContext() == EGL_NO_CONTEXT ) {
-        logd("renderer_redraw_traversal_1 bad context ")
+//        logd("renderer_redraw_traversal_1 bad context ")
         return FALSE;
     }
     if (!id) {
-        logd("renderer_redraw_traversal_1 id:%d ", id)
+//        logd("renderer_redraw_traversal_1 id:%d ", id)
         return FALSE;
     }
 
