@@ -745,14 +745,14 @@ public class XWindowService extends Service {
     }
 
     private void sendBroadcastConfigureWidget(WindowAttribute attr) {
-        if(outOfScreen(attr)){
-            insetsIntoScreen(attr);
-            if(fusionWindowManager != null){
-                fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
-                        (int) attr.getWidth(), (int) attr.getHeight());
-            }
-            return;
-        }
+//        if(outOfScreen(attr)){
+//            insetsIntoScreen(attr);
+//            if(fusionWindowManager != null){
+//                fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
+//                        (int) attr.getWidth(), (int) attr.getHeight());
+//            }
+//            return;
+//        }
         String targetPackage = getPackageName();
         Intent intent = new Intent(CONFIGURE_WIDGET_FROM_X);
         intent.setPackage(targetPackage);

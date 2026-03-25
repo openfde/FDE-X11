@@ -642,7 +642,7 @@ public class MainActivity extends Activity {
         closeXWindow();
         unregisterReceiver(receiver);
         unbindService(connection);
-        stopFloatViews();
+//        stopFloatViews();
         if(mAttribute != null){
             mXserviceWrapper.unregisterActivityCallback(mAttribute.getXID(), iActivityCallback);
         }
