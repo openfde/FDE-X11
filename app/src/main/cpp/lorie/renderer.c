@@ -876,30 +876,38 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     if(attr->discard){
         return FALSE;
     }
-    if(width == 0 || height == 0){
+
+    if (!eglSurface ) {
+        logd("renderer_redraw_traversal_1 bad egl ");
         return FALSE;
     }
 
-    if (!eglSurface ) {
-//        logd("renderer_redraw_traversal_1 bad egl ");
+    if (eglSurface  == EGL_NO_SURFACE) {
+        logd("EGL_NO_SURFACE ");
         return FALSE;
     }
     if ( eglGetCurrentContext() == EGL_NO_CONTEXT ) {
-//        logd("renderer_redraw_traversal_1 bad context ")
+        logd("renderer_redraw_traversal_1 bad context ")
         return FALSE;
     }
     if (!id) {
-//        logd("renderer_redraw_traversal_1 id:%d ", id)
+        logd("renderer_redraw_traversal_1 id:%d ", id)
         return FALSE;
     }
 
-    // logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
-        // index, width, height, attr->offset_x, attr->offset_y, id);
+     logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+         index, width, height, attr->offset_x, attr->offset_y, id);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
-        eglCheckError(__LINE__);
-        return FALSE;
+//        eglCheckError(__LINE__);
+        EGLint err = eglGetError();
+        if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
+            // 【关键】如果是 Surface 失效，只跳过当前这一个，不要终止循环
+            // 并且解绑上下文，防止污染下一个 Surface
+            eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx);
+            return FALSE;
+        }
     }
 //    if(!empty){
     if(id){
