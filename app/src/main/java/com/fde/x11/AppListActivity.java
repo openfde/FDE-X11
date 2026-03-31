@@ -353,7 +353,7 @@ public class AppListActivity extends AppCompatActivity {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-//        AppUtils.set("fde.click_as_touch", "false");
+        com.fde.x11.utils.Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
         FLog.l(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + "");
         if(hasFocus){
             mayGetApps();

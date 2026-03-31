@@ -760,6 +760,25 @@ public class XWindowService extends Service {
         sendBroadcast(intent);
     }
 
+    private void insetsIntoScreenWithHeight(WindowAttribute attr, int decorHeight) {
+        int x = (int) attr.getOffsetX();
+        int y = (int) attr.getOffsetY();
+        int w = (int) attr.getWidth();
+        int h = (int) attr.getHeight();
+        if(x < 0){
+            attr.setOffsetX(0);
+        }
+        if(y < decorHeight){
+            attr.setOffsetY(decorHeight);
+        }
+        if(x + w > mWidth){
+            attr.setOffsetX(mWidth - w);
+        }
+        if(y + h > mHeight){
+            attr.setOffsetY(mHeight - h);
+        }
+    }
+
     private void insetsIntoScreen(WindowAttribute attr) {
         int x = (int) attr.getOffsetX();
         int y = (int) attr.getOffsetY();
@@ -881,6 +900,15 @@ public class XWindowService extends Service {
         if (startingWindow.contains(attr.getXID())) {
             return;
         }
+        if(outOfScreen(attr)){
+            insetsIntoScreenWithHeight(attr, (int)decorHeight);
+            if(fusionWindowManager != null){
+                fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
+                        (int) attr.getWidth(), (int) attr.getHeight());
+            }
+//            return;
+        }
+
         runningMainWindow.add(attr.getXID());
         startingWindow.add(attr.getXID());
         FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");

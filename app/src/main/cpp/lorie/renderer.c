@@ -854,7 +854,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window, bool empty) {
-//    logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
+    logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
     int id, dri_id;
