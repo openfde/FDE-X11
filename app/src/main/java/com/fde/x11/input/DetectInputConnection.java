@@ -18,11 +18,12 @@ import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 
+import com.fde.x11.BuildConfig;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Reflector;
 
 public class DetectInputConnection extends BaseInputConnection {
-    private static final boolean DEBUG = false ; // BuildConfig.DEBUG;
+    private static final boolean DEBUG = BuildConfig.DEBUG; // BuildConfig.DEBUG;
     private static final String TAG ="DetectConnection_ime";
     private final DetectEventEditText detectEventEditText;
     private int mBatchEditNesting;

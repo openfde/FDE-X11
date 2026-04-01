@@ -84,7 +84,7 @@ static inline JNIEnv *GetJavaEnv(void) {
 }
 
 void android_update_texture(Window window) {
-    loge( "android_update_texture window:%x", window);
+//    loge( "android_update_texture window:%x", window);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (!attr) {
         loge( "android_update_texture not find window:%x", window);

@@ -40,6 +40,9 @@
 
 #include <X11/keysym.h>
 #include <selection.h>
+#include <jni.h>
+#include <android/log.h>
+#include "native_log.h"
 
 #ifndef KEYBOARD_OR_FLOAT
 #define KEYBOARD_OR_FLOAT MASTER_KEYBOARD
@@ -459,89 +462,92 @@ static size_t lorieReleaseLevelThree(KeyCode *keys, size_t maxKeys) {
 }
 
 KeyCode lorieKeysymToKeycode(KeySym keysym, unsigned state, unsigned *new_state) {
-	XkbDescPtr xkb;
-	unsigned int key; // KeyCode has insufficient range for the loop
-	KeyCode fallback;
-	KeySym ks;
-	unsigned level_three_mask;
+    XkbDescPtr xkb;
+    unsigned int key;
+    KeyCode fallback;
+    KeySym ks;
+    unsigned level_three_mask;
 
-	if (new_state != NULL)
-		*new_state = state;
+    // 添加：进入函数日志
+    logd("[lorieKeysymToKeycode] Enter: keysym=0x%lx, state=0x%x\n", (long)keysym, state);
 
-	fallback = 0;
-	xkb = GetMaster(lorieKeyboard, KEYBOARD_OR_FLOAT)->key->xkbInfo->desc;
-	for (key = xkb->min_key_code; key <= xkb->max_key_code; key++) {
-		unsigned int state_out;
-		KeySym dummy;
-		size_t fakeIdx;
+    if (new_state != NULL)
+        *new_state = state;
 
-		XkbTranslateKeyCode(xkb, key, state, &state_out, &ks);
-		if (ks == NoSymbol)
-			continue;
+    fallback = 0;
+    xkb = GetMaster(lorieKeyboard, KEYBOARD_OR_FLOAT)->key->xkbInfo->desc;
 
-		/*
-		 * Despite every known piece of documentation on
-		 * XkbTranslateKeyCode() stating that mods_rtrn returns
-		 * the unconsumed modifiers, in reality it always
-		 * returns the _potentially consumed_ modifiers.
-		 */
-		state_out = state & ~state_out;
-		if (state_out & LockMask)
-			XkbConvertCase(ks, &dummy, &ks);
+    for (key = xkb->min_key_code; key <= xkb->max_key_code; key++) {
+        unsigned int state_out;
+        KeySym dummy;
+        size_t fakeIdx;
 
-		if (ks != keysym)
-			continue;
+        XkbTranslateKeyCode(xkb, key, state, &state_out, &ks);
+        if (ks == NoSymbol)
+            continue;
 
-		/*
-		 * Some keys are never sent by a real keyboard and are
-		 * used in the default layouts as a fallback for
-		 * modifiers. Make sure we use them last as some
-		 * applications can be confused by these normally
-		 * unused keys.
-		 */
-		for (fakeIdx = 0; fakeIdx < ARRAY_SIZE(fakeKeys); fakeIdx++) {
-			if (key == fakeKeys[fakeIdx]) {
-				if (fallback == 0)
-					fallback = key;
-				break;
-			}
-		}
-		if (fakeIdx < ARRAY_SIZE(fakeKeys))
-			continue;
+        state_out = state & ~state_out;
+        if (state_out & LockMask)
+            XkbConvertCase(ks, &dummy, &ks);
 
-		return key;
-	}
+        if (ks != keysym)
+            continue;
 
-	/* Use the fallback key, if one was found */
-	if (fallback != 0)
-		return fallback;
+        // 添加：匹配到 Keysym 的日志
+        logd("[lorieKeysymToKeycode] Found match: keycode=%d for keysym=0x%lx\n", key, (long)keysym);
 
-	if (new_state == NULL)
-		return 0;
+        for (fakeIdx = 0; fakeIdx < ARRAY_SIZE(fakeKeys); fakeIdx++) {
+            if (key == fakeKeys[fakeIdx]) {
+                if (fallback == 0) {
+                    fallback = key;
+                    logd("[lorieKeysymToKeycode] Key %d is a fakeKey, set as fallback\n", key);
+                }
+                break;
+            }
+        }
+        if (fakeIdx < ARRAY_SIZE(fakeKeys))
+            continue;
 
-	*new_state = (state & ~ShiftMask) | ((state & ShiftMask) ? 0 : ShiftMask);
-	key = lorieKeysymToKeycode(keysym, *new_state, NULL);
-	if (key != 0)
-		return key;
+        return key;
+    }
 
-	level_three_mask = lorieGetLevelThreeMask();
-	if (level_three_mask == 0)
-		return 0;
+    if (fallback != 0) {
+        logd("[lorieKeysymToKeycode] Using fallback keycode %d\n", fallback);
+        return fallback;
+    }
 
-	*new_state = (state & ~level_three_mask) | 
-	             ((state & level_three_mask) ? 0 : level_three_mask);
-	key = lorieKeysymToKeycode(keysym, *new_state, NULL);
-	if (key != 0)
-		return key;
+    if (new_state == NULL) {
+        // 说明这是在递归调用中，不需要再往下递归尝试了
+        return 0;
+    }
 
-	*new_state = (state & ~(ShiftMask | level_three_mask)) | 
-	             ((state & ShiftMask) ? 0 : ShiftMask) |
-	             ((state & level_three_mask) ? 0 : level_three_mask);
-	key = lorieKeysymToKeycode(keysym, *new_state, NULL);
-	if (key != 0)
-		return key;
+    // --- 开始尝试修饰键组合 ---
 
-	return 0;
+    // 1. 尝试反转 Shift
+    *new_state = (state & ~ShiftMask) | ((state & ShiftMask) ? 0 : ShiftMask);
+    logd("[lorieKeysymToKeycode] No direct match. Trying Shift toggle: new_state=0x%x\n", *new_state);
+    key = lorieKeysymToKeycode(keysym, *new_state, NULL);
+    if (key != 0) return key;
+
+    // 2. 尝试反转 Level 3 (AltGr)
+    level_three_mask = lorieGetLevelThreeMask();
+    if (level_three_mask != 0) {
+        *new_state = (state & ~level_three_mask) | ((state & level_three_mask) ? 0 : level_three_mask);
+        logd("[lorieKeysymToKeycode] Trying Level3 toggle: new_state=0x%x\n", *new_state);
+        key = lorieKeysymToKeycode(keysym, *new_state, NULL);
+        if (key != 0) return key;
+
+        // 3. 同时尝试 Shift + Level 3
+        *new_state = (state & ~(ShiftMask | level_three_mask)) |
+                     ((state & ShiftMask) ? 0 : ShiftMask) |
+                     ((state & level_three_mask) ? 0 : level_three_mask);
+        logd("[lorieKeysymToKeycode] Trying Shift+Level3 toggle: new_state=0x%x\n", *new_state);
+        key = lorieKeysymToKeycode(keysym, *new_state, NULL);
+        if (key != 0) return key;
+    }
+
+    logd("[lorieKeysymToKeycode] Failed to find any keycode for keysym 0x%lx\n", (long)keysym);
+    return 0;
 }
 
 static int lorieIsAffectedByNumLock(KeyCode keycode) {
@@ -683,7 +689,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
          * This can happen quite often as we ignore some
          * key presses.
          */
-        LogMessageVerb(X_DEBUG, -1, "Unexpected release of keysym 0x%x\n", keysym);
+        logd("Unexpected release of keysym 0x%x\n", keysym);
         return;
     }
 
@@ -720,12 +726,13 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
     /* No matches. Will have to add a new entry... */
     if (keycode == 0) {
         keycode = lorieAddKeysym(keysym, state);
+        usleep(20000);
         if (keycode == 0) {
-                LogMessageVerb(X_ERROR, -1, "Failure adding new keysym 0x%x\n", keysym);
+            logd("Failure adding new keysym 0x%x\n", keysym);
             return;
         }
 
-        LogMessageVerb(X_INFO, 0, "Added unknown keysym 0x%x to keycode %d\n",
+        logd( "Added unknown keysym 0x%x to keycode %d\n",
                  keysym, keycode);
 
         /*
@@ -735,7 +742,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
          */
         keycode = lorieKeysymToKeycode(keysym, state, &new_state);
         if (keycode == 0) {
-            LogMessageVerb(X_ERROR, -1, "Newly added keysym 0x%x cannot be generated\n", keysym);
+            logd("Newly added keysym 0x%x cannot be generated\n", keysym);
             return;
         }
     }
@@ -755,7 +762,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
         KeyCode keycode2;
         unsigned new_state2;
 
-        LogMessageVerb(X_DEBUG, 0, "Finding alternative to keysym 0x%x to avoid fake shift for numpad\n", keysym);
+        logd("Finding alternative to keysym 0x%x to avoid fake shift for numpad\n", keysym);
 
         for (i = 0;i < sizeof(altKeysym)/sizeof(altKeysym[0]);i++) {
             KeySym altsym;
@@ -778,8 +785,9 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
             break;
         }
 
-        if (i == sizeof(altKeysym)/sizeof(altKeysym[0]))
-            LogMessageVerb(X_DEBUG, 0, "No alternative keysym found\n");
+        if (i == sizeof(altKeysym)/sizeof(altKeysym[0])){
+            logd("No alternative keysym found\n");
+        }
         else {
             keycode = keycode2;
             new_state = new_state2;
@@ -818,7 +826,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
     if (!(state & ShiftMask) && (new_state & ShiftMask)) {
         shift_press = loriePressShift();
         if (shift_press == 0) {
-            LogMessageVerb(X_ERROR, -1, "Unable to find a modifier key for Shift\n");
+            logd("Unable to find a modifier key for Shift\n");
             return;
         }
 
@@ -827,7 +835,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
         shift_release_count = lorieReleaseShift(shift_release,
                                               sizeof(shift_release)/sizeof(*shift_release));
         if (shift_release_count == 0) {
-            LogMessageVerb(X_ERROR, -1, "Unable to find the modifier key(s) for releasing Shift\n");
+            logd("Unable to find the modifier key(s) for releasing Shift\n");
             return;
         }
 
@@ -839,7 +847,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
     if (!(state & level_three_mask) && (new_state & level_three_mask)) {
         level_three_press = loriePressLevelThree();
         if (level_three_press == 0) {
-            LogMessageVerb(X_ERROR, -1, "Unable to find a modifier key for ISO_Level3_Shift/Mode_Switch\n");
+            logd("Unable to find a modifier key for ISO_Level3_Shift/Mode_Switch\n");
             return;
         }
 
@@ -848,7 +856,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
         level_three_release_count = lorieReleaseLevelThree(level_three_release,
                                                          sizeof(level_three_release)/sizeof(*level_three_release));
         if (level_three_release_count == 0) {
-            LogMessageVerb(X_ERROR, -1, "Unable to find the modifier key(s) for releasing ISO_Level3_Shift/Mode_Switch\n");
+            logd("Unable to find the modifier key(s) for releasing ISO_Level3_Shift/Mode_Switch\n");
             return;
         }
 
@@ -864,7 +872,7 @@ void lorieKeysymKeyboardEvent(KeySym keysym, int down) {
         if (i == keycode)
             continue;
         if (pressedKeys[i] == keysym) {
-            LogMessageVerb(X_ERROR, -1, "Keysym 0x%x generated by both keys %d and %d", keysym, i, keycode);
+            logd("Keysym 0x%x generated by both keys %d and %d", keysym, i, keycode);
             pressedKeys[i] = NoSymbol;
         }
     }

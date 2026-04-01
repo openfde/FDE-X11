@@ -56,9 +56,7 @@ public class DetectEventEditText extends EditText {
 
     @Override
     public boolean onKeyPreIme(int keyCode, KeyEvent event) {
-        if(DEBUG){
-            FLog.e(TAG, "onKeyPreIme() called with: keyCode = [" + keyCode + "], event = [" + event + "]");
-        }
+        FLog.e(TAG, "onKeyPreIme() called with: keyCode = [" + keyCode + "], event = [" + event + "]");
         return super.onKeyPreIme(keyCode, event);
     }
 
