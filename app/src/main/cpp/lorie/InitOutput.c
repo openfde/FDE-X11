@@ -321,8 +321,18 @@ static void lorieSetCursor(unused DeviceIntPtr pDev, unused ScreenPtr pScr, Curs
         lorieConvertCursor(pCurs, data);
         logd("lorieSetCursor: updating cursor w:%d  h:%d xhot:%d yhot:%d \n",
              bits->width, bits->height, bits->xhot, bits->yhot);
+        logd("Cursor info: bits=%p, foreColor=(%d,%d,%d), backColor=(%d,%d,%d), "
+             "refcnt=%d, devPrivates=%p, id=%lu, serialNumber=%u, name=%s",
+             pCurs->bits,
+             pCurs->foreRed, pCurs->foreGreen, pCurs->foreBlue,
+             pCurs->backRed, pCurs->backGreen, pCurs->backBlue,
+             pCurs->refcnt, pCurs->devPrivates,
+             pCurs->id, pCurs->serialNumber, NameForAtom(pCurs->name));
 //        renderer_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
-        android_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
+        if(pCurs->serialNumber != 1){ //won't update cursor when serialNumber == 1, it means cursor
+            // is default cursor, android has default cursor
+            android_update_cursor(bits->width, bits->height, bits->xhot, bits->yhot, data);
+        }
     } else{
 //        renderer_update_cursor(0, 0, 0, 0, NULL);
     }
