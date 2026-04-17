@@ -590,6 +590,15 @@ public class XWindowService extends Service {
 
     private void updateSystrayAndTip(WindowAttribute attr, int type) {
         FLog.s(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+
+        if(outOfScreen(attr)){
+            insetsIntoScreenWithHeight(attr, 0);
+            if(fusionWindowManager != null){
+                fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
+                        (int) attr.getWidth(), (int) attr.getHeight());
+            }
+        }
+
         if (type == TYPE_TRAY && rightAttr == null) {
             rightAttr = attr;
         }

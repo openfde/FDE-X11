@@ -173,6 +173,9 @@ public class Xserver {
         }
 //        taskTo = taskTo == 0 ? transientfor : taskTo;
         FLog.s(TAG, aid,"final windowtype:" + type);
+        if(!isActivity){
+            type = _WM_WINDOW_TYPE_SYSTIP;
+        }
 
         if(isActivity){
             switch (type) {
