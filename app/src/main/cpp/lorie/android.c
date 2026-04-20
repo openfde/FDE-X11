@@ -1384,6 +1384,12 @@ Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window
 }
 
 JNIEXPORT void JNICALL
+Java_com_fde_x11_Xserver_removeWindow(JNIEnv *env, jobject thiz, jlong window) {
+    logd( "removeWindow window:%lx", window);
+    android_destroy_window(window);
+}
+
+JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,jint which_button, jboolean button_down, jboolean relative, jint index) {
 //    logd( "MouseEvent x:%.0f y:%.0f detail:%d  down:%s relative:%d", x, y, which_button,
 //        button_down == 1 ? "true" : "false", relative);

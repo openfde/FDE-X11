@@ -114,6 +114,8 @@ public class Xserver {
 
     public native void tellFocusWindow(long window);
 
+    public native void removeWindow(long window);
+
     private static class SingletonHolder {
         private static final Xserver INSTANCE = new Xserver();
     }

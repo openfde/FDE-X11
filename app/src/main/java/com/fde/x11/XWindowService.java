@@ -251,6 +251,7 @@ public class XWindowService extends Service {
         @Override
         public void unregisterActivityCallback(long window, IActivityCallback callback) throws RemoteException {
             activityCallbackMap.remove(window);
+            Xserver.getInstance().removeWindow(window);
         }
 
         @Override
