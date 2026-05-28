@@ -6,6 +6,7 @@ import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
 import static com.fde.x11.Xserver._WM_WINDOW_TYPE_SYSTIP;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
 import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
+import static com.fde.x11.utils.AppUtils.NAVIGATION_BAR_HEIGHT_U;
 
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
@@ -593,7 +594,7 @@ public class XWindowService extends Service {
         FLog.s(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
 
         if(outOfScreen(attr)){
-            insetsIntoScreenWithHeight(attr, 0);
+            insetsIntoScreenWithHeight(attr, 0, false);
             if(fusionWindowManager != null){
                 fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
                         (int) attr.getWidth(), (int) attr.getHeight());
@@ -770,7 +771,7 @@ public class XWindowService extends Service {
         sendBroadcast(intent);
     }
 
-    private void insetsIntoScreenWithHeight(WindowAttribute attr, int decorHeight) {
+    private void insetsIntoScreenWithHeight(WindowAttribute attr, int decorHeight, boolean withNavi) {
         int x = (int) attr.getOffsetX();
         int y = (int) attr.getOffsetY();
         int w = (int) attr.getWidth();
@@ -784,8 +785,9 @@ public class XWindowService extends Service {
         if(x + w > mWidth){
             attr.setOffsetX(mWidth - w);
         }
-        if(y + h > mHeight){
-            attr.setOffsetY(mHeight - h);
+        int height = withNavi? (mHeight - NAVIGATION_BAR_HEIGHT_U) :  mHeight;
+        if(y + h > height){
+            attr.setOffsetY(height - h);
         }
     }
 
@@ -911,7 +913,7 @@ public class XWindowService extends Service {
             return;
         }
         if(outOfScreen(attr)){
-            insetsIntoScreenWithHeight(attr, (int)decorHeight);
+            insetsIntoScreenWithHeight(attr, (int)decorHeight, true);
             if(fusionWindowManager != null){
                 fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
                         (int) attr.getWidth(), (int) attr.getHeight());
