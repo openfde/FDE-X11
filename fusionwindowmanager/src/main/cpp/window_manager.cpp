@@ -745,6 +745,11 @@ void WindowManager::OnPropertyNotify(XEvent e)
         {
             // clientUpdateIcon(c);
         }
+        else if (ev->atom == display_info->atoms[NET_WM_STATE])
+        {
+            logd("client \"%s\" (0x%lx) has received a NET_WM_STATE notify", c->name, c->window);
+
+        }
         return;
     }
 
@@ -1010,9 +1015,22 @@ void WindowManager::ProcessClientMessage(XEvent e)
         }
         else if ((ev->message_type == display_info->atoms[NET_WM_STATE]) && (ev->format == 32))
         {
+
+            Atom a1 = (Atom)ev->data.l[1];
+            Atom a2 = (Atom)ev->data.l[2];
+            bool fullscreen =
+                a1 == display_info->atoms[NET_WM_STATE_FULLSCREEN] ||
+                a2 == display_info->atoms[NET_WM_STATE_FULLSCREEN];
             //TODO operation in decoration
             int wm_action = clientUpdateNetState (c, ev);
-            if(wm_action == WINDOW_ACTION_MAXIMIZED_REMOVE){
+            if(fullscreen){
+                wm_action = WINDOW_ACTION_FULLSCREEN;
+            }
+            logd("NET_WM_STATE_FULLSCREEN window (0x%lx) a1:%s a2:%s wm_action:%d", ev->window, XGetAtomName(display_, a1),
+                XGetAtomName(display_, a2), wm_action);
+            if(fullscreen){
+                setMaximizedState(ev->window, TRUE);
+            } else if(wm_action == WINDOW_ACTION_MAXIMIZED_REMOVE){
                 setMaximizedState(ev->window, FALSE);
             } else {
                 setMaximizedState(ev->window, TRUE);
@@ -1514,11 +1532,9 @@ void WindowManager::HandleClientMessage(XEvent e)
         }
         if (wm_action == WINDOW_ACTION_MAXIMIZED)
         {
-            // setMaximizedState(e.xclient.window, true);
         }
         else if (wm_action == WINDOW_ACTION_MAXIMIZED_REMOVE)
         {
-            // setMaximizedState(e.xclient.window, false);
         }
     }
     else if (e.xclient.message_type == display_info->atoms[NET_ACTIVE_WINDOW])
@@ -1992,7 +2008,6 @@ int WindowManager::moveWindow(long window, int x, int y)
 
 int WindowManager::configureWindow(long window, int x, int y, int w, int h)
 {
-    // setMaximizedState(window, false);
     Client *c;
     XWindowChanges changes;
     changes.x = x;

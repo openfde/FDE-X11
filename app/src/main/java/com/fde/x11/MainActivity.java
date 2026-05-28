@@ -13,6 +13,7 @@ import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_KEY_WINDOW
 import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_ACTION;
 import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
 import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_MINIMIZE_ACTION;
+import static com.fde.fusionwindowmanager.WindowManager.WINDOW_ACTION_FULLSCREEN_ACTION;
 import static com.fde.x11.XWindowService.ACTION_X_WINDOW_ATTRIBUTE;
 import static com.fde.x11.XWindowService.ACTION_X_WINDOW_PROPERTY;
 import static com.fde.x11.XWindowService.CONFIGURE_ACTIVITY_FROM_X;
@@ -510,6 +511,7 @@ public class MainActivity extends Activity {
             addAction(WINDOW_ACTION_MAXIMIZED_ACTION);
             addAction(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION);
             addAction(WINDOW_ACTION_MINIMIZE_ACTION);
+            addAction(WINDOW_ACTION_FULLSCREEN_ACTION);
         }},  0x4);
         EventBus.getDefault().register(this);
         Xserver.requestConnection();
@@ -1555,7 +1557,20 @@ public class MainActivity extends Activity {
                     moveTaskToBack(true);
 //                    ((ActivityManager)getSystemService(Context.ACTIVITY_SERVICE)).moveTaskToBack(true, mTaskID);
                 }
-            }
+            } else if(WINDOW_ACTION_FULLSCREEN_ACTION.equals(intent.getAction())){
+                long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
+                FLog.a("event", getWindowId(), "onReceive: "  +
+                        "WINDOW_ACTION_FULLSCREEN change"  + " windowID:" + windowID +
+                        " action:" + intent.getAction() );
+                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                    updateWmStateInner(intent.getAction());
+                    handler.postDelayed(() -> {
+                        if(mFrameworkOperations != null) {
+                            mFrameworkOperations.exitFullScreenWindow(MainActivity.this);
+                        }
+                    }, 1000);
+                }
+            } 
         }
     }
 

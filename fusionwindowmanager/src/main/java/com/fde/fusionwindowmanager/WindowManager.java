@@ -76,9 +76,12 @@ public class WindowManager  {
     public static final int WINDOW_ACTION_MINIMIZE_REMOVE = 1004;
     public static final String WINDOW_ACTION_MINIMIZE_REMOVE_ACTION =
             "com.fdex.x11.Xserver.action.minize_remove";
+    public static final String WINDOW_ACTION_FULLSCREEN_ACTION =
+            "com.fdex.x11.Xserver.action.fullscreen";
     public static final int WINDOW_ACTION_MAXIMIZED_HORZ = 1;
     public static final int WINDOW_ACTION_MAXIMIZED_VERT = 2;
     public static final int WINDOW_ACTION_DELETE = 1007;
+    public static final int WINDOW_ACTION_FULLSCREEN = 4;
     public static final String WINDOW_ACTION_KEY_WINDOWID = "window_id";
 
     public static final String TASK_ID_FROM_ACTIVITY_ADD = "task_id_from_activity_add";
@@ -282,6 +285,9 @@ public class WindowManager  {
             case WINDOW_ACTION_MINIMIZE_REMOVE:
                 break;
             case WINDOW_ACTION_DELETE:
+                break;
+            case WINDOW_ACTION_FULLSCREEN:
+                sendBroadcastWmState(WINDOW_ACTION_FULLSCREEN_ACTION, window, context);
                 break;
             default:
                 break;
