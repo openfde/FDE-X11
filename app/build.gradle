@@ -8,8 +8,8 @@ android {
         applicationId "com.fde.x11"
         minSdkVersion 26
         targetSdkVersion 33
-        versionCode 160
-        versionName "1.6.0"
+        versionCode 161
+        versionName "1.6.1"
         buildConfigField "String", "COMMIT", "\"" + ("git rev-parse HEAD\n".execute().getText().trim() ?: (System.getenv('CURRENT_COMMIT') ?: "NO_COMMIT")) + "\""
         manifestPlaceholders = [MainActivityMinHeight: "50dp",
                                 MainActivityMinWidth: "50dp",
@@ -28,8 +28,20 @@ android {
             def separator = "-"
             def buildType = variant.buildType.name
             def version = variant.versionName
-            def newApkName =
-                    "${project}${separator}${buildType}${separator}${version}.apk"
+
+            // 获取 ABI 名称
+            def abi = output.getFilter(com.android.build.OutputFile.ABI)
+
+            def newApkName
+
+            if (abi != null) {
+                newApkName =
+                        "${project}${separator}${buildType}${separator}${abi}${separator}${version}.apk"
+            } else {
+                // universal apk
+                newApkName =
+                        "${project}${separator}${buildType}${separator}universal${separator}${version}.apk"
+            }
 
             output.outputFileName = newApkName
         }
@@ -57,7 +69,8 @@ android {
         enable true
         reset()
 
-        include "arm64-v8a"
+        include "arm64-v8a",'x86_64'
+        universalApk true
     }
 
     buildFeatures {
