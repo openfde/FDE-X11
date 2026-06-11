@@ -849,6 +849,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
         renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
         i++;
     }
+    free(attrs);
     renderedFrames++;
     return TRUE;
 }

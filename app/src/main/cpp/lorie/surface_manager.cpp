@@ -102,7 +102,8 @@ int SurfaceManager::remove_widget(Window window) {
                 }
             }
             if(update){
-                Widget *filtered_widgets = (Widget *)malloc(10 * sizeof(Widget));
+                size_t alloc_size = pair.second.widget_size > 0 ? pair.second.widget_size : 1;
+                Widget *filtered_widgets = (Widget *)malloc(alloc_size * sizeof(Widget));
                 if(filtered_widgets == NULL){
                     return FALSE;
                 }
@@ -178,7 +179,11 @@ int compare_by_level_desc(const void *a, const void *b) {
 
 WindAttribute* SurfaceManager::all_window(int * size){
     *size = window_attrs.size();
-    WindAttribute* array = new WindAttribute[window_attrs.size()];
+    WindAttribute* array = (WindAttribute*)malloc(window_attrs.size() * sizeof(WindAttribute));
+    if (!array) {
+        *size = 0;
+        return nullptr;
+    }
     int i = 0 ;
     for (const auto& pair : window_attrs) {
         array[i] =  pair.second;
