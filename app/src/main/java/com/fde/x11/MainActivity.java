@@ -974,6 +974,18 @@ public class MainActivity extends Activity {
         mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
+    public void onReceiveMsg(EventMessage message){
+        if(mAttribute.getXID() != message.getProperty().getTransientfor()){
+            return;
+        }
+        if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
+            FLog.a("window", getWindowId(), "onReceiveMsg:" + message.getType().usefor);
+            getWindow().clearFlags(FLAG_NOT_FOCUSABLE |
+                    FLAG_NOT_TOUCHABLE);
+        }
+    }
+
     public void configureFromXIfNeed() {
         configureFromX();
     }
