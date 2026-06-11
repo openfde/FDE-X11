@@ -114,7 +114,6 @@ public class AppUtils {
             final Class<?> systemProperties = Class.forName("android.os.SystemProperties");
             final Method set = systemProperties.getMethod("set", String.class, String.class);
             set.invoke(null, key, defaultValue);
-            // Log.d(TAG,"set " + key + " " + defaultValue);
         } catch (Exception e) {
             Log.e(TAG, "Exception while setting system property: ", e);
         }
@@ -137,7 +136,6 @@ public class AppUtils {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            // Log.d(TAG, "getProperty() called with: key = [" + key + "], value = [" + value + "]");
             return value;
         }
     }
@@ -206,7 +204,6 @@ public class AppUtils {
                 return bitmapDrawable;
             }
         } else {
-//            Log.d(TAG, "getImage: iconType:" + iconType + " name:" + name);
             Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_launcher);
             return new BitmapDrawable(bitmap);
         }

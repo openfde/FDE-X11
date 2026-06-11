@@ -57,8 +57,6 @@ public class Xserver {
     public static final byte[] MAGIC = "0xDEADBEEF".getBytes();
     private static final String TAG = "Xserver";
     public static final String ACTION_UPDATE_ICON = "update_icon";
-//     listen TCP, for remote and local X client
-//     private static final String[] ARGS_DEFAULT = { DISPLAY_GLOBAL_PARAM, "-listen", "tcp","-ac"};
 
     // listen unix or tcp socket, only for local X client
     private String[] ARGS_DEFAULT;
@@ -380,12 +378,10 @@ public class Xserver {
 
     private void sendBroadcastDelayed() {
         sendBroadcast();
-//        handler.postDelayed(this::sendBroadcastDelayed, 1000);
     }
 
     void spawnListeningThread() {
         new Thread(() -> {
-//            Log.e("Xserver", "Listening port " + PORT);
             try (ServerSocket listeningSocket =
                          new ServerSocket(PORT, 0, InetAddress.getByName("127.0.0.1"))) {
                 listeningSocket.setReuseAddress(true);

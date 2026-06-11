@@ -335,7 +335,6 @@ public class XWindowService extends Service {
         int densityDpi = displayMetrics.densityDpi;
         float d = (float) (densityDpi * 96 / 160);
         float xFactor = 1.f;
-//        float xFactor = mWidth == 1920 ? 1.f : 1.75f; //TODO for d3000M
         return (int) (d * xFactor);
     }
 
@@ -425,7 +424,6 @@ public class XWindowService extends Service {
                 } else {
                     sendBroadcastAboutView(message.getWindowAttribute(), message.getProperty(), X_START_VIEW);
                 }
-//   TODO for test             startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
                 break;
             case X_DISMISS_WINDOW:
                 if (mFloatTrays.get(message.getWindowAttribute().getXID()) != null) {

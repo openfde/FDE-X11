@@ -947,7 +947,6 @@ public class MainActivity extends Activity {
     }
 
     public void configureFromXIfNeed() {
-        //todo check
         configureFromX();
     }
 

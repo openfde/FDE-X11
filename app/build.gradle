@@ -1,5 +1,4 @@
 apply plugin: 'com.android.application'
-//apply plugin: 'com.tencent.matrix-plugin'
 
 android {
     namespace 'com.fde.x11'
@@ -28,25 +27,16 @@ android {
             def separator = "-"
             def buildType = variant.buildType.name
             def version = variant.versionName
-
-            // 获取 ABI 名称
             def abi = output.getFilter(com.android.build.OutputFile.ABI)
-
             def newApkName
-
             if (abi != null) {
-                newApkName =
-                        "${project}${separator}${buildType}${separator}${abi}${separator}${version}.apk"
+                newApkName = "${project}${separator}${buildType}${separator}${abi}${separator}${version}.apk"
             } else {
-                // universal apk
-                newApkName =
-                        "${project}${separator}${buildType}${separator}universal${separator}${version}.apk"
+                newApkName = "${project}${separator}${buildType}${separator}universal${separator}${version}.apk"
             }
-
             output.outputFileName = newApkName
         }
     }
-
 
     signingConfigs {
         debug {
@@ -55,7 +45,6 @@ android {
             storeFile file('plugin.keystore')
             storePassword 'android'
         }
-
         release {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
@@ -64,17 +53,17 @@ android {
         }
     }
 
-
     splits.abi {
         enable true
         reset()
-
         include "arm64-v8a",'x86_64'
         universalApk true
     }
 
     buildFeatures {
         viewBinding = true
+        aidl true
+        buildConfig true
     }
 
     lintOptions {
@@ -82,27 +71,20 @@ android {
     }
 
     externalNativeBuild.cmake.path "src/main/cpp/CMakeLists.txt"
-//    packagingOptions.jniLibs.useLegacyPackaging false
-    buildFeatures.aidl true
-    buildFeatures.buildConfig true
+
     buildTypes {
         release {
             signingConfig signingConfigs.release
             externalNativeBuild {
-                cmake {
-                    arguments "-DAPP_LOG=0" // Debug模式开启日志
-                }
+                cmake { arguments "-DAPP_LOG=0" }
             }
         }
         debug {
             externalNativeBuild {
-                cmake {
-                    arguments "-DAPP_LOG=1" // Debug模式开启日志
-                }
+                cmake { arguments "-DAPP_LOG=1" }
             }
         }
     }
-
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -116,7 +98,6 @@ android {
             dimension "systemv"
             buildConfigField "String", "system_verstion", "\"versionu\""
         }
-
         versionr {
             dimension "systemv"
             buildConfigField "String", "system_verstion", "\"versionr\""
@@ -127,16 +108,12 @@ android {
         versionu.java.srcDirs = ['src/versionu/java']
         versionr.java.srcDirs = ['src/versionr/java']
     }
-
-
 }
 
 android.applicationVariants.all { variant ->
     variant.javaCompileProvider.configure { javaCompile ->
         def flavorName = variant.flavorName
         def frameworkJar = file("libs/${flavorName}/framework.jar")
-
-        // 更新 bootstrapClasspath
         def originalBootstrap = javaCompile.options.bootstrapClasspath?.files ?: [] as Set
         javaCompile.options.bootstrapClasspath = files(frameworkJar) + files(originalBootstrap)
     }
@@ -149,13 +126,10 @@ dependencies {
     versionrCompileOnly files('libs/versionr/framework.jar')
     compileOnly files('libs/openfde_sdk.jar')
 
-//    compileOnly files('libs/framework.jar')
-    //noinspection DifferentStdlibGradleVersion
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.3.0'
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.google.android.material:material:1.6.1'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
     implementation 'com.xwdz:okHttpUtils:1.3.0'
     implementation 'com.squareup.okhttp3:okhttp:3.5.0'
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
@@ -168,6 +142,4 @@ dependencies {
     implementation project(':fusionwindowmanager')
     implementation project(':dialogtiplib')
     implementation project(':easy')
-
-//    debugImplementation ("com.squareup.leakcanary:leakcanary-android:2.5")
 }

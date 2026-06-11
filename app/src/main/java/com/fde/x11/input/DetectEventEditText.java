@@ -78,8 +78,6 @@ public class DetectEventEditText extends EditText {
                 FLog.e(TAG, "onKeyDown text = [" + text + "], keyCode = [" + keyCode + "], event = [" + event + "]");
                 return false;
             }
-
-            //FIXME never called
             @Override
             public boolean onKeyUp(View view, Editable text, int keyCode, KeyEvent event) {
                 return false;

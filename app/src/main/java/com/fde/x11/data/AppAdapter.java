@@ -94,7 +94,6 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
     }
 
     private void tryStartVncApp(AppListResult.DataBeanX.DataBean app) {
-        // todo mock
         QuietOkHttp.post(Constants.BASEURL + URL_STOPAPP)
                 .setCallbackToMainUIThread(true)
                 .addParams("App", app.Name)

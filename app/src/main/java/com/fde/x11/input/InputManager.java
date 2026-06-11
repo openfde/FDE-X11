@@ -53,7 +53,6 @@ public class InputManager {
     }
 
     public void setPointerIcon(Bitmap bitmap, int xhot, int yhot){
-//        Log.d(TAG, "setPointerIcon() called with: bitmap = [" + bitmap + "], xhot = [" + xhot + "], yhot = [" + yhot + "]");
         PointerIcon pointerIcon = PointerIcon.create(bitmap, xhot, yhot);
         if(focusView != null){
             focusView.setPointerIcon(pointerIcon);

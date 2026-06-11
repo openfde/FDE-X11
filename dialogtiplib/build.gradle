@@ -5,7 +5,6 @@ android {
     defaultConfig {
         targetSdkVersion 33
         minSdkVersion 26
-//        multiDexEnabled true
     }
     buildTypes {
         release {
