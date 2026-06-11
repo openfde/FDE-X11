@@ -528,31 +528,58 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
 }
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
+    static struct {
+        jobject surface;
+        int id;
+        int width;
+        int height;
+        int offset_x;
+        int offset_y;
+        WindowPtr pWin;
+        Window window;
+    } last = {0};
+
     logd("renderer_set_window_each 1")
     if(!res->surface){
         return;
     }
     logd("renderer_set_window_each 2")
+
+    Bool same_surface = FALSE;
+    if (res->surface && last.surface)
+        same_surface = (*env)->IsSameObject(env, res->surface, last.surface);
+    else if (!res->surface && !last.surface)
+        same_surface = TRUE;
+
+    if (same_surface
+        && last.id == res->id
+        && last.width == (int) res->width
+        && last.height == (int) res->height
+        && last.offset_x == (int) res->offset_x
+        && last.offset_y == (int) res->offset_y
+        && last.pWin == (WindowPtr) res->pWin
+        && last.window == res->window)
+        return;
+
+    if (last.surface) {
+        (*env)->DeleteGlobalRef(env, last.surface);
+        last.surface = NULL;
+    }
+
+    if (res->surface)
+        last.surface = (*env)->NewGlobalRef(env, res->surface);
+    last.id = res->id;
+    last.width = (int) res->width;
+    last.height = (int) res->height;
+    last.offset_x = (int) res->offset_x;
+    last.offset_y = (int) res->offset_y;
+    last.pWin = (WindowPtr) res->pWin;
+    last.window = res->window;
+
     bool isWidget = false;
     if(_surface_count_window(sfWraper, res->window)){
         logd("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
-        if (attr->surface && (*env)->IsSameObject(env, res->surface, attr->surface)
-            && attr->offset_x == res->offset_x
-            && attr->offset_y == res->offset_y
-            && attr->width == res->width
-            && attr->height == res->height
-            && attr->pWin == (WindowPtr) res->pWin
-            && attr->sfc != EGL_NO_SURFACE) {
-            return;
-        }
-        if (attr->surface) {
-            (*env)->CallVoidMethod(env, attr->surface, Surface_release);
-            (*env)->CallVoidMethod(env, attr->surface, Surface_destroy);
-            (*env)->DeleteGlobalRef(env, attr->surface);
-            attr->surface = NULL;
-        }
-        attr->surface = (*env)->NewGlobalRef(env, res->surface);
         attr->status = 6;
         attr->discard = 0;
         attr->offset_x = res->offset_x;
@@ -566,21 +593,6 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         logd("set widget attr")
         isWidget = true;
         Widget *widget = _surface_find_widget(sfWraper, res->window);
-        if (widget->surface && (*env)->IsSameObject(env, res->surface, widget->surface)
-            && widget->offset_x == res->offset_x
-            && widget->offset_y == res->offset_y
-            && widget->width == res->width
-            && widget->height == res->height
-            && widget->sfc != EGL_NO_SURFACE) {
-            return;
-        }
-        if (widget->surface) {
-            (*env)->CallVoidMethod(env, widget->surface, Surface_release);
-            (*env)->CallVoidMethod(env, widget->surface, Surface_destroy);
-            (*env)->DeleteGlobalRef(env, widget->surface);
-            widget->surface = NULL;
-        }
-        widget->surface = (*env)->NewGlobalRef(env, res->surface);
         widget->offset_x = res->offset_x;
         widget->offset_y = res->offset_y;
         widget->width = res->width;
@@ -699,6 +711,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         checkGlError();
     }
 }
+
 void renderer_update_root(int w, int h, void *data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
