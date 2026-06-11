@@ -182,6 +182,8 @@ static struct {
 } cursor;
 GLuint g_texture_program = 0, gv_pos = 0, gv_coords = 0;
 GLuint g_texture_program_bgra = 0, gv_pos_bgra = 0, gv_coords_bgra = 0;
+static Bool root_texture_dirty = FALSE;
+static Bool any_window_needs_redraw = FALSE;
 
 int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
     EGLint major, minor;
@@ -823,8 +825,6 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
     }
     any_window_needs_redraw = TRUE;
 }
-static Bool root_texture_dirty = FALSE;
-static Bool any_window_needs_redraw = FALSE;
 GLuint renderer_gen_bind_texture(int x, int y, int w, int h, void *data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return 0;
