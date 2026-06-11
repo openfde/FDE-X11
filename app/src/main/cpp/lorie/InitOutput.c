@@ -676,8 +676,51 @@ CursorForDevice(DeviceIntPtr pDev) {
 }
 
 Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
+    static struct {
+        jobject surface;
+        int id;
+        int width;
+        int height;
+        int offset_x;
+        int offset_y;
+        WindowPtr pWin;
+        Window window;
+    } last = {0};
+
     SurfaceRes *res = (SurfaceRes *) closure;
     jobject surface = res->surface;
+    Bool same_surface = FALSE;
+
+    if (surface && last.surface)
+        same_surface = (*pvfb->env)->IsSameObject(pvfb->env, surface, last.surface);
+    else if (!surface && !last.surface)
+        same_surface = TRUE;
+
+    if (same_surface
+        && last.id == res->id
+        && last.width == (int) res->width
+        && last.height == (int) res->height
+        && last.offset_x == (int) res->offset_x
+        && last.offset_y == (int) res->offset_y
+        && last.pWin == res->pWin
+        && last.window == res->window)
+        goto cleanup;
+
+    if (last.surface) {
+        (*pvfb->env)->DeleteGlobalRef(pvfb->env, last.surface);
+        last.surface = NULL;
+    }
+
+    if (surface)
+        last.surface = (*pvfb->env)->NewGlobalRef(pvfb->env, surface);
+    last.id = res->id;
+    last.width = (int) res->width;
+    last.height = (int) res->height;
+    last.offset_x = (int) res->offset_x;
+    last.offset_y = (int) res->offset_y;
+    last.pWin = res->pWin;
+    last.window = res->window;
+
     if(res->id == 0){
         res->pWin = pScreenPtr->root;
     }
@@ -691,15 +734,27 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
                              ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
                              pvfb->root.flip);
     renderer_redraw(pvfb->env, pvfb->root.flip, false);
+
+cleanup:
+    if (res->surface)
+        (*pvfb->env)->DeleteGlobalRef(pvfb->env, res->surface);
     free(res);
     return TRUE;
 }
 
 void lorieConfigureNotify(int width, int height, int framerate) {
+    static struct {
+        int width;
+        int height;
+        int framerate;
+    } last = {0};
+
     ScreenPtr pScreen = pScreenPtr;
     RROutputPtr output = RRFirstOutput(pScreen);
+    Bool size_changed = width && height && (last.width != width || last.height != height);
+    Bool framerate_changed = framerate > 0 && last.framerate != framerate;
     logd("lorieConfigureNotify");
-    if (output && width && height && (pScreen->width != width || pScreen->height != height)) {
+    if (output && size_changed && (pScreen->width != width || pScreen->height != height)) {
         CARD32 mmWidth, mmHeight;
         RRModePtr mode = lorieCvt(width, height, framerate);
         mmWidth = ((double) (mode->mode.width)) * 25.4 / monitorResolution;
@@ -708,8 +763,8 @@ void lorieConfigureNotify(int width, int height, int framerate) {
         RRCrtcNotify(RRFirstEnabledCrtc(pScreen), mode,0, 0,RR_Rotate_0, NULL, 1, &output);
         RRScreenSizeSet(pScreen, mode->mode.width, mode->mode.height, mmWidth, mmHeight);
     }
-    if (framerate > 0) {
-        long nsecs = 1000 * 1000 * 1000 / 30;
+    if (framerate_changed) {
+        long nsecs = 1000 * 1000 * 1000 / framerate;
         struct itimerspec spec = { { 0, nsecs }, { 0, nsecs } };
         timerfd_settime(lorieScreen.timerFd, 0, &spec, NULL);
 //        log(VERBOSE, "New framerate is %d", framerate);
@@ -717,6 +772,13 @@ void lorieConfigureNotify(int width, int height, int framerate) {
         FakeScreenFps = framerate;
         present_fake_screen_init(pScreen);
     }
+
+    if (width > 0)
+        last.width = width;
+    if (height > 0)
+        last.height = height;
+    if (framerate > 0)
+        last.framerate = framerate;
 }
 
 void

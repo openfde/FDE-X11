@@ -537,6 +537,22 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     if(_surface_count_window(sfWraper, res->window)){
         logd("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
+        if (attr->surface && (*env)->IsSameObject(env, res->surface, attr->surface)
+            && attr->offset_x == res->offset_x
+            && attr->offset_y == res->offset_y
+            && attr->width == res->width
+            && attr->height == res->height
+            && attr->pWin == (WindowPtr) res->pWin
+            && attr->sfc != EGL_NO_SURFACE) {
+            return;
+        }
+        if (attr->surface) {
+            (*env)->CallVoidMethod(env, attr->surface, Surface_release);
+            (*env)->CallVoidMethod(env, attr->surface, Surface_destroy);
+            (*env)->DeleteGlobalRef(env, attr->surface);
+            attr->surface = NULL;
+        }
+        attr->surface = (*env)->NewGlobalRef(env, res->surface);
         attr->status = 6;
         attr->discard = 0;
         attr->offset_x = res->offset_x;
@@ -550,6 +566,21 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         logd("set widget attr")
         isWidget = true;
         Widget *widget = _surface_find_widget(sfWraper, res->window);
+        if (widget->surface && (*env)->IsSameObject(env, res->surface, widget->surface)
+            && widget->offset_x == res->offset_x
+            && widget->offset_y == res->offset_y
+            && widget->width == res->width
+            && widget->height == res->height
+            && widget->sfc != EGL_NO_SURFACE) {
+            return;
+        }
+        if (widget->surface) {
+            (*env)->CallVoidMethod(env, widget->surface, Surface_release);
+            (*env)->CallVoidMethod(env, widget->surface, Surface_destroy);
+            (*env)->DeleteGlobalRef(env, widget->surface);
+            widget->surface = NULL;
+        }
+        widget->surface = (*env)->NewGlobalRef(env, res->surface);
         widget->offset_x = res->offset_x;
         widget->offset_y = res->offset_y;
         widget->width = res->width;
@@ -581,11 +612,15 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
             EGL_TRUE) {
             logd("Xlorie: eglMakeCurrent (EGL_NO_SURFACE) failed.\n");
             eglCheckError(__LINE__);
+            if (window)
+                ANativeWindow_release(window);
             return;
         }
         if (eglDestroySurface(global_egl_display, sfc) != EGL_TRUE) {
             logd("Xlorie: eglDestoySurface failed.\n");
             eglCheckError(__LINE__);
+            if (window)
+                ANativeWindow_release(window);
             return;
         }
     }
@@ -607,12 +642,14 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     if (sfc == EGL_NO_SURFACE) {
         logd("Xlorie: eglCreateWindowSurface failed.\n");
         eglCheckError(__LINE__);
+        ANativeWindow_release(window);
         return;
     }
 
     if (eglMakeCurrent(global_egl_display, sfc, sfc, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
+        ANativeWindow_release(window);
         return;
     }
     if(isWidget){
@@ -620,6 +657,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     } else {
         attr->sfc = sfc;
     }
+    ANativeWindow_release(window);
     logd("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
@@ -661,8 +699,6 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         checkGlError();
     }
 }
-
-
 void renderer_update_root(int w, int h, void *data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return;
@@ -692,6 +728,7 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
                         GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
+    root_texture_dirty = TRUE;
     logd("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
         w, h, data, flip, display_rect.width, display_rect.height);
 
@@ -733,6 +770,7 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
+    any_window_needs_redraw = TRUE;
 }
 
 void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint8_t flip, void *window, GLuint texture_id) {
@@ -770,8 +808,10 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
                      flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
+    any_window_needs_redraw = TRUE;
 }
-
+static Bool root_texture_dirty = FALSE;
+static Bool any_window_needs_redraw = FALSE;
 GLuint renderer_gen_bind_texture(int x, int y, int w, int h, void *data, uint8_t flip) {
     if (eglGetCurrentContext() == EGL_NO_CONTEXT || !w || !h) {
         return 0;
@@ -837,21 +877,27 @@ long totel = 0;
 long count =0;
 
 int renderer_should_redraw(void) {
-    return TRUE;
+    return root_texture_dirty || any_window_needs_redraw;
 }
 
 int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 //    _surface_log_traversal_window(sfWraper);
     int size, i  =0 ;
+    Bool redrawn = FALSE;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
 //    logd("renderer_redraw begin size = %d empty = %d -------------------------------------------------------------------------------------------", size, empty);
     while (i < size ) {
-        renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty);
+        if (renderer_redraw_traversal_1(env, flip, attrs[i].index, attrs[i].window, empty))
+            redrawn = TRUE;
         i++;
     }
     free(attrs);
-    renderedFrames++;
-    return TRUE;
+    if (redrawn) {
+        renderedFrames++;
+        root_texture_dirty = FALSE;
+        any_window_needs_redraw = FALSE;
+    }
+    return redrawn;
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window, bool empty) {

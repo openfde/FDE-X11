@@ -989,15 +989,52 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
 JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls, jobject surface,
        jfloat offsetX, jfloat offsetY, jfloat width, jfloat height, jint index, jlong windowPtr, jlong window) {
+    static struct {
+        jobject surface;
+        int offset_x;
+        int offset_y;
+        int width;
+        int height;
+        int index;
+        jlong windowPtr;
+        jlong window;
+    } last = {0};
+
+    int ix = (int) offsetX;
+    int iy = (int) offsetY;
+    int iw = (int) width;
+    int ih = (int) height;
+    Bool same_surface = FALSE;
+
+    if (surface && last.surface)
+        same_surface = (*env)->IsSameObject(env, surface, last.surface);
+    else if (!surface && !last.surface)
+        same_surface = TRUE;
+
+    if (same_surface
+        && last.offset_x == ix
+        && last.offset_y == iy
+        && last.width == iw
+        && last.height == ih
+        && last.index == (int) index
+        && last.windowPtr == windowPtr
+        && last.window == window)
+        return;
+
+    if (last.surface) {
+        (*env)->DeleteGlobalRef(env, last.surface);
+        last.surface = NULL;
+    }
+
     jobject sfc = surface ? (*env)->NewGlobalRef(env, surface) : NULL;
     logd( "windowChanged index:%d surface:%p x:%f y:%f w:%f h:%f", index, sfc, offsetX, offsetY, width, height);
     SurfaceRes *res = (SurfaceRes *) malloc(sizeof(SurfaceRes));
     res->id = (int) index;
     res->surface = sfc;
-    res->offset_x = (int) offsetX;
-    res->offset_y = (int) offsetY;
-    res->width = (int) width;
-    res->height = (int) height;
+    res->offset_x = ix;
+    res->offset_y = iy;
+    res->width = iw;
+    res->height = ih;
     res->pWin = (WindowPtr) windowPtr;
     res->window = window;
     if(res->width == -1 && res->height == -1){
@@ -1008,8 +1045,21 @@ Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls, jobject 
 //            renderer_release_window(GetJavaEnv(), attr->window);
 //            _surface_delete_window(sfWraper, attr->window);
         }
+        if (res->surface)
+            (*env)->DeleteGlobalRef(env, res->surface);
+        free(res);
         return;
     }
+
+    last.surface = sfc ? (*env)->NewGlobalRef(env, sfc) : NULL;
+    last.offset_x = ix;
+    last.offset_y = iy;
+    last.width = iw;
+    last.height = ih;
+    last.index = (int) index;
+    last.windowPtr = windowPtr;
+    last.window = window;
+
     QueueWorkProc(lorieChangeWindow, NULL, res);
 }
 
@@ -1275,6 +1325,19 @@ static char clipboard[1024 * 1024] = {0};
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_LorieView_sendWindowChange(unused JNIEnv *env, unused jobject cls, jint width, jint height, jint framerate) {
+    static struct {
+        int width;
+        int height;
+        int framerate;
+    } last = {0};
+
+    if (last.width == width && last.height == height && last.framerate == framerate)
+        return;
+
+    last.width = width;
+    last.height = height;
+    last.framerate = framerate;
+
     if (conn_fd != -1) {
         lorieEvent e = {.screenSize = {.t = EVENT_SCREEN_SIZE, .width = width, .height = height, .framerate = framerate}};
         write(conn_fd, &e, sizeof(e));

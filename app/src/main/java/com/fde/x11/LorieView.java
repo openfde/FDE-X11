@@ -40,6 +40,33 @@ public class LorieView extends SurfaceView implements InputStub {
 
     private static final String TAG = "LorieView";
 
+    private static final class SurfaceChangeState {
+        final Surface surface;
+        final int width;
+        final int height;
+        final int screenWidth;
+        final int screenHeight;
+        final boolean realSize;
+
+        SurfaceChangeState(Surface surface, int width, int height, int screenWidth, int screenHeight, boolean realSize) {
+            this.surface = surface;
+            this.width = width;
+            this.height = height;
+            this.screenWidth = screenWidth;
+            this.screenHeight = screenHeight;
+            this.realSize = realSize;
+        }
+
+        boolean sameAs(Surface surface, int width, int height, int screenWidth, int screenHeight, boolean realSize) {
+            return this.surface == surface
+                    && this.width == width
+                    && this.height == height
+                    && this.screenWidth == screenWidth
+                    && this.screenHeight == screenHeight
+                    && this.realSize == realSize;
+        }
+    }
+
     public WindowAttribute getAttribute() {
         return mCoordinate;
     }
@@ -65,6 +92,8 @@ public class LorieView extends SurfaceView implements InputStub {
 
     private Callback mCallback;
     private final Point p = new Point();
+    private SurfaceChangeState mLastSurfaceChange;
+    private boolean mCallbackPending;
     private final SurfaceHolder.Callback mSurfaceCallback = new SurfaceHolder.Callback() {
         @Override public void surfaceCreated(@NonNull SurfaceHolder holder) {
             holder.setFormat(PixelFormat.TRANSLUCENT);
@@ -75,6 +104,7 @@ public class LorieView extends SurfaceView implements InputStub {
         }
 
         @Override public void surfaceChanged(@NonNull SurfaceHolder holder, int f, int width, int height) {
+            mCallbackPending = false;
             width = getMeasuredWidth();
             height = getMeasuredHeight();
 
@@ -87,14 +117,15 @@ public class LorieView extends SurfaceView implements InputStub {
 
             getDimensionsFromSettings();
             if(Build.VERSION.SDK_INT == 34){
-                mCallback.realSizeChanged(holder.getSurface(), width, height);
+                dispatchRealSizeChanged(holder.getSurface(), width, height);
             } else {
-                mCallback.changed(holder.getSurface(), GLOBAL_SCREEN_WIDTH,
+                dispatchChanged(holder.getSurface(), GLOBAL_SCREEN_WIDTH,
                         CONTENT_HEIGHT, GLOBAL_SCREEN_WIDTH , CONTENT_HEIGHT);
             }
         }
 
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+            mCallbackPending = false;
 //            Log.d(TAG, "surfaceDestroyed: holder:" + holder + "" + this);
             if (mCallback != null){
 //                mCallback.onSurfaceDestroy(holder.getSurface());
@@ -114,6 +145,8 @@ public class LorieView extends SurfaceView implements InputStub {
 
     public void setCallback(Callback callback) {
         mCallback = callback;
+        mLastSurfaceChange = null;
+        mCallbackPending = false;
         triggerCallback();
     }
 
@@ -122,11 +155,16 @@ public class LorieView extends SurfaceView implements InputStub {
         mCallback = null;
         getHolder().setFormat(android.graphics.PixelFormat.TRANSLUCENT);
         mCallback = callback;
+        mLastSurfaceChange = null;
+        mCallbackPending = false;
 
         triggerCallback();
     }
 
     public void triggerCallback() {
+        if (mCallback == null || mCallbackPending)
+            return;
+
 //        setFocusable(true);
 //        setFocusableInTouchMode(true);
 //        requestFocus();
@@ -141,7 +179,30 @@ public class LorieView extends SurfaceView implements InputStub {
         });
 
         Rect r = getHolder().getSurfaceFrame();
+        mCallbackPending = true;
         mSurfaceCallback.surfaceChanged(getHolder(), PixelFormat.TRANSLUCENT, r.width(), r.height());
+    }
+
+    private void dispatchChanged(Surface surface, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight) {
+        if (mCallback == null)
+            return;
+
+        if (mLastSurfaceChange != null && mLastSurfaceChange.sameAs(surface, surfaceWidth, surfaceHeight, screenWidth, screenHeight, false))
+            return;
+
+        mLastSurfaceChange = new SurfaceChangeState(surface, surfaceWidth, surfaceHeight, screenWidth, screenHeight, false);
+        mCallback.changed(surface, surfaceWidth, surfaceHeight, screenWidth, screenHeight);
+    }
+
+    private void dispatchRealSizeChanged(Surface surface, int width, int height) {
+        if (mCallback == null)
+            return;
+
+        if (mLastSurfaceChange != null && mLastSurfaceChange.sameAs(surface, width, height, width, height, true))
+            return;
+
+        mLastSurfaceChange = new SurfaceChangeState(surface, width, height, width, height, true);
+        mCallback.realSizeChanged(surface, width, height);
     }
 
     private Activity getActivity() {

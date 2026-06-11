@@ -926,24 +926,52 @@ public class MainActivity extends Activity {
         }, delayMS);
     }
 
-    private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
-        if(mXserviceWrapper != null){
-            FLog.a("window", getWindowId(),"serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
-            mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
-            mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
+    private static final class WindowChangeState {
+        final Surface surface;
+        final int x;
+        final int y;
+        final int width;
+        final int height;
+        final int index;
+        final long windowPtr;
+        final long window;
+
+        WindowChangeState(Surface surface, float x, float y, float width, float height, int index, long windowPtr, long window) {
+            this.surface = surface;
+            this.x = (int) x;
+            this.y = (int) y;
+            this.width = (int) width;
+            this.height = (int) height;
+            this.index = index;
+            this.windowPtr = windowPtr;
+            this.window = window;
+        }
+
+        boolean sameAs(Surface surface, float x, float y, float width, float height, int index, long windowPtr, long window) {
+            return this.surface == surface
+                    && this.x == (int) x
+                    && this.y == (int) y
+                    && this.width == (int) width
+                    && this.height == (int) height
+                    && this.index == index
+                    && this.windowPtr == windowPtr
+                    && this.window == window;
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
-    public void onReceiveMsg(EventMessage message){
-        if(mAttribute.getXID() != message.getProperty().getTransientfor()){
+    private WindowChangeState mLastWindowChange;
+
+    private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
+        if (mXserviceWrapper == null)
             return;
-        }
-        if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
-            FLog.a("window", getWindowId(), "onReceiveMsg:" + message.getType().usefor);
-            getWindow().clearFlags(FLAG_NOT_FOCUSABLE |
-                    FLAG_NOT_TOUCHABLE);
-        }
+
+        if (mLastWindowChange != null && mLastWindowChange.sameAs(sfc, x, y, w, h, index, pWin, window))
+            return;
+
+        mLastWindowChange = new WindowChangeState(sfc, x, y, w, h, index, pWin, window);
+        FLog.a("window", getWindowId(),"serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
+        mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
+        mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
     }
 
     public void configureFromXIfNeed() {
