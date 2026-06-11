@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id 'com.android.library'
 }
 
@@ -13,6 +13,8 @@ android {
         consumerProguardFiles "consumer-rules.pro"
         externalNativeBuild {
             cmake {
+//                arguments "-DANDROID_STL=c++_shared"
+//                cppFlags "-fsanitize=address -fno-omit-frame-pointer"
                 arguments "-DPRINT_LOG=1"
             }
         }
@@ -22,21 +24,24 @@ android {
         }
     }
 
+
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             externalNativeBuild {
                 cmake {
-                    arguments "-DPRINT_LOG=0"
+                    arguments "-DPRINT_LOG=0" // Debug模式开启日志
                 }
             }
         }
 
         debug {
+            // 在Debug构建类型中，可以覆盖或传递特定的宏定义
             externalNativeBuild {
                 cmake {
-                    arguments "-DPRINT_LOG=1"
+                    arguments "-DPRINT_LOG=1" // Debug模式开启日志
                 }
             }
         }
@@ -54,6 +59,20 @@ android {
 }
 
 dependencies {
+
+//    implementation "com.kuaishou.koom:koom-native-leak:2.2.2"
+//    implementation "com.kuaishou.koom:xhook:2.2.2"
+//    implementation "com.kuaishou.koom:koom-monitor-base:2.2.2"
+
+//    implementation group: "com.tencent.matrix", name: "matrix-android-lib", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-android-commons", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-trace-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-android", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-resource-canary-common", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-io-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-sqlite-lint-android-sdk", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-battery-canary", version: MATRIX_VERSION, changing: true
+//    implementation group: "com.tencent.matrix", name: "matrix-hooks", version: MATRIX_VERSION, changing: true
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation  'org.greenrobot:eventbus:3.2.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'

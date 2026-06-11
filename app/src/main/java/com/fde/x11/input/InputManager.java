@@ -1,4 +1,4 @@
-﻿package com.fde.x11.input;
+package com.fde.x11.input;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.util.Log;

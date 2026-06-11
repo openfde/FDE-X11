@@ -1,4 +1,4 @@
-﻿package com.fde.x11;
+package com.fde.x11;
 
 
 import static android.app.ActivityManager.MOVE_TASK_NO_USER_ACTION;
@@ -343,9 +343,9 @@ public class Xserver {
         ctx.sendStickyBroadcast(intent);
     }
 
-    // Java 鏂规硶锛岀敤浜庝粠 JNI 璋冪敤
+    // Java 方法，用于从 JNI 调用
     public static void createBitmapFromNative(int[] data, int width, int height, long window) {
-        // 灏?int[] 鏁版嵁杞崲涓?Bitmap
+        // 将 int[] 数据转换为 Bitmap
         Bitmap bitmap = Bitmap.createBitmap(data, width, height, Bitmap.Config.ARGB_8888);
         Context ctx = context.get();
         if(ctx == null){

@@ -1,4 +1,4 @@
-﻿package com.fde.x11.data;
+package com.fde.x11.data;
 
 
 
@@ -107,7 +107,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-//                                Toast.makeText(context, "鏃犳硶鍚姩姝ょ▼搴?, Toast.LENGTH_LONG).show();
+//                                Toast.makeText(context, "无法启动此程序", Toast.LENGTH_LONG).show();
                             }
                         });
                     }
@@ -119,7 +119,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
                         handler.post(new Runnable() {
                             @Override
                             public void run() {
-//                                Toast.makeText(context, String.format("%s 鍚姩涓?, app.Name), Toast.LENGTH_SHORT).show();
+//                                Toast.makeText(context, String.format("%s 启动中", app.Name), Toast.LENGTH_SHORT).show();
                             }
                         });
 //                        tryLunchApp(app, response.Data.Port);
@@ -142,23 +142,23 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.ViewHolder> {
         if(TextUtils.isEmpty(filter)){
             this.filteredList = list;
         } else if(list!= null && !list.isEmpty()){
-            String lowerFilter = filter.toLowerCase(); // 灏嗚繃婊よ瘝杞负灏忓啓锛岄伩鍏嶉噸澶嶈浆鎹?
+            String lowerFilter = filter.toLowerCase(); // 将过滤词转为小写，避免重复转换
 
             this.filteredList = list.stream()
                     .filter(app -> {
-                        // 濡傛灉杩囨护璇嶄负绌猴紝榛樿鍏ㄩ儴淇濈暀
+                        // 如果过滤词为空，默认全部保留
                         if (filter == null || filter.isEmpty()) return true;
 
                         if ("zh".equals(languageCode)) {
-                            // 涓枃鐜锛氬厛妫€鏌ヤ腑鏂囧悕
+                            // 中文环境：先检查中文名
                             String zhName = app.getZhName();
                             if (zhName != null && !zhName.isEmpty() && zhName.toLowerCase().contains(lowerFilter)) {
-                                return true; // 涓枃鍚嶅尮閰嶏紝鐩存帴閫氳繃
+                                return true; // 中文名匹配，直接通过
                             }
-                            // 涓枃鍚嶄笉鍖归厤锛堟垨涓虹┖锛夛紝鍐嶆鏌ヨ嫳鏂囧悕
+                            // 中文名不匹配（或为空），再检查英文名
                             return app.Name != null && app.Name.toLowerCase().contains(lowerFilter);
                         } else {
-                            // 闈炰腑鏂囩幆澧冿細鍚屾椂妫€鏌ヤ袱涓瓧娈碉紙鐭矾浼樺寲锛?
+                            // 非中文环境：同时检查两个字段（短路优化）
                             boolean matchEn = app.Name != null && app.Name.toLowerCase().contains(lowerFilter);
                             if (matchEn) return true;
                             String zhName = app.getZhName();

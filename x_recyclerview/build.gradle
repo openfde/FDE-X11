@@ -1,7 +1,10 @@
-﻿apply plugin: 'com.android.library'
+apply plugin: 'com.android.library'
+
 
 android {
+
     compileSdkVersion 33
+//    buildToolsVersion rootProject.ext.android.buildToolsVersion
 
     defaultConfig {
         minSdkVersion 26

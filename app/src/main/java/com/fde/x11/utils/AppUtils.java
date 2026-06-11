@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Copyright (C) 2012 Iordan Iordanov
  * Copyright (C) 2010 Michael A. MacDonald
  * <p>
@@ -220,19 +220,19 @@ public class AppUtils {
 
 
     public static Bitmap drawableToBitmap(Drawable drawable) {
-        // 鍙?drawable 鐨勯暱瀹?
+        // 取 drawable 的长宽
         int w = drawable.getIntrinsicWidth();
         int h = drawable.getIntrinsicHeight();
 
-        // 鍙?drawable 鐨勯鑹叉牸寮?
+        // 取 drawable 的颜色格式
         Bitmap.Config config = drawable.getOpacity() != PixelFormat.OPAQUE ? Bitmap.Config.ARGB_8888
                 : Bitmap.Config.RGB_565;
-        // 寤虹珛瀵瑰簲 bitmap
+        // 建立对应 bitmap
         Bitmap bitmap = Bitmap.createBitmap(w, h, config);
-        // 寤虹珛瀵瑰簲 bitmap 鐨勭敾甯?
+        // 建立对应 bitmap 的画布
         Canvas canvas = new Canvas(bitmap);
         drawable.setBounds(0, 0, w, h);
-        // 鎶?drawable 鍐呭鐢诲埌鐢诲竷涓?
+        // 把 drawable 内容画到画布中
         drawable.draw(canvas);
         Log.d(TAG, "drawableToBitmap() called with: w = " + w + " h = " + h);
         return bitmap;
