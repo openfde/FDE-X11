@@ -1,4 +1,4 @@
-package com.fde.x11;
+﻿package com.fde.x11;
 
 import static android.os.Build.VERSION.SDK_INT;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
@@ -561,15 +561,15 @@ public class XWindowService extends Service {
     }
 
     private void rearrangeWindowAttributes(long removedViewId) {
-        // 1. 移除指定的View
+        // 1. 绉婚櫎鎸囧畾鐨刅iew
         mFloatTrays.remove(removedViewId);
-        // 2. 获取剩余的所有WindowAttribute并按当前offsetX排序
+        // 2. 鑾峰彇鍓╀綑鐨勬墍鏈塛indowAttribute骞舵寜褰撳墠offsetX鎺掑簭
         List<WindowAttribute> attributes = mFloatTrays.values().stream()
                 .map(view -> (WindowAttribute) view.getTag())
                 .sorted((attr1, attr2) -> Float.compare(attr1.getOffsetX(), attr2.getOffsetX()))
                 .collect(Collectors.toList());
 
-        // 3. 重新设置offsetX，从右向左排列
+        // 3. 閲嶆柊璁剧疆offsetX锛屼粠鍙冲悜宸︽帓鍒?
         float currentOffsetX = rightAttr.getOffsetX();
         for (WindowAttribute attr : attributes) {
             attr.setOffsetX(currentOffsetX);

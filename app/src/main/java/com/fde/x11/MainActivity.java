@@ -1,4 +1,4 @@
-package com.fde.x11;
+﻿package com.fde.x11;
 
 import static android.app.ActivityManager.MOVE_TASK_NO_USER_ACTION;
 import static android.os.Build.VERSION.SDK_INT;

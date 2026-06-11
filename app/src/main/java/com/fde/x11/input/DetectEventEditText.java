@@ -1,4 +1,4 @@
-package com.fde.x11.input;
+﻿package com.fde.x11.input;
 
 import static android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS;
 

@@ -1,11 +1,10 @@
-apply plugin: 'com.android.library'
+﻿apply plugin: 'com.android.library'
 
 android {
     compileSdkVersion 33
     defaultConfig {
         targetSdkVersion 33
         minSdkVersion 26
-//        multiDexEnabled true
     }
     buildTypes {
         release {
