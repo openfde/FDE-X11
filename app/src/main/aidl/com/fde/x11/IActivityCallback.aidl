@@ -1,4 +1,4 @@
-﻿// IActivityCallback.aidl
+// IActivityCallback.aidl
 package com.fde.x11;
 
 import com.fde.fusionwindowmanager.WindowAttribute;
