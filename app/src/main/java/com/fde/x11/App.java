@@ -29,7 +29,7 @@ import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
-
+import com.fde.x11.utils.FLog;
 
 public class App extends Application {
     private static final String TAG = "lifecycle";
@@ -45,11 +45,13 @@ public class App extends Application {
 
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
+        FLog.a("lifecycle", 0, "attachBaseContext");
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
+        FLog.a("lifecycle", 0, "onCreate");
         AppUtils.init(this);
         HttpLoggingInterceptor logInterceptor = new HttpLoggingInterceptor(new HttpLog("fde"));
         logInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);

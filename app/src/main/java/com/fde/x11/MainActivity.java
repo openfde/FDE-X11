@@ -150,7 +150,7 @@ import android.openfde.AppTaskStatusListener;
  * begin at {@link #onStart} lifecycle
  * begin at {@link #getClipText} about X window manager
  * begin at {@link #addFloatView} about X floatview
- * begin at {@link #initStylusAuxButtons} about event
+ * begin at {@link #onReceiveConnection} about event
  * begin at {@link #hideDecorCaptionView} other activity
  */
 
@@ -160,7 +160,6 @@ public class MainActivity extends Activity {
     static final String ACTION_STOP = "com.fde.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
     public  Handler handler = new Handler();
-    FrameLayout frm;
     int mTaskID = -1;
     public DetectEventEditText detectEventEditText;
     private TouchInputHandler mInputHandler;
@@ -215,16 +214,8 @@ public class MainActivity extends Activity {
     }
     private boolean killSelf;
     private Rect mConfigureRect;
-    //    @SuppressLint("StaticFieldLeak")
-//    private static MainActivity instance;
-//    public MainActivity() {
-//        instance = this;
-//    }
     private final BroadcastReceiver receiver = new XserverActionReceiver();
 
-    //    public static MainActivity getInstance() {
-//        return instance;
-//    }
     protected int getLayoutID(){
         return R.layout.main_activity;
     }
@@ -240,20 +231,35 @@ public class MainActivity extends Activity {
     @SuppressLint({"AppCompatMethod", "ObsoleteSdkInt", "ClickableViewAccessibility", "WrongConstant", "UnspecifiedRegisterReceiverFlag"})
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        long currentTimeMillis = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "onCreate");
         DisplayMetrics dm = new DisplayMetrics();
         getWindowManager().getDefaultDisplay().getRealMetrics(dm);
         density = dm.densityDpi;
         AppUtils.updateSystemAttr(dm.widthPixels, dm.heightPixels);
+        long currentTimeMillis1 = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "onCreate1 cost:" + (currentTimeMillis1 - currentTimeMillis));
         mSystemInsetTop = DECOR_CAPTION_HEIGHT;
         initXParams();
-//        Util.setBaseContext(this);
-//        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        long currentTimeMillis2 = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "onCreate2 cost:" + (currentTimeMillis2 - currentTimeMillis1));
         initView();
+        long currentTimeMillis3 = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "onCreate3 cost:" + (currentTimeMillis3 - currentTimeMillis2));
         initEvent();
-        mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
-                !captionShowing,
-                this::onStatusChanged);
+        long currentTimeMillis4 = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "onCreate4 cost:" + (currentTimeMillis4 - currentTimeMillis3));
+        FLog.a("lifecycle", getWindowId(), "onCreate5");        
         broadcastTaskId(true);
+        FLog.a("lifecycle", getWindowId(), "onCreate6");
+    }
+
+    private void initFrameworkImpl(){
+        if(mFrameworkOperations == null){
+            mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
+                    !captionShowing,
+                    this::onStatusChanged);
+        }
     }
 
     private void broadcastTaskId(boolean isAdd){
@@ -274,21 +280,18 @@ public class MainActivity extends Activity {
     }
 
     private void initXParams() {
-//        updateWindowParams();
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
         } else {
             mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
         }
         FLog.a(TAG, "initXParams mDecorCaptionViewHeight:" + mDecorCaptionViewHeight);
-        int measuredHeight = getWindow().getDecorView().getMeasuredHeight();
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
             mIndex = mAttribute.getIndex();
             WindowCode = mAttribute.getXID();
             mWindowRect.set(mAttribute.getRect());
-            App.getApp().windowAttrMap.put(mAttribute.getXID(), mAttribute);
             mAttribute.setCaptionHeight(mDecorCaptionViewHeight);
             mAttribute.setTaskId(getTaskId());
         }
@@ -296,7 +299,7 @@ public class MainActivity extends Activity {
         if(mProperty != null){
             String wmClass = mProperty.getWm_class();
             String netName = mProperty.getNet_name();
-            FLog.a("lifecycle", getWindowId(), " wmclass:" + wmClass + " netName:" +  netName);
+            FLog.a("lifecycle", getWindowId(), "wmclass:" + wmClass + " netName:" +  netName);
             this.title  = TextUtils.isEmpty(netName) ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ wmClass) : APP_TITLE_PREFIX + ": "+ netName;
             if(mProperty.getIcon() != null) {
                 ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
@@ -309,7 +312,6 @@ public class MainActivity extends Activity {
                 setTitle(title);
             }
             FLog.a("lifecycle",getWindowId(), title);
-            App.getApp().windowPropertyMap.put(mAttribute.getXID(), mProperty);
         }
         mXserviceWrapper = new XserviceInterfaceWrapper();
         mXserviceWrapper.mAttribute = mAttribute;
@@ -329,22 +331,10 @@ public class MainActivity extends Activity {
     }
 
     private void initView() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        int modeValue = Integer.parseInt(preferences.getString("touchMode", "1")) - 1;
-        if (modeValue > 2) {
-            SharedPreferences.Editor e = Objects.requireNonNull(preferences).edit();
-            e.putString("touchMode", "1");
-            e.apply();
-        }
         setContentView(getLayoutID());
         detectEventEditText = findViewById(R.id.inputlayout);
-        frm = findViewById(R.id.frame);
-        findViewById(R.id.preferences_button).setOnClickListener((l) -> startActivity(new Intent(this, LoriePreferences.class) {{ setAction(Intent.ACTION_MAIN); }}));
-        findViewById(R.id.help_button).setOnClickListener((l) -> startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/termux/termux-x11/blob/master/README.md#running-graphical-applications"))));
         LorieView lorieView = findViewById(R.id.lorieView);
-        ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-        ConfigurationInfo ci = am.getDeviceConfigurationInfo();
-        FLog.a("lifecycle", getWindowId(), "glversion: " + ci.reqGlEsVersion);
+        FLog.a("lifecycle", getWindowId(), "glversion: ");
         lorieView.setZOrderOnTop(false);
         lorieView.updateCoordinate(mAttribute);
         View lorieParent = (View) lorieView.getParent();
@@ -354,15 +344,10 @@ public class MainActivity extends Activity {
         mInputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
             @Override
             public void swipeDown() {
-                toggleExtraKeys();
+//                toggleExtraKeys();
             }
         }, mWindowInputEventSender);
         mLorieKeyListener = (v, k, e) -> {
-            if (k == KEYCODE_VOLUME_DOWN && preferences.getBoolean("hideEKOnVolDown", false)) {
-                if (e.getAction() == ACTION_UP)
-                    toggleExtraKeys();
-                return true;
-            }
             if (k == KEYCODE_BACK) {
                 if (e.isFromSource(InputDevice.SOURCE_MOUSE) || e.isFromSource(InputDevice.SOURCE_MOUSE_RELATIVE)) {
                     if (e.getRepeatCount() != 0) // ignore auto-repeat
@@ -474,25 +459,12 @@ public class MainActivity extends Activity {
 //        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
         detectEventEditText.setOnKeyListener(mLorieKeyListener);
         detectEventEditText.setInputHandler(mInputHandler);
-        EasyDialog.Builder builder = new EasyDialog.Builder(this);
-        initStylusAuxButtons();
 
-//        ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), new OnApplyWindowInsetsListener() {
-//            @NonNull
-//            @Override
-//            public WindowInsetsCompat onApplyWindowInsets(@NonNull View v, @NonNull WindowInsetsCompat insets) {
-////                androidx.core.graphics.Insets statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars());
-////                androidx.core.graphics.Insets naviInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars());
-//                androidx.core.graphics.Insets systemInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-////                androidx.core.graphics.Insets captionInsets = insets.getInsets(WindowInsetsCompat.Type.captionBar());
-//                mSystemInsetTop = systemInsets.top;
-//                return insets;
-//            }
-//        });
     }
 
 
     private void initEvent() {
+        long currentTimeMillis = System.currentTimeMillis();
         registerReceiver(receiver, new IntentFilter(ACTION_START) {{
             addAction(ACTION_PREFERENCES_CHANGED);
             addAction(ACTION_STOP);
@@ -513,10 +485,21 @@ public class MainActivity extends Activity {
             addAction(WINDOW_ACTION_MINIMIZE_ACTION);
             addAction(WINDOW_ACTION_FULLSCREEN_ACTION);
         }},  0x4);
+        long currentTimeMillis1 = System.currentTimeMillis();       
+        FLog.a("lifecycle", getWindowId(), "initEvent cost:" + (currentTimeMillis1 - currentTimeMillis));
+        
         EventBus.getDefault().register(this);
+        long currentTimeMillis2 = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "initEvent cost:" + (currentTimeMillis2 - currentTimeMillis1));
+
         Xserver.requestConnection();
+        long currentTimeMillis3 = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "initEvent cost:" + (currentTimeMillis3 - currentTimeMillis2));
+
         bindService(new Intent(this, XWindowService.class), connection, Context.BIND_AUTO_CREATE);
-        mClipboardManager = (android.content.ClipboardManager) getApplication().getSystemService(Context.CLIPBOARD_SERVICE);
+        long currentTimeMillis4 = System.currentTimeMillis();
+        FLog.a("lifecycle", getWindowId(), "initEvent cost:" + (currentTimeMillis4 - currentTimeMillis3));
+
     }
 
 
@@ -546,8 +529,14 @@ public class MainActivity extends Activity {
         super.onResume();
         needSurface = true;
         FLog.a("lifecycle", getWindowId(), "onResume");
-//        mapXWindow();
+        if( am == null){
+            am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        }
+        if(mClipboardManager == null){
+            mClipboardManager = (android.content.ClipboardManager) getApplication().getSystemService(Context.CLIPBOARD_SERVICE);
+        }
         detectViewRequestFocus();
+        initFrameworkImpl(); 
     }
 
     @Override
@@ -597,16 +586,13 @@ public class MainActivity extends Activity {
     }
 
     private void configureWindowDelayWithOffsetY(int y, long delay){
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                if(mXserviceWrapper == null /* &&  isTaskMoving*/){
-                    return;
-                }
-                mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
-                        (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
-                        mWindowRect.right - mWindowRect.left + y, mWindowRect.bottom - mWindowRect.top);
+        handler.postDelayed(() -> {
+            if(mXserviceWrapper == null /* &&  isTaskMoving*/){
+                return;
             }
+            mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                    (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                    mWindowRect.right - mWindowRect.left + y, mWindowRect.bottom - mWindowRect.top);
         }, delay);
     }
 
@@ -670,12 +656,6 @@ public class MainActivity extends Activity {
             finish();
             App.getApp().stopingActivityWindow.add(mAttribute.getXID());
         }
-    }
-
-    @Override
-    public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
-        super.onWindowAttributesChanged(params);
-        FLog.a("lifecycle", getWindowId(), "onWindowAttributesChanged");
     }
 
     /**
@@ -872,12 +852,6 @@ public class MainActivity extends Activity {
     private void onSurfaceRealSizeChanged(Surface sfc, int width, int height) {
         FLog.a("window", getWindowId(), "onSurfaceRealSizeChanged "
                 + "sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
-//        final int screenWidth = AppUtils.GLOBAL_SCREEN_WIDTH;
-//        final int screenHeight = AppUtils.GLOBAL_SCREEN_HEIGHT;
-//        final int statusBarHeight = AppUtils.STATUSBAR_HEIGHT_U;
-//        final int navBarHeight = AppUtils.NAVIGATION_BAR_HEIGHT_U;
-//        final int captionHeight = isCaptionShowing() ? DECOR_CAPTION_HEIGHT : 0;
-//        final int MAXIMIZE_HEIGHT = screenHeight - statusBarHeight - captionHeight - navBarHeight;
         LorieView lorieView = getLorieView();
         int[] location = new int[2];
         lorieView.getLocationOnScreen(location);
@@ -1007,16 +981,6 @@ public class MainActivity extends Activity {
                 attr.setWidth(w);
                 attr.setHeight(h);
                 widgetView.updateCoordinate(attr);
-//                if (mXserviceWrapper != null /*&& !isTaskMoving*/) {
-//                    mXserviceWrapper.configureWindow(
-//                            mAttribute.getWindowPtr(),
-//                            mAttribute.getXID(),
-//                            (int) attr.getOffsetX(),
-//                            (int) attr.getOffsetY(),
-//                            (int) attr.getWidth(),
-//                            (int) attr.getHeight()
-//                    );
-//                }
                 try {
                     serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
                 } catch (Exception e) {
@@ -1034,7 +998,7 @@ public class MainActivity extends Activity {
         TouchInputHandler inputHandler = new TouchInputHandler(this, new RenderStub.NullStub() {
             @Override
             public void swipeDown() {
-                toggleExtraKeys();
+//                toggleExtraKeys();
             }
         }, inputEventSender);
         floatView.setOnTouchListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
@@ -1152,94 +1116,6 @@ public class MainActivity extends Activity {
     /**
      *============================================ about event  ==================================================
      */
-    @SuppressLint("ClickableViewAccessibility")
-    private void initStylusAuxButtons() {
-        SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean stylusMenuEnabled = p.getBoolean("showStylusClickOverride", false);
-        final float menuUnselectedTrasparency = 0.66f;
-        final float menuSelectedTrasparency = 1.0f;
-        Button left = findViewById(R.id.button_left_click);
-        Button right = findViewById(R.id.button_right_click);
-        Button middle = findViewById(R.id.button_middle_click);
-        Button visibility = findViewById(R.id.button_visibility);
-        LinearLayout overlay = findViewById(R.id.mouse_helper_visibility);
-        LinearLayout buttons = findViewById(R.id.mouse_helper_secondary_layer);
-        overlay.setOnTouchListener((v, e) -> true);
-        overlay.setOnHoverListener((v, e) -> true);
-        overlay.setOnGenericMotionListener((v, e) -> true);
-        overlay.setOnCapturedPointerListener((v, e) -> true);
-        overlay.setVisibility(stylusMenuEnabled ? View.VISIBLE : View.GONE);
-        View.OnClickListener listener = view -> {
-            TouchInputHandler.STYLUS_INPUT_HELPER_MODE = (view.equals(left) ? 1 : (view.equals(middle) ? 2 : (view.equals(right) ? 3 : 0)));
-            left.setAlpha((TouchInputHandler.STYLUS_INPUT_HELPER_MODE == 1) ? menuSelectedTrasparency : menuUnselectedTrasparency);
-            middle.setAlpha((TouchInputHandler.STYLUS_INPUT_HELPER_MODE == 2) ? menuSelectedTrasparency : menuUnselectedTrasparency);
-            right.setAlpha((TouchInputHandler.STYLUS_INPUT_HELPER_MODE == 3) ? menuSelectedTrasparency : menuUnselectedTrasparency);
-            visibility.setAlpha(menuUnselectedTrasparency);
-        };
-
-        left.setOnClickListener(listener);
-        middle.setOnClickListener(listener);
-        right.setOnClickListener(listener);
-
-        visibility.setOnClickListener(view -> {
-            if (buttons.getVisibility() == View.VISIBLE) {
-                buttons.setVisibility(View.GONE);
-                visibility.setAlpha(menuUnselectedTrasparency);
-                int m = TouchInputHandler.STYLUS_INPUT_HELPER_MODE;
-                visibility.setText(m == 1 ? "L" : (m == 2 ? "M" : (m == 3 ? "R" : "U")));
-            } else {
-                buttons.setVisibility(View.VISIBLE);
-                visibility.setAlpha(menuUnselectedTrasparency);
-                visibility.setText("X");
-
-                //Calculate screen border making sure btn is fully inside the view
-                float maxX = frm.getWidth() - 4 * left.getWidth();
-                float maxY = frm.getHeight() - 4 * left.getHeight();
-
-                //Make sure the Stylus menu is fully inside the screen
-                overlay.setX(MathUtils.clamp(overlay.getX(), 0, maxX));
-                overlay.setY(MathUtils.clamp(overlay.getY(), 0, maxY));
-
-                int m = TouchInputHandler.STYLUS_INPUT_HELPER_MODE;
-                listener.onClick(m == 1 ? left : (m == 2 ? middle : (m == 3 ? right : left)));
-            }
-        });
-        //Simulated mouse click 1 = left , 2 = middle , 3 = right
-        TouchInputHandler.STYLUS_INPUT_HELPER_MODE = 1;
-        listener.onClick(left);
-
-        visibility.setOnLongClickListener(v -> {
-            v.startDragAndDrop(ClipData.newPlainText("", ""), new View.DragShadowBuilder(visibility) {
-                public void onDrawShadow(Canvas canvas) {}
-            }, null, View.DRAG_FLAG_GLOBAL);
-
-            frm.setOnDragListener((v2, event) -> {
-                //Calculate screen border making sure btn is fully inside the view
-                float maxX = frm.getWidth() - visibility.getWidth();
-                float maxY = frm.getHeight() - visibility.getHeight();
-
-                switch (event.getAction()) {
-                    case DragEvent.ACTION_DRAG_LOCATION:
-                        //Center touch location with btn icon
-                        float dX = event.getX() - visibility.getWidth() / 2.0f;
-                        float dY = event.getY() - visibility.getHeight() / 2.0f;
-
-                        //Make sure the dragged btn is inside the view with clamp
-                        overlay.setX(MathUtils.clamp(dX, 0, maxX));
-                        overlay.setY(MathUtils.clamp(dY, 0, maxY));
-                        break;
-                    case DragEvent.ACTION_DRAG_ENDED:
-                        //Make sure the dragged btn is inside the view
-                        overlay.setX(MathUtils.clamp(overlay.getX(), 0, maxX));
-                        overlay.setY(MathUtils.clamp(overlay.getY(), 0, maxY));
-                        break;
-                }
-                return true;
-            });
-
-            return true;
-        });
-    }
 
     void onReceiveConnection() {
         try {
@@ -1286,40 +1162,7 @@ public class MainActivity extends Activity {
     }
 
     public ViewPager getTerminalToolbarViewPager() {
-        return findViewById(R.id.terminal_toolbar_view_pager);
-    }
-
-    public void toggleExtraKeys(boolean visible, boolean saveState) {
-        runOnUiThread(() -> {
-            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-            boolean enabled = preferences.getBoolean("showAdditionalKbd", true);
-            ViewPager pager = getTerminalToolbarViewPager();
-            ViewGroup parent = (ViewGroup) pager.getParent();
-            boolean show = enabled && mClientConnected && visible;
-
-            if (show) {
-
-            } else {
-                parent.removeView(pager);
-                parent.addView(pager, 0);
-            }
-
-            if (enabled && saveState) {
-                SharedPreferences.Editor edit = preferences.edit();
-                edit.putBoolean("additionalKbdVisible", show);
-                edit.commit();
-            }
-
-            pager.setVisibility(View.GONE);
-
-//            getLorieView().requestFocus();
-        });
-    }
-
-    public void toggleExtraKeys() {
-        int visibility = getTerminalToolbarViewPager().getVisibility();
-        toggleExtraKeys(visibility != View.VISIBLE, true);
-//        getLorieView().requestFocus();
+        return null ;//findViewById(R.id.terminal_toolbar_view_pager);
     }
 
     public boolean handleKey(KeyEvent e) {
@@ -1383,7 +1226,7 @@ public class MainActivity extends Activity {
                         mXserviceWrapper.disableService();
                         Xserver.requestConnection();
                         FLog.a("event", getWindowId(), "disconnect");
-                        runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
+                        // runOnUiThread(() -> clientConnectedStateChanged(false)); //recreate()); //onPreferencesChanged(""));
                     }, 0);
                     onReceiveConnection();
                 } catch (Exception e) {
@@ -1660,7 +1503,6 @@ public class MainActivity extends Activity {
     }
 
 
-
     public static class MainActivity1 extends MainActivity {
     }
 
@@ -1674,9 +1516,6 @@ public class MainActivity extends Activity {
             if(FLog.SHOW_DEBUG_TITLE){
                 return false;
             }
-//            mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
-//                    true,
-//                    (windowingMode, isSystemBarVisible) -> Log.d("MainActivity11", "onStatusChanged() called with: windowingMode = [" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]"));
             FLog.a("TAG", "hideDecorCaptionView");
             if(mFrameworkOperations != null ){
                 mFrameworkOperations.hideDecorCaptionView(this);
@@ -1698,12 +1537,11 @@ public class MainActivity extends Activity {
         runOnUiThread(()-> {
             SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
             mClientConnected = connected;
-            toggleExtraKeys(connected && p.getBoolean("additionalKbdVisible", true), true);
-            findViewById(R.id.mouse_buttons).setVisibility(p.getBoolean("showMouseHelper", false) && "1".equals(p.getString("touchMode", "1")) && mClientConnected ? View.VISIBLE : View.GONE);
-            findViewById(R.id.stub).setVisibility(connected?View.INVISIBLE:View.VISIBLE);
-            getLorieView().setVisibility(connected?View.VISIBLE:View.INVISIBLE);
-            getLorieView().regenerate();
-
+//            toggleExtraKeys(connected && p.getBoolean("additionalKbdVisible", true), true);
+            // findViewById(R.id.mouse_buttons).setVisibility(p.getBoolean("showMouseHelper", false) && "1".equals(p.getString("touchMode", "1")) && mClientConnected ? View.VISIBLE : View.GONE);
+            // findViewById(R.id.stub).setVisibility(connected?View.INVISIBLE:View.VISIBLE);
+            // getLorieView().setVisibility(connected?View.VISIBLE:View.INVISIBLE);
+            // getLorieView().regenerate();
             // We should recover connection in the case if file descriptor for some reason was broken...
             if (!connected)
                 tryConnect();

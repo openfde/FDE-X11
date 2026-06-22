@@ -27,7 +27,7 @@
 
 
 
-        <LinearLayout
+        <!-- <LinearLayout
             android:id="@+id/stub"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -80,12 +80,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/help_button_text" />
-        </LinearLayout>
+        </LinearLayout> -->
 
 
     </FrameLayout>
 
-    <Button
+    <!-- <Button
         android:id="@+id/button"
         android:layout_width="100dp"
         android:layout_height="50dp"
@@ -273,7 +273,7 @@
         android:id="@+id/bitmap_iv"
         android:layout_width="50dp"
         android:visibility="gone"
-        android:layout_height="50dp"/>
+        android:layout_height="50dp"/> -->
 
     <com.fde.x11.input.DetectEventEditText
         android:id="@+id/inputlayout"

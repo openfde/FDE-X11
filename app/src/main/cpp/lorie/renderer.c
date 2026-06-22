@@ -854,7 +854,7 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window, bool empty) {
-    logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
+    // logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
     int id, dri_id;
@@ -895,8 +895,8 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
-     logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
-         index, width, height, attr->offset_x, attr->offset_y, id);
+    //  logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+        //  index, width, height, attr->offset_x, attr->offset_y, id);
     checkGlError();
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
