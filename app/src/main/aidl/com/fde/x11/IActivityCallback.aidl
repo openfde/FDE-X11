@@ -1,7 +1,8 @@
-// IActivityCallback.aidl
+﻿// IActivityCallback.aidl
 package com.fde.x11;
 
-// Declare any non-default types here with import statements
+import com.fde.fusionwindowmanager.WindowAttribute;
+import com.fde.fusionwindowmanager.Property;
 
 interface IActivityCallback {
 
@@ -13,5 +14,5 @@ interface IActivityCallback {
 
     boolean configureActivity(long window);
 
-
+    boolean fillAndResize(in WindowAttribute attr, in Property prop);
 }

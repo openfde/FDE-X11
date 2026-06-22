@@ -127,6 +127,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import android.openfde.AppTaskControllerProxy;
 import android.openfde.AppTaskStatusListener;
 
@@ -159,21 +160,18 @@ import android.openfde.AppTaskStatusListener;
 public class MainActivity extends Activity {
     static final String ACTION_STOP = "com.fde.x11.ACTION_STOP";
     static final String REQUEST_LAUNCH_EXTERNAL_DISPLAY = "request_launch_external_display";
-    public  Handler handler = new Handler();
+    public Handler handler = new Handler();
     int mTaskID = -1;
     public DetectEventEditText detectEventEditText;
     private TouchInputHandler mInputHandler;
     public ICmdEntryInterface service;
-    public TermuxX11ExtraKeys mExtraKeys;
     private Notification mNotification;
     private final int mNotificationId = 7892;
     NotificationManager mNotificationManager;
     private boolean mClientConnected = false;
     private View.OnKeyListener mLorieKeyListener;
     private static final int KEY_BACK = 158;
-    private EasyDialog easyDialog;
     private final String TAG = "lifecycle ";
-    private boolean correctMarked = false;
     protected long WindowCode = 0;
     protected int mIndex = 0;
     public WindowAttribute mAttribute;
@@ -212,19 +210,23 @@ public class MainActivity extends Activity {
     protected long getWindowId() {
         return WindowCode;
     }
+
     private boolean killSelf;
     private Rect mConfigureRect;
     private final BroadcastReceiver receiver = new XserverActionReceiver();
 
-    protected int getLayoutID(){
+    protected int getLayoutID() {
         return R.layout.main_activity;
     }
-    FrameworkOperations mFrameworkOperations;
+
+    protected FrameworkOperations mFrameworkOperations;
+
     /**
      * ============================================ oncreate ==================================================
+     *
      * @param savedInstanceState If the activity is being re-initialized after
-     *     previously being shut down then this Bundle contains the data it most
-     *     recently supplied in {@link #onSaveInstanceState}.  <b><i>Note: Otherwise it is null.</i></b>
+     *                           previously being shut down then this Bundle contains the data it most
+     *                           recently supplied in {@link #onSaveInstanceState}.  <b><i>Note: Otherwise it is null.</i></b>
      *
      */
     @Override
@@ -249,23 +251,23 @@ public class MainActivity extends Activity {
         initEvent();
         long currentTimeMillis4 = System.currentTimeMillis();
         FLog.a("lifecycle", getWindowId(), "onCreate4 cost:" + (currentTimeMillis4 - currentTimeMillis3));
-        FLog.a("lifecycle", getWindowId(), "onCreate5");        
+        FLog.a("lifecycle", getWindowId(), "onCreate5");
         broadcastTaskId(true);
         FLog.a("lifecycle", getWindowId(), "onCreate6");
     }
 
-    private void initFrameworkImpl(){
-        if(mFrameworkOperations == null){
+    private void initFrameworkImpl() {
+        if (mFrameworkOperations == null) {
             mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
                     !captionShowing,
                     this::onStatusChanged);
         }
     }
 
-    private void broadcastTaskId(boolean isAdd){
+    private void broadcastTaskId(boolean isAdd) {
         String targetPackage = getPackageName();
         Intent intent = new Intent();
-        if(isAdd){
+        if (isAdd) {
             intent.setAction(TASK_ID_FROM_ACTIVITY_ADD);
             intent.setPackage(targetPackage);
             intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
@@ -280,7 +282,7 @@ public class MainActivity extends Activity {
     }
 
     private void initXParams() {
-        if(hideDecorCaptionView()){
+        if (hideDecorCaptionView()) {
             mDecorCaptionViewHeight = 0;
         } else {
             mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
@@ -288,45 +290,33 @@ public class MainActivity extends Activity {
         FLog.a(TAG, "initXParams mDecorCaptionViewHeight:" + mDecorCaptionViewHeight);
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
-        if(mAttribute != null){
+        if (mAttribute != null) {
             mIndex = mAttribute.getIndex();
             WindowCode = mAttribute.getXID();
             mWindowRect.set(mAttribute.getRect());
             mAttribute.setCaptionHeight(mDecorCaptionViewHeight);
             mAttribute.setTaskId(getTaskId());
+            mXserviceWrapper = new XserviceInterfaceWrapper();
+            mXserviceWrapper.mAttribute = mAttribute;
+            mXserviceWrapper.updateCoordinate(mAttribute);
         }
         mProperty = getIntent().getParcelableExtra(X_WINDOW_PROPERTY);
-        if(mProperty != null){
+        if (mProperty != null) {
             String wmClass = mProperty.getWm_class();
             String netName = mProperty.getNet_name();
-            FLog.a("lifecycle", getWindowId(), "wmclass:" + wmClass + " netName:" +  netName);
-            this.title  = TextUtils.isEmpty(netName) ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ wmClass) : APP_TITLE_PREFIX + ": "+ netName;
-            if(mProperty.getIcon() != null) {
+            FLog.a("lifecycle", getWindowId(), "wmclass:" + wmClass + " netName:" + netName);
+            this.title = TextUtils.isEmpty(netName) ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX : APP_TITLE_PREFIX + ": " + wmClass) : APP_TITLE_PREFIX + ": " + netName;
+            if (mProperty.getIcon() != null) {
                 ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
                 MainActivity.this.setTaskDescription(description);
             }
-            if(FLog.SHOW_DEBUG_TITLE) {
+            if (FLog.SHOW_DEBUG_TITLE) {
                 String windowid = Long.toHexString(getWindowId());
                 setTitle(title + " id:0x" + windowid);
             } else {
                 setTitle(title);
             }
-            FLog.a("lifecycle",getWindowId(), title);
-        }
-        mXserviceWrapper = new XserviceInterfaceWrapper();
-        mXserviceWrapper.mAttribute = mAttribute;
-        mXserviceWrapper.updateCoordinate(mAttribute);
-    }
-
-    private void updateWindowParams() {
-        if(!AppUtils.paramsInited){
-            AppUtils.paramsInited = true;
-            Point point = new Point();
-            getWindowManager().getDefaultDisplay().getRealSize(point);
-            AppUtils.GLOBAL_SCREEN_WIDTH = point.x;
-            AppUtils.GLOBAL_SCREEN_HEIGHT = point.y;
-            FLog.a(TAG, "updateWindowParams: " + AppUtils.GLOBAL_SCREEN_WIDTH  + " x "
-                    + AppUtils.GLOBAL_SCREEN_HEIGHT);
+            FLog.a("lifecycle", getWindowId(), title);
         }
     }
 
@@ -373,10 +363,10 @@ public class MainActivity extends Activity {
         });
         lorieParent.setOnHoverListener((v, event) -> {
             long currentTimeMillis = System.currentTimeMillis();
-            if(event.getAction() == MotionEvent.ACTION_HOVER_EXIT ){
+            if (event.getAction() == MotionEvent.ACTION_HOVER_EXIT) {
                 lastHoverExitTime = System.currentTimeMillis();
                 MainActivity.this.handler.postDelayed(() -> {
-                    if(mXserviceWrapper != null && lastHoverExitTime != 0){
+                    if (mXserviceWrapper != null && lastHoverExitTime != 0) {
                         mXserviceWrapper.sendMouseEvent(-5, -5,
                                 InputStub.BUTTON_UNDEFINED, false, false, 0);
                     }
@@ -402,12 +392,12 @@ public class MainActivity extends Activity {
                 WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
                 if (!killSelf) {
                     try {
-                        if(attribute == null){
+                        if (attribute == null) {
                             serviceWindowChange(sfc, 0, 0, AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT,
                                     0, 1000, 1000);
                         } else {
                             if (surfaceWidth == 0 || surfaceHeight == 0) {
-                                serviceWindowChange(sfc, 0, 0,0, 0, attribute.getIndex(),attribute.getWindowPtr(), attribute.getXID());
+                                serviceWindowChange(sfc, 0, 0, 0, 0, attribute.getIndex(), attribute.getWindowPtr(), attribute.getXID());
                             } else {
                                 serviceWindowChange(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
                                         attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
@@ -428,17 +418,17 @@ public class MainActivity extends Activity {
                 LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
                 FLog.a(TAG, "realSizeChanged() called with: isFullscreen = [" + isFullscreen + "], width = [" + width + "], height = [" + height + "]");
                 WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
-                if(attribute != null && width != 0 && height !=0 ){
-                    if(mWindowingMode == 1){
+                if (attribute != null && width != 0 && height != 0) {
+                    if (mWindowingMode == 1) {
                         onSurfaceRealSizeChanged(sfc, width, height);
                     } else {
                         try {
-                            if(attribute == null){
+                            if (attribute == null) {
                                 serviceWindowChange(sfc, 0, 0, AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT,
                                         0, 1000, 1000);
                             } else {
                                 if (width == 0 || width == 0) {
-                                    serviceWindowChange(sfc, 0, 0,0, 0, attribute.getIndex(),attribute.getWindowPtr(), attribute.getXID());
+                                    serviceWindowChange(sfc, 0, 0, 0, 0, attribute.getIndex(), attribute.getWindowPtr(), attribute.getXID());
                                 } else {
                                     serviceWindowChange(sfc, attribute.getOffsetX(), attribute.getOffsetY(),
                                             attribute.getWidth(), attribute.getHeight(), attribute.getIndex(),
@@ -484,10 +474,10 @@ public class MainActivity extends Activity {
             addAction(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION);
             addAction(WINDOW_ACTION_MINIMIZE_ACTION);
             addAction(WINDOW_ACTION_FULLSCREEN_ACTION);
-        }},  0x4);
-        long currentTimeMillis1 = System.currentTimeMillis();       
+        }}, 0x4);
+        long currentTimeMillis1 = System.currentTimeMillis();
         FLog.a("lifecycle", getWindowId(), "initEvent cost:" + (currentTimeMillis1 - currentTimeMillis));
-        
+
         EventBus.getDefault().register(this);
         long currentTimeMillis2 = System.currentTimeMillis();
         FLog.a("lifecycle", getWindowId(), "initEvent cost:" + (currentTimeMillis2 - currentTimeMillis1));
@@ -504,7 +494,7 @@ public class MainActivity extends Activity {
 
 
     /**
-     *============================================ lifecycle ==================================================
+     * ============================================ lifecycle ==================================================
      */
     @Override
     protected void onStart() {
@@ -513,46 +503,42 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onRestart() {
-        super.onRestart();
-        FLog.a("lifecycle", getWindowId(), "onRestart");
-    }
-
-    @Override
-    public void onUserInteraction() {
-        super.onUserInteraction();
-//        FLog.a("lifecycle", getWindowId(), "onUserInteraction");
-    }
-
-    @Override
     public void onResume() {
         super.onResume();
+        onResumeImpl();
+    }
+
+    private void onResumeImpl() {
         needSurface = true;
         FLog.a("lifecycle", getWindowId(), "onResume");
-        if( am == null){
+        if (am == null) {
             am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         }
-        if(mClipboardManager == null){
+        if (mClipboardManager == null) {
             mClipboardManager = (android.content.ClipboardManager) getApplication().getSystemService(Context.CLIPBOARD_SERVICE);
         }
         detectViewRequestFocus();
-        initFrameworkImpl(); 
+        initFrameworkImpl();
     }
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        if(density != newConfig.densityDpi){
+        onConfigurationChangedImpl(newConfig);
+    }
+
+    private void onConfigurationChangedImpl(Configuration newConfig) {
+        if (density != newConfig.densityDpi) {
             finish();
         }
         this.density = newConfig.densityDpi;
         FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
-        if(mXserviceWrapper == null){
+        if (mXserviceWrapper == null) {
             return;
         }
-        getWindow().getDecorView().postDelayed(()->{
+        getWindow().getDecorView().postDelayed(() -> {
             checkConfigBeforeExec(newConfig, true);
-        },0);
+        }, 0);
     }
 
     @SuppressLint("WrongConstant")
@@ -561,9 +547,13 @@ public class MainActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged hasFocus:" + hasFocus);
         Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
+        onWindowFocusChangedImpl(hasFocus);
+    }
+
+    private void onWindowFocusChangedImpl(boolean hasFocus) {
         if (hasFocus) {
             setDecorCaptionViewFocuseable(true);
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
                     FLAG_NOT_TOUCHABLE);
             showFloatView();
             getLorieView().regenerate();
@@ -573,7 +563,7 @@ public class MainActivity extends Activity {
             ThreadPoolManager.getInstance().execute(this::getClipText);
         } else {
 //             mouse click to hide floating window
-            if(mInputHandler != null){
+            if (mInputHandler != null) {
                 mInputHandler.mouseClick();
             }
         }
@@ -585,9 +575,9 @@ public class MainActivity extends Activity {
 //                || mFrameworkOperations.isWindowMaximized();
     }
 
-    private void configureWindowDelayWithOffsetY(int y, long delay){
+    private void configureWindowDelayWithOffsetY(int y, long delay) {
         handler.postDelayed(() -> {
-            if(mXserviceWrapper == null /* &&  isTaskMoving*/){
+            if (mXserviceWrapper == null /* &&  isTaskMoving*/) {
                 return;
             }
             mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
@@ -613,8 +603,8 @@ public class MainActivity extends Activity {
         super.onStop();
         FLog.a("lifecycle", getWindowId(), "onStop");
         serviceWindowChange(getLorieView().getHolder().getSurface(),
-                0, 0,-1, -1,
-                mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
+                0, 0, -1, -1,
+                mAttribute.getIndex(), mAttribute.getWindowPtr(), mAttribute.getXID());
 //        unmapXWindow();
     }
 
@@ -631,12 +621,12 @@ public class MainActivity extends Activity {
         unregisterReceiver(receiver);
         unbindService(connection);
 //        stopFloatViews();
-        if(mAttribute != null){
+        if (mAttribute != null) {
             mXserviceWrapper.unregisterActivityCallback(mAttribute.getXID(), iActivityCallback);
         }
         mXserviceWrapper.disableService();
         FLog.a("lifecycle", getWindowId(), "onDestroy");
-        if(mClipboardManager != null){
+        if (mClipboardManager != null) {
             mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
         }
         mClipboardManager = null;
@@ -648,7 +638,7 @@ public class MainActivity extends Activity {
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
         String hexString = Long.toHexString(getWindowId());
-        if(mXserviceWrapper != null && mProperty != null && mProperty.getSupportDeleteWindow() == 1){
+        if (mXserviceWrapper != null && mProperty != null && mProperty.getSupportDeleteWindow() == 1) {
             FLog.a("lifecycle", getWindowId(), "onWindowDismissed");
             closeXWindow();
         } else {
@@ -659,18 +649,18 @@ public class MainActivity extends Activity {
     }
 
     /**
-     *============================================ about X Window ==================================================
+     * ============================================ about X Window ==================================================
      * window manager methods
      */
     private void getClipText() {
         FLog.a("window", getWindowId(), "getClipText ");
         String filePath = com.fde.fusionwindowmanager.Util.getClipFilePath(mClipboardManager, this);
         String clipText = com.fde.fusionwindowmanager.Util.getClipText(mClipboardManager, this);
-        if(!TextUtils.isEmpty(filePath)){
+        if (!TextUtils.isEmpty(filePath)) {
             String replace = filePath.replace(" ", "%20");
             FLog.a(TAG, "getClipText: " + replace);
             mXserviceWrapper.sendClipFile(replace);
-        } else if(!TextUtils.isEmpty(clipText)){
+        } else if (!TextUtils.isEmpty(clipText)) {
             mClipText = clipText;
             mXserviceWrapper.sendClipText(mClipText);
         } else {
@@ -679,11 +669,11 @@ public class MainActivity extends Activity {
         FLog.a("window", getWindowId(), "getClipText end");
     }
 
-    protected void execInWindowManager()  {
+    protected void execInWindowManager() {
         FLog.a("window", getWindowId(), "execInWindowManager");
         List<ActivityManager.RunningTaskInfo> runningTasks = am.getRunningTasks(50);
-        for (ActivityManager.RunningTaskInfo info: runningTasks){
-            if(TextUtils.equals(info.topActivity.getClassName(), getClass().getName())){
+        for (ActivityManager.RunningTaskInfo info : runningTasks) {
+            if (TextUtils.equals(info.topActivity.getClassName(), getClass().getName())) {
                 mTaskID = info.id;
                 Configuration configuration = info.configuration;
                 checkConfigBeforeExec(configuration, false);
@@ -692,8 +682,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void checkConfigBeforeExec(Configuration configuration, boolean newConfig){
-        if(configuration == null || mXserviceWrapper == null){
+    private void checkConfigBeforeExec(Configuration configuration, boolean newConfig) {
+        if (configuration == null || mXserviceWrapper == null) {
             return;
         }
         //configuration:{1.0 ?mcc?mnc [zh_CN_#Hans] ldltr sw1080dp w1920dp h1031dp 160dpi xlrg long land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1032) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}, newConfig:true
@@ -716,13 +706,13 @@ public class MainActivity extends Activity {
             return;
         }
         //no reason, when hide View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR must get from ""
-        if(isFullscreen && !isCaptionShowing()){
+        if (isFullscreen && !isCaptionShowing()) {
             pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
         } else {
             pattern = Pattern.compile("mAppBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
         }
         matcher = pattern.matcher(configuration.toString());
-        if(matcher.find()){
+        if (matcher.find()) {
             int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
             int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
             int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
@@ -736,7 +726,7 @@ public class MainActivity extends Activity {
                     " GLOBAL_DENSITY:" + GLOBAL_DENSITY);
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
-            if( (newConfig ||  !samePosition || !sameSize) /* &&  !isTaskMoving*/ ){
+            if ((newConfig || !samePosition || !sameSize) /* &&  !isTaskMoving*/) {
                 updateAttribueOnly(rect);
                 mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
@@ -750,13 +740,13 @@ public class MainActivity extends Activity {
 
         if (isFullscreen) {
             handler.postDelayed(() -> {
-                if(mXserviceWrapper == null /*|| isTaskMoving*/){
+                if (mXserviceWrapper == null /*|| isTaskMoving*/) {
                     return;
                 }
                 mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
                         mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
-            },200);
+            }, 200);
 
         }
 
@@ -771,13 +761,13 @@ public class MainActivity extends Activity {
 
     private boolean atSameSize(Rect rect) {
         Rect r = mWindowRect;
-        return ( r.right - r.left ) == ( rect.right - rect.left )
-                && ( r.bottom - r.top ) == ( rect.bottom - rect.top );
+        return (r.right - r.left) == (rect.right - rect.left)
+                && (r.bottom - r.top) == (rect.bottom - rect.top);
     }
 
     private boolean atSamePosition(Rect rect) {
         Rect r = mWindowRect;
-        return r.left == rect.left && r.top == rect.top ;
+        return r.left == rect.left && r.top == rect.top;
     }
 
     private boolean isCaptionShowing() {
@@ -787,7 +777,7 @@ public class MainActivity extends Activity {
 
     private void unmapXWindow() {
         FLog.a("window", getWindowId(), "unmapXWindow");
-        if(mXserviceWrapper != null){
+        if (mXserviceWrapper != null) {
             WindowAttribute a = mAttribute;
             mXserviceWrapper.windowChanged(null, a.getOffsetX(),
                     a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
@@ -798,7 +788,7 @@ public class MainActivity extends Activity {
 
     private void mapXWindow() {
         FLog.a("window", getWindowId(), "unmapXWindow");
-        if(mXserviceWrapper != null){
+        if (mXserviceWrapper != null) {
             WindowAttribute a = mAttribute;
             mXserviceWrapper.mapWindow(a.getIndex(), a.getWindowPtr(), a.getXID());
         }
@@ -807,9 +797,9 @@ public class MainActivity extends Activity {
     private void closeXWindow() {
         FLog.a("window", getWindowId(), "closeXWindow");
         serviceWindowChange(getLorieView().getHolder().getSurface(),
-                0, 0,-1, -1,
-                mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
-        if(mXserviceWrapper != null){
+                0, 0, -1, -1,
+                mAttribute.getIndex(), mAttribute.getWindowPtr(), mAttribute.getXID());
+        if (mXserviceWrapper != null) {
             WindowAttribute a = mAttribute;
             mXserviceWrapper.windowChanged(null, a.getOffsetX(),
                     a.getOffsetY(), a.getWidth(), a.getHeight(), a.getIndex(),
@@ -820,31 +810,14 @@ public class MainActivity extends Activity {
 
     private void setDecorCaptionViewFocuseable(boolean focusable) {
         FLog.a("window", getWindowId(), "setDecorCaptionViewFocuseable:" + focusable);
-        if(mFrameworkOperations != null) {
+        if (mFrameworkOperations != null) {
             mFrameworkOperations.setDecorCaptionViewFocuseable(this, focusable);
         }
-
-//        if(Build.VERSION.SDK_INT == 30){
-//            Window window = getWindow();
-//            ViewGroup decor = (ViewGroup) window.getDecorView();
-//            DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
-//            boolean isCaptionShowing = true;
-//            try {
-//                Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-//                Method method = aClass.getMethod("isCaptionShowing");
-//                isCaptionShowing = (boolean) method.invoke(decorCaptionView);
-//                if(isCaptionShowing) {
-////                    decorCaptionView.setOperateEnabled(focusable);
-//                }
-//            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-//                     InvocationTargetException e) {
-//                FLog.e(TAG, e.getMessage());
-//            }
-//        }
     }
 
     /**
      * when android 14 in fullscreen mode, configure window only when surface size changed
+     *
      * @param sfc
      * @param width
      * @param height
@@ -861,12 +834,12 @@ public class MainActivity extends Activity {
         Rect decorRect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
         updateAttribueOnly(rect);
         int delayMS = 0;
-        postWindowChanged(rect, sfc ,0);
-        if(!TextUtils.isEmpty(title) && title.contains(NAME_MATE_TERMINAL)){
+        postWindowChanged(rect, sfc, 0);
+        if (!TextUtils.isEmpty(title) && title.contains(NAME_MATE_TERMINAL)) {
             delayMS = CONFIGURE_WINDOW_DELAY_MS;
         }
-        if(delayMS > 0){
-            postWindowChanged(rect, sfc ,delayMS);
+        if (delayMS > 0) {
+            postWindowChanged(rect, sfc, delayMS);
         }
     }
 
@@ -901,16 +874,16 @@ public class MainActivity extends Activity {
     }
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
-        if(mXserviceWrapper != null){
-            FLog.a("window", getWindowId(),"serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
+        if (mXserviceWrapper != null) {
+            FLog.a("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
             mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
             mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
         }
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
-    public void onReceiveMsg(EventMessage message){
-        if(mAttribute.getXID() != message.getProperty().getTransientfor()){
+    @Subscribe(threadMode = ThreadMode.MAIN, priority = 1)
+    public void onReceiveMsg(EventMessage message) {
+        if (mAttribute.getXID() != message.getProperty().getTransientfor()) {
             return;
         }
         if (Objects.requireNonNull(message.getType()) == EventType.X_UNMODAL_ACTIVITY) {
@@ -927,15 +900,15 @@ public class MainActivity extends Activity {
 
     public synchronized void configureFromX() {
         FLog.a("window", getWindowId(), "configureFromX mConfigureRect:" + mConfigureRect);
-        if(mConfigureRect != null /*&& !isTaskMoving*/){
+        if (mConfigureRect != null /*&& !isTaskMoving*/) {
             mAttribute.setRect(mConfigureRect);
             mWindowRect = mConfigureRect;
             Rect rect = mConfigureRect;
-            if(isCaptionShowing()){
+            if (isCaptionShowing()) {
                 rect.top = mConfigureRect.top - mDecorCaptionViewHeight;
             }
             @SuppressLint("WrongConstant")
-            ActivityTaskManager taskManager = (ActivityTaskManager)getSystemService("activity_task");
+            ActivityTaskManager taskManager = (ActivityTaskManager) getSystemService("activity_task");
             taskManager.resizeTask(getTaskId(), rect);
             mXserviceWrapper.raiseWindow(mAttribute.getXID());
             InputManager.getInstance().setFocusView(getLorieView());
@@ -944,25 +917,25 @@ public class MainActivity extends Activity {
     }
 
     /**
-     *============================================ about X floatview ==================================================
+     * ============================================ about X floatview ==================================================
      */
     private void addFloatView(WindowAttribute attr) {
 //        synchronized (mFloatViewSync) {
         FLog.a("float", getWindowId(), "addFloatView attr:" + attr);
-        View floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view,null,false);
+        View floatView = LayoutInflater.from(this).inflate(R.layout.widget_floating_view, null, false);
         WindowManager.LayoutParams floatParams = createLayoutParams();
-        floatWindow = createWindow( (int)attr.getOffsetX(),(int)attr.getOffsetY(),
-                (int)attr.getWidth(),
+        floatWindow = createWindow((int) attr.getOffsetX(), (int) attr.getOffsetY(),
+                (int) attr.getWidth(),
                 (int) attr.getHeight(),
                 floatView, floatParams);
-        floatWindow.updateViewLayout(floatView,floatParams);
+        floatWindow.updateViewLayout(floatView, floatParams);
         LorieView widgetView = floatView.findViewById(R.id.widget_view);
         widgetView.updateCoordinate(attr);
         widgetView.setCallback(new LorieView.Callback() {
             @Override
             public void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight) {
                 try {
-                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(), attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
                 } catch (Exception e) {
                     Log.e(TAG, "serviceWindowChange Exception:" + e);
                 }
@@ -982,7 +955,7 @@ public class MainActivity extends Activity {
                 attr.setHeight(h);
                 widgetView.updateCoordinate(attr);
                 try {
-                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(), attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
                 } catch (Exception e) {
                     Log.e(TAG, "serviceWindowChange Exception:" + e);
                 }
@@ -1012,7 +985,7 @@ public class MainActivity extends Activity {
     }
 
     public WindowManager createWindow(int x, int y, int width, int height, View view,
-                                      WindowManager.LayoutParams params){
+                                      WindowManager.LayoutParams params) {
         WindowManager windowManager = (WindowManager) this.getSystemService(WINDOW_SERVICE);
         DisplayMetrics displayMetrics = new DisplayMetrics();
         windowManager.getDefaultDisplay().getMetrics(displayMetrics);
@@ -1021,7 +994,7 @@ public class MainActivity extends Activity {
         params.x = x;
         params.y = y;
         params.gravity = Gravity.TOP | Gravity.START;
-        windowManager.addView(view,params);
+        windowManager.addView(view, params);
         return windowManager;
     }
 
@@ -1049,11 +1022,11 @@ public class MainActivity extends Activity {
     private void stopFloatView(WindowAttribute attr) {
 //        synchronized (mFloatViewSync){
         FLog.a("float", getWindowId(), "stopFloatView attr:" + attr);
-        if(attr == null || mFloatViews.isEmpty()){
+        if (attr == null || mFloatViews.isEmpty()) {
             return;
         }
         View floatView = mFloatViews.get(attr.getXID());
-        if(floatWindow != null && floatView != null && floatView.isAttachedToWindow()){
+        if (floatWindow != null && floatView != null && floatView.isAttachedToWindow()) {
             floatWindow.removeView(floatView);
         }
         mFloatViews.remove(attr.getXID());
@@ -1062,7 +1035,7 @@ public class MainActivity extends Activity {
 
     private void updateFloatView(WindowAttribute attr, View floatView) {
 //        synchronized (mFloatViewSync){
-        if(floatWindow != null && floatView != null && floatView.isAttachedToWindow()){
+        if (floatWindow != null && floatView != null && floatView.isAttachedToWindow()) {
             WindowManager.LayoutParams params = createLayoutParams();
             params.width = (int) attr.getWidth();
             params.height = (int) attr.getHeight();
@@ -1090,10 +1063,10 @@ public class MainActivity extends Activity {
     private void stopFloatViews() {
 //        synchronized (mFloatViewSync){
         FLog.a("float", getWindowId(), "stopFloatViews");
-        for(Map.Entry set: mFloatViews.entrySet()){
+        for (Map.Entry set : mFloatViews.entrySet()) {
             View floatView = (View) set.getValue();
-            if(floatView.isAttachedToWindow()){
-                if(floatWindow != null){
+            if (floatView.isAttachedToWindow()) {
+                if (floatWindow != null) {
                     floatWindow.removeView(floatView);
                 }
                 mFloatViews.remove(set.getKey());
@@ -1105,16 +1078,16 @@ public class MainActivity extends Activity {
 
     private void showFloatView() {
         FLog.a("float", getWindowId(), "showFloatView");
-        for(Map.Entry set: mFloatViews.entrySet()){
+        for (Map.Entry set : mFloatViews.entrySet()) {
             View view = (View) set.getValue();
-            if(view.isAttachedToWindow()){
+            if (view.isAttachedToWindow()) {
                 view.setVisibility(View.VISIBLE);
             }
         }
     }
 
     /**
-     *============================================ about event  ==================================================
+     * ============================================ about event  ==================================================
      */
 
     void onReceiveConnection() {
@@ -1161,10 +1134,6 @@ public class MainActivity extends Activity {
         return findViewById(R.id.lorieView);
     }
 
-    public ViewPager getTerminalToolbarViewPager() {
-        return null ;//findViewById(R.id.terminal_toolbar_view_pager);
-    }
-
     public boolean handleKey(KeyEvent e) {
         FLog.a("event", getWindowId(), "handleKey: e:" + e);
         boolean filterOutWinKey = false;
@@ -1190,7 +1159,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void finisDecorMovingTask(long window) throws RemoteException {
-            if(mAttribute != null && mAttribute.getXID() == window){
+            if (mAttribute != null && mAttribute.getXID() == window) {
 //                mFrameworkOperations.finisDecorMovingTask();
                 FLog.a(TAG, "finisDecorMovingTask: isTaskMoving:" + isTaskMoving);
                 isTaskMoving = false;
@@ -1200,8 +1169,8 @@ public class MainActivity extends Activity {
 
         @Override
         public boolean finishActivity(long window) throws RemoteException {
-            if(mAttribute != null && mAttribute.getXID() == window){
-                FLog.a(TAG, getWindowId(),"finisActivity: window:" + Long.toHexString(window));
+            if (mAttribute != null && mAttribute.getXID() == window) {
+                FLog.a(TAG, getWindowId(), "finisActivity: window:" + Long.toHexString(window));
                 finish();
                 return true;
             }
@@ -1212,9 +1181,18 @@ public class MainActivity extends Activity {
         public boolean configureActivity(long window) throws RemoteException {
             return false;
         }
+
+        @Override
+        public boolean fillAndResize(WindowAttribute attr, Property prop) throws RemoteException {
+            if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()) {
+                FLog.a(TAG, getWindowId(), "fillAndResize: window:" + Long.toHexString(attr.getXID()));
+                return true;
+            }
+            return false;
+        }
     };
 
-    public  class XserverActionReceiver extends BroadcastReceiver {
+    public class XserverActionReceiver extends BroadcastReceiver {
 
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1294,7 +1272,7 @@ public class MainActivity extends Activity {
                     MainActivity.this.moveTaskToBack(true);
 //                    am.moveTaskToBack(true, getTaskId());
                 }
-            } else if(SHOW_WINDOW_FROM_X.equals(intent.getAction())){
+            } else if (SHOW_WINDOW_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 FLog.a("event", "SHOW_WINDOW_FROM_X: attr = [" + attr + "], mAttribute = [" + mAttribute + "]");
                 if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()
@@ -1307,118 +1285,117 @@ public class MainActivity extends Activity {
 //                    am.moveTaskToBack(true, getTaskId());
                 }
 
-            }else if(MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+            } else if (MODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property property = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
-                if(attr != null && property != null && property.getTransientfor() == mAttribute.getXID()){
-                    FLog.a("event", getWindowId(), "onReceive: "  +
-                            "MODALED_ACTION_ACTIVITY_FROM_X"  + " property:" + property);
+                if (attr != null && property != null && property.getTransientfor() == mAttribute.getXID()) {
+                    FLog.a("event", getWindowId(), "onReceive: " +
+                            "MODALED_ACTION_ACTIVITY_FROM_X" + " property:" + property);
                     getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
 //                            |FLAG_NOT_TOUCHABLE
                     );
                     setDecorCaptionViewFocuseable(false);
                 }
-            } else if(UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())){
+            } else if (UNMODALED_ACTION_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                if(attr != null ){
-                    FLog.a("event", getWindowId(), "onReceive: "  +
-                            "UNMODALED_ACTION_ACTIVITY_FROM_X"  + " attr:" + attr);
+                if (attr != null) {
+                    FLog.a("event", getWindowId(), "onReceive: " +
+                            "UNMODALED_ACTION_ACTIVITY_FROM_X" + " attr:" + attr);
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
 //                            |FLAG_NOT_TOUCHABLE
                     );
                     setDecorCaptionViewFocuseable(true);
                 }
-            } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
+            } else if (ACTION_UPDATE_ICON.equals(intent.getAction())) {
                 long windowId = intent.getLongExtra("window_id", 0);
-                FLog.a(TAG, "ACTION_UPDATE_ICON: " + getTitle() + ", windowId:" + windowId + " " + mAttribute) ;
-                if(mAttribute !=  null && (windowId == mAttribute.getXID() || windowId == mAttribute.getWindow())){
+                FLog.a(TAG, "ACTION_UPDATE_ICON: " + getTitle() + ", windowId:" + windowId + " " + mAttribute);
+                if (mAttribute != null && (windowId == mAttribute.getXID() || windowId == mAttribute.getWindow())) {
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
-                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
+                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, windowIcon, 0);
                     MainActivity.this.setTaskDescription(description);
 
                 }
-            } else if(CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
+            } else if (CONFIGURE_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                FLog.a("event", getWindowId(), "onReceive: "  +
-                        "CONFIGURE_ACTIVITY_FROM_X"  + " attr:" + attr);
-                if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen)
-                {
+                FLog.a("event", getWindowId(), "onReceive: " +
+                        "CONFIGURE_ACTIVITY_FROM_X" + " attr:" + attr);
+                if (mAttribute != null && mAttribute.getXID() == attr.getXID() && !isFullscreen) {
                     mConfigureRect = attr.getRect();
 //                    if(!mInputHandler.isTouching()){
                     configureFromX();
 //                    }
-                } else if(isFullscreen && mAttribute != null && mAttribute.getXID() == attr.getXID()
-                        && mXserviceWrapper != null){
+                } else if (isFullscreen && mAttribute != null && mAttribute.getXID() == attr.getXID()
+                        && mXserviceWrapper != null) {
                     mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                             (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
                             mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
                 }
-            }  else if(CONFIGURE_WIDGET_FROM_X.equals(intent.getAction())) {
+            } else if (CONFIGURE_WIDGET_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
-                FLog.a("event", getWindowId(), "onReceive: "  +
-                        "CONFIGURE_WIDGET_FROM_X"  + " attr:" + attr);
-                if(!mFloatViews.containsKey(attr.getXID())){
+                FLog.a("event", getWindowId(), "onReceive: " +
+                        "CONFIGURE_WIDGET_FROM_X" + " attr:" + attr);
+                if (!mFloatViews.containsKey(attr.getXID())) {
                     return;
                 }
                 View view = mFloatViews.get(attr.getXID());
                 LorieView floatView = view.findViewById(R.id.widget_view);
                 WindowAttribute attribute = floatView.getAttribute();
-                if(!attr.isSameCoordinate(attribute)){
+                if (!attr.isSameCoordinate(attribute)) {
                     updateFloatView(attr, view);
                 }
-            }  else if(START_VIEW_FROM_X.equals(intent.getAction())){
+            } else if (START_VIEW_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
                 long transientfor = Objects.requireNonNull(prop).getTransientfor();
                 long taskTo = Objects.requireNonNull(attr).getTaskTo();
-                FLog.a("event", getWindowId(), "onReceive: "  +
-                        "START_VIEW_FROM_X"  + " attr:" + attr + " prop:" + prop);
-                if(transientfor == Objects.requireNonNull(mAttribute).getXID()
-                        || taskTo == Objects.requireNonNull(mAttribute).getXID()){
+                FLog.a("event", getWindowId(), "onReceive: " +
+                        "START_VIEW_FROM_X" + " attr:" + attr + " prop:" + prop);
+                if (transientfor == Objects.requireNonNull(mAttribute).getXID()
+                        || taskTo == Objects.requireNonNull(mAttribute).getXID()) {
                     addFloatView(attr);
                 }
-            } else if(STOP_VIEW_FROM_X.equals(intent.getAction())){
+            } else if (STOP_VIEW_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
-                FLog.a("event", getWindowId(), "onReceive: "  +
-                        "STOP_VIEW_FROM_X"  + " attr:" + attr + " prop:" + prop);
+                FLog.a("event", getWindowId(), "onReceive: " +
+                        "STOP_VIEW_FROM_X" + " attr:" + attr + " prop:" + prop);
                 stopFloatView(attr);
-            } else if(WINDOW_ACTION_MAXIMIZED_ACTION.equals(intent.getAction())
-                    || WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(intent.getAction())){
+            } else if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(intent.getAction())
+                    || WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(intent.getAction())) {
                 long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
-                FLog.a("event", getWindowId(), "onReceive: "  +
-                        "WINDOW_ACTION_MAXIMIZED change"  + " windowID:" + windowID +
-                        " action:" + intent.getAction() );
-                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                FLog.a("event", getWindowId(), "onReceive: " +
+                        "WINDOW_ACTION_MAXIMIZED change" + " windowID:" + windowID +
+                        " action:" + intent.getAction());
+                if (windowID == Objects.requireNonNull(mAttribute).getXID()) {
                     updateWmStateInner(intent.getAction());
                 }
-            } else if(WINDOW_ACTION_MINIMIZE_ACTION.equals(intent.getAction())){
+            } else if (WINDOW_ACTION_MINIMIZE_ACTION.equals(intent.getAction())) {
                 long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
-                FLog.a("event", getWindowId(), "onReceive: "  +
-                        "WINDOW_ACTION_MINIMIZE_ACTION"  + " windowID:" + windowID );
-                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                FLog.a("event", getWindowId(), "onReceive: " +
+                        "WINDOW_ACTION_MINIMIZE_ACTION" + " windowID:" + windowID);
+                if (windowID == Objects.requireNonNull(mAttribute).getXID()) {
                     moveTaskToBack(true);
 //                    ((ActivityManager)getSystemService(Context.ACTIVITY_SERVICE)).moveTaskToBack(true, mTaskID);
                 }
-            } else if(WINDOW_ACTION_FULLSCREEN_ACTION.equals(intent.getAction())){
+            } else if (WINDOW_ACTION_FULLSCREEN_ACTION.equals(intent.getAction())) {
                 long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
-                FLog.a("event", getWindowId(), "onReceive: "  +
-                        "WINDOW_ACTION_FULLSCREEN change"  + " windowID:" + windowID +
-                        " action:" + intent.getAction() );
-                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                FLog.a("event", getWindowId(), "onReceive: " +
+                        "WINDOW_ACTION_FULLSCREEN change" + " windowID:" + windowID +
+                        " action:" + intent.getAction());
+                if (windowID == Objects.requireNonNull(mAttribute).getXID()) {
                     updateWmStateInner(intent.getAction());
                     handler.postDelayed(() -> {
-                        if(mFrameworkOperations != null) {
+                        if (mFrameworkOperations != null) {
                             mFrameworkOperations.exitFullScreenWindow(MainActivity.this);
                         }
                     }, 1000);
                 }
-            } 
+            }
         }
     }
 
     private void updateWmStateInner(String action) {
-        if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mWindowingMode == 5){
+        if (WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mWindowingMode == 5) {
             return;
         }
 
@@ -1426,24 +1403,25 @@ public class MainActivity extends Activity {
             return;
         }
 
-        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {
-            if(!mSystemBarVisible){
+        if (mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {
+            if (!mSystemBarVisible) {
                 mFrameworkOperations.exitFullScreenWindow(this);
             } else {
                 mFrameworkOperations.exitMaxmizeWindow(this);
             }
         }
 
-        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
+        if (mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
             mFrameworkOperations.startFullScreenWindow(this);
         }
     }
+
     private DecorCaptionView getCaptionView() {
         DecorView decorView = (DecorView) getWindow().getDecorView();
-        if(decorView.getChildCount() > 0){
+        if (decorView.getChildCount() > 0) {
             View childAt = decorView.getChildAt(0);
-            if(childAt instanceof DecorCaptionView){
-                return (DecorCaptionView)childAt;
+            if (childAt instanceof DecorCaptionView) {
+                return (DecorCaptionView) childAt;
             }
         }
         return null;
@@ -1454,7 +1432,7 @@ public class MainActivity extends Activity {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             FLog.a("event", getWindowId(), "onServiceConnected");
-            if(!killSelf){
+            if (!killSelf) {
                 ICmdEntryInterface s = ICmdEntryInterface.Stub.asInterface(service);
                 mXserviceWrapper.enableService(s);
                 tryConnect();
@@ -1464,7 +1442,7 @@ public class MainActivity extends Activity {
                 } catch (RemoteException e) {
                     FLog.e("connection", e.getMessage());
                 }
-                if(mAttribute != null){
+                if (mAttribute != null) {
                     mXserviceWrapper.registerActivityCallback(mAttribute.getXID(), iActivityCallback);
                 }
             }
@@ -1495,7 +1473,7 @@ public class MainActivity extends Activity {
     }
 
     /**
-     *============================================ other activity  ==================================================
+     * ============================================ other activity  ==================================================
      */
     protected boolean hideDecorCaptionView() {
         this.captionShowing = true;
@@ -1508,16 +1486,12 @@ public class MainActivity extends Activity {
 
     public static class MainActivity11 extends MainActivity {
 
-        protected int getLayoutID() {
-            return R.layout.main_activity;
-        }
-
         protected boolean hideDecorCaptionView() {
-            if(FLog.SHOW_DEBUG_TITLE){
+            if (FLog.SHOW_DEBUG_TITLE) {
                 return false;
             }
             FLog.a("TAG", "hideDecorCaptionView");
-            if(mFrameworkOperations != null ){
+            if (mFrameworkOperations != null) {
                 mFrameworkOperations.hideDecorCaptionView(this);
                 captionShowing = false;
             }
@@ -1528,13 +1502,13 @@ public class MainActivity extends Activity {
     public static void toggleKeyboardVisibility(Context context) {
         InputMethodManager inputMethodManager = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
 //        Log.v(TAG, "Toggling keyboard visibility");
-        if(inputMethodManager != null)
+        if (inputMethodManager != null)
             inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
     }
 
     @SuppressWarnings("SameParameterValue")
     void clientConnectedStateChanged(boolean connected) {
-        runOnUiThread(()-> {
+        runOnUiThread(() -> {
             SharedPreferences p = PreferenceManager.getDefaultSharedPreferences(this);
             mClientConnected = connected;
 //            toggleExtraKeys(connected && p.getBoolean("additionalKbdVisible", true), true);
