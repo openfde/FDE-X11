@@ -13,10 +13,7 @@ import android.app.ActivityManager;
 import android.app.ActivityOptions;
 import android.app.ActivityTaskManager;
 import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.os.Build;
@@ -40,6 +37,8 @@ import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
+import com.fde.fusionwindowmanager.HolderActivityPool;
+import com.fde.x11.activity.HolderActivity;
 import com.fde.x11.utils.AppUtils;
 import com.fde.x11.input.InputEventSender;
 import com.fde.x11.input.InputStub;
@@ -116,7 +115,10 @@ public class XWindowService extends Service {
     public static final String X_WINDOW_PROPERTY = "x_window_property";
     private static final int DESTROY_ACTIVITY_RETRY = 1;
     private static final int DESTROY_ACTIVITY_DELAY = 0;
-    private static final int CREATE_ACTIVITY_DELAY = 300;
+    private static final int CREATE_ACTIVITY_DELAY = 1000;
+    private static final int CREATE_ACTIVTIY_POOL = 1;
+    private static final int CREATE_ACTIVTIY_POOL_SIZE = 3;
+    private HolderActivityPool mHolderActivityPool;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager fusionWindowManager;
     private ActivityManager am;
@@ -132,9 +134,9 @@ public class XWindowService extends Service {
     private final HashMap<Long, IActivityCallback> activityCallbackMap = new HashMap<>();
     public final HashMap<Long, WindowAttribute> shouldDestroyMap = new HashMap<>();
     public final HashMap<Long, WindowAttribute> shouldResizeMap = new HashMap<>();
-    private final HashMap<Long, Long> transientForMap = new HashMap<>();
     private int mWidth = 1920;
     private int mHeight = 1080;
+    private long mLastFocusWindow;
 
     private final ICmdEntryInterface.Stub service = new ICmdEntryInterface.Stub() {
         @Override
@@ -212,6 +214,7 @@ public class XWindowService extends Service {
             if (fusionWindowManager != null && fusionWindowManager.raiseWindow(window) > 0) {
 //                FLog.s(TAG, "raiseWindow: window:" + window + "");
                 Xserver.getInstance().tellFocusWindow(window);
+                mLastFocusWindow = window;
             }
         }
 
@@ -308,19 +311,22 @@ public class XWindowService extends Service {
         systemWindowManager = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         Util.copyAssetsToFiles(this, "xkb", "xkb");
-//        Util.checkX11FdPermission(this);
-        EventBus.getDefault().register(this);
-        Xserver.getInstance().registerContext(new WeakReference<>(this));
-        String height = AppUtils.getProperty("openfde.display_height", "1080");
-        String width = AppUtils.getProperty("openfde.display_width", "1920");
         int density = getSystemDensity();
-        Xserver.getInstance().startXserver(width, height);
-        Xserver.X_ClientNum = 0;
+        mHolderActivityPool = new HolderActivityPool(CREATE_ACTIVTIY_POOL_SIZE, handler);
         if (DWM_START_DEFAULT) {
             fusionWindowManager = new WindowManager(new WeakReference<>(this),
                     mWidth, mHeight, density);
             fusionWindowManager.startWindowManager(DISPLAY_GLOBAL + "");
+            fusionWindowManager.setPool(mHolderActivityPool);
         }
+//        Util.checkX11FdPermission(this);
+        EventBus.getDefault().register(this);
+        Xserver.getInstance().registerContext(new WeakReference<>(this), fusionWindowManager);
+        String height = AppUtils.getProperty("openfde.display_height", "1080");
+        String width = AppUtils.getProperty("openfde.display_width", "1920");
+        Xserver.getInstance().startXserver(width, height);
+        Xserver.X_ClientNum = 0;
+
     }
 
     private int getSystemDensity() {
@@ -351,6 +357,14 @@ public class XWindowService extends Service {
                 Long.toHexString(message.getWindowAttribute().getXID())
                 + "   prop:" + message.getProperty());
         int windowSize = runningMainWindow.size();
+        handler.postDelayed(()->{
+            if(mHolderActivityPool.isFullOrNearly()){
+                boolean decorFull = mHolderActivityPool.goingInrease();
+                startHolderActivity(decorFull? HolderActivity.NoDecorHolderActivity.class :
+                        HolderActivity.DecorHolderActivity.class);
+            }
+        }, CREATE_ACTIVITY_DELAY);
+
 //        FLog.s(TAG, "before: size:" + windowSize);
         switch (message.getType()) {
             case X_START_ACTIVITY_MAIN_WINDOW:
@@ -450,6 +464,20 @@ public class XWindowService extends Service {
         }
     }
 
+    public void startHolderActivity(Class cls) {
+        Intent intent = new Intent(this, cls);
+        ActivityOptions options = ActivityOptions.makeBasic();
+        options.setLaunchBounds(new Rect(0,0,1,1));
+        try {
+            Method method = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);
+            method.invoke(options, 5); // change to freeform mode
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent, options.toBundle());
+    }
+
     private void shouldResizeActivity(long xid){
         if (shouldResizeMap.get(xid) != null) {
             WindowAttribute attr = shouldResizeMap.get(xid);
@@ -459,7 +487,7 @@ public class XWindowService extends Service {
 
     private void shouldResizeActivity(WindowAttribute attr) {
         FLog.s(TAG, "shouldResizeActivity: " + " " + attr + " " + attr);
-        WindowAttribute resize = WindowManager.existTaskMap.get(attr.getXID());
+        WindowAttribute resize = fusionWindowManager.existTaskMap.get(attr.getXID());
         if (resize != null && resize.getTaskId() != 0) {
             Rect rect = new Rect(attr.getRect().left,
                     attr.getRect().top - resize.getCaptionHeight(),
@@ -473,7 +501,7 @@ public class XWindowService extends Service {
     }
 
     private void shouldMoveActivity(WindowAttribute attr) {
-        WindowAttribute resize = WindowManager.existTaskMap.get(attr.getXID());
+        WindowAttribute resize = fusionWindowManager.existTaskMap.get(attr.getXID());
         if (resize != null && resize.getTaskId() != 0) {
             Rect rect = new Rect(attr.getRect().left,
                     attr.getRect().top - resize.getCaptionHeight(),

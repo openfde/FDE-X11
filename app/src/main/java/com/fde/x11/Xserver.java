@@ -84,6 +84,7 @@ public class Xserver {
 
 
     private static WeakReference<Service> context;
+    private static WindowManager fusionWindowManager;
 
     public void startXserver() {
         String height = AppUtils.getProperty("openfde.display_height", "1080");
@@ -108,8 +109,9 @@ public class Xserver {
         sendBroadcastDelayed();
     }
 
-    public void registerContext(WeakReference<Service> context) {
+    public void registerContext(WeakReference<Service> context, WindowManager fusionWindowManager) {
         this.context = context;
+        this.fusionWindowManager = fusionWindowManager;
     }
 
     public native void tellFocusWindow(long window);
@@ -233,7 +235,7 @@ public class Xserver {
 
     public static void xserverMapWindow(long window){
         FLog.s(TAG, "xserverMapWindow() called with: window = [" + Long.toHexString(window) + "]");
-        WindowAttribute attr = WindowManager.existTaskMap.get(window);
+        WindowAttribute attr = fusionWindowManager.existTaskMap.get(window);
         if(attr != null && attr.getTaskId() != 0){
             ActivityManager am = (ActivityManager)
                     context.get().getSystemService(Context.ACTIVITY_SERVICE);

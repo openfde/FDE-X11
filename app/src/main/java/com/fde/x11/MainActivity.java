@@ -5,6 +5,7 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
+import static com.fde.fusionwindowmanager.WindowManager.ACIIVITY_TASK_ID;
 import static com.fde.fusionwindowmanager.WindowManager.ATTR_ABOUT_WINDOW;
 import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_ADD;
 import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_REMOVE;
@@ -270,12 +271,20 @@ public class MainActivity extends Activity {
         if (isAdd) {
             intent.setAction(TASK_ID_FROM_ACTIVITY_ADD);
             intent.setPackage(targetPackage);
-            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
+            if(mAttribute != null){
+                intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
+            } else {
+                intent.putExtra(ACIIVITY_TASK_ID, getTaskId());
+            }
             intent.putExtra(ATTR_ABOUT_WINDOW, mAttribute);
         } else {
             intent.setAction(TASK_ID_FROM_ACTIVITY_REMOVE);
             intent.setPackage(targetPackage);
-            intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
+            if(mAttribute != null){
+                intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
+            } else {
+                intent.putExtra(ACIIVITY_TASK_ID, getTaskId());
+            }
             intent.putExtra(ATTR_ABOUT_WINDOW, mAttribute);
         }
         sendBroadcast(intent);

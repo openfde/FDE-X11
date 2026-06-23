@@ -89,6 +89,7 @@ public class WindowManager  {
 
     public static final String ATTR_ABOUT_WINDOW = "attr_from_activity";
     public static final String WINDOW_ABOUT_TASK_ID = "window_about_task_id";
+    public static final String ACIIVITY_TASK_ID = "activity_task_id";
     private int mWidth = 1920;
     private int mHeight = 1080;
     private int density = 96;
@@ -102,12 +103,12 @@ public class WindowManager  {
     public static final long SYSTEM_TRAY_BEGIN_MESSAGE = 1;
     public static final long SYSTEM_TRAY_CANCEL_MESSAGE = 2;
     public static final long SYSTEM_TRAY_UNDOCK = 3;
-
     public static final long SYSTEM_TRAY_CLICK = 4;
 
-
-    public static HashMap<Long, WindowAttribute> existTaskMap = new HashMap<>();
+    public HashMap<Long, WindowAttribute> existTaskMap = new HashMap<>();
     IntentFilter intentFilter;
+    private HolderActivityPool<HolderActivityPool.Holder> pool;
+
     public WindowManager() {
         mThread = new HandlerThread("WM");
         mThread.start();
@@ -132,22 +133,31 @@ public class WindowManager  {
     BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            long window = 0;
-            if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_ADD)){
-                window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
-                WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
-                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
-                existTaskMap.put(window, attr);
-            } else if(TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_REMOVE)){
-                window= intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
-                WindowAttribute attr= intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
-//                Log.d(TAG, "onReceive: window:" + window  + " attr:" + attr);
-                existTaskMap.remove(window);
-            } else if(TextUtils.equals(intent.getAction(), ACTION_X_UPDATE_SYSTEMTRAY_ICON)){
+            long window =0 , taskId = 0;
+            if (TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_ADD)) {
+                taskId = intent.getLongExtra(ACIIVITY_TASK_ID, -1);
+                window = intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
+                WindowAttribute attr = intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
+                Log.d(TAG, "windowmanager add activity: window:" + window + " attr:" + attr);
+                if(attr != null){
+                    existTaskMap.put(window, attr);
+                } else {
+                    pool.add(taskId, new HolderActivityPool.Holder(taskId, null));
+                }
+            } else if (TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_REMOVE)) {
+                window = intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
+                WindowAttribute attr = intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
+                Log.d(TAG, "windowmanager remove activity: window:" + window + " attr:" + attr);
+                if(attr != null){
+                    existTaskMap.remove(window, attr);
+                } else {
+                    pool.remove(taskId);
+                }
+            } else if (TextUtils.equals(intent.getAction(), ACTION_X_UPDATE_SYSTEMTRAY_ICON)) {
                 window = intent.getLongExtra(KEY_WINDOW, -1);
                 long action = intent.getLongExtra(KEY_ACTION, -1);
             }
-//            Log.d(TAG, "onReceive() called with: window = [" + Long.toHexString(window) + "], intent = [" + intent.getAction() + "]");
+            Log.d(TAG, "onReceive() called with: window = [" + Long.toHexString(window) + "], intent = [" + intent.getAction() + "]");
         }
     };
 
@@ -361,6 +371,10 @@ public class WindowManager  {
 //        Log.d(TAG, "shouldFinishWindow() called with: attr = [" + attr + "]");
         WindowAttribute finishAttr = existTaskMap.get(attr.getXID());
         return finishAttr != null && finishAttr.getWindowPtr() == attr.getWindowPtr();
+    }
+
+    public void setPool(HolderActivityPool pool) {
+        this.pool = pool;
     }
 
     private class TaskHandler extends Handler {
