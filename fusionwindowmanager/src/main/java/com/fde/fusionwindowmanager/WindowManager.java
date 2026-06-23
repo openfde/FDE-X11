@@ -107,7 +107,7 @@ public class WindowManager  {
 
     public HashMap<Long, WindowAttribute> existTaskMap = new HashMap<>();
     IntentFilter intentFilter;
-    private HolderActivityPool<HolderActivityPool.Holder> pool;
+    private HolderActivityPool pool;
 
     public WindowManager() {
         mThread = new HandlerThread("WM");

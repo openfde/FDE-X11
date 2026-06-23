@@ -387,7 +387,7 @@ public class XWindowService extends Service {
                     stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TIP);
                 } else {
 //                    sendBroadcastHide(message.getWindowAttribute());
-                    WindowAttribute unmap = WindowManager.existTaskMap.get(message.getWindowAttribute().getXID());
+                    WindowAttribute unmap = fusionWindowManager.existTaskMap.get(message.getWindowAttribute().getXID());
                     FLog.s(TAG, "onReceiveMsg: unmapId:" + unmap);
                     if (unmap != null && unmap.getTaskId() != 0) {
                         am.moveTaskToBack(true, unmap.getTaskId());
