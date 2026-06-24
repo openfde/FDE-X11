@@ -497,8 +497,8 @@ public class XWindowService extends Service {
     }
 
     private void shouldResizeActivity(WindowAttribute attr) {
-        FLog.s(TAG, "shouldResizeActivity: " + " " + attr + " " + attr);
         WindowAttribute resize = fusionWindowManager.existTaskMap.get(attr.getXID());
+        FLog.s(TAG, "shouldResizeActivity: " + " change " + attr + " to " + resize);
         if (resize != null && resize.getTaskId() != 0) {
             Rect rect = new Rect(attr.getRect().left,
                     attr.getRect().top - resize.getCaptionHeight(),
@@ -1001,6 +1001,7 @@ public class XWindowService extends Service {
         }
         FLog.e(TAG, "refillHolderActivity: " + " " + attr + " " + attr);
         try {
+            iActivityCallback.fillAndResize(attr, attr.getProperty());
             if (attr != null) {
                 Rect rect = new Rect(attr.getRect().left,
                         attr.getRect().top - attr.getCaptionHeight(),
@@ -1009,7 +1010,6 @@ public class XWindowService extends Service {
                 am.moveTaskToFront(taskId, ActivityManager.MOVE_TASK_NO_USER_ACTION);
                 taskManager.resizeTask(taskId, rect);
             }
-            iActivityCallback.fillAndResize(attr, attr.getProperty());
             mHolderActivityPool.remove(taskId);
         } catch (RemoteException e){
             Log.e(TAG, e.getMessage());

@@ -208,7 +208,7 @@ public class XserviceInterfaceWrapper implements InputStub {
 
     public void unregisterActivityCallback(long window, IActivityCallback.Stub callback) {
         try {
-            service.unregisterActivityCallback(window, callback);
+            if(isAviable()){service.unregisterActivityCallback(window, callback);}
         }catch (RemoteException e){
             FLog.e(TAG, "registerActivityCallback failed" + e.getMessage());
         }

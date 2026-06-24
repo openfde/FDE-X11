@@ -54,6 +54,7 @@ public class MainActivityHolderActivity extends MainActivity{
             }
             FLog.a("lifecycle", getWindowId(), title);
         }
+        broadcastTaskId(true);
         mXserviceWrapper.mAttribute = mAttribute;
         mXserviceWrapper.updateCoordinate(mAttribute);
         LorieView lorieView = getLorieView();
@@ -61,6 +62,11 @@ public class MainActivityHolderActivity extends MainActivity{
         lorieView.updateCoordinate(mAttribute);
         lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
         reigsterActivityCallback();
+        handler.postDelayed(()->{
+            serviceWindowChange(mSurface, mAttribute.getOffsetX(), mAttribute.getOffsetY(),
+                    mAttribute.getWidth(), mAttribute.getHeight(), mAttribute.getIndex(),
+                    mAttribute.getWindowPtr(), mAttribute.getXID());
+        },2000);
     }
 
     @Override

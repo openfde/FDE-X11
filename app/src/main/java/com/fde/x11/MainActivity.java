@@ -181,6 +181,7 @@ public class MainActivity extends Activity {
     ActivityManager am;
     protected String title;
     private Configuration mConfiguration;
+    protected Surface mSurface;
     private boolean isFullscreen = false;
     private int mSystemInsetTop = DECOR_CAPTION_HEIGHT;
 
@@ -265,7 +266,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void broadcastTaskId(boolean isAdd) {
+    protected void broadcastTaskId(boolean isAdd) {
         String targetPackage = getPackageName();
         Intent intent = new Intent();
         if (isAdd) {
@@ -330,7 +331,7 @@ public class MainActivity extends Activity {
         mXserviceWrapper.updateCoordinate(mAttribute);
     }
 
-    private void initView() {
+    protected void initView() {
         setContentView(getLayoutID());
         detectEventEditText = findViewById(R.id.inputlayout);
         LorieView lorieView = getLorieView();
@@ -890,9 +891,10 @@ public class MainActivity extends Activity {
         }, delayMS);
     }
 
-    private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
-        if (mXserviceWrapper != null) {
+    protected void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
+        if (mXserviceWrapper != null && sfc != null) {
             FLog.a("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
+            mSurface = sfc;
             mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
             mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
         }
