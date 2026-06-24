@@ -24,49 +24,48 @@ public class MainActivityHolderActivity extends MainActivity{
     @Override
     protected void refillActivity(WindowAttribute attr, Property prop) {
         FLog.s(TAG, "refillActivity() called with: attr = [" + attr + "], prop = [" + prop + "]");
-        mAttribute = attr;
-        if (mAttribute != null) {
-            mIndex = mAttribute.getIndex();
-            WindowCode = mAttribute.getXID();
-            mWindowRect.set(mAttribute.getRect());
-            mAttribute.setCaptionHeight(mDecorCaptionViewHeight);
-            mAttribute.setTaskId(getTaskId());
-        }
-        mProperty = prop;
-        if (mProperty != null) {
-            String wmClass = mProperty.getWm_class();
-            String netName = mProperty.getNet_name();
-            FLog.a("lifecycle", getWindowId(), "wmclass:" + wmClass + " netName:" + netName);
-            this.title = TextUtils.isEmpty(netName) ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX : APP_TITLE_PREFIX + ": " + wmClass) : netName;
-            if (mProperty.getIcon() != null) {
-                ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
-                setTaskDescription(description);
+        handler.post(()->{
+            mAttribute = attr;
+            if (mAttribute != null) {
+                mIndex = mAttribute.getIndex();
+                WindowCode = mAttribute.getXID();
+                mWindowRect.set(mAttribute.getRect());
+                mAttribute.setCaptionHeight(mDecorCaptionViewHeight);
+                mAttribute.setTaskId(getTaskId());
             }
-            if (FLog.SHOW_DEBUG_TITLE) {
-                String windowid = Long.toHexString(getWindowId());
-                handler.post(()->{
+            mProperty = prop;
+            if (mProperty != null) {
+                String wmClass = mProperty.getWm_class();
+                String netName = mProperty.getNet_name();
+                FLog.a("lifecycle", getWindowId(), "wmclass:" + wmClass + " netName:" + netName);
+                this.title = TextUtils.isEmpty(netName) ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX : APP_TITLE_PREFIX + ": " + wmClass) : netName;
+                if (mProperty.getIcon() != null) {
+                    ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
+                    setTaskDescription(description);
+                }
+                if (FLog.SHOW_DEBUG_TITLE) {
+                    String windowid = Long.toHexString(getWindowId());
                     setTitle(title + " id:0x" + windowid);
-                });
-            } else {
-                handler.post(()->{
+                } else {
                     setTitle(title);
-                });
+                }
+                FLog.a("lifecycle", getWindowId(), title);
             }
-            FLog.a("lifecycle", getWindowId(), title);
-        }
-        broadcastTaskId(true);
-        mXserviceWrapper.mAttribute = mAttribute;
-        mXserviceWrapper.updateCoordinate(mAttribute);
-        LorieView lorieView = getLorieView();
-        lorieView.setZOrderOnTop(false);
-        lorieView.updateCoordinate(mAttribute);
-        lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
-        reigsterActivityCallback();
-        handler.postDelayed(()->{
-            serviceWindowChange(mSurface, mAttribute.getOffsetX(), mAttribute.getOffsetY(),
-                    mAttribute.getWidth(), mAttribute.getHeight(), mAttribute.getIndex(),
-                    mAttribute.getWindowPtr(), mAttribute.getXID());
-        },2000);
+            broadcastTaskId(true);
+            mXserviceWrapper.mAttribute = mAttribute;
+            mXserviceWrapper.updateCoordinate(mAttribute);
+            LorieView lorieView = getLorieView();
+            lorieView.setZOrderOnTop(false);
+            lorieView.updateCoordinate(mAttribute);
+            lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
+            reigsterActivityCallback();
+        });
+
+//        handler.postDelayed(()->{
+//            serviceWindowChange(mSurface, mAttribute.getOffsetX(), mAttribute.getOffsetY(),
+//                    mAttribute.getWidth(), mAttribute.getHeight(), mAttribute.getIndex(),
+//                    mAttribute.getWindowPtr(), mAttribute.getXID());
+//        },2000);
     }
 
     @Override
