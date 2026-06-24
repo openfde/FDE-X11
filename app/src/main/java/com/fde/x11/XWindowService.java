@@ -1,5 +1,6 @@
 package com.fde.x11;
 
+import static android.app.ActivityManager.MOVE_TASK_NO_USER_ACTION;
 import static android.os.Build.VERSION.SDK_INT;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
@@ -38,7 +39,7 @@ import com.fde.fusionwindowmanager.WindowManager;
 import com.fde.fusionwindowmanager.eventbus.EventMessage;
 import com.fde.fusionwindowmanager.eventbus.EventType;
 import com.fde.fusionwindowmanager.HolderActivityPool;
-import com.fde.x11.activity.HolderActivity;
+import com.fde.x11.activity.MainActivityHolderActivity;
 import com.fde.x11.utils.AppUtils;
 import com.fde.x11.input.InputEventSender;
 import com.fde.x11.input.InputStub;
@@ -132,6 +133,8 @@ public class XWindowService extends Service {
     private final HashMap<Long, Property> propertyHashMap = new HashMap<>();
 
     private final HashMap<Long, IActivityCallback> activityCallbackMap = new HashMap<>();
+    private final HashMap<Integer, IActivityCallback> holderActivityCallbackMap = new HashMap<>();
+
     public final HashMap<Long, WindowAttribute> shouldDestroyMap = new HashMap<>();
     public final HashMap<Long, WindowAttribute> shouldResizeMap = new HashMap<>();
     private int mWidth = 1920;
@@ -212,7 +215,7 @@ public class XWindowService extends Service {
         @Override
         public void raiseWindow(long window) throws RemoteException {
             if (fusionWindowManager != null && fusionWindowManager.raiseWindow(window) > 0) {
-//                FLog.s(TAG, "raiseWindow: window:" + window + "");
+                FLog.s(TAG, "raiseWindow: window:" + window + "");
                 Xserver.getInstance().tellFocusWindow(window);
                 mLastFocusWindow = window;
             }
@@ -246,10 +249,26 @@ public class XWindowService extends Service {
         }
 
         @Override
-        public void registerActivityCallback(long window, IActivityCallback callback) throws RemoteException {
-            activityCallbackMap.put(window, callback);
-            shouldWindowManagerFinishActivity(window);
-            shouldResizeActivity(window);
+        public void registerActivityCallback(long window, IActivityCallback callback, boolean isFill) throws RemoteException {
+            FLog.s(TAG, "registerActivityCallback() called with: window = [" + window + "], callback = [" + callback + "], isFill = [" + isFill + "]");
+            if (isFill) {
+                activityCallbackMap.put(window, callback);
+                shouldWindowManagerFinishActivity(window);
+                shouldResizeActivity(window);
+            } else {
+                holderActivityCallbackMap.put((int)window, callback);
+            }
+            handler.postDelayed(() -> {
+                if (!mHolderActivityPool.isFullOrNearly()) {
+                    boolean decorFull = mHolderActivityPool.goingInrease();
+                    startHolderActivity(decorFull ? MainActivityHolderActivity.NoDecorHolderActivity.class :
+                            MainActivityHolderActivity.DecorHolderActivity.class);
+                    int lastFocusTaskId = fusionWindowManager.getLastFocusTask(mLastFocusWindow);
+                    if (lastFocusTaskId > 0) {
+                        am.moveTaskToFront(lastFocusTaskId, MOVE_TASK_NO_USER_ACTION);
+                    }
+                }
+            }, CREATE_ACTIVITY_DELAY);
         }
 
         @Override
@@ -357,27 +376,19 @@ public class XWindowService extends Service {
                 Long.toHexString(message.getWindowAttribute().getXID())
                 + "   prop:" + message.getProperty());
         int windowSize = runningMainWindow.size();
-        handler.postDelayed(()->{
-            if(mHolderActivityPool.isFullOrNearly()){
-                boolean decorFull = mHolderActivityPool.goingInrease();
-                startHolderActivity(decorFull? HolderActivity.NoDecorHolderActivity.class :
-                        HolderActivity.DecorHolderActivity.class);
-            }
-        }, CREATE_ACTIVITY_DELAY);
-
 //        FLog.s(TAG, "before: size:" + windowSize);
         switch (message.getType()) {
             case X_START_ACTIVITY_MAIN_WINDOW:
                 if (message.getWindowAttribute().getProperty() != null
                         && message.getWindowAttribute().getProperty().getSupportMotif() > 0) {
-                    startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity11.class);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), 0);
                 } else {
-                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, DECOR_CAPTION_HEIGHT);
+                    startActLikeWindowWithDecorHeight(message.getWindowAttribute(), DECOR_CAPTION_HEIGHT);
                 }
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_START_ACTIVITY_WINDOW:
-                startActLikeWindow(message.getWindowAttribute(), MainActivity.MainActivity11.class);
+                startActLikeWindowWithDecorHeight(message.getWindowAttribute(), 0);
                 sendBroadcastFocusableIfNeed(message.getWindowAttribute(), false);
                 break;
             case X_UNMAP_WINDOW:
@@ -467,7 +478,7 @@ public class XWindowService extends Service {
     public void startHolderActivity(Class cls) {
         Intent intent = new Intent(this, cls);
         ActivityOptions options = ActivityOptions.makeBasic();
-        options.setLaunchBounds(new Rect(0,0,1,1));
+        options.setLaunchBounds(new Rect(0, 0, 1, 1));
         try {
             Method method = ActivityOptions.class.getMethod("setLaunchWindowingMode", int.class);
             method.invoke(options, 5); // change to freeform mode
@@ -478,7 +489,7 @@ public class XWindowService extends Service {
         startActivity(intent, options.toBundle());
     }
 
-    private void shouldResizeActivity(long xid){
+    private void shouldResizeActivity(long xid) {
         if (shouldResizeMap.get(xid) != null) {
             WindowAttribute attr = shouldResizeMap.get(xid);
             shouldResizeActivity(attr);
@@ -621,9 +632,9 @@ public class XWindowService extends Service {
     private void updateSystrayAndTip(WindowAttribute attr, int type) {
         FLog.s(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
 
-        if(outOfScreen(attr)){
+        if (outOfScreen(attr)) {
             insetsIntoScreenWithHeight(attr, 0, false);
-            if(fusionWindowManager != null){
+            if (fusionWindowManager != null) {
                 fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
                         (int) attr.getWidth(), (int) attr.getHeight());
             }
@@ -674,7 +685,8 @@ public class XWindowService extends Service {
         }));
 
         InputEventSender inputEventSender = getInputEventSender(attr, widgetView);
-        TouchInputHandler inputHandler = new TouchInputHandler(this, new TouchInputHandler.RenderStub.NullStub() {}, inputEventSender);
+        TouchInputHandler inputHandler = new TouchInputHandler(this, new TouchInputHandler.RenderStub.NullStub() {
+        }, inputEventSender);
         floatView.setOnTouchListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
         floatView.setOnHoverListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
         floatView.setOnGenericMotionListener((v, e) -> inputHandler.handleTouchEvent(floatView, widgetView, e));
@@ -804,17 +816,17 @@ public class XWindowService extends Service {
         int y = (int) attr.getOffsetY();
         int w = (int) attr.getWidth();
         int h = (int) attr.getHeight();
-        if(x < 0){
+        if (x < 0) {
             attr.setOffsetX(0);
         }
-        if(y < decorHeight){
+        if (y < decorHeight) {
             attr.setOffsetY(decorHeight);
         }
-        if(x + w > mWidth){
+        if (x + w > mWidth) {
             attr.setOffsetX(mWidth - w);
         }
-        int height = withNavi? (mHeight - NAVIGATION_BAR_HEIGHT_U) :  mHeight;
-        if(y + h > height){
+        int height = withNavi ? (mHeight - NAVIGATION_BAR_HEIGHT_U) : mHeight;
+        if (y + h > height) {
             attr.setOffsetY(height - h);
         }
     }
@@ -824,16 +836,16 @@ public class XWindowService extends Service {
         int y = (int) attr.getOffsetY();
         int w = (int) attr.getWidth();
         int h = (int) attr.getHeight();
-        if(x < 0){
+        if (x < 0) {
             attr.setOffsetX(0);
         }
-        if(y < 0){
+        if (y < 0) {
             attr.setOffsetY(0);
         }
-        if(x + w > mWidth){
+        if (x + w > mWidth) {
             attr.setOffsetX(mWidth - w);
         }
-        if(y + h > mHeight){
+        if (y + h > mHeight) {
             attr.setOffsetY(mHeight - h);
         }
     }
@@ -931,18 +943,19 @@ public class XWindowService extends Service {
         }, DESTROY_ACTIVITY_DELAY);
     }
 
-    public void startActLikeWindow(WindowAttribute attr, Class cls) {
-        startActLikeWindowWithDecorHeight(attr, cls, 0);
-    }
 
-    public void startActLikeWindowWithDecorHeight(WindowAttribute attr, Class cls, float decorHeight) {
+    public void startActLikeWindowWithDecorHeight(WindowAttribute attr, float decorHeight) {
+        if(refillHolderActivity(attr, decorHeight)){
+            return;
+        }
+        Class cls = decorHeight == 0? MainActivity.MainActivity11.class : MainActivity.MainActivity1.class;
         stopingWindow.remove(attr.getXID());
         if (startingWindow.contains(attr.getXID())) {
             return;
         }
-        if(outOfScreen(attr)){
-            insetsIntoScreenWithHeight(attr, (int)decorHeight, true);
-            if(fusionWindowManager != null){
+        if (outOfScreen(attr)) {
+            insetsIntoScreenWithHeight(attr, (int) decorHeight, true);
+            if (fusionWindowManager != null) {
                 fusionWindowManager.configureWindow(attr.getXID(), (int) attr.getOffsetX(), (int) attr.getOffsetY(),
                         (int) attr.getWidth(), (int) attr.getHeight());
             }
@@ -973,6 +986,36 @@ public class XWindowService extends Service {
         startActivity(intent, options.toBundle());
         FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
 //        }
+    }
+
+    private boolean refillHolderActivity(WindowAttribute attr, float decorHeight) {
+        int taskId = mHolderActivityPool.offerHolder(decorHeight == 0);
+        if(taskId == -1){
+            FLog.s(TAG, "refillHolderActivity: get null task");
+            return false;
+        }
+        IActivityCallback iActivityCallback = holderActivityCallbackMap.get(taskId);
+        if(iActivityCallback == null){
+            FLog.s(TAG, "refillHolderActivity: get null callback");
+            return false;
+        }
+        FLog.e(TAG, "refillHolderActivity: " + " " + attr + " " + attr);
+        try {
+            if (attr != null) {
+                Rect rect = new Rect(attr.getRect().left,
+                        attr.getRect().top - attr.getCaptionHeight(),
+                        attr.getRect().right,
+                        attr.getRect().bottom);
+                am.moveTaskToFront(taskId, ActivityManager.MOVE_TASK_NO_USER_ACTION);
+                taskManager.resizeTask(taskId, rect);
+            }
+            iActivityCallback.fillAndResize(attr, attr.getProperty());
+            mHolderActivityPool.remove(taskId);
+        } catch (RemoteException e){
+            Log.e(TAG, e.getMessage());
+            return false;
+        }
+        return true;
     }
 
     @Override

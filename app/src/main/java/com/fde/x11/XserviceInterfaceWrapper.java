@@ -9,7 +9,7 @@ import com.fde.x11.utils.FLog;
 public class XserviceInterfaceWrapper implements InputStub {
     private static final String TAG = "XserviceWrapper";
     ICmdEntryInterface service;
-    WindowAttribute mAttribute;
+    public WindowAttribute mAttribute;
     private boolean isAlive = false;
     private int eventFd = -1;
     public WindowAttribute getAttribute() {
@@ -198,9 +198,9 @@ public class XserviceInterfaceWrapper implements InputStub {
         }
     }
 
-    public void registerActivityCallback(long window, IActivityCallback.Stub callback) {
+    public void registerActivityCallback(long window, IActivityCallback.Stub callback, boolean isFill) {
         try {
-            if(isAviable()){service.registerActivityCallback(window, callback);}
+            service.registerActivityCallback(window, callback, isFill);
         }catch (RemoteException e){
             FLog.e(TAG, "registerActivityCallback failed" + e.getMessage());
         }
@@ -208,7 +208,7 @@ public class XserviceInterfaceWrapper implements InputStub {
 
     public void unregisterActivityCallback(long window, IActivityCallback.Stub callback) {
         try {
-            if(isAviable()){service.unregisterActivityCallback(window, callback);}
+            service.unregisterActivityCallback(window, callback);
         }catch (RemoteException e){
             FLog.e(TAG, "registerActivityCallback failed" + e.getMessage());
         }

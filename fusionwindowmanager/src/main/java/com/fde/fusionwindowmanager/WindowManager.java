@@ -105,7 +105,7 @@ public class WindowManager  {
     public static final long SYSTEM_TRAY_UNDOCK = 3;
     public static final long SYSTEM_TRAY_CLICK = 4;
 
-    public HashMap<Long, WindowAttribute> existTaskMap = new HashMap<>();
+    public static HashMap<Long, WindowAttribute> existTaskMap = new HashMap<>();
     IntentFilter intentFilter;
     private HolderActivityPool pool;
 
@@ -133,9 +133,10 @@ public class WindowManager  {
     BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            long window =0 , taskId = 0;
+            long window =0 ;
+            int taskId = 0;
             if (TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_ADD)) {
-                taskId = intent.getLongExtra(ACIIVITY_TASK_ID, -1);
+                taskId = intent.getIntExtra(ACIIVITY_TASK_ID, -1);
                 window = intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
                 WindowAttribute attr = intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
                 Log.d(TAG, "windowmanager add activity: window:" + window + " attr:" + attr);
@@ -146,6 +147,7 @@ public class WindowManager  {
                 }
             } else if (TextUtils.equals(intent.getAction(), TASK_ID_FROM_ACTIVITY_REMOVE)) {
                 window = intent.getLongExtra(WINDOW_ABOUT_TASK_ID, -1);
+                taskId = intent.getIntExtra(ACIIVITY_TASK_ID, -1);
                 WindowAttribute attr = intent.getParcelableExtra(ATTR_ABOUT_WINDOW);
                 Log.d(TAG, "windowmanager remove activity: window:" + window + " attr:" + attr);
                 if(attr != null){
@@ -375,6 +377,14 @@ public class WindowManager  {
 
     public void setPool(HolderActivityPool pool) {
         this.pool = pool;
+    }
+
+    public int getLastFocusTask(long window) {
+        WindowAttribute attr = existTaskMap.get(window);
+        if(attr == null){
+            return -1;
+        }
+        return attr.getTaskId();
     }
 
     private class TaskHandler extends Handler {

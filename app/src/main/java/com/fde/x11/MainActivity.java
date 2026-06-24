@@ -172,14 +172,14 @@ public class MainActivity extends Activity {
     private boolean mClientConnected = false;
     private View.OnKeyListener mLorieKeyListener;
     private static final int KEY_BACK = 158;
-    private final String TAG = "lifecycle ";
+    protected final String TAG = "lifecycle ";
     protected long WindowCode = 0;
     protected int mIndex = 0;
-    public WindowAttribute mAttribute;
+    protected WindowAttribute mAttribute;
     public Property mProperty;
     protected Rect mWindowRect = new Rect();
     ActivityManager am;
-    private String title;
+    protected String title;
     private Configuration mConfiguration;
     private boolean isFullscreen = false;
     private int mSystemInsetTop = DECOR_CAPTION_HEIGHT;
@@ -196,7 +196,7 @@ public class MainActivity extends Activity {
     private WindowManager floatWindow;
     private final ServiceConnection connection = new Connection();
     private InputEventSender mWindowInputEventSender;
-    private XserviceInterfaceWrapper mXserviceWrapper;
+    protected XserviceInterfaceWrapper mXserviceWrapper;
     protected boolean captionShowing;
     private boolean needSurface;
     private boolean isTaskMoving;
@@ -209,7 +209,7 @@ public class MainActivity extends Activity {
     private boolean mSystemBarVisible = true;
 
     protected long getWindowId() {
-        return WindowCode;
+       return  WindowCode != 0 ? WindowCode: getTaskId();
     }
 
     private boolean killSelf;
@@ -274,6 +274,7 @@ public class MainActivity extends Activity {
             if(mAttribute != null){
                 intent.putExtra(WINDOW_ABOUT_TASK_ID, mAttribute.getXID());
             } else {
+                Log.d(TAG, "broadcastTaskId: " + getTaskId());
                 intent.putExtra(ACIIVITY_TASK_ID, getTaskId());
             }
             intent.putExtra(ATTR_ABOUT_WINDOW, mAttribute);
@@ -305,9 +306,6 @@ public class MainActivity extends Activity {
             mWindowRect.set(mAttribute.getRect());
             mAttribute.setCaptionHeight(mDecorCaptionViewHeight);
             mAttribute.setTaskId(getTaskId());
-            mXserviceWrapper = new XserviceInterfaceWrapper();
-            mXserviceWrapper.mAttribute = mAttribute;
-            mXserviceWrapper.updateCoordinate(mAttribute);
         }
         mProperty = getIntent().getParcelableExtra(X_WINDOW_PROPERTY);
         if (mProperty != null) {
@@ -327,12 +325,15 @@ public class MainActivity extends Activity {
             }
             FLog.a("lifecycle", getWindowId(), title);
         }
+        mXserviceWrapper = new XserviceInterfaceWrapper();
+        mXserviceWrapper.mAttribute = mAttribute;
+        mXserviceWrapper.updateCoordinate(mAttribute);
     }
 
     private void initView() {
         setContentView(getLayoutID());
         detectEventEditText = findViewById(R.id.inputlayout);
-        LorieView lorieView = findViewById(R.id.lorieView);
+        LorieView lorieView = getLorieView();
         FLog.a("lifecycle", getWindowId(), "glversion: ");
         lorieView.setZOrderOnTop(false);
         lorieView.updateCoordinate(mAttribute);
@@ -537,11 +538,14 @@ public class MainActivity extends Activity {
     }
 
     private void onConfigurationChangedImpl(Configuration newConfig) {
+        FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
+        if(WindowCode == 0){
+            return;
+        }
         if (density != newConfig.densityDpi) {
             finish();
         }
         this.density = newConfig.densityDpi;
-        FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
         if (mXserviceWrapper == null) {
             return;
         }
@@ -555,11 +559,11 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         FLog.a("lifecycle", getWindowId(), "onWindowFocusChanged hasFocus:" + hasFocus);
-        Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
         onWindowFocusChangedImpl(hasFocus);
     }
 
     private void onWindowFocusChangedImpl(boolean hasFocus) {
+        Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
         if (hasFocus) {
             setDecorCaptionViewFocuseable(true);
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
@@ -611,10 +615,14 @@ public class MainActivity extends Activity {
     protected void onStop() {
         super.onStop();
         FLog.a("lifecycle", getWindowId(), "onStop");
+        onStopImpl();
+//        unmapXWindow();
+    }
+
+    protected void onStopImpl() {
         serviceWindowChange(getLorieView().getHolder().getSurface(),
                 0, 0, -1, -1,
                 mAttribute.getIndex(), mAttribute.getWindowPtr(), mAttribute.getXID());
-//        unmapXWindow();
     }
 
     @Override
@@ -1192,14 +1200,14 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public boolean fillAndResize(WindowAttribute attr, Property prop) throws RemoteException {
-            if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()) {
-                FLog.a(TAG, getWindowId(), "fillAndResize: window:" + Long.toHexString(attr.getXID()));
-                return true;
-            }
-            return false;
+        public void fillAndResize(WindowAttribute attr, Property prop) throws RemoteException {
+            FLog.a(TAG, getWindowId(), "fillAndResize: attr:" + attr + " prop:" + prop + " taskId:" + getTaskId());
+            refillActivity(attr, prop);
         }
     };
+
+    protected void refillActivity(WindowAttribute attr, Property prop) {
+    }
 
     public class XserverActionReceiver extends BroadcastReceiver {
 
@@ -1219,11 +1227,17 @@ public class MainActivity extends Activity {
                 } catch (Exception e) {
                     Log.e(TAG, "Something went wrong while we extracted connection details from binder.", e);
                 }
+                return;
             } else if (ACTION_STOP.equals(intent.getAction())) {
                 finishAffinity();
-            } else if (ACTION_PREFERENCES_CHANGED.equals(intent.getAction())) {
-                Log.v(TAG, "preference: " + intent.getStringExtra("key"));
-            } else if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())) {
+                return;
+            }
+
+            if(mAttribute == null){
+                return;
+            }
+
+            if (DESTROY_ACTIVITY_FROM_X.equals(intent.getAction())) {
                 WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
                 FLog.a("event", "DESTROY_ACTIVITY_FROM_X: attr = [" + attr + "], mAttribute = [" + mAttribute + "]");
                 if (mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID() && mAttribute.getIndex() == attr.getIndex()) {
@@ -1451,9 +1465,7 @@ public class MainActivity extends Activity {
                 } catch (RemoteException e) {
                     FLog.e("connection", e.getMessage());
                 }
-                if (mAttribute != null) {
-                    mXserviceWrapper.registerActivityCallback(mAttribute.getXID(), iActivityCallback);
-                }
+                reigsterActivityCallback();
             }
         }
 
@@ -1462,6 +1474,14 @@ public class MainActivity extends Activity {
             FLog.a("event", getWindowId(), "onServiceDisconnected");
 //            showXserverCloseOnDisconnect(MainActivity.this);
             finish();
+        }
+    }
+
+    protected void reigsterActivityCallback() {
+        if (mAttribute != null) {
+            mXserviceWrapper.registerActivityCallback(mAttribute.getXID(), iActivityCallback, true);
+        } else {
+            mXserviceWrapper.registerActivityCallback(getTaskId(), iActivityCallback, false);
         }
     }
 

@@ -35,7 +35,7 @@ interface ICmdEntryInterface {
 
     void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index);
 
-    void registerActivityCallback(long window, IActivityCallback callback);
+    void registerActivityCallback(long window, IActivityCallback callback, boolean isFill);
 
     void unregisterActivityCallback(long window, IActivityCallback callback);
 

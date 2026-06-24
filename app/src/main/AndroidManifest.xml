@@ -179,7 +179,7 @@
                 android:minWidth="${MainDialogMinWidth}" />
         </activity>
         <activity
-            android:name=".activity.HolderActivity"
+            android:name=".activity.MainActivityHolderActivity"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
             android:resizeableActivity="true"
@@ -190,7 +190,7 @@
                 android:minWidth="0dp" />
         </activity>
         <activity
-            android:name=".activity.HolderActivity$DecorHolderActivity"
+            android:name=".activity.MainActivityHolderActivity$DecorHolderActivity"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
             android:resizeableActivity="true"
@@ -202,7 +202,7 @@
                 android:minWidth="0dp" />
         </activity>
         <activity
-            android:name=".activity.HolderActivity$NoDecorHolderActivity"
+            android:name=".activity.MainActivityHolderActivity$NoDecorHolderActivity"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:exported="true"
             android:documentLaunchMode="always"

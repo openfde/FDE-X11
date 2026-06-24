@@ -14,5 +14,5 @@ interface IActivityCallback {
 
     boolean configureActivity(long window);
 
-    boolean fillAndResize(in WindowAttribute attr, in Property prop);
+    oneway void fillAndResize(in WindowAttribute attr, in Property prop);
 }

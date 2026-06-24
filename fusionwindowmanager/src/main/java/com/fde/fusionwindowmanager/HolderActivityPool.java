@@ -5,11 +5,13 @@ import static com.fde.fusionwindowmanager.HolderActivityPool.Holder.TYPE_NO_DECO
 
 import android.os.Handler;
 import android.os.Message;import android.util.ArrayMap;
+import android.util.Log;
 
 public class HolderActivityPool {
+    private String TAG = "Pool";
 
     private final int maxSize;
-    private final ArrayMap<Long, HolderActivityPool.Holder> pool = new ArrayMap<>();
+    private final ArrayMap<Integer, HolderActivityPool.Holder> pool = new ArrayMap<>();
     private final int decorSize;
     private final int noDecorSize;
     private int decorCount;
@@ -22,9 +24,11 @@ public class HolderActivityPool {
         this.decorSize = maxSize/2 + 1;
         this.noDecorSize = maxSize - decorSize;
         this.mHandler = handler;
+        Log.d(TAG, "HolderActivityPool decorSize:" + decorSize + " noDecorSize:" + noDecorSize + " size:" + pool.size()
+                + " maxsize:" + maxSize + " onGoing:" + onGoing);
     }
 
-    public synchronized Holder add(long taskId, Holder obj) {
+    public synchronized Holder add(int taskId, Holder obj) {
         if (obj == null) return null;
         if (pool.size() < maxSize) {
             if (decorCount < decorSize) {
@@ -34,13 +38,14 @@ public class HolderActivityPool {
                 obj.type = TYPE_NO_DECOR;
                 noDecorCount++;
             }
+            onGoing--;
             return pool.put(taskId, obj);
         }
         return null;
     }
 
 
-    public synchronized Holder remove(long taskId) {
+    public synchronized Holder remove(int taskId) {
         if(pool.get(taskId) == null){
 
         } if(pool.get(taskId).type == TYPE_DECOR){
@@ -56,6 +61,8 @@ public class HolderActivityPool {
     }
 
     public synchronized boolean isFullOrNearly(){
+        Log.d(TAG, "isFullOrNearly decorSize:" + decorSize + " noDecorSize:" + noDecorSize + " size:" + pool.size()
+                + " maxsize:" + maxSize + " onGoing:" + onGoing);
         return pool.size() + onGoing >= maxSize;
     }
 
@@ -64,19 +71,29 @@ public class HolderActivityPool {
         return decorCount >= decorSize;
     }
 
+    public int offerHolder(boolean nodecor) {
+        int type = nodecor ? TYPE_NO_DECOR : TYPE_DECOR;
+        for (Holder holder: pool.values()){
+            if(holder.type == type){
+                return holder.taskId;
+            }
+        }
+        return -1;
+    }
+
     public static class Holder{
         public static final int TYPE_DECOR = 1;
         public static final int TYPE_NO_DECOR = 2;
-        long taskId;
+        int taskId;
         WindowAttribute attr;
         int type = 1;
 
-        Holder(long taskId, WindowAttribute attr){
+        Holder(int taskId, WindowAttribute attr){
             this.attr = attr;
             this.taskId = taskId;
         }
 
-        Holder(long taskId, WindowAttribute attr, int type){
+        Holder(int taskId, WindowAttribute attr, int type){
             this(taskId, attr);
             this.type = type;
         }
