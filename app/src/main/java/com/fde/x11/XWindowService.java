@@ -244,7 +244,9 @@ public class XWindowService extends Service {
 
         @Override
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
-//            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
+            if(whichButton != 0){
+                FLog.k(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
+            }
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
 
@@ -964,7 +966,7 @@ public class XWindowService extends Service {
 
         runningMainWindow.add(attr.getXID());
         startingWindow.add(attr.getXID());
-        FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        FLog.k(TAG, attr.getXID(), "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         ActivityOptions options = ActivityOptions.makeBasic();
         options.setLaunchBounds(new Rect((int) attr.getOffsetX(),
                 (int) (attr.getOffsetY() - decorHeight),
@@ -984,7 +986,6 @@ public class XWindowService extends Service {
         intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent, options.toBundle());
-        FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
 //        }
     }
 
@@ -1012,7 +1013,7 @@ public class XWindowService extends Service {
             }
             mHolderActivityPool.remove(taskId);
         } catch (RemoteException e){
-            Log.e(TAG, e.getMessage());
+            e.printStackTrace();
             return false;
         }
         return true;

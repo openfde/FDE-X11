@@ -205,7 +205,9 @@ void unmapWindowFromX(Window window, int action, Bool wm_delete)
                                     0);
 }
 
-void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {}
+void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {
+    loge("key_process create window:%lx", e.window);
+}
 
 void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &ev)
 {
@@ -242,21 +244,21 @@ void WindowManager::OnMapNotify(const XMapEvent &e)
 {
     Client *c;
 
-    logd("OnMapNotify window (0x%lx)", e.window);
+    loge("key_process map window (0x%lx)", e.window);
 
     c = myDisplayGetClientFromWindow(display_info, e.window, SEARCH_WINDOW);
     if (c)
     {
         logd("client \"%s\" (0x%lx)", c->name, c->window);
         if(c->frame && is_window_visible(display_, c->frame)){
-            loge("XCompositeNameWindowPixmap window:0x%lx", c->frame);
+            loge("key_process NameWindow frame window:0x%lx", c->frame);
             XCompositeNameWindowPixmap(display_, c->frame);
             XSync(display_, False);
         }
     } else {
         if (e.event == root_ && support_composite)
         {
-            loge("XCompositeNameWindowPixmap window:0x%lx", e.window);
+            loge("key_process NameWindow top window:0x%lx", e.window);
             XCompositeNameWindowPixmap(display_, e.window);
             XSync(display_, False);
 //            CreateBitmapFromPixmap(GlobalEnv, display_, pixmap);

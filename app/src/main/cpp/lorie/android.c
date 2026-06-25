@@ -87,11 +87,11 @@ void android_update_texture(Window window) {
 //    loge( "android_update_texture window:%x", window);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (!attr) {
-        loge( "android_update_texture not find window:%x", window);
+        logw( "android_update_texture not find window:%x", window);
         return;
     }
     if(!attr->pWin->viewable){
-        loge("window:%lx no need update texture", window)
+        logw("window:%lx is not viewable no need update texture", window)
         return;
     }
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
@@ -412,7 +412,7 @@ if (already_redirected) {
 void android_redirect_window(WindowPtr pWin) {
     //already redirect to android
     if(_surface_count_window_any(sfWraper, pWin->drawable.id)){
-        logd( "already redirect_window window:%lx", pWin->drawable.id)
+        loge( "key_process already redirect_window window:%lx", pWin->drawable.id)
         WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
         JNIEnv *JavaEnv = GetJavaEnv();
         if (JavaEnv && JavaCmdEntryPointClass) {
@@ -428,7 +428,7 @@ void android_redirect_window(WindowPtr pWin) {
     char *wm_name = property_copy_data(pProp->data, pProp->size);
     if(rc &&  wm_name && STRING_EQUAL(wm_name, "android_frame")){
         logd( "ready to redirect_activity %lx", pWin->drawable.id)
-        logd( "redirect_window frame %lx should lunch activity", pWin->drawable.id)
+        loge( "key_process redirect_window frame %lx should lunch activity", pWin->drawable.id)
         logd( "     get property from its first child", pWin->drawable.id)
         WindowPtr p;
         if (!pWin->firstChild->overrideRedirect) {
@@ -443,7 +443,7 @@ void android_redirect_window(WindowPtr pWin) {
         return;
     }
 
-    logd( "ready to redirect_view %lx", pWin->drawable.id)
+    loge( "key_process ready to redirect_view %lx", pWin->drawable.id)
     //lunch system view
     PropertyPtr pType;
     rc = property_lookup_string(&pType, pWin, WINDOW_TYPE);
@@ -465,7 +465,7 @@ void android_redirect_window(WindowPtr pWin) {
         WindAttribute* attr;
         memset(&windProperty, 0, sizeof(WindProperty));
         property_get(pWin, &windProperty);
-        logd( "redirect_view %x for overrideRedirect transient:%x leader:%x, pid:%ld, windowtype:%d",
+        loge( "key_process redirect_view %x for overrideRedirect transient:%x leader:%x, pid:%ld, windowtype:%d",
             pWin->drawable.id, windProperty.transient, windProperty.leader, windProperty.pid, windProperty.window_type)
         _surface_log_traversal_window(sfWraper);
         if(windProperty.transient){
@@ -732,7 +732,7 @@ void android_create_or_map_window(WindAttribute attribute, WindProperty prop, Wi
         attribute.window, prop.wm_name, prop.net_wm_name, inbound);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
-        logd( "ready to create window %x", attribute.window);
+        logd( "key_process ready to create window %x", attribute.window);
         Window aid = attribute.window;
         Window aTransient = prop.transient;
         Window aLeader = prop.leader;
@@ -1073,7 +1073,7 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             }
             case EVENT_MOUSE: {
                 int flags;
-                loge( "EVENT_MOUSE button %d x:%.0f y:%.0f, down:%d", e.mouse.detail,
+                logd( "EVENT_MOUSE button %d x:%.0f y:%.0f, down:%d", e.mouse.detail,
                     e.mouse.x,
                     e.mouse.y, e.mouse.down);
                 switch (e.mouse.detail) {
@@ -1285,9 +1285,9 @@ Java_com_fde_x11_LorieView_sendWindowChange(unused JNIEnv *env, unused jobject c
 JNIEXPORT void JNICALL
 Java_com_fde_x11_LorieView_sendMouseEvent(unused JNIEnv *env, unused jobject cls, jfloat x,jfloat y, jint which_button, jboolean button_down,jboolean relative, jint index) {
     if (conn_fd != -1) {
-        __android_log_print(ANDROID_LOG_ERROR, "native_android",
-                            "lorieview sendmouseevent: x:%.0f y:%.0f", x, y);
-        loge( "lorieview sendmouseevent x:%.0f y:%.0f detail:%d down:%d", x, y, which_button,
+//        __android_log_print(ANDROID_LOG_ERROR, "native_android",
+//                            "lorieview sendmouseevent: x:%.0f y:%.0f", x, y);
+        logd( "lorieview sendmouseevent x:%.0f y:%.0f detail:%d down:%d", x, y, which_button,
             button_down);
         lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
         write(conn_fd, &e, sizeof(e));
@@ -1391,8 +1391,10 @@ Java_com_fde_x11_Xserver_removeWindow(JNIEnv *env, jobject thiz, jlong window) {
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_sendMouseEvent(JNIEnv *env, jobject thiz, jfloat x, jfloat y,jint which_button, jboolean button_down, jboolean relative, jint index) {
-//    logd( "MouseEvent x:%.0f y:%.0f detail:%d  down:%s relative:%d", x, y, which_button,
-//        button_down == 1 ? "true" : "false", relative);
+    if(which_button != 0){
+        loge( "key_process x:%.0f y:%.0f detail:%d  down:%s relative:%d", x, y, which_button,
+              button_down == 1 ? "true" : "false", relative);
+    }
     lorieEvent e = {.mouse = {.t = EVENT_MOUSE, .x = x, .y = y, .detail = which_button, .down = button_down, .relative = relative}};
     ValuatorMask mask;
     valuator_mask_zero(&mask);

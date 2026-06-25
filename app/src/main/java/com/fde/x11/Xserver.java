@@ -150,13 +150,13 @@ public class Xserver {
                                            long xid, long taskTo, int support_wm_delete,
                                            int support_motif, Bitmap bitmap, boolean inbound, int clientNum,
                                            boolean isActivity, long window, boolean start) {
-        FLog.s(TAG, aid,"startOrUpdateWindow: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
+        FLog.k(TAG, aid,"startOrUpdateWindow: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor) + ", leader:" + Long.toHexString(leader)
                         + ", type:" + type + ", wm_name:" + wm_name + ", net_wm_name:" + net_wm_name + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h + ", index:" + index + ", p:" + p
                         + ", xid:" + Long.toHexString(xid) + ", taskTo:" + Long.toHexString(taskTo) +
                         ", support_wm_delete:" + support_wm_delete + ", bitmap:" + bitmap +
                         " , inbound:" + inbound + " clientNum:" + clientNum
                         + ",  window:" + Long.toHexString(window)
-                        + ",  start: " + start, FLog.WARN);
+                        + ",  start: " + start);
         X_ClientNum = clientNum;
         EventMessage message = null;
         if(bitmap != null){

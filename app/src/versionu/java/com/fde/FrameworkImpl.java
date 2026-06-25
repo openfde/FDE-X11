@@ -24,13 +24,13 @@ public class FrameworkImpl implements FrameworkOperations {
 
     @Override
     public void hideDecorCaptionView(Activity activity) {
-        FLog.e(TAG, "hideDecorCaptionView() called with: activity = [" + activity + "]");
+        FLog.a(TAG, "hideDecorCaptionView() called with: activity = [" + activity + "]");
         activity.setWindowDecorationStatus(1);
     }
 
     @Override
     public void setDecorCaptionViewFocuseable(Activity activity, boolean focusable) {
-        FLog.e(TAG, "setDecorCaptionViewFocuseable() called with: activity = [" + activity + "], focusable = [" + focusable + "]");
+        FLog.a(TAG, "setDecorCaptionViewFocuseable() called with: activity = [" + activity + "], focusable = [" + focusable + "]");
     }
 
     @Override
@@ -38,13 +38,13 @@ public class FrameworkImpl implements FrameworkOperations {
 //        DecorView decorView = (DecorView) activity.getWindow().getDecorView();
 //        decorView.exitFullScreenWindow();
         proxy.maximizeOrNot();
-        FLog.e(TAG, "exitMaxmizeWindow() called with: activity = [" + activity + "]");
+        FLog.a(TAG, "exitMaxmizeWindow() called with: activity = [" + activity + "]");
     }
 
     @Override
     public void exitFullScreenWindow(Activity activity) {
         proxy.enterOrExitFullscreen();
-        FLog.e(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
+        FLog.a(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
     }
 
     @Override
@@ -52,7 +52,7 @@ public class FrameworkImpl implements FrameworkOperations {
 //        DecorView decorView = (DecorView) activity.getWindow().getDecorView();
 //        decorView.startFullScreenWindow(false);
         proxy.maximizeOrNot();
-        FLog.e(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
+        FLog.a(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
     }
 
     @Override

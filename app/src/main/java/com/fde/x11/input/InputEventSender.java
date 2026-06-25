@@ -69,6 +69,9 @@ public final class InputEventSender {
     public void sendMouseEvent(PointF pos, int button, boolean down, boolean relative) {
         if (!buttons.contains(button))
             return;
+        if(pos == null){
+            FLog.k(TAG, "sendMouseEvent down:" + down);
+        }
         FLog.event(TAG, "sendMouseEvent() relative  = [" + relative + "], down = [" + down + "]");
         if(button == BUTTON_RIGHT && down){
             InputStub input = mEventInterface != null ? mEventInterface: mInjector;

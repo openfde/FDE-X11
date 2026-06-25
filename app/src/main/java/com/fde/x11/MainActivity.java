@@ -393,6 +393,15 @@ public class MainActivity extends Activity {
         lorieView.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
         lorieParent.setOnCapturedPointerListener((v, e) -> mInputHandler.handleTouchEvent(lorieView, lorieView, e));
         lorieView.setOnKeyListener(mLorieKeyListener);
+        initSurfaceCallback();
+//        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
+        detectEventEditText.setOnKeyListener(mLorieKeyListener);
+        detectEventEditText.setInputHandler(mInputHandler);
+
+    }
+
+    protected void initSurfaceCallback() {
+        LorieView lorieView = getLorieView();
         lorieView.setCallback(new LorieView.Callback() {
             @Override
             public void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight) {
@@ -400,7 +409,7 @@ public class MainActivity extends Activity {
                 mInputHandler.handleHostSizeChanged(surfaceWidth, surfaceHeight);
                 mInputHandler.handleClientSizeChanged(screenWidth, screenHeight);
                 LorieView.sendWindowChange(AppUtils.GLOBAL_SCREEN_WIDTH, AppUtils.GLOBAL_SCREEN_HEIGHT, framerate);
-                WindowAttribute attribute = (WindowAttribute) lorieView.getTag(R.id.WINDOW_ARRTRIBUTE);
+                WindowAttribute attribute = mAttribute;
                 if (!killSelf) {
                     try {
                         if (attribute == null) {
@@ -457,10 +466,6 @@ public class MainActivity extends Activity {
             public void onSurfaceDestroy(Surface sfc) {
             }
         });
-//        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
-        detectEventEditText.setOnKeyListener(mLorieKeyListener);
-        detectEventEditText.setInputHandler(mInputHandler);
-
     }
 
 
@@ -539,7 +544,7 @@ public class MainActivity extends Activity {
     }
 
     private void onConfigurationChangedImpl(Configuration newConfig) {
-        FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
+        FLog.k(TAG, getWindowId(), "onConfigurationChanged", "newConfig:" +newConfig);
         if(WindowCode == 0){
             return;
         }
@@ -643,7 +648,6 @@ public class MainActivity extends Activity {
             mXserviceWrapper.unregisterActivityCallback(mAttribute.getXID(), iActivityCallback);
         }
         mXserviceWrapper.disableService();
-        FLog.a("lifecycle", getWindowId(), "onDestroy");
         if (mClipboardManager != null) {
             mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
         }
@@ -651,7 +655,7 @@ public class MainActivity extends Activity {
         mOnPrimaryClipChangedListener = null;
         EventBus.getDefault().unregister(this);
         broadcastTaskId(false);
-
+        FLog.k(TAG, getWindowId(), "onDestroy");
     }
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
@@ -893,7 +897,7 @@ public class MainActivity extends Activity {
 
     protected void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
         if (mXserviceWrapper != null && sfc != null) {
-            FLog.a("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
+            FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
             mSurface = sfc;
             mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
             mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
@@ -1227,7 +1231,7 @@ public class MainActivity extends Activity {
                     }, 0);
                     onReceiveConnection();
                 } catch (Exception e) {
-                    Log.e(TAG, "Something went wrong while we extracted connection details from binder.", e);
+                    FLog.e(TAG + ":" + getWindowId(), "Something went wrong while we extracted connection details from binder." + e.getMessage());
                 }
                 return;
             } else if (ACTION_STOP.equals(intent.getAction())) {
@@ -1456,7 +1460,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            FLog.a("event", getWindowId(), "onServiceConnected");
+            FLog.k(TAG, getWindowId(), "onServiceConnected");
             if (!killSelf) {
                 ICmdEntryInterface s = ICmdEntryInterface.Stub.asInterface(service);
                 mXserviceWrapper.enableService(s);

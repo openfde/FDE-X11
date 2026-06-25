@@ -23,8 +23,8 @@ public class MainActivityHolderActivity extends MainActivity{
 
     @Override
     protected void refillActivity(WindowAttribute attr, Property prop) {
-        FLog.s(TAG, "refillActivity() called with: attr = [" + attr + "], prop = [" + prop + "]");
-        handler.post(()->{
+        FLog.k(TAG, getWindowId(), "refillActivity", " attr=" + attr + " prop=" + prop);
+        runOnUiThread(()->{
             mAttribute = attr;
             if (mAttribute != null) {
                 mIndex = mAttribute.getIndex();
@@ -59,13 +59,8 @@ public class MainActivityHolderActivity extends MainActivity{
             lorieView.updateCoordinate(mAttribute);
             lorieView.setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
             reigsterActivityCallback();
+            initSurfaceCallback();
         });
-
-//        handler.postDelayed(()->{
-//            serviceWindowChange(mSurface, mAttribute.getOffsetX(), mAttribute.getOffsetY(),
-//                    mAttribute.getWidth(), mAttribute.getHeight(), mAttribute.getIndex(),
-//                    mAttribute.getWindowPtr(), mAttribute.getXID());
-//        },2000);
     }
 
     @Override
@@ -91,7 +86,7 @@ public class MainActivityHolderActivity extends MainActivity{
         Choreographer.getInstance().postFrameCallback(new Choreographer.FrameCallback() {
             @Override
             public void doFrame(long frameTimeNs) {
-                Log.e(TAG, "doFrame() called with: frameTimeNs = [" + frameTimeNs + "]");
+                FLog.k(TAG, getWindowId(), "doframe");
                 Choreographer.getInstance().removeFrameCallback(this);
             }
         });

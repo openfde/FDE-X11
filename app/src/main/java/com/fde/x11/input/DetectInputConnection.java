@@ -50,7 +50,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean beginBatchEdit() {
         if (DEBUG) {
-            FLog.e(TAG, "beginBatchEdit() called");
+            Log.d(TAG, "beginBatchEdit() called");
         }
         synchronized (this) {
             if (mBatchEditNesting >= 0) {
@@ -65,7 +65,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean endBatchEdit() {
         if (DEBUG) {
-            FLog.e(TAG, "endBatchEdit() called");
+            Log.d(TAG, "endBatchEdit() called");
         }
         synchronized (this) {
             if (mBatchEditNesting > 0) {
