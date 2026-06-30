@@ -205,7 +205,7 @@ public class MainActivity extends Activity {
     private long lastHoverExitTime;
 
     public static final String NAME_MATE_TERMINAL = "mate-terminal";
-    public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
+    public static final int CONFIGURE_WINDOW_DELAY_MS = 200;
     private int mWindowingMode = 5;
     private boolean mSystemBarVisible = true;
 
@@ -545,6 +545,12 @@ public class MainActivity extends Activity {
 
     private void onConfigurationChangedImpl(Configuration newConfig) {
         FLog.k(TAG, getWindowId(), "onConfigurationChanged", "newConfig:" +newConfig);
+        mConfiguration = newConfig;
+
+        getWindow().getDecorView().postDelayed(() -> {
+            checkConfigBeforeExec(mConfiguration, true);
+        }, CONFIGURE_WINDOW_DELAY_MS);
+
         if(WindowCode == 0){
             return;
         }
@@ -705,7 +711,7 @@ public class MainActivity extends Activity {
     }
 
     private void checkConfigBeforeExec(Configuration configuration, boolean newConfig) {
-        if (configuration == null || mXserviceWrapper == null) {
+        if (configuration == null || mXserviceWrapper == null || mAttribute == null) {
             return;
         }
         //configuration:{1.0 ?mcc?mnc [zh_CN_#Hans] ldltr sw1080dp w1920dp h1031dp 160dpi xlrg long land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1032) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}, newConfig:true

@@ -118,7 +118,7 @@ public class XWindowService extends Service {
     private static final int DESTROY_ACTIVITY_DELAY = 0;
     private static final int CREATE_ACTIVITY_DELAY = 1000;
     private static final int CREATE_ACTIVTIY_POOL = 1;
-    private static final int CREATE_ACTIVTIY_POOL_SIZE = 3;
+    private static final int CREATE_ACTIVTIY_POOL_SIZE = 3; //set 0 to disable it
     private HolderActivityPool mHolderActivityPool;
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager fusionWindowManager;
@@ -259,6 +259,7 @@ public class XWindowService extends Service {
                 shouldResizeActivity(window);
             } else {
                 holderActivityCallbackMap.put((int)window, callback);
+                am.moveTaskToBack(true, (int)window);
             }
             handler.postDelayed(() -> {
                 if (!mHolderActivityPool.isFullOrNearly()) {
@@ -267,7 +268,7 @@ public class XWindowService extends Service {
                             MainActivityHolderActivity.DecorHolderActivity.class);
                     int lastFocusTaskId = fusionWindowManager.getLastFocusTask(mLastFocusWindow);
                     if (lastFocusTaskId > 0) {
-                        am.moveTaskToFront(lastFocusTaskId, MOVE_TASK_NO_USER_ACTION);
+//                        am.moveTaskToFront(lastFocusTaskId, MOVE_TASK_NO_USER_ACTION);
                     }
                 }
             }, CREATE_ACTIVITY_DELAY);
@@ -1008,8 +1009,8 @@ public class XWindowService extends Service {
                         attr.getRect().top - attr.getCaptionHeight(),
                         attr.getRect().right,
                         attr.getRect().bottom);
-                am.moveTaskToFront(taskId, ActivityManager.MOVE_TASK_NO_USER_ACTION);
                 taskManager.resizeTask(taskId, rect);
+                am.moveTaskToFront(taskId, ActivityManager.MOVE_TASK_NO_USER_ACTION);
             }
             mHolderActivityPool.remove(taskId);
         } catch (RemoteException e){

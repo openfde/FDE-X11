@@ -19,12 +19,16 @@ import com.fde.x11.R;
 import com.fde.x11.XserviceInterfaceWrapper;
 import com.fde.x11.utils.FLog;
 
+/**
+ * 1dp Activity will not setFocusable so must moveTaskToBack and moveTaskToFront MainActivityHolderActivity
+ * this used to speed up android window to show, seems goals to 100ms(50ms resize + 50ms render)
+ */
 public class MainActivityHolderActivity extends MainActivity{
 
     @Override
     protected void refillActivity(WindowAttribute attr, Property prop) {
         FLog.k(TAG, getWindowId(), "refillActivity", " attr=" + attr + " prop=" + prop);
-        runOnUiThread(()->{
+        handler.post(()->{
             mAttribute = attr;
             if (mAttribute != null) {
                 mIndex = mAttribute.getIndex();
