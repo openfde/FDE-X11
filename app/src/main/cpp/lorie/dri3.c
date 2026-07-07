@@ -100,6 +100,7 @@ typedef struct native_handle {
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_UBUNTU "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_X100 "/dev/dri/card1"
+#define LORIE_STRIDE_ALIGN_BYTES 256U
 extern struct SurfaceManagerWrapper *sfWraper;
 
 
@@ -182,6 +183,10 @@ static int dup_cloexec_fd(int fd) {
     return dup_fd;
 }
 
+static inline uint32_t align_up_u32(uint32_t value, uint32_t align) {
+    return (value + align - 1U) & ~(align - 1U);
+}
+
 static Bool lorie_attach_ahb_dmabuf(PixmapPtr pPixmap) {
     AHardwareBuffer *buffer = NULL;
     AHardwareBuffer_Desc desc = {0};
@@ -189,6 +194,10 @@ static Bool lorie_attach_ahb_dmabuf(PixmapPtr pPixmap) {
     LorieDmabufPixPrivPtr pDmabufPriv;
     LorieAHBPixPrivPtr pPixPriv;
     int bpp;
+    uint32_t bytes_per_pixel;
+    uint32_t min_stride_bytes;
+    uint32_t aligned_alloc_width;
+    uint32_t exported_stride;
     int fd;
     int ret;
     typedef const native_handle_t *(*GetNativeHandleFn)(const AHardwareBuffer *);
@@ -206,7 +215,15 @@ static Bool lorie_attach_ahb_dmabuf(PixmapPtr pPixmap) {
     if (bpp <= 0)
         return FALSE;
 
-    desc.width = (uint32_t) pPixmap->drawable.width;
+    bytes_per_pixel = (uint32_t) ((bpp + 7) / 8);
+    if (!bytes_per_pixel)
+        return FALSE;
+
+    min_stride_bytes = align_up_u32((uint32_t) pPixmap->drawable.width * bytes_per_pixel,
+                                    LORIE_STRIDE_ALIGN_BYTES);
+    aligned_alloc_width = min_stride_bytes / bytes_per_pixel;
+
+    desc.width = aligned_alloc_width;
     desc.height = (uint32_t) pPixmap->drawable.height;
     desc.layers = 1;
     desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
@@ -257,7 +274,10 @@ static Bool lorie_attach_ahb_dmabuf(PixmapPtr pPixmap) {
     }
 
     pDmabufPriv->fd = fd;
-    pDmabufPriv->stride = desc.stride ? (uint32_t) (desc.stride * 4) : (uint32_t) pPixmap->devKind;
+    exported_stride = desc.stride ? (uint32_t) (desc.stride * bytes_per_pixel) : (uint32_t) pPixmap->devKind;
+    if (exported_stride < min_stride_bytes)
+        exported_stride = min_stride_bytes;
+    pDmabufPriv->stride = exported_stride;
     pDmabufPriv->offset = 0;
     pDmabufPriv->modifier = 0;
     pDmabufPriv->width = (uint16_t) pPixmap->drawable.width;
