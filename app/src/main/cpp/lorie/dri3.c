@@ -68,6 +68,20 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <time.h>
+#include <inttypes.h>
+#include <dlfcn.h>
+#if __has_include(<android/native_handle.h>)
+#include <android/native_handle.h>
+#elif __has_include(<cutils/native_handle.h>)
+#include <cutils/native_handle.h>
+#else
+typedef struct native_handle {
+    int version;
+    int numFds;
+    int numInts;
+    int data[0];
+} native_handle_t;
+#endif
 #include "present_priv.h"
 #include <present.h>
 #include "lorie.h"
@@ -82,7 +96,7 @@
 //#define PRINT_LOG (ANDROID_LOG_ENABLE)
 //#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_dri3", __VA_ARGS__);}
 
-#define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
+#define DRI3_DEVICE_PATH_KYLIN "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_UBUNTU "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_X100 "/dev/dri/card1"
@@ -114,6 +128,7 @@ static DevPrivateKeyRec lorieGCPrivateKey;
 static DevPrivateKeyRec lorieScrPrivateKey;
 static DevPrivateKeyRec lorieAHBPixPrivateKey;
 static DevPrivateKeyRec lorieMmappedPixPrivateKey;
+static DevPrivateKeyRec lorieDmabufPixPrivateKey;
 
 DevPrivateKeyRec FDETexturePrivateKey;
 DevPrivateKeyRec FDEWindowTexturePrivateKey;
@@ -126,6 +141,7 @@ typedef struct {
 
 typedef struct {
     CreateGCProcPtr CreateGC;
+    CreatePixmapProcPtr CreatePixmap;
     DestroyPixmapProcPtr DestroyPixmap;
 } LorieScrPrivRec, *LorieScrPrivPtr;
 
@@ -133,9 +149,127 @@ typedef struct {
     AHardwareBuffer* buffer;
 } LorieAHBPixPrivRec, *LorieAHBPixPrivPtr;
 
+typedef struct {
+    int fd;
+    uint32_t stride;
+    uint32_t offset;
+    uint64_t modifier;
+    uint16_t width;
+    uint16_t height;
+    uint8_t depth;
+    uint8_t bpp;
+} LorieDmabufPixPrivRec, *LorieDmabufPixPrivPtr;
+
 
 
 static Bool FalseNoop() { return FALSE; }
+
+static int dup_cloexec_fd(int fd) {
+    int dup_fd;
+
+    if (fd < 0)
+        return -1;
+
+    dup_fd = dup(fd);
+    if (dup_fd < 0)
+        return -1;
+
+    if (fcntl(dup_fd, F_SETFD, FD_CLOEXEC) < 0) {
+        close(dup_fd);
+        return -1;
+    }
+
+    return dup_fd;
+}
+
+static Bool lorie_attach_ahb_dmabuf(PixmapPtr pPixmap) {
+    AHardwareBuffer *buffer = NULL;
+    AHardwareBuffer_Desc desc = {0};
+    const native_handle_t *handle;
+    LorieDmabufPixPrivPtr pDmabufPriv;
+    LorieAHBPixPrivPtr pPixPriv;
+    int bpp;
+    int fd;
+    int ret;
+    typedef const native_handle_t *(*GetNativeHandleFn)(const AHardwareBuffer *);
+    static GetNativeHandleFn get_native_handle_fn = NULL;
+    static int native_handle_lookup_done = 0;
+
+    if (!pPixmap || !pPixmap->drawable.width || !pPixmap->drawable.height)
+        return TRUE;
+
+    pDmabufPriv = dixLookupPrivate(&pPixmap->devPrivates, &lorieDmabufPixPrivateKey);
+    if (pDmabufPriv)
+        return TRUE;
+
+    bpp = pPixmap->drawable.bitsPerPixel;
+    if (bpp <= 0)
+        return FALSE;
+
+    desc.width = (uint32_t) pPixmap->drawable.width;
+    desc.height = (uint32_t) pPixmap->drawable.height;
+    desc.layers = 1;
+    desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+    desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+                 AHARDWAREBUFFER_USAGE_GPU_FRAMEBUFFER |
+                 AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN |
+                 AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
+
+    ret = AHardwareBuffer_allocate(&desc, &buffer);
+    if (ret != 0 || !buffer)
+        return FALSE;
+
+    AHardwareBuffer_describe(buffer, &desc);
+    if (!native_handle_lookup_done) {
+        void *libandroid = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
+        if (libandroid)
+            get_native_handle_fn = (GetNativeHandleFn) dlsym(libandroid, "AHardwareBuffer_getNativeHandle");
+        native_handle_lookup_done = 1;
+    }
+
+    if (!get_native_handle_fn) {
+        AHardwareBuffer_release(buffer);
+        return FALSE;
+    }
+
+    handle = get_native_handle_fn(buffer);
+    if (!handle || handle->numFds <= 0) {
+        AHardwareBuffer_release(buffer);
+        return FALSE;
+    }
+
+    fd = dup_cloexec_fd(handle->data[0]);
+    if (fd < 0) {
+        AHardwareBuffer_release(buffer);
+        return FALSE;
+    }
+
+    pDmabufPriv = calloc(1, sizeof(LorieDmabufPixPrivRec));
+    pPixPriv = calloc(1, sizeof(LorieAHBPixPrivRec));
+    if (!pDmabufPriv || !pPixPriv) {
+        if (pDmabufPriv)
+            free(pDmabufPriv);
+        if (pPixPriv)
+            free(pPixPriv);
+        close(fd);
+        AHardwareBuffer_release(buffer);
+        return FALSE;
+    }
+
+    pDmabufPriv->fd = fd;
+    pDmabufPriv->stride = desc.stride ? (uint32_t) (desc.stride * 4) : (uint32_t) pPixmap->devKind;
+    pDmabufPriv->offset = 0;
+    pDmabufPriv->modifier = 0;
+    pDmabufPriv->width = (uint16_t) pPixmap->drawable.width;
+    pDmabufPriv->height = (uint16_t) pPixmap->drawable.height;
+    pDmabufPriv->depth = (uint8_t) pPixmap->drawable.depth;
+    pDmabufPriv->bpp = (uint8_t) bpp;
+
+    pPixPriv->buffer = buffer;
+    dixSetPrivate(&pPixmap->devPrivates, &lorieAHBPixPrivateKey, pPixPriv);
+    dixSetPrivate(&pPixmap->devPrivates, &lorieDmabufPixPrivateKey, pDmabufPriv);
+    return TRUE;
+}
 
 #define SYNC_FENCE_PRIV(pFence) \
     (SyncShmFencePrivatePtr) dixLookupPrivate(&pFence->devPrivates, &syncShmFencePrivateKey)
@@ -547,11 +681,33 @@ lorieCreateGC(GCPtr pGC) {
     return ret;
 }
 
+static PixmapPtr lorieCreatePixmap(ScreenPtr pScreen,
+                                   int width,
+                                   int height,
+                                   int depth,
+                                   unsigned usage_hint) {
+    PixmapPtr pPixmap;
+
+    lorieScrPriv(pScreen);
+    unwrap(pScrPriv, pScreen, CreatePixmap)
+    pPixmap = (*pScreen->CreatePixmap) (pScreen, width, height, depth, usage_hint);
+    wrap(pScrPriv, pScreen, CreatePixmap, lorieCreatePixmap)
+
+    if (!pPixmap)
+        return NULL;
+
+    if (!lorie_attach_ahb_dmabuf(pPixmap))
+        logd("DRI3: CreatePixmap AHB dmabuf not attached pixmap:%u", pPixmap->drawable.id);
+
+    return pPixmap;
+}
+
 static Bool
 lorieDestroyPixmap(PixmapPtr pPixmap) {
     Bool ret;
     void *ptr = NULL;
     LorieAHBPixPrivPtr pPixPriv = NULL;
+    LorieDmabufPixPrivPtr pDmabufPriv = NULL;
     size_t size = 0;
     ScreenPtr pScreen = pPixmap->drawable.pScreen;
     lorieScrPriv(pScreen);
@@ -559,6 +715,7 @@ lorieDestroyPixmap(PixmapPtr pPixmap) {
     if (pPixmap->refcnt == 1 && pPixmap->drawable.width && pPixmap->drawable.height) {
         ptr = dixLookupPrivate(&pPixmap->devPrivates, &lorieMmappedPixPrivateKey);
         pPixPriv = dixLookupPrivate(&pPixmap->devPrivates, &lorieAHBPixPrivateKey);
+        pDmabufPriv = dixLookupPrivate(&pPixmap->devPrivates, &lorieDmabufPixPrivateKey);
         size = pPixmap->devKind * pPixmap->drawable.height;
     }
 
@@ -575,6 +732,12 @@ lorieDestroyPixmap(PixmapPtr pPixmap) {
         free(pPixPriv);
     }
 
+    if (pDmabufPriv) {
+        if (pDmabufPriv->fd >= 0)
+            close(pDmabufPriv->fd);
+        free(pDmabufPriv);
+    }
+
     return ret;
 }
 
@@ -584,13 +747,39 @@ static int FdsFromPixmap(ScreenPtr screen,
                          uint32_t *strides,
                          uint32_t *offsets,
                          uint64_t *modifier){
-    logd( "DRI3: FdsFromPixmap pixmap:%d fd:%d stride:%d offset:%d modifier:%d",
-        pixmap->drawable.id,
-        fds[0],
-        strides[0],
-        offsets[0],
-        modifier[0]);
-    return Success;
+    LorieDmabufPixPrivPtr pDmabufPriv;
+    int dup_fd;
+
+    if (!screen || !pixmap || !fds || !strides || !offsets || !modifier)
+        return 0;
+
+    pDmabufPriv = dixLookupPrivate(&pixmap->devPrivates, &lorieDmabufPixPrivateKey);
+    if (!pDmabufPriv) {
+        if (!lorie_attach_ahb_dmabuf(pixmap)) {
+            loge("DRI3: FdsFromPixmap failed to attach AHB dmabuf pixmap:%u", pixmap->drawable.id);
+            return 0;
+        }
+        pDmabufPriv = dixLookupPrivate(&pixmap->devPrivates, &lorieDmabufPixPrivateKey);
+    }
+
+    if (!pDmabufPriv || pDmabufPriv->fd < 0)
+        return 0;
+
+    dup_fd = dup_cloexec_fd(pDmabufPriv->fd);
+    if (dup_fd < 0)
+        return 0;
+
+    fds[0] = dup_fd;
+    strides[0] = pDmabufPriv->stride;
+    offsets[0] = pDmabufPriv->offset;
+    *modifier = pDmabufPriv->modifier;
+    logd("DRI3: FdsFromPixmap pixmap:%u fd:%d stride:%u offset:%u modifier:%" PRIu64,
+         pixmap->drawable.id,
+         fds[0],
+         strides[0],
+         offsets[0],
+         *modifier);
+    return 1;
 }
 
 static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *fds, CARD16 width, CARD16 height,
@@ -615,10 +804,28 @@ static PixmapPtr loriePixmapFromFds(ScreenPtr screen, CARD8 num_fds, const int *
     }
     dixSetPrivate(&pixmap->devPrivates, &FDETexturePrivateKey, pTexturePriv);
     pTexturePriv->texture = texture;
-    TexturePrivRecPtr ptr = dixLookupPrivate(&pixmap->devPrivates, &FDETexturePrivateKey);
     if (!pTexturePriv->texture) {
         logd( "DRI3: pTexturePriv: get a texture");
         goto fail;
+    }
+
+    {
+        LorieDmabufPixPrivPtr pDmabufPriv = calloc(1, sizeof(LorieDmabufPixPrivRec));
+        if (!pDmabufPriv)
+            goto fail;
+        pDmabufPriv->fd = dup_cloexec_fd(fds[0]);
+        if (pDmabufPriv->fd < 0) {
+            free(pDmabufPriv);
+            goto fail;
+        }
+        pDmabufPriv->stride = strides ? strides[0] : 0;
+        pDmabufPriv->offset = offsets ? offsets[0] : 0;
+        pDmabufPriv->modifier = modifier;
+        pDmabufPriv->width = width;
+        pDmabufPriv->height = height;
+        pDmabufPriv->depth = depth;
+        pDmabufPriv->bpp = bpp;
+        dixSetPrivate(&pixmap->devPrivates, &lorieDmabufPixPrivateKey, pDmabufPriv);
     }
 
     pixmap->devPrivate.ptr = NULL;
@@ -867,6 +1074,7 @@ Bool lorieInitDri3(ScreenPtr pScreen) {
 
     if (!dixRegisterPrivateKey(&lorieGCPrivateKey, PRIVATE_GC, sizeof(LorieGCPrivRec))
         || !dixRegisterPrivateKey(&lorieAHBPixPrivateKey, PRIVATE_PIXMAP, 0)
+        || !dixRegisterPrivateKey(&lorieDmabufPixPrivateKey, PRIVATE_PIXMAP, 0)
         || !dixRegisterPrivateKey(&FDEWindowTexturePrivateKey, PRIVATE_WINDOW, 0)
         || !dixRegisterPrivateKey(&FDETexturePrivateKey, PRIVATE_PIXMAP, 0)
         || !dixRegisterPrivateKey(&lorieMmappedPixPrivateKey, PRIVATE_PIXMAP, 0)
@@ -878,6 +1086,7 @@ Bool lorieInitDri3(ScreenPtr pScreen) {
         return FALSE;
 
     wrap(pScrPriv, pScreen, CreateGC, lorieCreateGC)
+    wrap(pScrPriv, pScreen, CreatePixmap, lorieCreatePixmap)
     wrap(pScrPriv, pScreen, DestroyPixmap, lorieDestroyPixmap)
 
     dixSetPrivate(&pScreen->devPrivates, &lorieScrPrivateKey, pScrPriv);
