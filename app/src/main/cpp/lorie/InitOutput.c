@@ -691,6 +691,9 @@ Bool lorieChangeWindow(unused ClientPtr pClient, void *closure) {
                              ((PixmapPtr) pScreenPtr->devPrivate)->devPrivate.ptr,
                              pvfb->root.flip);
     renderer_redraw(pvfb->env, pvfb->root.flip, false);
+    if (res->surface) {
+        (*pvfb->env)->DeleteGlobalRef(pvfb->env, res->surface);
+    }
     free(res);
     return TRUE;
 }

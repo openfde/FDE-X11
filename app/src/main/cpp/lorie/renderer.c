@@ -23,6 +23,8 @@
 #include "os.h"
 #include <globals.h>
 #include "c_interface.h"
+#include <stdlib.h>
+#include <string.h>
 #include <android/log.h>
 #include <drm_fourcc.h>
 #include "native_log.h"
@@ -161,6 +163,7 @@ static jobject surface = NULL;
 static AHardwareBuffer *buffer = NULL;
 static EGLImageKHR image = NULL;
 static int renderedFrames = 0;
+static EGLSyncKHR g_last_fence = EGL_NO_SYNC_KHR;
 static jmethodID Surface_release = NULL;
 static jmethodID Surface_destroy = NULL;
 struct SurfaceManagerWrapper *sfWraper = NULL;
@@ -581,10 +584,12 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
             EGL_TRUE) {
             logd("Xlorie: eglMakeCurrent (EGL_NO_SURFACE) failed.\n");
             eglCheckError(__LINE__);
+            ANativeWindow_release(window);
             return;
         }
         if (eglDestroySurface(global_egl_display, sfc) != EGL_TRUE) {
             logd("Xlorie: eglDestoySurface failed.\n");
+            ANativeWindow_release(window);
             eglCheckError(__LINE__);
             return;
         }
@@ -607,8 +612,10 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     if (sfc == EGL_NO_SURFACE) {
         logd("Xlorie: eglCreateWindowSurface failed.\n");
         eglCheckError(__LINE__);
+        ANativeWindow_release(window);
         return;
     }
+    ANativeWindow_release(window);
 
     if (eglMakeCurrent(global_egl_display, sfc, sfc, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
@@ -682,14 +689,34 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
-        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                     flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        size_t tex_size = (size_t)w * h * 4;
+        void *staging = malloc(tex_size);
+        if (staging) {
+            memcpy(staging, data, tex_size);
+            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, staging);
+            free(staging);
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        }
         checkGlError();
     } else {
         glBindTexture(GL_TEXTURE_2D, display_rect.id);
         checkGlError();
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-                        GL_UNSIGNED_BYTE, data);
+        {
+            size_t tex_size = (size_t)w * h * 4;
+            void *staging = malloc(tex_size);
+            if (staging) {
+                memcpy(staging, data, tex_size);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+                                GL_UNSIGNED_BYTE, staging);
+                free(staging);
+            } else {
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+                                GL_UNSIGNED_BYTE, data);
+            }
+        }
         checkGlError();
     }
     logd("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
@@ -712,7 +739,10 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
     attr->offset_y = (float) y;
     attr->width = (float) w;
     attr->height = (float) h;
-    if (texture_id != 0 ) {
+    if (texture_id != 0) {
+        if (attr->texture_id != 0 && attr->texture_id != texture_id) {
+            glDeleteTextures(1, &attr->texture_id);
+        }
         attr->texture_id = texture_id;
     } else {
         if (!attr->texture_id) {
@@ -729,8 +759,17 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
-        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                     flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        size_t tex_size = (size_t)w * h * 4;
+        void *staging = malloc(tex_size);
+        if (staging) {
+            memcpy(staging, data, tex_size);
+            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, staging);
+            free(staging);
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        }
         checkGlError();
     }
 }
@@ -750,6 +789,10 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
     widget->width = (float) w;
     widget->height = (float) h;
     if (texture_id != 0) {
+        /* 旧纹理由本地 glGenTextures 创建，被覆盖前需要删除 */
+        if (widget->texture_id != 0 && widget->texture_id != texture_id) {
+            glDeleteTextures(1, &widget->texture_id);
+        }
         widget->texture_id = texture_id;
     } else {
         if (!widget->texture_id) {
@@ -766,8 +809,17 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
-        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                     flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        size_t tex_size = (size_t)w * h * 4;
+        void *staging = malloc(tex_size);
+        if (staging) {
+            memcpy(staging, data, tex_size);
+            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, staging);
+            free(staging);
+        } else {
+            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
+        }
         checkGlError();
     }
 }
@@ -841,6 +893,11 @@ int renderer_should_redraw(void) {
 }
 
 int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
+    if (g_last_fence != EGL_NO_SYNC_KHR) {
+        eglClientWaitSyncKHR(global_egl_display, g_last_fence, 0, EGL_FOREVER);
+        eglDestroySyncKHR(global_egl_display, g_last_fence);
+        g_last_fence = EGL_NO_SYNC_KHR;
+    }
 //    _surface_log_traversal_window(sfWraper);
     int size, i  =0 ;
     WindAttribute * attrs = _surface_all_window(sfWraper, &size);
@@ -850,6 +907,9 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
         i++;
     }
     renderedFrames++;
+    glFlush();
+    g_last_fence = eglCreateSyncKHR(global_egl_display, EGL_SYNC_FENCE_KHR, NULL);
+    free(attrs);
     return TRUE;
 }
 
@@ -911,6 +971,16 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     }
 //    if(!empty){
     if(id){
+        {
+            EGLint sfcW = 0, sfcH = 0;
+            eglQuerySurface(global_egl_display, eglSurface, EGL_WIDTH, &sfcW);
+            eglQuerySurface(global_egl_display, eglSurface, EGL_HEIGHT, &sfcH);
+            if ((EGLint)width != sfcW || (EGLint)height != sfcH) {
+                logd("size mismatch: surface=%dx%d pixmap=%.0fx%.0f skip window=%x",
+                     sfcW, sfcH, width, height, window);
+                return FALSE;
+            }
+        }
         glViewport(0, 0, width, height);
 //        loge("renderer_redraw_traversal_1 id:%d", id);
         draw(id, -1.f, -1.f, 1.f, 1.f, flip);

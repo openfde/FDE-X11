@@ -1281,166 +1281,160 @@ void WindowManager::ReparentDockWindow(Window window)
     }
 }
 
-jobject WindowManager::GetWindowIcon(Window target_window) {
-    XWindowAttributes attrs;
-    jobject bitmap = nullptr;
-
-    if (!XGetWindowAttributes(display_, target_window, &attrs)) {
-        logd("Window does not exist or cannot be accessed");
-        return bitmap;
-    }
-    Atom net_wm_icon = display_info->atoms[NET_WM_ICON];
-    Atom actual_type;
-    int actual_format;
-    unsigned long nitems;
-    unsigned long bytes_after;
-    unsigned char *data = nullptr;
-
-    int status = XGetWindowProperty(display_, target_window, net_wm_icon,
-                                    0, LONG_MAX, False, XA_CARDINAL,
-                                    &actual_type, &actual_format,
-                                    &nitems, &bytes_after, &data);
-
-    if (status == Success && data && nitems > 0) {
-        logd("Found _NET_WM_ICON property, items: %lu", nitems);
-        bitmap = CreateBitmapFromNetWmIcon(  data, nitems);
-        XFree(data);
-    }
-// 尝试获取 WM_HINTS
-//    XWMHints *hints = XGetWMHints(display_, target_window);
-//    if (hints && (hints->flags & IconPixmapHint)) {
-//        bitmap = CreateBitmapFromPixmap(GlobalEnv, display_, hints->icon_pixmap);
+//jobject WindowManager::GetWindowIcon(Window target_window) {
+//    XWindowAttributes attrs;
+//    jobject bitmap = nullptr;
+//
+//    if (!XGetWindowAttributes(display_, target_window, &attrs)) {
+//        logd("Window does not exist or cannot be accessed");
+//        return bitmap;
 //    }
-//    if (hints) XFree(hints);
-    return bitmap;
-}
+//    Atom net_wm_icon = display_info->atoms[NET_WM_ICON];
+//    Atom actual_type;
+//    int actual_format;
+//    unsigned long nitems;
+//    unsigned long bytes_after;
+//    unsigned char *data = nullptr;
+//
+//    int status = XGetWindowProperty(display_, target_window, net_wm_icon,
+//                                    0, LONG_MAX, False, XA_CARDINAL,
+//                                    &actual_type, &actual_format,
+//                                    &nitems, &bytes_after, &data);
+//
+//    if (status == Success && data && nitems > 0) {
+//        logd("Found _NET_WM_ICON property, items: %lu", nitems);
+//        bitmap = CreateBitmapFromNetWmIcon(  data, nitems);
+//        XFree(data);
+//    }
+//    return bitmap;
+//}
 
-jobject WindowManager::CreateBitmapFromPixmap(JNIEnv *env, Display *display, Pixmap pixmap) {
-    if (pixmap == None) {
-        return nullptr;
-    }
-
-    XWindowAttributes pix_attrs;
-    if (!XGetWindowAttributes(display, pixmap, &pix_attrs)) {
-        logd("Failed to get pixmap attributes");
-        return nullptr;
-    }
-
-    // 获取 pixmap 数据
-    XImage *image = XGetImage(display, pixmap, 0, 0,
-                              pix_attrs.width, pix_attrs.height,
-                              AllPlanes, ZPixmap);
-
-    if (!image) {
-        logd("Failed to get image from pixmap");
-        return nullptr;
-    }
-
-    jobject bitmap = CreateBitmapFromXImage(env, image);
-    XDestroyImage(image);
-    return bitmap;
-}
+//jobject WindowManager::CreateBitmapFromPixmap(JNIEnv *env, Display *display, Pixmap pixmap) {
+//    if (pixmap == None) {
+//        return nullptr;
+//    }
+//
+//    XWindowAttributes pix_attrs;
+//    if (!XGetWindowAttributes(display, pixmap, &pix_attrs)) {
+//        logd("Failed to get pixmap attributes");
+//        return nullptr;
+//    }
+//
+//    // 获取 pixmap 数据
+//    XImage *image = XGetImage(display, pixmap, 0, 0,
+//                              pix_attrs.width, pix_attrs.height,
+//                              AllPlanes, ZPixmap);
+//
+//    if (!image) {
+//        logd("Failed to get image from pixmap");
+//        return nullptr;
+//    }
+//
+//    jobject bitmap = CreateBitmapFromXImage(env, image);
+//    XDestroyImage(image);
+//    return bitmap;
+//}
 
 // 从 XImage 创建 Bitmap
-jobject WindowManager::CreateBitmapFromXImage(JNIEnv *env, XImage *image) {
-    int width = image->width;
-    int height = image->height;
+//jobject WindowManager::CreateBitmapFromXImage(JNIEnv *env, XImage *image) {
+//    int width = image->width;
+//    int height = image->height;
+//
+//    jclass bitmap_class = env->FindClass("android/graphics/Bitmap");
+//    jmethodID create_bitmap = env->GetStaticMethodID(bitmap_class,
+//                                                     "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+//
+//    jclass config_class = env->FindClass("android/graphics/Bitmap$Config");
+//    jfieldID argb_8888_field = env->GetStaticFieldID(config_class, "ARGB_8888",
+//                                                     "Landroid/graphics/Bitmap$Config;");
+//    jobject config = env->GetStaticObjectField(config_class, argb_8888_field);
+//
+//    jobject bitmap = env->CallStaticObjectMethod(bitmap_class, create_bitmap,
+//                                                 width, height, config);
+//
+//    AndroidBitmapInfo info;
+//    void *pixels;
+//    if (AndroidBitmap_getInfo(env, bitmap, &info) == ANDROID_BITMAP_RESULT_SUCCESS &&
+//        AndroidBitmap_lockPixels(env, bitmap, &pixels) == ANDROID_BITMAP_RESULT_SUCCESS) {
+//
+//        uint32_t *dest = (uint32_t *)pixels;
+//
+//        for (int y = 0; y < height; y++) {
+//            for (int x = 0; x < width; x++) {
+//                unsigned long pixel = XGetPixel(image, x, y);
+//                uint32_t android_pixel = ConvertPixelToARGB(pixel, image->depth, image->byte_order);
+//                dest[y * width + x] = android_pixel;
+//            }
+//        }
+//
+//        AndroidBitmap_unlockPixels(env, bitmap);
+//    }
+//
+//    return bitmap;
+//}
 
-    jclass bitmap_class = env->FindClass("android/graphics/Bitmap");
-    jmethodID create_bitmap = env->GetStaticMethodID(bitmap_class,
-                                                     "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+//uint32_t WindowManager::ConvertPixelToARGB(unsigned long pixel, int depth, int byte_order) {
+//    if (depth == 24 || depth == 32) {
+//        if (byte_order == LSBFirst) {
+//            return ((pixel & 0xFF000000) >> 24) |  // A
+//                   ((pixel & 0x00FF0000) >> 8)  |  // R
+//                   ((pixel & 0x0000FF00) << 8)  |  // G
+//                   ((pixel & 0x000000FF) << 24);   // B
+//        } else {
+//            return pixel;
+//        }
+//    } else if (depth == 1) {
+//        return pixel ? 0xFFFFFFFF : 0xFF000000;
+//    }
+//
+//    return 0xFF000000; // 默认黑色
+//}
 
-    jclass config_class = env->FindClass("android/graphics/Bitmap$Config");
-    jfieldID argb_8888_field = env->GetStaticFieldID(config_class, "ARGB_8888",
-                                                     "Landroid/graphics/Bitmap$Config;");
-    jobject config = env->GetStaticObjectField(config_class, argb_8888_field);
-
-    jobject bitmap = env->CallStaticObjectMethod(bitmap_class, create_bitmap,
-                                                 width, height, config);
-
-    AndroidBitmapInfo info;
-    void *pixels;
-    if (AndroidBitmap_getInfo(env, bitmap, &info) == ANDROID_BITMAP_RESULT_SUCCESS &&
-        AndroidBitmap_lockPixels(env, bitmap, &pixels) == ANDROID_BITMAP_RESULT_SUCCESS) {
-
-        uint32_t *dest = (uint32_t *)pixels;
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                unsigned long pixel = XGetPixel(image, x, y);
-                uint32_t android_pixel = ConvertPixelToARGB(pixel, image->depth, image->byte_order);
-                dest[y * width + x] = android_pixel;
-            }
-        }
-
-        AndroidBitmap_unlockPixels(env, bitmap);
-    }
-
-    return bitmap;
-}
-
-uint32_t WindowManager::ConvertPixelToARGB(unsigned long pixel, int depth, int byte_order) {
-    if (depth == 24 || depth == 32) {
-        if (byte_order == LSBFirst) {
-            return ((pixel & 0xFF000000) >> 24) |  // A
-                   ((pixel & 0x00FF0000) >> 8)  |  // R
-                   ((pixel & 0x0000FF00) << 8)  |  // G
-                   ((pixel & 0x000000FF) << 24);   // B
-        } else {
-            return pixel;
-        }
-    } else if (depth == 1) {
-        return pixel ? 0xFFFFFFFF : 0xFF000000;
-    }
-
-    return 0xFF000000; // 默认黑色
-}
-
-jobject WindowManager::CreateBitmapFromNetWmIcon(unsigned char *data, unsigned long nitems)
-{
-    if (nitems < 2) {
-        logd("Invalid _NET_WM_ICON data");
-        return nullptr;
-    }
-    unsigned long *long_data = (unsigned long *)data;
-    int width = (int)long_data[0];
-    int height = (int)long_data[1];
-    if (nitems < (unsigned long)(2 + width * height)) {
-        logd("Incomplete _NET_WM_ICON data");
-        return nullptr;
-    }
-    logd("Creating bitmap from _NET_WM_ICON: %dx%d", width, height);
-    jclass bitmap_class = GlobalEnv->FindClass("android/graphics/Bitmap");
-    jmethodID create_bitmap = GlobalEnv->GetStaticMethodID(bitmap_class,
-                                                           "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
-    jclass config_class = GlobalEnv->FindClass("android/graphics/Bitmap$Config");
-    jfieldID argb_8888_field = GlobalEnv->GetStaticFieldID(config_class, "ARGB_8888",
-                                                           "Landroid/graphics/Bitmap$Config;");
-    jobject config = GlobalEnv->GetStaticObjectField(config_class, argb_8888_field);
-
-    jobject bitmap = GlobalEnv->CallStaticObjectMethod(bitmap_class, create_bitmap,
-                                                       width, height, config);
-    AndroidBitmapInfo info;
-    void *pixels;
-    if (AndroidBitmap_getInfo(GlobalEnv, bitmap, &info) == ANDROID_BITMAP_RESULT_SUCCESS &&
-        AndroidBitmap_lockPixels(GlobalEnv, bitmap, &pixels) == ANDROID_BITMAP_RESULT_SUCCESS) {
-        uint32_t *dest = (uint32_t *)pixels;
-        unsigned long *src = long_data + 2;
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                unsigned long pixel = src[y * width + x];
-                uint32_t android_pixel =
-                        ((pixel & 0xFF000000) >> 24) |  // A
-                        ((pixel & 0x00FF0000) >> 8)  |  // R
-                        ((pixel & 0x0000FF00) << 8)  |  // G
-                        ((pixel & 0x000000FF) << 24);   // B
-                dest[y * width + x] = android_pixel;
-            }
-        }
-        AndroidBitmap_unlockPixels(GlobalEnv, bitmap);
-    }
-    return bitmap;
-}
+//jobject WindowManager::CreateBitmapFromNetWmIcon(unsigned char *data, unsigned long nitems)
+//{
+//    if (nitems < 2) {
+//        logd("Invalid _NET_WM_ICON data");
+//        return nullptr;
+//    }
+//    unsigned long *long_data = (unsigned long *)data;
+//    int width = (int)long_data[0];
+//    int height = (int)long_data[1];
+//    if (nitems < (unsigned long)(2 + width * height)) {
+//        logd("Incomplete _NET_WM_ICON data");
+//        return nullptr;
+//    }
+//    logd("Creating bitmap from _NET_WM_ICON: %dx%d", width, height);
+//    jclass bitmap_class = GlobalEnv->FindClass("android/graphics/Bitmap");
+//    jmethodID create_bitmap = GlobalEnv->GetStaticMethodID(bitmap_class,
+//                                                           "createBitmap", "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+//    jclass config_class = GlobalEnv->FindClass("android/graphics/Bitmap$Config");
+//    jfieldID argb_8888_field = GlobalEnv->GetStaticFieldID(config_class, "ARGB_8888",
+//                                                           "Landroid/graphics/Bitmap$Config;");
+//    jobject config = GlobalEnv->GetStaticObjectField(config_class, argb_8888_field);
+//
+//    jobject bitmap = GlobalEnv->CallStaticObjectMethod(bitmap_class, create_bitmap,
+//                                                       width, height, config);
+//    AndroidBitmapInfo info;
+//    void *pixels;
+//    if (AndroidBitmap_getInfo(GlobalEnv, bitmap, &info) == ANDROID_BITMAP_RESULT_SUCCESS &&
+//        AndroidBitmap_lockPixels(GlobalEnv, bitmap, &pixels) == ANDROID_BITMAP_RESULT_SUCCESS) {
+//        uint32_t *dest = (uint32_t *)pixels;
+//        unsigned long *src = long_data + 2;
+//        for (int y = 0; y < height; y++) {
+//            for (int x = 0; x < width; x++) {
+//                unsigned long pixel = src[y * width + x];
+//                uint32_t android_pixel =
+//                        ((pixel & 0xFF000000) >> 24) |  // A
+//                        ((pixel & 0x00FF0000) >> 8)  |  // R
+//                        ((pixel & 0x0000FF00) << 8)  |  // G
+//                        ((pixel & 0x000000FF) << 24);   // B
+//                dest[y * width + x] = android_pixel;
+//            }
+//        }
+//        AndroidBitmap_unlockPixels(GlobalEnv, bitmap);
+//    }
+//    return bitmap;
+//}
 
 void WindowManager::HandleClientMessage(XEvent e)
 {

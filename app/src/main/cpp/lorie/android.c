@@ -1008,6 +1008,10 @@ Java_com_fde_x11_Xserver_windowChanged(JNIEnv *env, unused jobject cls, jobject 
 //            renderer_release_window(GetJavaEnv(), attr->window);
 //            _surface_delete_window(sfWraper, attr->window);
         }
+        if (sfc) {
+            (*env)->DeleteGlobalRef(env, sfc);
+        }
+        free(res);
         return;
     }
     QueueWorkProc(lorieChangeWindow, NULL, res);
