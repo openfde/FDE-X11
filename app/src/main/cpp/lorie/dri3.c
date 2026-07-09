@@ -82,10 +82,10 @@
 //#define PRINT_LOG (ANDROID_LOG_ENABLE)
 //#define log(prio, ...) if(PRINT_LOG){__android_log_print(ANDROID_LOG_ ## prio, "native_dri3", __VA_ARGS__);}
 
-#define DRI3_DEVICE_PATH_KYLIN "/dev/dri/card0"
+#define DRI3_DEVICE_PATH_KYLIN "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_UOS "/dev/dri/renderD128"
 #define DRI3_DEVICE_PATH_UBUNTU "/dev/dri/renderD128"
-#define DRI3_DEVICE_PATH_X100 "/dev/dri/card1"
+#define DRI3_DEVICE_PATH_X100 "/dev/dri/renderD128"
 extern struct SurfaceManagerWrapper *sfWraper;
 
 

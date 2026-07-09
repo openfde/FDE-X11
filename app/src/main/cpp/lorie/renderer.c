@@ -1339,19 +1339,29 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
         loge("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-    GLuint num;
-    if (!eglQueryDmaBufModifiersEXT(global_egl_display, format, 0, NULL, NULL, &num)) {
+    *num_modifiers=0;
+    if (!eglQueryDmaBufModifiersEXT(global_egl_display, format, 0, NULL, NULL, num_modifiers)) {
         loge("Failed to query the number of DMA-BUF modifiers for format 0x%x.\n", format);
         return FALSE;
     }
-    loge("query modifier num:%d", num)
-    EGLBoolean external_only[num];
-    *modifiers = calloc(num, sizeof(uint64_t));
-    if (num > 0 && !eglQueryDmaBufModifiersEXT(global_egl_display, format,
-                                               num,  *modifiers, external_only, &num_modifiers)) {
+    loge("query modifier num:%d", *num_modifiers)
+    if (*num_modifiers <= 0 )
+	    return TRUE;
+    EGLBoolean * external_only = (EGLBoolean*)malloc(*num_modifiers * sizeof(EGLBoolean));
+    *modifiers = (EGLuint64KHR*) malloc(*num_modifiers * sizeof(EGLuint64KHR));
+    if (!external_only || !modifiers) {
+	loge("alloc mods and external failed")
+	return FALSE;
+    }
+    //*modifiers = calloc(num, sizeof(uint64_t));
+    if (!eglQueryDmaBufModifiersEXT(global_egl_display, format,
+                                               *num_modifiers,  *modifiers, external_only, num_modifiers)) {
+	free(external_only);
         loge("Failed to query DMA-BUF modifiers for format 0x%x.\n", format);
         return FALSE;
     }
+    free(external_only);
+    loge("success to query DMA-BUF modifiers gy for format 0x%x. %d \n", format,*num_modifiers);
     return TRUE;
 }
 

@@ -101,16 +101,25 @@ bail:
 uint32_t
 drm_format_for_depth(uint32_t depth, uint32_t bpp)
 {
-    switch (bpp) {
+    switch (depth) {
         case 16:
             return DRM_FORMAT_RGB565;
         case 24:
-            return DRM_FORMAT_XRGB8888;
+            if (bpp == 24 || bpp == 32)
+                return DRM_FORMAT_XRGB8888;
+            break;
         case 30:
-            return DRM_FORMAT_XRGB2101010;
+            if (bpp == 30 || bpp == 32)
+                return DRM_FORMAT_XRGB2101010;
+            break;
         case 32:
-            return DRM_FORMAT_ARGB8888;
+            if (bpp == 32)
+                return DRM_FORMAT_ARGB8888;
+            break;
         default:
-            return 0;
+            break;
     }
+
+    return 0;
 }
+
