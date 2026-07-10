@@ -1244,7 +1244,7 @@ maybe_unused static bool draw_cursor_1(int index, Window window) {
 
 maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 height,
                                           const CARD32 *strides, const CARD32 *offsets, CARD8 depth,
-                                          __unused CARD8 bpp, CARD64 modifier) {
+                                          CARD8 bpp, CARD64 modifier) {
     if (global_ctx == EGL_NO_CONTEXT) {
         logd("egl_no_context")
     }
@@ -1253,19 +1253,42 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
         logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-    logd("renderer_create_image fd:%d width:%ld height:%ld strides:%d offset:%d depth:%d bpp:%d modifier:%d",
+    logd("renderer_create_image fd:%d width:%ld height:%ld strides:%d offset:%d depth:%d bpp:%d modifier:0x%llx",
         fd, width, height,
-        strides[0], offsets[0], depth, bpp, modifier)
-    EGLint attrs[] = {
+        strides[0], offsets[0], depth, bpp, (unsigned long long) modifier)
+
+    EGLint drm_fourcc = DRM_FORMAT_XRGB8888;
+    if (depth == 32 && bpp == 32)
+        drm_fourcc = DRM_FORMAT_ARGB8888;
+
+    EGLint attrs_no_modifier[] = {
             EGL_WIDTH, width,                        // 图像的宽度
             EGL_HEIGHT, height,                      // 图像的高度
             EGL_LINUX_DRM_FOURCC_EXT,
-            DRM_FORMAT_XRGB8888,        // 图像的格式 (如 DRM_FORMAT_XRGB8888 或 DRM_FORMAT_NV12)
+            drm_fourcc,
             EGL_DMA_BUF_PLANE0_FD_EXT, fd,    // DMA-BUF 文件描述符（平面 0）
-            EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,        // 偏移量，通常是 0
+            EGL_DMA_BUF_PLANE0_OFFSET_EXT, offsets[0],
             EGL_DMA_BUF_PLANE0_PITCH_EXT, strides[0], // 每行的字节数
             EGL_NONE                                 // 结束标记
     };
+
+    EGLint attrs_with_modifier[] = {
+            EGL_WIDTH, width,
+            EGL_HEIGHT, height,
+            EGL_LINUX_DRM_FOURCC_EXT,
+            drm_fourcc,
+            EGL_DMA_BUF_PLANE0_FD_EXT, fd,
+            EGL_DMA_BUF_PLANE0_OFFSET_EXT, offsets[0],
+            EGL_DMA_BUF_PLANE0_PITCH_EXT, strides[0],
+            EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT, (EGLint)(modifier & 0xffffffff),
+            EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT, (EGLint)(modifier >> 32),
+            EGL_NONE
+    };
+
+    EGLint *attrs = attrs_no_modifier;
+    if (modifier != DRM_FORMAT_MOD_INVALID)
+        attrs = attrs_with_modifier;
+
     EGLImage image = eglCreateImageKHR(global_egl_display, EGL_NO_CONTEXT,
                                        EGL_LINUX_DMA_BUF_EXT,
                                        NULL, attrs);
@@ -1339,19 +1362,29 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
         loge("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
     }
-    GLuint num;
-    if (!eglQueryDmaBufModifiersEXT(global_egl_display, format, 0, NULL, NULL, &num)) {
+    *num_modifiers=0;
+    if (!eglQueryDmaBufModifiersEXT(global_egl_display, format, 0, NULL, NULL, num_modifiers)) {
         loge("Failed to query the number of DMA-BUF modifiers for format 0x%x.\n", format);
         return FALSE;
     }
-    loge("query modifier num:%d", num)
-    EGLBoolean external_only[num];
-    *modifiers = calloc(num, sizeof(uint64_t));
-    if (num > 0 && !eglQueryDmaBufModifiersEXT(global_egl_display, format,
-                                               num,  *modifiers, external_only, &num_modifiers)) {
-        loge("Failed to query DMA-BUF modifiers for format 0x%x.\n", format);
+    loge("query modifier num:%d", *num_modifiers)
+    if (*num_modifiers <= 0 )
+	    return TRUE;
+    EGLBoolean * external_only = (EGLBoolean*)malloc(*num_modifiers * sizeof(EGLBoolean));
+    *modifiers = (EGLuint64KHR*) malloc(*num_modifiers * sizeof(EGLuint64KHR));
+    if (!external_only || !*modifiers) {
+        loge("alloc mods and external failed")
         return FALSE;
     }
+    if (!eglQueryDmaBufModifiersEXT(global_egl_display, format,
+                                               *num_modifiers,  *modifiers, external_only, num_modifiers)) {
+        loge("Failed to query DMA-BUF modifiers for format 0x%x.\n", format);
+        free(*modifiers);
+        free(external_only);
+        return FALSE;
+    }
+    free(external_only);
+    loge("success to query DMA-BUF modifiers gy for format 0x%x. %d \n", format,*num_modifiers);
     return TRUE;
 }
 
