@@ -1376,7 +1376,6 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
         loge("alloc mods and external failed")
         return FALSE;
     }
-    //*modifiers = calloc(num, sizeof(uint64_t));
     if (!eglQueryDmaBufModifiersEXT(global_egl_display, format,
                                                *num_modifiers,  *modifiers, external_only, num_modifiers)) {
         loge("Failed to query DMA-BUF modifiers for format 0x%x.\n", format);
