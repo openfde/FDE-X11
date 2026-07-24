@@ -304,7 +304,7 @@ static RegionPtr lorieCopyArea(DrawablePtr pSrc, DrawablePtr pDst, GCPtr pGC, in
             dixSetPrivate(&pWin->devPrivates, &FDEWindowTexturePrivateKey, pTexturePriv);
 //            logd( "copyarea pixmap:%x tid:%d window:%x", pPixmap->drawable.id, ptr->texture, pWin->drawable.id);
             int size;
-            WindAttribute * attrs = _surface_all_window(sfWraper, &size);
+//            WindAttribute * attrs = _surface_all_window(sfWraper, &size);
             //TODO revert from steam
             //            if(size == 1){
 //                pWin = attrs[0].pWin;

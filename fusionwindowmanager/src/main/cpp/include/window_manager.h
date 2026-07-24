@@ -264,15 +264,15 @@ private:
 
     void HandleSystemTrayClientMessage( ScreenInfo *screen_info, XClientMessageEvent *ev);
 
-    jobject GetWindowIcon(Window id);
+//    jobject GetWindowIcon(Window id);
 
-    jobject CreateBitmapFromNetWmIcon(unsigned char *data, unsigned long nitems);
+//    jobject CreateBitmapFromNetWmIcon(unsigned char *data, unsigned long nitems);
 
-    jobject CreateBitmapFromXImage(JNIEnv *env, XImage *image);
+//    jobject CreateBitmapFromXImage(JNIEnv *env, XImage *image);
 
-    uint32_t ConvertPixelToARGB(unsigned long pixel, int depth, int byte_order);
+//    uint32_t ConvertPixelToARGB(unsigned long pixel, int depth, int byte_order);
 
-    jobject CreateBitmapFromPixmap(JNIEnv *env, Display *display, Pixmap pixmap);
+//    jobject CreateBitmapFromPixmap(JNIEnv *env, Display *display, Pixmap pixmap);
 
     void ReparentDockWindow(Window window);
 
