@@ -209,6 +209,7 @@ public class MainActivity extends Activity {
     public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
     private int mWindowingMode = 5;
     private boolean mSystemBarVisible = true;
+    private String mWmStateAction = "";
 
     protected long getWindowId() {
         return WindowCode;
@@ -909,7 +910,7 @@ public class MainActivity extends Activity {
                 );
                 mXserviceWrapper.raiseWindow(mAttribute.getXID());
                 InputManager.getInstance().setFocusView(getLorieView());
-                if (needSurface) {
+//                if (needSurface) {
                     serviceWindowChange(
                             sfc,
                             mAttribute.getOffsetX(),
@@ -921,7 +922,7 @@ public class MainActivity extends Activity {
                             mAttribute.getXID()
                     );
                     needSurface = false;
-                }
+//                }
             }
         }, delayMS);
     }
@@ -1564,17 +1565,19 @@ public class MainActivity extends Activity {
                         " action:" + intent.getAction() );
                 if(windowID == Objects.requireNonNull(mAttribute).getXID()){
                     updateWmStateInner(intent.getAction());
-                    handler.postDelayed(() -> {
-                        if(mFrameworkOperations != null) {
-                            mFrameworkOperations.exitFullScreenWindow(MainActivity.this);
-                        }
-                    }, 1000);
+//                    handler.postDelayed(() -> {
+//                        if(mFrameworkOperations != null) {
+//                            FLog.a("event", getWindowId(), "exitFullScreenWindow");
+//                            mFrameworkOperations.exitFullScreenWindow(MainActivity.this);
+//                        }
+//                    }, 1000);
                 }
             } 
         }
     }
 
     private void updateWmStateInner(String action) {
+        Log.d(TAG, "updateWmStateInner() called with: action = [" + action + "]");
         if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mWindowingMode == 5){
             return;
         }
@@ -1586,13 +1589,22 @@ public class MainActivity extends Activity {
         if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {
             if(!mSystemBarVisible){
                 mFrameworkOperations.exitFullScreenWindow(this);
+                mWmStateAction = WINDOW_ACTION_MAXIMIZED_ACTION;
             } else {
                 mFrameworkOperations.exitMaxmizeWindow(this);
+                mWmStateAction = WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
             }
         }
 
         if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
             mFrameworkOperations.startFullScreenWindow(this);
+        }
+
+        if(mFrameworkOperations != null && WINDOW_ACTION_FULLSCREEN_ACTION.equals(action)) {
+            if(!TextUtils.equals(mWmStateAction, WINDOW_ACTION_FULLSCREEN_ACTION)){
+                mFrameworkOperations.exitFullScreenWindow(this);
+                mWmStateAction = WINDOW_ACTION_FULLSCREEN_ACTION;
+            }
         }
     }
     private DecorCaptionView getCaptionView() {
@@ -1649,6 +1661,19 @@ public class MainActivity extends Activity {
 //        this.isFullscreen = !isSystemBarVisible;
         Log.d(TAG, "onStatusChanged() called with: windowingMode = " +
                 "[" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]");
+        if(TextUtils.equals(mWmStateAction, WINDOW_ACTION_MAXIMIZED_ACTION)){
+            if(mWindowingMode == 1 && mSystemBarVisible){
+                mWmStateAction = "";
+            }
+        } else if(TextUtils.equals(mWmStateAction, WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION)){
+            if(mWindowingMode == 5 && mSystemBarVisible){
+                mWmStateAction = "";
+            }
+        } else if(TextUtils.equals(mWmStateAction, WINDOW_ACTION_FULLSCREEN_ACTION)){
+            if(mWindowingMode == 1 && !mSystemBarVisible){
+                mWmStateAction = "";
+            }
+        }
     }
 
     /**

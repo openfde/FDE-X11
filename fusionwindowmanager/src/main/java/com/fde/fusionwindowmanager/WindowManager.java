@@ -52,7 +52,7 @@ public class WindowManager  {
     }
 
     HandlerThread mThread;
-    static Handler mHandler;
+    private static Handler mHandler, mMainHandler;
 
     private static WeakReference<Context> contextReference;
     public static boolean isConnected;
@@ -122,6 +122,7 @@ public class WindowManager  {
         mThread = new HandlerThread("WM");
         mThread.start();
         mHandler = new TaskHandler(mThread.getLooper());
+        mMainHandler = new Handler(Looper.getMainLooper());
         intentFilter = new IntentFilter();
         intentFilter.addAction(TASK_ID_FROM_ACTIVITY_ADD);
         intentFilter.addAction(TASK_ID_FROM_ACTIVITY_REMOVE);
@@ -256,16 +257,19 @@ public class WindowManager  {
         }
     }
 
-        //called from native code
+    //called from native code
     public static void updateWmStateClient(int action, long window){
         Log.d(TAG, "updateWmStateClient action = [" + action + "], window = [" + window + "]");
         Context context = contextReference.get();
-
-        if (action ==  WINDOW_ACTION_MAXIMIZED_REMOVE) {
-        } if((action & WINDOW_ACTION_MAXIMIZED_HORZ) > 0
+        if(action == WINDOW_ACTION_FULLSCREEN){
+            //TODO
+        } else if (action ==  WINDOW_ACTION_MAXIMIZED_REMOVE) {
+            //TODO
+        } else if((action & WINDOW_ACTION_MAXIMIZED_HORZ) > 0
                 && (action & WINDOW_ACTION_MAXIMIZED_VERT) > 0){
             action = WINDOW_ACTION_MAXIMIZED;
         } else {
+            //TODO
 //            action = WINDOW_ACTION_MAXIMIZED_REMOVE;
         }
 
@@ -287,7 +291,10 @@ public class WindowManager  {
             case WINDOW_ACTION_DELETE:
                 break;
             case WINDOW_ACTION_FULLSCREEN:
-                sendBroadcastWmState(WINDOW_ACTION_FULLSCREEN_ACTION, window, context);
+                //to avoid activity not start
+                mMainHandler.postDelayed(()->{
+                    sendBroadcastWmState(WINDOW_ACTION_FULLSCREEN_ACTION, window, context);
+                },3000);
                 break;
             default:
                 break;
@@ -295,6 +302,7 @@ public class WindowManager  {
     }
 
     public static void sendBroadcastWmState(String action, long window, Context context) {
+        Log.d(TAG, "sendBroadcastWmState() called with: action = [" + action + "], window = [" + window + "], context = [" + context + "]");
         String targetPackage = context.getPackageName();
         Intent intent = new Intent(action);
         intent.setPackage(targetPackage);

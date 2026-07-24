@@ -50,7 +50,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean beginBatchEdit() {
         if (DEBUG) {
-            FLog.e(TAG, "beginBatchEdit() called");
+            FLog.l(TAG, "beginBatchEdit() called");
         }
         synchronized (this) {
             if (mBatchEditNesting >= 0) {
@@ -65,7 +65,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean endBatchEdit() {
         if (DEBUG) {
-            FLog.e(TAG, "endBatchEdit() called");
+            FLog.l(TAG, "endBatchEdit() called");
         }
         synchronized (this) {
             if (mBatchEditNesting > 0) {
@@ -84,7 +84,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean clearMetaKeyStates(int states) {
         if (DEBUG) {
-            FLog.e(TAG, "clearMetaKeyStates() called with: states = [" + states + "]");
+            FLog.l(TAG, "clearMetaKeyStates() called with: states = [" + states + "]");
         }
         Editable content = getEditable();
         if (content == null) {
@@ -150,7 +150,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public ExtractedText getExtractedText(ExtractedTextRequest request, int flags) {
         if (DEBUG) {
-            FLog.e(TAG, "getExtractedText() called with: request = [" + request + "], flags = [" + flags + "]");
+            FLog.l(TAG, "getExtractedText() called with: request = [" + request + "], flags = [" + flags + "]");
         }
         if (detectEventEditText != null) {
             ExtractedText et = new ExtractedText();
@@ -168,7 +168,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean sendKeyEvent(KeyEvent event) {
         if(DEBUG){
-            FLog.e(TAG, "sendKeyEvent() called with: event = [" + event + "]");
+            FLog.l(TAG, "sendKeyEvent() called with: event = [" + event + "]");
         }
         return super.sendKeyEvent(event);
     }
@@ -176,7 +176,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean performPrivateCommand(String action, Bundle data) {
         if(DEBUG){
-            FLog.e(TAG, "performPrivateCommand() called with: action = [" + action + "], data = [" + data + "]");
+            FLog.l(TAG, "performPrivateCommand() called with: action = [" + action + "], data = [" + data + "]");
         }
         detectEventEditText.onPrivateIMECommand(action, data);
         return true;
@@ -185,7 +185,7 @@ public class DetectInputConnection extends BaseInputConnection {
     @Override
     public boolean commitText(CharSequence text, int newCursorPosition) {
         if(DEBUG){
-            FLog.e(TAG, "commitText() called with: text = [" + text + "], mTextView = [" + detectEventEditText + "]");
+            FLog.l(TAG, "commitText() called with: text = [" + text + "], mTextView = [" + detectEventEditText + "]");
         }
         if (detectEventEditText == null) {
             return super.commitText(text, newCursorPosition);
