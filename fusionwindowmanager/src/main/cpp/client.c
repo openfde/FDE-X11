@@ -2681,7 +2681,30 @@ clientClose (Client *c)
     timestamp = 0;
     if (FLAG_TEST (c->wm_flags, WM_FLAG_DELETE))
     {
-        sendClientMessage (screen_info, c->window, WM_DELETE_WINDOW, timestamp);
+        Atom *protocols;
+        int count;
+        if (XGetWMProtocols(display_info->dpy, c->window, &protocols, &count)) {
+            for (int i = 0; i < count; i++) {
+                if (protocols[i] == display_info->atoms[WM_DELETE_WINDOW]) {
+                    sendClientMessage (screen_info, c->window, WM_DELETE_WINDOW, timestamp);
+                }
+            }
+            XFree(protocols);
+        } else {
+            logd("Window has no WM_PROTOCOLS property");
+            Atom net_close_window = XInternAtom(display_info->dpy, "_NET_CLOSE_WINDOW", False);
+            XClientMessageEvent ev = {0};
+            ev.type = ClientMessage;
+            ev.window = c->window;
+            ev.message_type = net_close_window;
+            ev.format = 32;
+            ev.data.l[0] = 0;  // 当前时间
+            ev.data.l[1] = 0;  // 源指示
+            XSendEvent(display_info->dpy, RootWindow(display_info->dpy, 0),
+                       False, SubstructureRedirectMask, (XEvent *)&ev);
+        }
+
+
         // if (FLAG_TEST (c->wm_flags, WM_FLAG_PING))
         // {
         //     clientSendNetWMPing (c, timestamp);

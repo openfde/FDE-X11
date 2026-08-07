@@ -516,9 +516,9 @@ public class XWindowService extends Service {
                     Log.e(TAG, "RemoteException: " + e.getMessage());
                 }
             }
-            shouldDestroyMap.put(attr.getXID(), attr);
+//            shouldDestroyMap.put(attr.getXID(), attr);
         } else {
-            shouldDestroyMap.put(attr.getXID(), attr);
+//            shouldDestroyMap.put(attr.getXID(), attr);
         }
     }
 

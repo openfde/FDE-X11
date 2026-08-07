@@ -1922,6 +1922,7 @@ void WindowManager::ConvertAllTarget()
     XSelectionEvent *sev;
     bool isText = false;
     bool isFile = false;
+    unsigned char *data = nullptr;
     unsigned char *text_data, *file_data = nullptr;
     for (int i = 0; i < selection_property_size; i++)
     {
@@ -1943,7 +1944,6 @@ void WindowManager::ConvertAllTarget()
                         Atom actual_type;
                         int actual_format;
                         unsigned long nitems, bytes_after;
-                        unsigned char *data = nullptr;
                         XGetWindowProperty(display_, owner, selection_property_list[i], 0, (~0L),
                                            False, AnyPropertyType,
                                            &actual_type, &actual_format, &nitems, &bytes_after, &data);
@@ -1973,7 +1973,6 @@ void WindowManager::ConvertAllTarget()
                             }
                             logd("\n");
                         }
-                        XFree(data);
                     }
                     break;
                 default:
@@ -1985,10 +1984,14 @@ void WindowManager::ConvertAllTarget()
     if (isFile)
     {
         UpdateXserverClipFile(reinterpret_cast<const char *>(file_data));
+        XFree(data);
+
     }
     else if (isText)
     {
         UpdateXserverCliptext(reinterpret_cast<const char *>(text_data));
+        XFree(data);
+
     }
 }
 
