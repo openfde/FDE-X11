@@ -288,6 +288,14 @@ LockServer(void)
     len += strlen(tmppath) + strlen(port) + strlen(LOCK_SUFFIX) + 1;
     if (len > sizeof(LockFile))
         FatalError("Display name `%s' is too long\n", port);
+
+    /*
+     * Ensure the lock directory exists (it is usually /tmp, but on Android it
+     * may be absent or point to a per-app directory).
+     */
+    if (mkdir(tmppath, 0777) != 0 && errno != EEXIST)
+        FatalError("Cannot create lock directory %s: %s\n", tmppath, strerror(errno));
+
     (void) sprintf(tmp, "%s" LOCK_TMP_PREFIX "%s" LOCK_SUFFIX, tmppath, port);
     (void) sprintf(LockFile, "%s" LOCK_PREFIX "%s" LOCK_SUFFIX, tmppath, port);
 
@@ -318,7 +326,7 @@ LockServer(void)
         } while (i < 3);
     }
     if (lfd < 0)
-        FatalError("Could not create lock file in %s\n", tmp);
+        FatalError("Could not create lock file in %s: %s\n", tmp, strerror(errno));
     snprintf(pid_str, sizeof(pid_str), "%10lu\n", (unsigned long) getpid());
     if (write(lfd, pid_str, 11) != 11)
         FatalError("Could not write pid to lock file in %s\n", tmp);

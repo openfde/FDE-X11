@@ -189,8 +189,10 @@ OsVendorInit(void) {
 }
 
 void
-OsVendorFatalError(unused const char *f, unused va_list args) {
-    loge("reson %s",f, args);
+OsVendorFatalError(const char *f, va_list args) {
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), f, args);
+    loge("%s", buffer);
 }
 
 #if defined(DDXBEFORERESET)
