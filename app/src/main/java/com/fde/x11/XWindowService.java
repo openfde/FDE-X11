@@ -1,11 +1,11 @@
 package com.fde.x11;
 
 import static android.os.Build.VERSION.SDK_INT;
+import static com.fde.FrameworkImpl.DECOR_CAPTION_HEIGHT;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_DISMISS_WINDOW;
 import static com.fde.fusionwindowmanager.eventbus.EventType.X_START_VIEW;
 import static com.fde.x11.Xserver._WM_WINDOW_TYPE_SYSTIP;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL;
-import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
 import static com.fde.x11.utils.AppUtils.NAVIGATION_BAR_HEIGHT_U;
 
 import android.annotation.SuppressLint;
@@ -238,7 +238,9 @@ public class XWindowService extends Service {
 
         @Override
         public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) throws RemoteException {
-//            FLog.s(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
+            if(whichButton != 0){
+                FLog.k(TAG, "sendMouseEvent() called with: x = [" + x + "], y = [" + y + "], whichButton = [" + whichButton + "], buttonDown = [" + buttonDown + "], relative = [" + relative + "], index = [" + index + "]");
+            }
             Xserver.getInstance().sendMouseEvent(x, y, whichButton, buttonDown, relative, index);
         }
 
@@ -347,9 +349,7 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN, priority = 1)
     public void onReceiveMsg(EventMessage message) {
-        FLog.s(TAG, message.getMessage() + " ID:" +
-                Long.toHexString(message.getWindowAttribute().getXID())
-                + "   prop:" + message.getProperty());
+        FLog.k(TAG, message.getWindowAttribute().getXID(), "message:" + message);
         int windowSize = runningMainWindow.size();
 //        FLog.s(TAG, "before: size:" + windowSize);
         switch (message.getType()) {
@@ -923,7 +923,7 @@ public class XWindowService extends Service {
 
         runningMainWindow.add(attr.getXID());
         startingWindow.add(attr.getXID());
-        FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
+        FLog.k(TAG, attr.getXID(), "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         ActivityOptions options = ActivityOptions.makeBasic();
         options.setLaunchBounds(new Rect((int) attr.getOffsetX(),
                 (int) (attr.getOffsetY() - decorHeight),
@@ -943,7 +943,6 @@ public class XWindowService extends Service {
         intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent, options.toBundle());
-        FLog.s(TAG, "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
 //        }
     }
 

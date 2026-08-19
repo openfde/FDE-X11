@@ -11,9 +11,7 @@ import java.lang.ref.WeakReference;
 public class FrameworkFactory {
 
     public static FrameworkOperations create(WeakReference<Activity> activity,
-                                             boolean hideDecorCaptionView,
-                                             AppTaskStatusListener listener
-                                             ){
-        return new FrameworkImpl(activity, hideDecorCaptionView, listener);
+                                             boolean hideDecorCaptionView                                             ){
+        return new FrameworkImpl(activity, hideDecorCaptionView); //todo
     }
 }

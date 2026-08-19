@@ -52,7 +52,7 @@ public class WindowManager  {
     }
 
     HandlerThread mThread;
-    static Handler mHandler;
+    static Handler mHandler,mMainHandler;
 
     private static WeakReference<Context> contextReference;
     public static boolean isConnected;

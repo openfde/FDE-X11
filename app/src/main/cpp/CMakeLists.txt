@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.22)
 project(lorie)
+
+add_link_options("-Wl,-z,max-page-size=65536")
+
 if(APP_LOG)
     add_compile_definitions(APP_LOG=1)
     add_compile_definitions(LOGGING_ENABLED=1)

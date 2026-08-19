@@ -10,6 +10,9 @@ cmake_minimum_required(VERSION 3.22.1)
 # with ${CMAKE_PROJECT_NAME} (both CMake variables are in-sync within the top level
 # build script scope).
 project("fusionwindowmanager")
+
+add_link_options("-Wl,-z,max-page-size=65536")
+
 if(PRINT_LOG)
         add_compile_definitions(PRINT_LOG=1)
         add_compile_definitions(LOGGING_ENABLED=1)

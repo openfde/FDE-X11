@@ -22,7 +22,7 @@ public class FrameworkImpl implements FrameworkOperations{
     private static final String TAG = "FrameworkImpl30";
 
     private WeakReference<Activity> activity;
-
+    public static int DECOR_CAPTION_HEIGHT = 44;
     public FrameworkImpl(WeakReference<Activity> activity,
                          boolean hideDecorCaptionView,
                          AppTaskStatusListener listener) {

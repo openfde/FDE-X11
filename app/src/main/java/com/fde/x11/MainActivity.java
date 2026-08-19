@@ -5,6 +5,7 @@ import static android.os.Build.VERSION.SDK_INT;
 import static android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC;
 import static android.view.KeyEvent.*;
 import static android.view.WindowManager.LayoutParams.*;
+import static com.fde.FrameworkImpl.DECOR_CAPTION_HEIGHT;
 import static com.fde.fusionwindowmanager.WindowManager.ATTR_ABOUT_WINDOW;
 import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_ADD;
 import static com.fde.fusionwindowmanager.WindowManager.TASK_ID_FROM_ACTIVITY_REMOVE;
@@ -33,7 +34,6 @@ import static com.fde.x11.Xserver.ACTION_START;
 import static com.fde.x11.LoriePreferences.ACTION_PREFERENCES_CHANGED;
 import static com.fde.x11.Xserver.ACTION_UPDATE_ICON;
 import static com.fde.x11.data.Constants.APP_TITLE_PREFIX;
-import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
 import static com.fde.x11.utils.AppUtils.GLOBAL_DENSITY;
 
 import android.annotation.SuppressLint;
@@ -95,7 +95,6 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.viewpager.widget.ViewPager;
 
 import com.android.internal.policy.DecorView;
-import com.android.internal.widget.DecorCaptionView;
 import com.easy.view.dialog.EasyDialog;
 import com.fde.FrameworkFactory;
 import com.fde.FrameworkOperations;
@@ -127,8 +126,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import android.openfde.AppTaskControllerProxy;
-import android.openfde.AppTaskStatusListener;
 
 /**
  * This is an Activity that behaves like a window in XServer. It receives user
@@ -252,8 +249,7 @@ public class MainActivity extends Activity {
         initView();
         initEvent();
         mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
-                !captionShowing,
-                this::onStatusChanged);
+                !captionShowing);
         broadcastTaskId(true);
     }
 
@@ -558,7 +554,7 @@ public class MainActivity extends Activity {
             finish();
         }
         this.density = newConfig.densityDpi;
-        FLog.a("lifecycle", getWindowId(), "onConfigurationChanged:" + newConfig);
+        FLog.k(TAG, getWindowId(), "onConfigurationChanged", "newConfig:" +newConfig);
         if(mXserviceWrapper == null){
             return;
         }
@@ -650,7 +646,6 @@ public class MainActivity extends Activity {
             mXserviceWrapper.unregisterActivityCallback(mAttribute.getXID(), iActivityCallback);
         }
         mXserviceWrapper.disableService();
-        FLog.a("lifecycle", getWindowId(), "onDestroy");
         if(mClipboardManager != null){
             mClipboardManager.removePrimaryClipChangedListener(mOnPrimaryClipChangedListener);
         }
@@ -658,7 +653,7 @@ public class MainActivity extends Activity {
         mOnPrimaryClipChangedListener = null;
         EventBus.getDefault().unregister(this);
         broadcastTaskId(false);
-
+        FLog.k(TAG, getWindowId(), "onDestroy");
     }
 
     public void onWindowDismissed(boolean finishTask, boolean suppressWindowTransition) {
@@ -845,23 +840,6 @@ public class MainActivity extends Activity {
             mFrameworkOperations.setDecorCaptionViewFocuseable(this, focusable);
         }
 
-//        if(Build.VERSION.SDK_INT == 30){
-//            Window window = getWindow();
-//            ViewGroup decor = (ViewGroup) window.getDecorView();
-//            DecorCaptionView decorCaptionView = (DecorCaptionView) decor.getChildAt(0);
-//            boolean isCaptionShowing = true;
-//            try {
-//                Class<?> aClass = Class.forName("com.android.internal.widget.DecorCaptionView");
-//                Method method = aClass.getMethod("isCaptionShowing");
-//                isCaptionShowing = (boolean) method.invoke(decorCaptionView);
-//                if(isCaptionShowing) {
-////                    decorCaptionView.setOperateEnabled(focusable);
-//                }
-//            } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException |
-//                     InvocationTargetException e) {
-//                FLog.e(TAG, e.getMessage());
-//            }
-//        }
     }
 
     /**
@@ -929,7 +907,7 @@ public class MainActivity extends Activity {
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
         if(mXserviceWrapper != null){
-            FLog.a("window", getWindowId(),"serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
+            FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
             mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
             mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
         }
@@ -1388,7 +1366,7 @@ public class MainActivity extends Activity {
                     }, 0);
                     onReceiveConnection();
                 } catch (Exception e) {
-                    Log.e(TAG, "Something went wrong while we extracted connection details from binder.", e);
+                    FLog.e(TAG + ":" + getWindowId(), "Something went wrong while we extracted connection details from binder." + e.getMessage());
                 }
             } else if (ACTION_STOP.equals(intent.getAction())) {
                 finishAffinity();
@@ -1607,22 +1585,12 @@ public class MainActivity extends Activity {
             }
         }
     }
-    private DecorCaptionView getCaptionView() {
-        DecorView decorView = (DecorView) getWindow().getDecorView();
-        if(decorView.getChildCount() > 0){
-            View childAt = decorView.getChildAt(0);
-            if(childAt instanceof DecorCaptionView){
-                return (DecorCaptionView)childAt;
-            }
-        }
-        return null;
-    }
 
     public class Connection implements ServiceConnection {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            FLog.a("event", getWindowId(), "onServiceConnected");
+            FLog.k(TAG, getWindowId(), "onServiceConnected");
             if(!killSelf){
                 ICmdEntryInterface s = ICmdEntryInterface.Stub.asInterface(service);
                 mXserviceWrapper.enableService(s);

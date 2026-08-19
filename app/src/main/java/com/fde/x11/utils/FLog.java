@@ -36,7 +36,7 @@ public class FLog {
 
     private static final boolean LogEnable = BuildConfig.DEBUG;
     private static final boolean LogAppListEnable = LogEnable && true;
-    private static final boolean LogEventEnable = LogEnable && true;
+    private static final boolean LogEventEnable = LogEnable && false;
     private static final boolean LogMainEnable = LogEnable && true;
     private static final boolean LogServerEnable = LogEnable && true;
     private static final boolean LogFileEnable = LogEnable && true;
@@ -144,4 +144,24 @@ public class FLog {
         }
         normal("==event==", tag+ ":" + s, DEBUG);
     }
+
+    //for key node tracking with elapsed time
+    public static void k(String tag, long id, String method, String content) {
+        String hexString = Long.toHexString(id);
+        String TAG = tag + "_" + hexString;
+        normal(TAG, "key_process method:" + method + " content:" + content, ERROR);
+    }
+
+    public static void k(String tag, long id, String s) {
+        String hexString = Long.toHexString(id);
+        String TAG = tag + "_" + hexString;
+        normal(TAG, "key_process " + s , ERROR);
+    }
+
+    public static void k(String tag, String s) {
+        normal(tag, "key_process " + s , ERROR);
+    }
+
+
+
 }

@@ -1,0 +1,161 @@
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preVersioncDebugBuild UP-TO-DATE
+> Task :app:mergeVersioncDebugNativeDebugMetadata NO-SOURCE
+> Task :app:compileVersioncDebugAidl UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsVersioncDebug UP-TO-DATE
+> Task :app:generateVersioncDebugResValues UP-TO-DATE
+> Task :app:generateVersioncDebugResources UP-TO-DATE
+> Task :dialogtiplib:preBuild UP-TO-DATE
+> Task :dialogtiplib:preDebugBuild UP-TO-DATE
+> Task :dialogtiplib:generateDebugResValues UP-TO-DATE
+> Task :dialogtiplib:generateDebugResources UP-TO-DATE
+> Task :dialogtiplib:packageDebugResources UP-TO-DATE
+> Task :easy:preBuild UP-TO-DATE
+> Task :easy:preDebugBuild UP-TO-DATE
+> Task :easy:generateDebugResValues UP-TO-DATE
+> Task :easy:generateDebugResources UP-TO-DATE
+> Task :easy:packageDebugResources UP-TO-DATE
+> Task :fusionwindowmanager:preBuild UP-TO-DATE
+> Task :fusionwindowmanager:preDebugBuild UP-TO-DATE
+> Task :fusionwindowmanager:generateDebugResValues UP-TO-DATE
+> Task :fusionwindowmanager:generateDebugResources UP-TO-DATE
+> Task :fusionwindowmanager:packageDebugResources UP-TO-DATE
+> Task :x_recyclerview:preBuild UP-TO-DATE
+> Task :x_recyclerview:preDebugBuild UP-TO-DATE
+> Task :x_recyclerview:generateDebugResValues UP-TO-DATE
+> Task :x_recyclerview:generateDebugResources UP-TO-DATE
+> Task :x_recyclerview:packageDebugResources UP-TO-DATE
+> Task :app:mergeVersioncDebugResources UP-TO-DATE
+> Task :app:packageVersioncDebugResources UP-TO-DATE
+> Task :app:parseVersioncDebugLocalResources UP-TO-DATE
+> Task :dialogtiplib:parseDebugLocalResources UP-TO-DATE
+> Task :dialogtiplib:processDebugManifest UP-TO-DATE
+> Task :dialogtiplib:generateDebugRFile UP-TO-DATE
+> Task :easy:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :easy:parseDebugLocalResources UP-TO-DATE
+> Task :easy:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :easy:processDebugManifest UP-TO-DATE
+> Task :easy:generateDebugRFile UP-TO-DATE
+> Task :fusionwindowmanager:parseDebugLocalResources UP-TO-DATE
+> Task :fusionwindowmanager:processDebugManifest UP-TO-DATE
+> Task :fusionwindowmanager:generateDebugRFile UP-TO-DATE
+> Task :x_recyclerview:parseDebugLocalResources UP-TO-DATE
+> Task :x_recyclerview:processDebugManifest UP-TO-DATE
+> Task :x_recyclerview:generateDebugRFile UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesVersioncDebug UP-TO-DATE
+> Task :app:generateVersioncDebugBuildConfig UP-TO-DATE
+> Task :app:javaPreCompileVersioncDebug UP-TO-DATE
+> Task :dialogtiplib:writeDebugAarMetadata UP-TO-DATE
+> Task :easy:writeDebugAarMetadata UP-TO-DATE
+> Task :fusionwindowmanager:writeDebugAarMetadata UP-TO-DATE
+> Task :x_recyclerview:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkVersioncDebugAarMetadata UP-TO-DATE
+> Task :app:mapVersioncDebugSourceSetPaths UP-TO-DATE
+> Task :app:createVersioncDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksVersioncDebug UP-TO-DATE
+> Task :dialogtiplib:extractDeepLinksDebug UP-TO-DATE
+> Task :easy:extractDeepLinksDebug UP-TO-DATE
+> Task :fusionwindowmanager:extractDeepLinksDebug UP-TO-DATE
+> Task :x_recyclerview:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processVersioncDebugMainManifest UP-TO-DATE
+> Task :app:processVersioncDebugManifest UP-TO-DATE
+> Task :app:processVersioncDebugManifestForPackage UP-TO-DATE
+> Task :dialogtiplib:compileDebugLibraryResources UP-TO-DATE
+> Task :easy:compileDebugLibraryResources UP-TO-DATE
+> Task :fusionwindowmanager:compileDebugLibraryResources UP-TO-DATE
+> Task :x_recyclerview:compileDebugLibraryResources UP-TO-DATE
+> Task :app:processVersioncDebugResources UP-TO-DATE
+> Task :dialogtiplib:javaPreCompileDebug UP-TO-DATE
+> Task :dialogtiplib:compileDebugJavaWithJavac UP-TO-DATE
+> Task :dialogtiplib:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :easy:javaPreCompileDebug UP-TO-DATE
+> Task :easy:compileDebugJavaWithJavac UP-TO-DATE
+> Task :easy:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :fusionwindowmanager:javaPreCompileDebug UP-TO-DATE
+> Task :fusionwindowmanager:compileDebugJavaWithJavac UP-TO-DATE
+> Task :fusionwindowmanager:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :x_recyclerview:javaPreCompileDebug UP-TO-DATE
+> Task :x_recyclerview:compileDebugJavaWithJavac UP-TO-DATE
+> Task :x_recyclerview:bundleLibCompileToJarDebug UP-TO-DATE
+
+> Task :app:compileVersioncDebugJavaWithJavac
+
+> Task :app:mergeVersioncDebugShaders UP-TO-DATE
+> Task :app:compileVersioncDebugShaders NO-SOURCE
+> Task :app:generateVersioncDebugAssets UP-TO-DATE
+> Task :dialogtiplib:mergeDebugShaders UP-TO-DATE
+> Task :dialogtiplib:compileDebugShaders NO-SOURCE
+> Task :dialogtiplib:generateDebugAssets UP-TO-DATE
+> Task :dialogtiplib:packageDebugAssets UP-TO-DATE
+> Task :easy:mergeDebugShaders UP-TO-DATE
+> Task :easy:compileDebugShaders NO-SOURCE
+> Task :easy:generateDebugAssets UP-TO-DATE
+> Task :easy:packageDebugAssets UP-TO-DATE
+> Task :fusionwindowmanager:mergeDebugShaders UP-TO-DATE
+> Task :fusionwindowmanager:compileDebugShaders NO-SOURCE
+> Task :fusionwindowmanager:generateDebugAssets UP-TO-DATE
+> Task :fusionwindowmanager:packageDebugAssets UP-TO-DATE
+> Task :x_recyclerview:mergeDebugShaders UP-TO-DATE
+> Task :x_recyclerview:compileDebugShaders NO-SOURCE
+> Task :x_recyclerview:generateDebugAssets UP-TO-DATE
+> Task :x_recyclerview:packageDebugAssets UP-TO-DATE
+> Task :app:mergeVersioncDebugAssets UP-TO-DATE
+> Task :app:compressVersioncDebugAssets UP-TO-DATE
+> Task :app:checkVersioncDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarVersioncDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexVersioncDebug UP-TO-DATE
+> Task :x_recyclerview:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :fusionwindowmanager:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :dialogtiplib:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :easy:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :dialogtiplib:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :easy:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :fusionwindowmanager:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :x_recyclerview:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :app:mergeLibDexVersioncDebug UP-TO-DATE
+> Task :app:dexBuilderVersioncDebug
+> Task :app:processVersioncDebugJavaRes NO-SOURCE
+> Task :dialogtiplib:processDebugJavaRes NO-SOURCE
+> Task :easy:processDebugJavaRes NO-SOURCE
+> Task :fusionwindowmanager:processDebugJavaRes NO-SOURCE
+> Task :x_recyclerview:processDebugJavaRes NO-SOURCE
+> Task :app:mergeVersioncDebugJavaResource UP-TO-DATE
+> Task :app:configureCMakeDebug[arm64-v8a]
+> Task :app:mergeProjectDexVersioncDebug
+> Task :app:buildCMakeDebug[arm64-v8a]
+> Task :app:configureCMakeDebug[x86_64]
+> Task :app:buildCMakeDebug[x86_64]
+> Task :app:mergeVersioncDebugJniLibFolders UP-TO-DATE
+> Task :dialogtiplib:mergeDebugJniLibFolders UP-TO-DATE
+> Task :dialogtiplib:mergeDebugNativeLibs NO-SOURCE
+> Task :dialogtiplib:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :easy:mergeDebugJniLibFolders UP-TO-DATE
+> Task :easy:mergeDebugNativeLibs NO-SOURCE
+> Task :easy:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :fusionwindowmanager:configureCMakeDebug[arm64-v8a]
+> Task :fusionwindowmanager:buildCMakeDebug[arm64-v8a]
+> Task :fusionwindowmanager:configureCMakeDebug[x86_64]
+> Task :fusionwindowmanager:buildCMakeDebug[x86_64]
+> Task :fusionwindowmanager:mergeDebugJniLibFolders UP-TO-DATE
+> Task :fusionwindowmanager:mergeDebugNativeLibs UP-TO-DATE
+> Task :fusionwindowmanager:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :x_recyclerview:mergeDebugJniLibFolders UP-TO-DATE
+> Task :x_recyclerview:mergeDebugNativeLibs NO-SOURCE
+> Task :x_recyclerview:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeVersioncDebugNativeLibs UP-TO-DATE
+> Task :app:stripVersioncDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningVersioncDebug UP-TO-DATE
+> Task :app:writeVersioncDebugAppMetadata UP-TO-DATE
+> Task :app:writeVersioncDebugSigningConfigVersions UP-TO-DATE
+> Task :app:packageVersioncDebug
+> Task :app:createVersioncDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleVersioncDebug
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.2/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 28s
+115 actionable tasks: 12 executed, 103 up-to-date

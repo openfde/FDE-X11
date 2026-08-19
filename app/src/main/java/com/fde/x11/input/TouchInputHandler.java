@@ -210,7 +210,7 @@ public class TouchInputHandler {
                 if (!mDragging && mCheckForDragging && (fromMouse || passedSlop(x, y))) {
                     mCheckForDragging = false;
                     mDragging = true;
-                    decorView.startDecorMovingTask(e.getRawX(), e.getRawY());
+//      todo              decorView.startDecorMovingTask(e.getRawX(), e.getRawY());
                     // After the above call the framework will take over the input.
                     // This handler will receive ACTION_CANCEL soon (possible after a few spurious
                     // ACTION_MOVE events which are safe to ignore).
@@ -227,7 +227,7 @@ public class TouchInputHandler {
                     // If it receives ACTION_UP event, the dragging is already finished and also
                     // the system can not end drag on ACTION_UP event. So request to finish
                     // dragging.
-                    decorView.finisDecorMovingTask();
+//      todo              decorView.finisDecorMovingTask();
                 }
                 mDragging = false;
                 return !mCheckForDragging;

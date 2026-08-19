@@ -20,6 +20,8 @@
 
 package com.fde.x11.utils;
 
+import static com.fde.FrameworkImpl.DECOR_CAPTION_HEIGHT;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
@@ -66,7 +68,6 @@ public class AppUtils {
     public static float GLOBAL_DENSITY = 1.0f;
     public static int GLOBAL_SCREEN_WIDTH = 1920;
     public static int GLOBAL_SCREEN_HEIGHT = 1080;
-    public static int DECOR_CAPTION_HEIGHT = 44;
     public static int STATUSBAR_HEIGHT_U = 25; //android 14
     public static int STATUSBAR_HEIGHT_R = 0; //android 11
 

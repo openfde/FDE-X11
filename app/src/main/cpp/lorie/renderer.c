@@ -531,14 +531,14 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
 }
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
-    logd("renderer_set_window_each 1")
+//    logd("renderer_set_window_each 1")
     if(!res->surface){
         return;
     }
-    logd("renderer_set_window_each 2")
+//    logd("renderer_set_window_each 2")
     bool isWidget = false;
     if(_surface_count_window(sfWraper, res->window)){
-        logd("set window attr")
+//        logd("set window attr")
         WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
         attr->status = 6;
         attr->discard = 0;
@@ -550,7 +550,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         attr->index = res->id;
         attr->window = res->window;
     } else if(_surface_count_widget(sfWraper, res->window)){
-        logd("set widget attr")
+//        logd("set widget attr")
         isWidget = true;
         Widget *widget = _surface_find_widget(sfWraper, res->window);
         widget->offset_x = res->offset_x;
@@ -566,7 +566,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     EGLNativeWindowType window = new_surface ? ANativeWindow_fromSurface(env, new_surface) : NULL;
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
-    logd("renderer_set_window_each window:%p width:%d height:%d index:%d p:%x surface:%p new_surface:%p",
+    loge("key_process window:%p width:%d height:%d index:%d p:%x surface:%p new_surface:%p",
         window, width, height, res->id, res->pWin, res->surface, new_surface);
     EGLSurface sfc;
     WindAttribute *attr;
@@ -627,7 +627,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     } else {
         attr->sfc = sfc;
     }
-    logd("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
+//    logd("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
         if (!g_texture_program) {
@@ -975,11 +975,11 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             EGLint sfcW = 0, sfcH = 0;
             eglQuerySurface(global_egl_display, eglSurface, EGL_WIDTH, &sfcW);
             eglQuerySurface(global_egl_display, eglSurface, EGL_HEIGHT, &sfcH);
-            if ((EGLint)width != sfcW || (EGLint)height != sfcH) {
-                logd("size mismatch: surface=%dx%d pixmap=%.0fx%.0f skip window=%x",
-                     sfcW, sfcH, width, height, window);
-                return FALSE;
-            }
+//            if ((EGLint)width != sfcW || (EGLint)height != sfcH) {
+//                logd("size mismatch: surface=%dx%d pixmap=%.0fx%.0f skip window=%x",
+//                     sfcW, sfcH, width, height, window);
+//                return FALSE;
+//            }
         }
         glViewport(0, 0, width, height);
 //        loge("renderer_redraw_traversal_1 id:%d", id);

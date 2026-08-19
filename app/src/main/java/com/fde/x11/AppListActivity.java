@@ -146,7 +146,7 @@ public class AppListActivity extends AppCompatActivity {
             addAction(MODALED_ACTION_ACTIVITY_FROM_X);
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
-        }},  0);
+        }},  0x4);
         FLog.l(TAG, "onCreate: savedInstanceState:" + savedInstanceState + "");
         filterView.addTextChangedListener(new TextWatcher() {
             @Override

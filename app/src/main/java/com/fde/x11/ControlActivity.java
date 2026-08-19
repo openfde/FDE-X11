@@ -1,8 +1,8 @@
 package com.fde.x11;
 
+import static com.fde.FrameworkImpl.DECOR_CAPTION_HEIGHT;
 import static com.fde.x11.data.Constants.DISPLAY_GLOBAL_PARAM;
 import static com.fde.x11.utils.AppUtils.CONTENT_HEIGHT;
-import static com.fde.x11.utils.AppUtils.DECOR_CAPTION_HEIGHT;
 
 import android.app.Activity;
 import android.content.ComponentName;

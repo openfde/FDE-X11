@@ -121,11 +121,17 @@ android {
             dimension "systemv"
             buildConfigField "String", "system_verstion", "\"versionr\""
         }
+
+        versionc {
+            dimension "systemv"
+            buildConfigField "String", "system_verstion", "\"versionc\""
+        }
     }
 
     sourceSets {
         versionu.java.srcDirs = ['src/versionu/java']
         versionr.java.srcDirs = ['src/versionr/java']
+        versionc.java.srcDirs = ['src/versionc/java']
     }
 
 
@@ -147,6 +153,8 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs/impl')
     versionuCompileOnly files('libs/versionu/framework.jar')
     versionrCompileOnly files('libs/versionr/framework.jar')
+    versionrCompileOnly files('libs/versionc/framework.jar')
+
     compileOnly files('libs/openfde_sdk.jar')
 
 //    compileOnly files('libs/framework.jar')
