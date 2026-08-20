@@ -86,7 +86,7 @@ public class LorieView extends SurfaceView implements InputStub {
                 return;
 
             getDimensionsFromSettings();
-            if(Build.VERSION.SDK_INT == 34){
+            if(Build.VERSION.SDK_INT >= 34){
                 mCallback.realSizeChanged(holder.getSurface(), width, height);
             } else {
                 mCallback.changed(holder.getSurface(), GLOBAL_SCREEN_WIDTH,

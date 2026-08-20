@@ -591,7 +591,7 @@ public class XWindowService extends Service {
     }
 
     private void updateSystrayAndTip(WindowAttribute attr, int type) {
-        FLog.s(TAG, "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
+        FLog.k(TAG, attr.getXID(), "updateSystrayAndTip() called with: attr = [" + attr + "], type = [" + type + "]");
 
         if(outOfScreen(attr)){
             insetsIntoScreenWithHeight(attr, 0, false);

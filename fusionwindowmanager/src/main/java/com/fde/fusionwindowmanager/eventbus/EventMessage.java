@@ -62,7 +62,7 @@ public class EventMessage {
         return "\n EventMessage{" +
                 " \n windowAttribute=" + windowAttribute +
                 " \n , property=" + property +
-//                " \n , type=" + type +
+                " \n , type=" + type +
 //                " \n , message='" + message + '\'' +
                 '}';
     }

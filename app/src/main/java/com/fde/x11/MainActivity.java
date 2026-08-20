@@ -728,7 +728,7 @@ public class MainActivity extends Activity {
                     + " isCaptionShowing:" + isCaptionShowing());
         }
         //Android 14
-        if (Build.VERSION.SDK_INT == 34 && isFullscreen) {
+        if (Build.VERSION.SDK_INT >= 34 && isFullscreen) {
             return;
         }
         //no reason, when hide View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR must get from ""
