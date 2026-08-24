@@ -55,6 +55,11 @@ public class FrameworkImpl implements FrameworkOperations {
         proxy.maximizeOrNot();
         FLog.e(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
     }
+    
+    @Override
+    public int getTaskState() {
+        return 0;
+    }
 
     @Override
     public boolean isWindowMaximized() {

@@ -18,4 +18,6 @@ public interface FrameworkOperations {
     boolean startDecorMovingTask(float startX, float startY);
 
     void finisDecorMovingTask();
+
+    int getTaskState();
 }

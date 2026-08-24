@@ -4,16 +4,19 @@
     android:layout_height="fill_parent">
 
 
+
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:layout_marginVertical="40dp"
         android:id="@+id/refresh_layout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:visibility="gone"
         android:layout_gravity="center">
         <com.fde.recyclerview.SwipeRecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
+
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <ProgressBar
@@ -40,5 +43,40 @@
         android:background="@drawable/search_text_background"
         android:id="@+id/et_appname"
         android:textSize="17sp"
+        android:visibility="gone"
         android:singleLine="true"/>
+
+
+
+    <Button
+        android:id="@+id/btclose"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="100dp"
+        android:text="close" />
+
+    <Button
+        android:id="@+id/btminimize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="100dp"
+        android:layout_marginTop="150dp"
+        android:text="minimize" />
+
+    <Button
+        android:id="@+id/btmaxmize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="100dp"
+        android:layout_marginTop="200dp"
+        android:text="maxmize" />
+
+    <Button
+        android:id="@+id/btimmer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="100dp"
+        android:layout_marginTop="250dp"
+        android:text="immer" />
+
 </FrameLayout>

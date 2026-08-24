@@ -181,6 +181,7 @@ public class MainActivity extends Activity {
     private String title;
     private Configuration mConfiguration;
     private boolean isFullscreen = false;
+    private int mTaskState = 0;
     private int mSystemInsetTop = DECOR_CAPTION_HEIGHT;
 
     public int mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
@@ -203,7 +204,7 @@ public class MainActivity extends Activity {
     private long lastHoverExitTime;
 
     public static final String NAME_MATE_TERMINAL = "mate-terminal";
-    public static final int CONFIGURE_WINDOW_DELAY_MS = 100;
+    public static final int CONFIGURE_WINDOW_DELAY_MS = 300;
     private int mWindowingMode = 5;
     private boolean mSystemBarVisible = true;
     private String mWmStateAction = "";
@@ -248,9 +249,13 @@ public class MainActivity extends Activity {
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
         initView();
         initEvent();
+
+        broadcastTaskId(true);
         mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
                 !captionShowing);
-        broadcastTaskId(true);
+        if(!captionShowing){
+            mFrameworkOperations.hideDecorCaptionView(this);
+        }
     }
 
     private void broadcastTaskId(boolean isAdd){
@@ -271,6 +276,7 @@ public class MainActivity extends Activity {
     }
 
     private void initXParams() {
+
 //        updateWindowParams();
         if(hideDecorCaptionView()){
             mDecorCaptionViewHeight = 0;
@@ -278,7 +284,6 @@ public class MainActivity extends Activity {
             mDecorCaptionViewHeight = DECOR_CAPTION_HEIGHT;
         }
         FLog.a(TAG, "initXParams mDecorCaptionViewHeight:" + mDecorCaptionViewHeight);
-        int measuredHeight = getWindow().getDecorView().getMeasuredHeight();
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
         mAttribute = getIntent().getParcelableExtra(X_WINDOW_ATTRIBUTE);
         if(mAttribute != null){
@@ -550,6 +555,7 @@ public class MainActivity extends Activity {
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
+
         if(density != newConfig.densityDpi){
             finish();
         }
@@ -558,9 +564,29 @@ public class MainActivity extends Activity {
         if(mXserviceWrapper == null){
             return;
         }
-        getWindow().getDecorView().postDelayed(()->{
-            checkConfigBeforeExec(newConfig, true);
-        },0);
+//        getWindow().getDecorView().postDelayed(()->{
+        checkConfigBeforeExec(newConfig, true);
+//        },0);
+        if(isFullscreen){
+            mTaskState = 2;
+            mWindowingMode = 1;
+            if(mXserviceWrapper != null){
+                mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), 1);
+            }
+            return;
+        }
+        if(mFrameworkOperations != null){
+            handler.postDelayed(()->{
+                mTaskState = mFrameworkOperations.getTaskState();
+                Log.d(TAG, "onConfigurationChanged() called with: mTaskState = [" + mTaskState + "]");
+                if(mTaskState == 0 || mTaskState == 1){
+                    mWindowingMode = 5;
+                    if(mXserviceWrapper != null){
+                        mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), mTaskState);
+                    }
+                }
+            }, 100);
+        }
     }
 
     @SuppressLint("WrongConstant")
@@ -728,7 +754,7 @@ public class MainActivity extends Activity {
                     + " isCaptionShowing:" + isCaptionShowing());
         }
         //Android 14
-        if (Build.VERSION.SDK_INT >= 34 && isFullscreen) {
+        if (Build.VERSION.SDK_INT == 34 && isFullscreen) {
             return;
         }
         //no reason, when hide View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR must get from ""
@@ -889,17 +915,17 @@ public class MainActivity extends Activity {
                 mXserviceWrapper.raiseWindow(mAttribute.getXID());
                 InputManager.getInstance().setFocusView(getLorieView());
 //                if (needSurface) {
-                    serviceWindowChange(
-                            sfc,
-                            mAttribute.getOffsetX(),
-                            mAttribute.getOffsetY(),
-                            mAttribute.getWidth(),
-                            mAttribute.getHeight(),
-                            mAttribute.getIndex(),
-                            mAttribute.getWindowPtr(),
-                            mAttribute.getXID()
-                    );
-                    needSurface = false;
+                serviceWindowChange(
+                        sfc,
+                        mAttribute.getOffsetX(),
+                        mAttribute.getOffsetY(),
+                        mAttribute.getWidth(),
+                        mAttribute.getHeight(),
+                        mAttribute.getIndex(),
+                        mAttribute.getWindowPtr(),
+                        mAttribute.getXID()
+                );
+                needSurface = false;
 //                }
             }
         }, delayMS);
@@ -907,9 +933,9 @@ public class MainActivity extends Activity {
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
         if(mXserviceWrapper != null){
-            FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], pWin = [" + pWin + "], window = [" + window + "]");
+            FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], mTaskState = [" + mTaskState + "], window = [" + window + "]");
             mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
-            mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), isFullscreen ? 1 : 0);
+//            mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), 0);
         }
     }
 
@@ -1550,40 +1576,44 @@ public class MainActivity extends Activity {
 //                        }
 //                    }, 1000);
                 }
-            } 
+            }
         }
     }
 
     private void updateWmStateInner(String action) {
         Log.d(TAG, "updateWmStateInner() called with: action = [" + action + "]");
-        if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mWindowingMode == 5){
+        if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mTaskState == 0){
             return;
         }
 
-        if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(action) && mWindowingMode == 1) {
+        if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(action) && mTaskState == 1) {
             return;
         }
 
-        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {
-            if(!mSystemBarVisible){
-                mFrameworkOperations.exitFullScreenWindow(this);
-                mWmStateAction = WINDOW_ACTION_MAXIMIZED_ACTION;
-            } else {
-                mFrameworkOperations.exitMaxmizeWindow(this);
-                mWmStateAction = WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
-            }
+        if(mFrameworkOperations != null){
+            mFrameworkOperations.exitFullScreenWindow(this);
         }
 
-        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
-            mFrameworkOperations.startFullScreenWindow(this);
-        }
-
-        if(mFrameworkOperations != null && WINDOW_ACTION_FULLSCREEN_ACTION.equals(action)) {
-            if(!TextUtils.equals(mWmStateAction, WINDOW_ACTION_FULLSCREEN_ACTION)){
-                mFrameworkOperations.exitFullScreenWindow(this);
-                mWmStateAction = WINDOW_ACTION_FULLSCREEN_ACTION;
-            }
-        }
+//        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {
+//            if(!mSystemBarVisible){
+//                mFrameworkOperations.exitFullScreenWindow(this);
+//                mWmStateAction = WINDOW_ACTION_MAXIMIZED_ACTION;
+//            } else {
+//                mFrameworkOperations.exitMaxmizeWindow(this);
+//                mWmStateAction = WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION;
+//            }
+//        }
+//
+//        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
+//            mFrameworkOperations.startFullScreenWindow(this);
+//        }
+//
+//        if(mFrameworkOperations != null && WINDOW_ACTION_FULLSCREEN_ACTION.equals(action)) {
+//            if(!TextUtils.equals(mWmStateAction, WINDOW_ACTION_FULLSCREEN_ACTION)){
+//                mFrameworkOperations.exitFullScreenWindow(this);
+//                mWmStateAction = WINDOW_ACTION_FULLSCREEN_ACTION;
+//            }
+//        }
     }
 
     public class Connection implements ServiceConnection {
@@ -1667,14 +1697,8 @@ public class MainActivity extends Activity {
             if(FLog.SHOW_DEBUG_TITLE){
                 return false;
             }
-//            mFrameworkOperations = FrameworkFactory.create(new WeakReference<>(this),
-//                    true,
-//                    (windowingMode, isSystemBarVisible) -> Log.d("MainActivity11", "onStatusChanged() called with: windowingMode = [" + windowingMode + "], isSystemBarVisible = [" + isSystemBarVisible + "]"));
-            FLog.a("TAG", "hideDecorCaptionView");
-            if(mFrameworkOperations != null ){
-                mFrameworkOperations.hideDecorCaptionView(this);
-                captionShowing = false;
-            }
+            captionShowing = false;
+            FLog.a("TAG", "hideDecorCaptionView mFrameworkOperations:"  + mFrameworkOperations);
             return true;
         }
     }

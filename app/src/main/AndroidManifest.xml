@@ -68,12 +68,12 @@
             android:resizeableActivity="true"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="stateHidden|adjustResize">
-            <layout
-                android:defaultHeight="760dp"
-                android:defaultWidth="920dp"
-                android:minHeight="540dp"
-                android:minWidth="480dp"
-                />
+<!--            <layout-->
+<!--                android:defaultHeight="760dp"-->
+<!--                android:defaultWidth="920dp"-->
+<!--                android:minHeight="540dp"-->
+<!--                android:minWidth="480dp"-->
+<!--                />-->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

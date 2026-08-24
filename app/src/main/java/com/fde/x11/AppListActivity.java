@@ -36,10 +36,13 @@ import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.Icon;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.RemoteException;
+import android.os.ServiceManager;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -48,8 +51,10 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.SurfaceControl;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.TranslateAnimation;
@@ -61,6 +66,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.fde.FrameworkFactory;
+import com.fde.FrameworkOperations;
 import com.fde.fusionwindowmanager.Property;
 import com.fde.fusionwindowmanager.Util;
 import com.fde.fusionwindowmanager.WindowAttribute;
@@ -75,6 +82,8 @@ import com.fde.x11.view.PopupSlideSmall;
 import com.xiaokun.dialogtiplib.dialog_tip.TipLoadDialog;
 import com.xwdz.http.QuietOkHttp;
 import com.xwdz.http.callback.JsonCallBack;
+
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -86,6 +95,20 @@ import razerdp.basepopup.BasePopupFlag;
 import razerdp.basepopup.BasePopupWindow;
 import razerdp.util.animation.AnimationHelper;
 import razerdp.util.animation.ScaleConfig;
+
+import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityTaskManager;
+import android.app.WindowConfiguration;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.window.WindowContainerToken;
+import android.window.WindowContainerTransaction;
+import android.window.WindowOrganizer;
+import android.window.TaskOrganizer;
+import com.android.internal.policy.DecorView;
+import com.android.internal.policy.ITaskCaptionOperationService;
+
 
 public class AppListActivity extends AppCompatActivity {
 
@@ -177,7 +200,98 @@ public class AppListActivity extends AppCompatActivity {
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             getWindow().getDecorView().getWindowVisibleDisplayFrame(mRect);
         });
+        ITaskCaptionOperationService  mTaskCaptionService = ITaskCaptionOperationService.Stub.asInterface(
+                ServiceManager.getService("TASK_CAPTION_OPERATION"));
+        int opCode = 111;
+
+        findViewById(R.id.btclose).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                WindowContainerTransaction wct = new WindowContainerTransaction();
+                wct.removeTask(getTaskToken(AppListActivity.this));
+                new WindowOrganizer().applyTransaction(wct);
+            }
+        });
+        findViewById(R.id.btminimize).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.e(TAG, "onClick() called with: v = [" + v + "]");
+//                WindowContainerTransaction wct = new WindowContainerTransaction();
+//                wct.setHidden(getTaskToken(AppListActivity.this), true);
+//                wct.reorder(getTaskToken(AppListActivity.this), true /* onTop = false */);
+//                new WindowOrganizer().applyTransaction(wct);
+                ActivityManager activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                activityManager.moveTaskToBack(true, getTaskId());
+
+            }
+        });
+        findViewById(R.id.btmaxmize).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                FLog.e(TAG, "onClick() called with: v = [" + v + "]");
+                try {
+                    mTaskCaptionService.executeTaskOperation(getTaskId(), 4);
+//                    FLog.i(TAG, "Task operation executed successfully");
+                } catch (RemoteException e) {
+//                    FLog.e(TAG, "Failed to execute task operation, taskId: " + getTaskId() + ", opCode: " + opCode, e);
+                } catch (NullPointerException e) {
+//                    FLog.e(TAG, "Operation service is null, taskId: " + getTaskId(), e);
+                }
+            }
+        });
+        findViewById(R.id.btimmer).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                FLog.d(TAG, "onClick() called with: v = [" + v + "]");
+                try {
+                    mTaskCaptionService.executeTaskOperation(getTaskId(), 2);
+//                    FLog.i(TAG, "Task operation executed successfully");
+                } catch (RemoteException e) {
+//                    FLog.e(TAG, "Failed to execute task operation, taskId: " + getTaskId() + ", opCode: " + opCode, e);
+                } catch (NullPointerException e) {
+//                    FLog.e(TAG, "Operation service is null, taskId: " + getTaskId(), e);
+                }
+            }
+        });
+        DecorView decorView = (DecorView)getWindow().getDecorView();
+//        FLog.d(TAG, "onCreate() called with: decorView = [" + decorView + "]");
+        enableTransparentCaptionBar();
     }
+
+    private void enableTransparentCaptionBar() {
+
+        if (Build.VERSION.SDK_INT >= 36) {
+            getWindow().getInsetsController().setSystemBarsAppearance(WindowInsetsController
+                            .APPEARANCE_TRANSPARENT_CAPTION_BAR_BACKGROUND,
+                    WindowInsetsController
+                            .APPEARANCE_TRANSPARENT_CAPTION_BAR_BACKGROUND);
+            View decorView = getWindow().getDecorView();
+            List<Rect> exclusionRects = new ArrayList<>();
+            exclusionRects.add(new Rect(0, 0, 500, 48));
+            decorView.setSystemGestureExclusionRects(exclusionRects);
+        }
+
+    }
+
+    private WindowContainerToken getTaskToken(Activity activity) {
+        try {
+            ActivityTaskManager atm =
+                    (ActivityTaskManager) activity.getSystemService("activity_task");
+            int taskId = activity.getTaskId();
+            List<ActivityManager.RunningTaskInfo> tasks = atm.getTasks(100);
+            for (ActivityManager.RunningTaskInfo info : tasks) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (info.taskId == taskId) {
+                        return info.token;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            FLog.e(TAG, "getTaskToken error: " + e.getMessage());
+        }
+        return null;
+    }
+
 
     static class FilterRunnable implements Runnable{
 
@@ -274,9 +388,9 @@ public class AppListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        mayGetApps();
+//        mayGetApps();
         FLog.l(TAG, "onResume");
-        findViewById(R.id.et_appname).requestFocus();
+//        findViewById(R.id.et_appname).requestFocus();
     }
 
     private void mayGetApps() {
@@ -301,8 +415,21 @@ public class AppListActivity extends AppCompatActivity {
         if(density != newConfig.densityDpi){
             finish();
         }
-        checkConfig(newConfig);
+
+//        checkConfig(newConfig);
         FLog.l(TAG, "onConfigurationChanged: newConfig:" + newConfig + "");
+
+
+        handler.postDelayed(()->{
+            try {
+                ITaskCaptionOperationService  mTaskCaptionService = ITaskCaptionOperationService.Stub.asInterface(
+                        ServiceManager.getService("TASK_CAPTION_OPERATION"));
+                int state = mTaskCaptionService.getTaskState(getTaskId());
+                Log.d(TAG, "onConfigurationChanged() called with: state = [" + state + "]");
+            } catch (RemoteException e) {
+            } catch (NullPointerException e) {
+            }
+        }, 100);
     }
 
     private void checkConfig(Configuration configuration){
@@ -320,7 +447,7 @@ public class AppListActivity extends AppCompatActivity {
             globalHeight = bottom - top;
             mRect = new Rect(left, top, right, bottom);
         }
-//        Log.d(TAG, "checkConfig: mrect:" + mRect);
+//        FLog.d(TAG, "checkConfig: mrect:" + mRect);
         mayGetApps();
     }
 
@@ -349,15 +476,20 @@ public class AppListActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    public void onWindowAttributesChanged(WindowManager.LayoutParams params) {
+        super.onWindowAttributesChanged(params);
+        FLog.l(TAG, "onWindowAttributesChanged: params:" + params + "");
+    }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         com.fde.x11.utils.Util.set("fde.click_as_touch", hasFocus ? "false" : "true");
         FLog.l(TAG, "onWindowFocusChanged: hasFocus:" + hasFocus + "");
-        if(hasFocus){
-            mayGetApps();
-        }
+//        if(hasFocus){
+//            mayGetApps();
+//        }
     }
 
     private SwipeRefreshLayout.OnRefreshListener mRefreshListener = () -> getAllLinuxApp(true, 1);
@@ -450,7 +582,7 @@ public class AppListActivity extends AppCompatActivity {
         }
         float offset = 950 - event.getY() - mRect.top;
         boolean bottom = (offset > 500) && (globalHeight - event.getY() > DimenUtils.dpToPx(210.0f));
-//        Log.d(TAG, "showOptionView: offset:" + offset);
+//        FLog.d(TAG, "showOptionView: offset:" + offset);
         fromY = bottom? -1.0f : 1.0f;
         gravity = bottom? Gravity.BOTTOM : Gravity.TOP;
         if (fromX != 0 || fromY != 0) {

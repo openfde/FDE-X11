@@ -96,6 +96,11 @@ public class FrameworkImpl implements FrameworkOperations{
     }
 
     @Override
+    public int getTaskState() {
+        return 0;
+    }
+
+    @Override
     public boolean isWindowMaximized() {
         DecorView decorView = (DecorView)activity.getWindow().getDecorView();
         return decorView.isWindowMaximized();

@@ -47,7 +47,7 @@ public class TouchInputHandler {
     }
 
     public void mouseClick() {
-        mInjector.sendMouseClick(BUTTON_LEFT, true, -1, -1);
+        mInjector.sendMouseClick(BUTTON_LEFT, true, -10, -10);
     }
 
     /** Used to set/store the selected input mode. */

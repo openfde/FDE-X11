@@ -458,7 +458,7 @@ public class XWindowService extends Service {
     }
 
     private void shouldResizeActivity(WindowAttribute attr) {
-        FLog.s(TAG, "shouldResizeActivity: " + " " + attr + " " + attr);
+        FLog.k(TAG,  attr.getXID(), "shouldResizeActivity attr: " +  attr);
         WindowAttribute resize = WindowManager.existTaskMap.get(attr.getXID());
         if (resize != null && resize.getTaskId() != 0) {
             Rect rect = new Rect(attr.getRect().left,
@@ -480,7 +480,7 @@ public class XWindowService extends Service {
 //                            attr.getRect().top,
                     attr.getRect().right,
                     attr.getRect().bottom);
-            FLog.s(TAG, "shouldConfigureActivity: " + " " + resize + " " + rect);
+            FLog.k(TAG,  attr.getXID(), "shouldConfigureActivity: " + " " + resize + " " + rect);
             IActivityCallback callback = activityCallbackMap.get(attr.getXID());
             if (callback != null && attr.getIsMoving() != 2) {
                 try {

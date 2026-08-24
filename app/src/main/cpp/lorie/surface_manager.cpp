@@ -1,6 +1,20 @@
 //
 // Created by yang on 2024/5/2.
 //
+#pragma GCC diagnostic ignored "-Wc99-designator"
+#pragma GCC diagnostic ignored "-Wmissing-prototypes"
+
+// surface_manager.cpp
+// 在包含任何头文件之前
+#ifdef reallocarray
+#undef reallocarray
+#endif
+
+// 包含系统头文件
+#include <stdlib.h>
+#include <malloc.h>
+
+// 然后包含项目头文件
 #include "surface_manager.h"
 
 
