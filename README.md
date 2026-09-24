@@ -58,6 +58,35 @@ Notes on the windows build:
   Point `-DPIXMAN_AARCH64_AS_DIR=<dir with as>` at a GNU aarch64 binutils to
   re-enable them.
 
+### Impact on the linux build
+
+The linux build keeps working exactly as before; every host specific decision is
+made at configure time, never baked into the sources.
+
+* Unchanged for linux: the ARM assembly fast paths (`PIXMAN_AARCH64_AS_DIR`
+  defaults to `/usr/aarch64-linux-gnu/bin`, `PIXMAN_ARM_AS_DIR` to
+  `/usr/arm-linux-gnueabihf/bin`, i.e. the same `-fno-integrated-as -B` flags as
+  before), the `X11/Xtrans` symlink (the symlink is created first and the copy
+  only happens if that left the header missing, which is a windows-only
+  situation), the C/C++ sources and the per flavor `framework.jar` boot class
+  path.
+* Removed prerequisites: `makekeys.py` replaces the host `gcc` build of
+  `libx11/src/util/makekeys.c` (same tables; checked by round tripping all 2576
+  keysyms through both generated lookups), and `git apply` replaces
+  `bash -c "patch ..."` when `git` is available (a `patch` fallback with the
+  original arguments is kept).
+* Changed for every host: the Gradle wrapper moves from 8.2 to 8.7, which is
+  required to run the build on a JDK 21 (see the JDK requirement above, which
+  `versionc`'s Java 21 `framework.jar` imposes on linux too). The JDK check in
+  `app/build.gradle` only reads the jar when the running JDK is older than 21.
+* Irrelevant for linux: `XlibLocale.h` is not included by anything this build
+  compiles (the six libx11 files that include it are not part of any target), so
+  the rename only matters on a case-insensitive filesystem.
+
+Verified on the windows host with a full clean build (both ABIs, debug and
+release). The linux side is by inspection of the configure time branches: it
+takes the same code paths it did before this change.
+
 ### Flavors
 
 build for openfde11
