@@ -137,6 +137,53 @@ android {
 
 }
 
+// app/libs/<flavor>/framework.jar is put on the javac boot class path. javac
+// refuses to read class files newer than the JDK it runs on and then reports a
+// wall of "class file has wrong version 65.0, should be 61.0" errors, so check
+// the jar against the JDK running Gradle and fail with one actionable line.
+// (libs/versionc/framework.jar is built by a JDK 21 toolchain: class file 65.0.)
+def frameworkJarClassFileVersions = [:]
+def maxClassFileVersion = { File jar ->
+    def key = jar.absolutePath
+    if (!frameworkJarClassFileVersions.containsKey(key)) {
+        int maxVersion = 0
+        if (jar.exists()) {
+            def zip = new java.util.zip.ZipFile(jar)
+            try {
+                for (def entry : zip.entries()) {
+                    if (!entry.name.endsWith('.class')) {
+                        continue
+                    }
+                    def stream = zip.getInputStream(entry)
+                    try {
+                        byte[] header = new byte[8]
+                        int read = 0
+                        while (read < header.length) {
+                            int n = stream.read(header, read, header.length - read)
+                            if (n < 0) {
+                                break
+                            }
+                            read += n
+                        }
+                        if (read == header.length) {
+                            int version = ((header[6] & 0xFF) << 8) | (header[7] & 0xFF)
+                            if (version > maxVersion) {
+                                maxVersion = version
+                            }
+                        }
+                    } finally {
+                        stream.close()
+                    }
+                }
+            } finally {
+                zip.close()
+            }
+        }
+        frameworkJarClassFileVersions[key] = maxVersion
+    }
+    frameworkJarClassFileVersions[key]
+}
+
 android.applicationVariants.all { variant ->
     variant.javaCompileProvider.configure { javaCompile ->
         def flavorName = variant.flavorName
@@ -145,6 +192,21 @@ android.applicationVariants.all { variant ->
         // 更新 bootstrapClasspath
         def originalBootstrap = javaCompile.options.bootstrapClasspath?.files ?: [] as Set
         javaCompile.options.bootstrapClasspath = files(frameworkJar) + files(originalBootstrap)
+
+        // Class file major version = java version + 44 (Java 8 -> 52, 17 -> 61,
+        // 21 -> 65). 65 is the newest version any flavor ships, so a newer JDK
+        // never has to look at the jar.
+        def jdkClassFileVersion = (JavaVersion.current().majorVersion as int) + 44
+        if (jdkClassFileVersion < 65) {
+            def jarClassFileVersion = maxClassFileVersion(frameworkJar)
+            if (jarClassFileVersion > jdkClassFileVersion) {
+                throw new GradleException("app/libs/${flavorName}/framework.jar contains Java " +
+                        "${jarClassFileVersion - 44} class files (${jarClassFileVersion}.0) but Gradle is " +
+                        "running on Java ${JavaVersion.current().majorVersion}, which only reads up to " +
+                        "${jdkClassFileVersion}.0. Run the build with a JDK ${jarClassFileVersion - 44}+ " +
+                        "(JAVA_HOME, org.gradle.java.home, or Android Studio's Gradle JDK).")
+            }
+        }
     }
 }
 

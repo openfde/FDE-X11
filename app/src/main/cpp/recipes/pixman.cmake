@@ -19,6 +19,25 @@ file(GENERATE
 ")
 check_type_size("long" SIZEOF_LONG)
 
+# pixman's ARM assembly is written for GNU as and clang's integrated assembler
+# cannot assemble it (it uses .func/.endfunc and .if on macro arguments), which
+# is why the build below points clang at the cross binutils with
+# "-fno-integrated-as -B <dir>" instead. Those binutils are part of a Linux
+# host, so the assembly fast paths are disabled by default when building on
+# Windows; pass -DPIXMAN_AARCH64_AS_DIR=<dir> (a directory holding the GNU `as`
+# for aarch64) to re-enable them.
+if(CMAKE_HOST_WIN32)
+    set(pixman_aarch64_as_dir_default "")
+    set(pixman_arm_as_dir_default "")
+else()
+    set(pixman_aarch64_as_dir_default "/usr/aarch64-linux-gnu/bin")
+    set(pixman_arm_as_dir_default "/usr/arm-linux-gnueabihf/bin")
+endif()
+set(PIXMAN_AARCH64_AS_DIR "${pixman_aarch64_as_dir_default}" CACHE PATH
+        "Directory containing the GNU assembler (`as`) for aarch64")
+set(PIXMAN_ARM_AS_DIR "${pixman_arm_as_dir_default}" CACHE PATH
+        "Directory containing the GNU assembler (`as`) for arm")
+
 set(PIXMAN_SRC
         pixman/pixman/pixman.c
         pixman/pixman/pixman-access.c
@@ -60,21 +79,29 @@ set(PIXMAN_CFLAGS
         "-DUSE_OPENMP=1")
 
 if("${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "arm64-v8a")
-    set(PIXMAN_SRC ${PIXMAN_SRC}
-            "pixman/pixman/pixman-arm-neon.c"
-            "pixman/pixman/pixman-arma64-neon-asm.S"
-            "pixman/pixman/pixman-arma64-neon-asm-bilinear.S")
-    set(PIXMAN_CFLAGS ${PIXMAN_CFLAGS} "-DUSE_ARM_A64_NEON=1" "-fno-integrated-as" "-B" "/usr/aarch64-linux-gnu/bin")
+    if(PIXMAN_AARCH64_AS_DIR)
+        set(PIXMAN_SRC ${PIXMAN_SRC}
+                "pixman/pixman/pixman-arm-neon.c"
+                "pixman/pixman/pixman-arma64-neon-asm.S"
+                "pixman/pixman/pixman-arma64-neon-asm-bilinear.S")
+        set(PIXMAN_CFLAGS ${PIXMAN_CFLAGS} "-DUSE_ARM_A64_NEON=1" "-fno-integrated-as" "-B" "${PIXMAN_AARCH64_AS_DIR}")
+    else()
+        message(STATUS "pixman: no GNU assembler configured, using the portable C fast paths for arm64")
+    endif()
 endif()
 
 if("${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "armeabi-v7a")
-    set(PIXMAN_SRC ${PIXMAN_SRC}
-            "pixman/pixman/pixman-arm-neon.c"
-            "pixman/pixman/pixman-arm-neon-asm.S"
-            "pixman/pixman/pixman-arm-neon-asm-bilinear.S"
-            "pixman/pixman/pixman-arm-simd-asm.S"
-            "pixman/pixman/pixman-arm-simd-asm-scaled.S")
-    set(PIXMAN_CFLAGS ${PIXMAN_CFLAGS} "-DUSE_ARM_SIMD=1" "-DUSE_ARM_NEON=1" "-fno-integrated-as" "-B" "/usr/arm-linux-gnueabihf/bin" "-v")
+    if(PIXMAN_ARM_AS_DIR)
+        set(PIXMAN_SRC ${PIXMAN_SRC}
+                "pixman/pixman/pixman-arm-neon.c"
+                "pixman/pixman/pixman-arm-neon-asm.S"
+                "pixman/pixman/pixman-arm-neon-asm-bilinear.S"
+                "pixman/pixman/pixman-arm-simd-asm.S"
+                "pixman/pixman/pixman-arm-simd-asm-scaled.S")
+        set(PIXMAN_CFLAGS ${PIXMAN_CFLAGS} "-DUSE_ARM_SIMD=1" "-DUSE_ARM_NEON=1" "-fno-integrated-as" "-B" "${PIXMAN_ARM_AS_DIR}" "-v")
+    else()
+        message(STATUS "pixman: no GNU assembler configured, using the portable C fast paths for armeabi-v7a")
+    endif()
 endif()
 
 if ("${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "x86" OR "${CMAKE_ANDROID_ARCH_ABI}" STREQUAL "x86_64")

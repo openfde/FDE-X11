@@ -46,7 +46,7 @@ from The Open Group.
 #include <X11/keysym.h>
 #include <X11/extensions/XKBproto.h>
 #include "XKBlibint.h"
-#include <X11/Xlocale.h>
+#include <X11/XlibLocale.h>
 #include <ctype.h>
 #include <X11/Xos.h>
 

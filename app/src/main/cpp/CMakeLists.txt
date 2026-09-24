@@ -28,8 +28,61 @@ include(CheckTypeSize)
 find_package(Python3 REQUIRED)
 find_package(BISON REQUIRED)
 
+# Applies the patches in patches/ to the vendored third party sources.
+#
+# The original implementation shelled out to
+#   bash -c "patch -p1 -d <dir> -i <patch> -R --dry-run || patch -p1 -N -d <dir> -i <patch> -r -"
+# which requires a POSIX shell and GNU patch, so it silently did nothing on a
+# Windows host. The patches are already applied to the sources in this
+# repository, so on a clean checkout this is a no-op; it only does real work if
+# a vendored source tree is ever reverted or updated.
 function(target_apply_patch patch_target d p)
-    execute_process(COMMAND "bash" "-c" "patch -p1 -d ${d} -i ${p} -R --dry-run > /dev/null 2>&1 || patch -p1 -N -d ${d} -i ${p} -r -")
+    file(RELATIVE_PATH patch_dir "${CMAKE_SOURCE_DIR}" "${d}")
+    get_filename_component(patch_name "${p}" NAME)
+
+    find_program(GIT_EXECUTABLE git)
+    if(GIT_EXECUTABLE)
+        # Same check as "patch -R --dry-run": if the reverse patch applies, the
+        # patch is already in place and there is nothing to do.
+        execute_process(
+                COMMAND "${GIT_EXECUTABLE}" apply -p1 "--directory=${patch_dir}" -R --check "${p}"
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                RESULT_VARIABLE patch_applied
+                OUTPUT_QUIET ERROR_QUIET)
+        if(patch_applied EQUAL 0)
+            return()
+        endif()
+
+        execute_process(
+                COMMAND "${GIT_EXECUTABLE}" apply -p1 "--directory=${patch_dir}" "${p}"
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+                RESULT_VARIABLE patch_result
+                OUTPUT_QUIET ERROR_QUIET)
+        if(NOT patch_result EQUAL 0)
+            message(WARNING "Could not apply ${patch_name} to ${patch_dir}")
+        endif()
+        return()
+    endif()
+
+    find_program(PATCH_EXECUTABLE patch)
+    if(PATCH_EXECUTABLE)
+        execute_process(
+                COMMAND "${PATCH_EXECUTABLE}" -p1 -d "${d}" -i "${p}" -R --dry-run
+                RESULT_VARIABLE patch_applied
+                OUTPUT_QUIET ERROR_QUIET)
+        if(NOT patch_applied EQUAL 0)
+            execute_process(
+                    COMMAND "${PATCH_EXECUTABLE}" -p1 -N -d "${d}" -i "${p}" -r -
+                    RESULT_VARIABLE patch_result
+                    OUTPUT_QUIET ERROR_QUIET)
+            if(NOT patch_result EQUAL 0)
+                message(WARNING "Could not apply ${patch_name} to ${patch_dir}")
+            endif()
+        endif()
+        return()
+    endif()
+
+    message(STATUS "Neither git nor patch was found, assuming ${patch_name} is already applied to ${patch_dir}")
 endfunction()
 
 set(test_compile_options

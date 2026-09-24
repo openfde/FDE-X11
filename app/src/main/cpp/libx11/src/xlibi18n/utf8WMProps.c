@@ -54,7 +54,7 @@ from The Open Group.
 #include <X11/Xlibint.h>
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
-#include <X11/Xlocale.h>
+#include <X11/XlibLocale.h>
 
 void
 Xutf8SetWMProperties (

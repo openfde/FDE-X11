@@ -59,7 +59,7 @@ from The Open Group.
 #include <stdlib.h>
 #include "Xlibint.h"
 #include "Xlcint.h"
-#include <X11/Xlocale.h>
+#include <X11/XlibLocale.h>
 #include <X11/Xos.h>
 #ifdef WIN32
 #undef close

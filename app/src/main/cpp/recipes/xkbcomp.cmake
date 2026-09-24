@@ -2,10 +2,16 @@
 
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/X11")
 
+# ks_tables.h is generated from the keysym definition headers. It used to be
+# produced by compiling libx11/src/util/makekeys.c with the host gcc
+# ("/usr/bin/gcc"), which does not exist on a Windows host; makekeys.py is a
+# faithful Python port of that tool and only needs Python, which this build
+# already requires below.
 add_custom_command(
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
-        COMMAND "/usr/bin/gcc" "-o" "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c" "&&"
-            "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "keysymdef.h" "XF86keysym.h" "Sunkeysym.h" "DECkeysym.h" "HPkeysym.h" ">" "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+        COMMAND Python3::Interpreter "${CMAKE_CURRENT_SOURCE_DIR}/makekeys.py"
+            "-o" "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
+            "keysymdef.h" "XF86keysym.h" "Sunkeysym.h" "DECkeysym.h" "HPkeysym.h"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
         COMMENT "Generating source code (ks_tables.h)"
         VERBATIM)

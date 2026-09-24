@@ -4,7 +4,7 @@ x11include_HEADERS=\
 	X11/Xcms.h \
 	X11/Xlib.h \
 	X11/Xlibint.h \
-	X11/Xlocale.h \
+	X11/XlibLocale.h \
 	X11/Xresource.h \
 	X11/Xutil.h \
 	X11/cursorfont.h \

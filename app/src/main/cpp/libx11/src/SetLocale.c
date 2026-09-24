@@ -60,7 +60,7 @@ from The Open Group.
 #endif
 #include "Xlibint.h"
 #include "Xlcint.h"
-#include <X11/Xlocale.h>
+#include <X11/XlibLocale.h>
 #include <X11/Xos.h>
 #include "XlcPubI.h"
 
