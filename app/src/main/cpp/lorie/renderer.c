@@ -1016,8 +1016,8 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
-    logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
-         index, width, height, attr->offset_x, attr->offset_y, id);
+//    logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+//         index, width, height, attr->offset_x, attr->offset_y, id);
     checkGlError();
     if(id){
         glViewport(0, 0, width, height);
@@ -1080,9 +1080,9 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
                || !widget.pWin->realized){
                 continue;
             }
-            logd("renderer_redraw_traversal_1 text 1")
+//            logd("renderer_redraw_traversal_1 text 1")
             android_update_widget_texture(&widget);
-            logd("renderer_redraw_traversal_1 text 2")
+//            logd("renderer_redraw_traversal_1 text 2")
             float x = widget.offset_x;
             float y = widget.offset_y;
             float w = widget.width;
@@ -1174,9 +1174,9 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
 }
 
 void renderer_print_fps(float millis) {
-    if (renderedFrames)
-        logd("%d frames in %.1f seconds = %.1f FPS",
-             renderedFrames, millis / 1000, (float) renderedFrames * 1000 / millis);
+//    if (renderedFrames)
+//        logd("%d frames in %.1f seconds = %.1f FPS",
+//             renderedFrames, millis / 1000, (float) renderedFrames * 1000 / millis);
     renderedFrames = 0;
 }
 

@@ -193,6 +193,7 @@ public class MainActivity extends Activity {
     private String mClipText = null;
     //flaot view for some window outside of activity
     private final Map<Long, View> mFloatViews = new HashMap<>();
+    private final Map<Long, Surface> mSurfaces = new HashMap<>();
     private final Object mFloatViewSync = new Object();
     private WindowManager floatWindow;
     private final ServiceConnection connection = new Connection();
@@ -623,7 +624,7 @@ public class MainActivity extends Activity {
         } else {
 //             mouse click to hide floating window
             if(mInputHandler != null){
-                mInputHandler.mouseClick();
+//                mInputHandler.mouseClick();
             }
         }
     }
@@ -760,7 +761,7 @@ public class MainActivity extends Activity {
     }
 
     private void checkConfigBeforeExec(Configuration configuration, boolean newConfig){
-        if(configuration == null || mXserviceWrapper == null){
+        if(configuration == null || mXserviceWrapper == null || mAttribute == null){
             return;
         }
         //configuration:{1.0 ?mcc?mnc [zh_CN_#Hans] ldltr sw1080dp w1920dp h1031dp 160dpi xlrg long land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1920, 1032) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_0} s.3}, newConfig:true
@@ -831,6 +832,9 @@ public class MainActivity extends Activity {
 
     private void updateAttribueOnly(Rect rect) {
         FLog.a("window", getWindowId(), "updateAttribueOnly rect:" + rect);
+        if (mAttribute == null) {
+            return;
+        }
         mWindowRect.set(rect);
         mAttribute.setRect(rect);
         getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
@@ -990,7 +994,15 @@ public class MainActivity extends Activity {
         if(mXserviceWrapper == null){
             return;
         }
-        FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], mTaskState = [" + mTaskState + "], window = [" + window + "]");
+        if(sfc != null && (w !=-1 && h != -1)){
+            mSurfaces.put(window, sfc);
+        }
+
+        if(sfc == null && w ==-1 && h == -1 && mSurfaces.get(window) == null){
+            return;
+        }
+
+        FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], mTaskState = [" + mTaskState + "], window = [" + Long.toHexString(window) + "]");
         mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
     }
 

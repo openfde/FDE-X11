@@ -1,6 +1,7 @@
 package com.fde.x11;
 
 import android.os.RemoteException;
+import android.util.Log;
 
 import com.fde.fusionwindowmanager.WindowAttribute;
 import com.fde.x11.input.InputStub;
@@ -159,6 +160,7 @@ public class XserviceInterfaceWrapper implements InputStub {
     @Override
     public void sendMouseEvent(float x, float y, int whichButton, boolean buttonDown, boolean relative, int index) {
         try {
+//            Log.d(TAG, "sendMouseEvent: ", new Throwable());
             if(isAviable()){service.sendMouseEvent(x, y, whichButton, buttonDown, relative, index);}
         }catch (RemoteException e){
             FLog.e(TAG, "sendClipText failed" + e.getMessage());

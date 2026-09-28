@@ -1597,6 +1597,50 @@ clientApplyInitialState (Client *c)
 //     return FALSE;
 // }
 
+// 弹窗判别：_NET_WM_STATE 含 _NET_WM_STATE_SKIP_TASKBAR 且
+// _NET_WM_WINDOW_TYPE 含 _KDE_NET_WM_WINDOW_TYPE_OVERRIDE 的窗口按 override-redirect 处理
+static gboolean
+checkPopupLikeWindow (DisplayInfo *display_info, Window w)
+{
+    Atom *atoms = NULL;
+    int n_atoms = 0;
+    gboolean skip_taskbar = FALSE;
+    gboolean kde_override = FALSE;
+
+    if (getAtomList (display_info, w, NET_WM_STATE, &atoms, &n_atoms))
+    {
+        for (int i = 0; i < n_atoms; ++i)
+        {
+            if (atoms[i] == display_info->atoms[NET_WM_STATE_SKIP_TASKBAR])
+            {
+                skip_taskbar = TRUE;
+                break;
+            }
+        }
+        XFree (atoms);
+        atoms = NULL;
+    }
+    if (!skip_taskbar)
+    {
+        return FALSE;
+    }
+
+    if (getAtomList (display_info, w, NET_WM_WINDOW_TYPE, &atoms, &n_atoms))
+    {
+        Atom kde_override_atom = XInternAtom (display_info->dpy, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE", False);
+        for (int i = 0; i < n_atoms; ++i)
+        {
+            if (atoms[i] == kde_override_atom)
+            {
+                kde_override = TRUE;
+                break;
+            }
+        }
+        XFree (atoms);
+    }
+    return kde_override;
+}
+
 Client *
 clientFrame (DisplayInfo *display_info, Window w, gboolean recapture)
 {
@@ -1648,8 +1692,16 @@ clientFrame (DisplayInfo *display_info, Window w, gboolean recapture)
         logd("no systray found for this screen");
     }
 
-    if (attr.override_redirect)
+    if (attr.override_redirect || checkPopupLikeWindow (display_info, w))
     {
+        if (!attr.override_redirect)
+        {
+            // 伪 OR 弹窗（skip_taskbar + kde_override）：映射请求被 WM 接管，
+            // 这里跳过管理后必须手动映射，后续 MapNotify -> NameWindowPixmap
+            // -> android_redirect_window 才能把它重定向为 Android 弹窗
+            logd ("popup-like window 0x%lx, map it without frame", w);
+            XMapWindow (display_info->dpy, w);
+        }
         logd ("override redirect window 0x%lx", w);
         goto out;
     }

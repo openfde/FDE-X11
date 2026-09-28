@@ -477,6 +477,41 @@ void android_register_window_damage(WindowPtr pWin, Window window) {
     attr->dirty = 1;
 }
 
+// 弹窗判别：_NET_WM_STATE 含 _NET_WM_STATE_SKIP_TASKBAR 且
+// _NET_WM_WINDOW_TYPE 含 _KDE_NET_WM_WINDOW_TYPE_OVERRIDE 的窗口按 override-redirect 处理
+static bool window_is_popup_like(WindowPtr pWin) {
+    bool skipTaskbar = false;
+    bool kdeOverride = false;
+
+    PropertyPtr pState;
+    if (property_lookup_string(&pState, pWin, "_NET_WM_STATE") && pState && pState->data) {
+        ATOM *atoms = (ATOM *) pState->data;
+        for (int i = 0; i < pState->size; i++) {
+            const char *name = NameForAtom(atoms[i]);
+            if (name && STRING_EQUAL(name, "_NET_WM_STATE_SKIP_TASKBAR")) {
+                skipTaskbar = true;
+                break;
+            }
+        }
+    }
+    if (!skipTaskbar) {
+        return false;
+    }
+
+    PropertyPtr pType;
+    if (property_lookup_string(&pType, pWin, WINDOW_TYPE) && pType && pType->data) {
+        ATOM *atoms = (ATOM *) pType->data;
+        for (int i = 0; i < pType->size; i++) {
+            const char *name = NameForAtom(atoms[i]);
+            if (name && STRING_EQUAL(name, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE")) {
+                kdeOverride = true;
+                break;
+            }
+        }
+    }
+    return kdeOverride;
+}
+
 void android_redirect_window(WindowPtr pWin) {
     //already redirect to android
     if(_surface_count_window_any(sfWraper, pWin->drawable.id)){
@@ -530,7 +565,7 @@ void android_redirect_window(WindowPtr pWin) {
             return;
         }
     }
-    if(pWin->overrideRedirect){
+    if(pWin->overrideRedirect || window_is_popup_like(pWin)){
         WindProperty windProperty;
         WindAttribute* attr;
         memset(&windProperty, 0, sizeof(WindProperty));

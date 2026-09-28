@@ -344,10 +344,86 @@ void WindowManager::OnConfigureNotify(const XConfigureEvent &e)
 //    }
 }
 
+// 输出未加 frame 前客户端窗口的弹窗判别属性：
+// _NET_WM_STATE_SKIP_TASKBAR / _KDE_NET_WM_WINDOW_TYPE_OVERRIDE / WM_TRANSIENT_FOR
+static void logWindowPopupFlags(Display *display, Window w)
+{
+    Atom skipAtom = XInternAtom(display, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    Atom kdeAtom = XInternAtom(display, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE", False);
+    bool skipTaskbar = false;
+    bool kdeOverride = false;
+    Window transient = None;
+    char *name = NULL;
+
+    {
+        Atom actualType; int actualFormat; unsigned long nitems, bytesAfter; unsigned char *data = NULL;
+        Atom atom = XInternAtom(display, "_NET_WM_STATE", False);
+        if (XGetWindowProperty(display, w, atom, 0, 0x1FFFFFFF, False, XA_ATOM,
+                               &actualType, &actualFormat, &nitems, &bytesAfter,
+                               (unsigned char **) &data) == Success && data) {
+            Atom *atoms = (Atom *) data;
+            for (unsigned long i = 0; i < nitems; i++) {
+                if (atoms[i] == skipAtom) {
+                    skipTaskbar = true;
+                    break;
+                }
+            }
+            XFree(data);
+        }
+    }
+    {
+        Atom actualType; int actualFormat; unsigned long nitems, bytesAfter; unsigned char *data = NULL;
+        Atom atom = XInternAtom(display, "_NET_WM_WINDOW_TYPE", False);
+        if (XGetWindowProperty(display, w, atom, 0, 0x1FFFFFFF, False, XA_ATOM,
+                               &actualType, &actualFormat, &nitems, &bytesAfter,
+                               (unsigned char **) &data) == Success && data) {
+            Atom *atoms = (Atom *) data;
+            for (unsigned long i = 0; i < nitems; i++) {
+                if (atoms[i] == kdeAtom) {
+                    kdeOverride = true;
+                    break;
+                }
+            }
+            XFree(data);
+        }
+    }
+    {
+        Atom actualType; int actualFormat; unsigned long nitems, bytesAfter; unsigned char *data = NULL;
+        Atom atom = XInternAtom(display, "WM_TRANSIENT_FOR", False);
+        if (XGetWindowProperty(display, w, atom, 0, 1, False, XA_WINDOW,
+                               &actualType, &actualFormat, &nitems, &bytesAfter,
+                               (unsigned char **) &data) == Success && data) {
+            transient = ((Window *) data)[0];
+            XFree(data);
+        }
+    }
+
+    XFetchName(display, w, &name);
+    XWindowAttributes attrs;
+    if (XGetWindowAttributes(display, w, &attrs)) {
+        logd("window_props id:0x%lx name:%s overrideRedirect:%d w:%d h:%d skip_taskbar:%d kde_override:%d transient:0x%lx",
+             w, name ? name : "", attrs.override_redirect ? 1 : 0, attrs.width, attrs.height,
+             skipTaskbar ? 1 : 0, kdeOverride ? 1 : 0, transient);
+        FILE *f = fopen("/data/data/com.fde.x11/files/window_props.log", "a");
+        if (f) {
+            fprintf(f, "window_props id:0x%lx name:%s overrideRedirect:%d w:%d h:%d skip_taskbar:%d kde_override:%d transient:0x%lx\n",
+                    w, name ? name : "", attrs.override_redirect ? 1 : 0, attrs.width, attrs.height,
+                    skipTaskbar ? 1 : 0, kdeOverride ? 1 : 0, transient);
+            fclose(f);
+        }
+    } else {
+        logd("window_props id:0x%lx get attributes failed", w);
+    }
+    if (name) {
+        XFree(name);
+    }
+}
+
 void WindowManager::OnMapRequest(const XMapRequestEvent &e)
 {
     Client *c;
     logd("window (0x%lx)", e.window);
+    logWindowPopupFlags(display_, e.window);
     if (e.window == None)
     {
         logd("mapping None ???");
