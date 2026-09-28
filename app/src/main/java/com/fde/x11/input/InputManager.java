@@ -10,6 +10,7 @@ import android.view.View;
 import com.fde.x11.LorieView;
 import com.fde.x11.Xserver;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -26,10 +27,11 @@ public class InputManager {
 
     private static Method setDisplayIdMethod;
     private static Method setActionButtonMethod;
-    private View focusView;
+    // 单例静态持有 View 会泄漏 Activity，改为弱引用
+    private WeakReference<View> focusView;
 
     public void setFocusView(View focusView) {
-        this.focusView = focusView;
+        this.focusView = focusView == null ? null : new WeakReference<>(focusView);
     }
 
     private static class SingletonHolder {
@@ -55,8 +57,9 @@ public class InputManager {
     public void setPointerIcon(Bitmap bitmap, int xhot, int yhot){
 //        Log.d(TAG, "setPointerIcon() called with: bitmap = [" + bitmap + "], xhot = [" + xhot + "], yhot = [" + yhot + "]");
         PointerIcon pointerIcon = PointerIcon.create(bitmap, xhot, yhot);
-        if(focusView != null){
-            focusView.setPointerIcon(pointerIcon);
+        View view = focusView == null ? null : focusView.get();
+        if(view != null){
+            view.setPointerIcon(pointerIcon);
         } else {
             try {
                 Method setCustomPointerIcon = manager.getClass().getMethod("setCustomPointerIcon", PointerIcon.class);

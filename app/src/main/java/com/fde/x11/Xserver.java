@@ -42,9 +42,11 @@ import com.fde.x11.utils.Util;
 import org.greenrobot.eventbus.EventBus;
 
 import java.io.DataInputStream;
+import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.ConnectException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -80,7 +82,7 @@ public class Xserver {
     public static final int ACTION_UNMAP = 1;
     public static final int ACTION_DESTORY = 2;
     public static final int ACTION_DISMISS_VIEW = 3;
-    public static int X_ClientNum = 0;
+    public static volatile int X_ClientNum = 0;
 
 
     private static WeakReference<Service> context;
@@ -88,14 +90,8 @@ public class Xserver {
     public void startXserver() {
         String height = AppUtils.getProperty("openfde.display_height", "1080");
         String width = AppUtils.getProperty("openfde.display_width", "1920");
+        // 只启动一次，避免重复 start + 重复监听线程
         startXserver(width, height);
-        ARGS_DEFAULT = new String[]{":" + DISPLAY_GLOBAL, "-width",width,
-                "-height", height };
-        if (!start(ARGS_DEFAULT, FLog.LogXserverNativeEnable)) {
-            FLog.s(TAG, "startXserver: failed", FLog.ERROR);
-        }
-        spawnListeningThread();
-        sendBroadcastDelayed();
     }
 
     public void startXserver(String width, String height) {
@@ -234,9 +230,10 @@ public class Xserver {
     public static void xserverMapWindow(long window){
         FLog.s(TAG, "xserverMapWindow() called with: window = [" + Long.toHexString(window) + "]");
         WindowAttribute attr = WindowManager.existTaskMap.get(window);
-        if(attr != null && attr.getTaskId() != 0){
+        Context ctx = context.get();
+        if(attr != null && attr.getTaskId() != 0 && ctx != null){
             ActivityManager am = (ActivityManager)
-                    context.get().getSystemService(Context.ACTIVITY_SERVICE);
+                    ctx.getSystemService(Context.ACTIVITY_SERVICE);
             am.moveTaskToFront(attr.getTaskId(), MOVE_TASK_NO_USER_ACTION);
         }
     }
@@ -259,6 +256,43 @@ public class Xserver {
         FLog.s(TAG, "configureWidget() called with: id = [" + Long.toHexString(id) + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "]");
         EventMessage message = new EventMessage(EventType.X_CONFIGURE_WIDGET, "configure_window", new WindowAttribute(x, y, w, h, 0, 0, id), null);
         EventBus.getDefault().post(message);
+    }
+
+    /**
+     * X 窗口的类型/装饰等属性在映射后发生变化时由 native 调用，
+     * 用于把新的窗口类型同步给已经存在的 Android 宿主窗口
+     */
+    public static void updateWindowAttribute(long aid, long transientfor, long leader,
+                                             int type, String wm_name, String net_wm_name,
+                                             int x, int y, int w, int h, int index, long p,
+                                             long xid, long taskTo, int support_wm_delete,
+                                             int support_motif, boolean inbound, int clientNum,
+                                             boolean isActivity, long window) {
+        FLog.k(TAG, aid, "updateWindowAttribute: aid:" + Long.toHexString(aid) + ", transientfor:" + Long.toHexString(transientfor)
+                + ", type:" + type + ", net_wm_name:" + net_wm_name + ", x:" + x + ", y:" + y + ", w:" + w + ", h:" + h
+                + ", index:" + index + ", xid:" + Long.toHexString(xid) + ", taskTo:" + Long.toHexString(taskTo)
+                + ", support_wm_delete:" + support_wm_delete + ", support_motif:" + support_motif
+                + ", inbound:" + inbound + ", clientNum:" + clientNum
+                + ", window:" + Long.toHexString(window) + ", isActivity:" + isActivity);
+        X_ClientNum = clientNum;
+        if (type == _NET_WM_WINDOW_TYPE_NORMAL || type == _NET_WM_WINDOW_TYPE_DIALOG) {
+            type = convert2AndroidType(type, x, y, w, h);
+        }
+        if (type == _NET_WM_WINDOW_TYPE_DIALOG && inbound) {
+            type = _NET_WM_WINDOW_TYPE_MENU;
+        }
+        if (type == _NET_WM_WINDOW_TYPE_UTILITY || type == _NET_WM_WINDOW_TYPE_MENU ||
+                type == _NET_WM_WINDOW_TYPE_POPUP_MENU) {
+            transientfor = transientfor == 0 ? taskTo : transientfor;
+        }
+        if (!isActivity) {
+            type = _WM_WINDOW_TYPE_SYSTIP;
+        }
+        Property property = new Property(aid, transientfor, leader, type, wm_name, net_wm_name,
+                support_wm_delete, support_motif, null);
+        WindowAttribute attr = new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo, property);
+        EventBus.getDefault().post(new EventMessage(EventType.X_UPDATE_WINDOW_ATTRIBUTE,
+                "xserver update window attribute", attr, property));
     }
 
 
@@ -386,9 +420,12 @@ public class Xserver {
     void spawnListeningThread() {
         new Thread(() -> {
 //            Log.e("Xserver", "Listening port " + PORT);
-            try (ServerSocket listeningSocket =
-                         new ServerSocket(PORT, 0, InetAddress.getByName("127.0.0.1"))) {
+            ServerSocket listeningSocket = null;
+            try {
+                listeningSocket = new ServerSocket();
+                // 必须在 bind 之前设置，否则服务重启（进程被杀后端口处于 TIME_WAIT）会绑定失败
                 listeningSocket.setReuseAddress(true);
+                listeningSocket.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT));
                 while(true) {
                     try (Socket client = listeningSocket.accept()) {
                         Log.e("Xserver", "Somebody connected!");
@@ -404,20 +441,30 @@ public class Xserver {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace(System.err);
+                Log.e("Xserver", "listening thread died, port " + PORT + " unavailable", e);
+            } finally {
+                if (listeningSocket != null) {
+                    try {
+                        listeningSocket.close();
+                    } catch (IOException ignored) {
+                    }
+                }
             }
         }).start();
     }
 
     private void sendBroadcast() {
-        String  targetPackage = context.get().getPackageName();
+        Service ctx = context.get();
+        if (ctx == null) {
+            FLog.s(TAG, "sendBroadcast: context is null, skip");
+            return;
+        }
+        String  targetPackage = ctx.getPackageName();
         Bundle bundle = new Bundle();
         Intent intent = new Intent(ACTION_START);
         intent.putExtra("", bundle);
         intent.setPackage(targetPackage);
-        if(context.get() != null){
-            context.get().sendBroadcast(intent);
-        }
+        ctx.sendBroadcast(intent);
     }
 
     public static void requestConnection() {

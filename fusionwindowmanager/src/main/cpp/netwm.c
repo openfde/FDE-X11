@@ -57,8 +57,7 @@
 Client *
 clientGetFocus (void)
 {
-    return NULL;
-    // return (client_focus);
+    return client_focus;
 }
 
 

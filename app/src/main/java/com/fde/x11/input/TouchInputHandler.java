@@ -42,8 +42,18 @@ public class TouchInputHandler {
     public static int STYLUS_INPUT_HELPER_MODE = 1; //1 = Left Click, 2 Middle Click, 3 Right Click
     private boolean isTouching = false;
 
+    // native sendTextEvent 对每个字符 usleep(30ms)，不能阻塞 UI/IME 线程；
+    // 单线程串行执行保证文本事件顺序
+    private static final java.util.concurrent.ExecutorService TEXT_SENDER =
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "X11TextSender");
+                t.setDaemon(true);
+                return t;
+            });
+
     public void sendKeyEvent(CharSequence sequence) {
-        mInjector.mInjector.sendTextEvent(String.valueOf(sequence).getBytes(UTF_8));
+        final byte[] bytes = String.valueOf(sequence).getBytes(UTF_8);
+        TEXT_SENDER.execute(() -> mInjector.mInjector.sendTextEvent(bytes));
     }
 
     public void mouseClick() {

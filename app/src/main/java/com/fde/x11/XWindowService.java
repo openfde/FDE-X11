@@ -59,6 +59,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 
@@ -79,8 +81,15 @@ public class XWindowService extends Service {
     private static final int TYPE_TRAY = 1;
     private static final int TYPE_TIP = 2;
 
-    private final Map<Long, View> mFloatTrays = new HashMap<>();
-    private final Map<Long, View> mFloatTips = new HashMap<>();
+    // Activity 宿主类型：带标题栏装饰 / 无装饰
+    private static final int HOST_ACTIVITY_DECOR = 1;
+    private static final int HOST_ACTIVITY_NODECOR = 2;
+    private static final int RESTART_ACTIVITY_DELAY = 600;
+
+    private final Map<Long, Integer> windowHostKind = new ConcurrentHashMap<>();
+
+    private final Map<Long, View> mFloatTrays = new ConcurrentHashMap<>();
+    private final Map<Long, View> mFloatTips = new ConcurrentHashMap<>();
 
     private WindowAttribute rightAttr;
 
@@ -101,6 +110,7 @@ public class XWindowService extends Service {
 
     public static final String MODALED_ACTION_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_modaled";
     public static final String UNMODALED_ACTION_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_unmodaled";
+    public static final String UPDATE_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_update_activity";
 
     public static final String ACTION_X_MAIN_WINDOW_SIZE = "action_x_main_window_size";
     public static final String X_MAIN_WINDOW_SIZE = "x_main_window_size";
@@ -120,19 +130,21 @@ public class XWindowService extends Service {
     private static final boolean DWM_START_DEFAULT = true;
     private WindowManager fusionWindowManager;
     private ActivityManager am;
-    private final HashSet<Long> startingWindow = new HashSet<>();
-    private final HashSet<Long> stopingWindow = new HashSet<>();
-    private final HashSet<Long> runningMainWindow = new HashSet<>();
+    // 这些集合会被 binder 线程（windowChanged/registerActivityCallback 等）和主线程同时访问
+    private final Set<Long> startingWindow = ConcurrentHashMap.newKeySet();
+    private final Set<Long> stopingWindow = ConcurrentHashMap.newKeySet();
+    private final Set<Long> runningMainWindow = ConcurrentHashMap.newKeySet();
     private boolean mBound = false;
 
     private ActivityTaskManager taskManager;
     private android.view.WindowManager systemWindowManager;
-    private final HashMap<Long, Property> propertyHashMap = new HashMap<>();
+    private final Map<Long, Property> propertyHashMap = new ConcurrentHashMap<>();
 
-    private final HashMap<Long, IActivityCallback> activityCallbackMap = new HashMap<>();
-    public final HashMap<Long, WindowAttribute> shouldDestroyMap = new HashMap<>();
-    public final HashMap<Long, WindowAttribute> shouldResizeMap = new HashMap<>();
-    private final HashMap<Long, Long> transientForMap = new HashMap<>();
+    // 由 binder 线程（register/unregisterActivityCallback）和主线程共同访问
+    private final Map<Long, IActivityCallback> activityCallbackMap = new ConcurrentHashMap<>();
+    public final Map<Long, WindowAttribute> shouldDestroyMap = new ConcurrentHashMap<>();
+    public final Map<Long, WindowAttribute> shouldResizeMap = new ConcurrentHashMap<>();
+    private final Map<Long, Long> transientForMap = new ConcurrentHashMap<>();
     private int mWidth = 1920;
     private int mHeight = 1080;
 
@@ -349,6 +361,10 @@ public class XWindowService extends Service {
 
     @Subscribe(threadMode = ThreadMode.MAIN, priority = 1)
     public void onReceiveMsg(EventMessage message) {
+        if (message == null || message.getWindowAttribute() == null) {
+            Log.e(TAG, "onReceiveMsg: invalid message " + message);
+            return;
+        }
         FLog.k(TAG, message.getWindowAttribute().getXID(), "message:" + message);
         int windowSize = runningMainWindow.size();
 //        FLog.s(TAG, "before: size:" + windowSize);
@@ -418,6 +434,9 @@ public class XWindowService extends Service {
             break;
             case X_CONFIGURE_WIDGET:
                 sendBroadcastConfigureWidget(message.getWindowAttribute());
+                break;
+            case X_UPDATE_WINDOW_ATTRIBUTE:
+                handleWindowAttributeUpdate(message.getWindowAttribute(), message.getProperty());
                 break;
             case X_START_VIEW:
                 if (message.getProperty() != null && message.getProperty().getType() == _WM_WINDOW_TYPE_SYSTIP) {
@@ -879,6 +898,7 @@ public class XWindowService extends Service {
         if (stopingWindow.contains(attr.getXID())) {
             return;
         }
+        windowHostKind.remove(attr.getXID());
         runningMainWindow.remove(attr.getXID());
         stopingWindow.add(attr.getXID());
         FLog.s(TAG, "stopActivity: attr:" + attr + "");
@@ -892,6 +912,7 @@ public class XWindowService extends Service {
     }
 
     private void destroyActivitySafety(int retry, WindowAttribute attr) {
+        windowHostKind.remove(attr.getXID());
         runningMainWindow.remove(attr.getXID());
         mainHandler.postDelayed(() -> {
             FLog.s(TAG, "destroyActivitySafety: retry:" + retry + ", attr:" + attr + "");
@@ -901,6 +922,71 @@ public class XWindowService extends Service {
             intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
             sendBroadcast(intent);
         }, DESTROY_ACTIVITY_DELAY);
+    }
+
+    /**
+     * 窗口类型/装饰属性变化的同步入口：
+     * 宿主类型不变 -> 广播给 Activity 原地更新；
+     * 宿主类型变化 -> 结束现有 Activity 并以新的宿主类型重启（保留 X 窗口）
+     */
+    private void handleWindowAttributeUpdate(WindowAttribute attr, Property property) {
+        long xid = attr.getXID();
+        FLog.s(TAG, xid, "handleWindowAttributeUpdate attr:" + attr + ", property:" + property);
+        if (property == null || !runningMainWindow.contains(xid)) {
+            return;
+        }
+        int desiredKind = computeHostKind(property);
+        Integer currentKind = windowHostKind.get(xid);
+        if (currentKind == null || currentKind == desiredKind) {
+            sendBroadcastUpdateAttribute(attr, property);
+            return;
+        }
+        Class cls = desiredKind == HOST_ACTIVITY_DECOR
+                ? MainActivity.MainActivity1.class : MainActivity.MainActivity11.class;
+        float decorHeight = desiredKind == HOST_ACTIVITY_DECOR ? DECOR_CAPTION_HEIGHT : 0;
+        restartWindowForTypeChange(attr, property, cls, decorHeight);
+    }
+
+    private static int computeHostKind(Property property) {
+        int type = property.getType();
+        if (type == 0 || type == Xserver._NET_WM_WINDOW_TYPE_NORMAL) {
+            return property.getSupportMotif() > 0 ? HOST_ACTIVITY_NODECOR : HOST_ACTIVITY_DECOR;
+        }
+        return HOST_ACTIVITY_NODECOR;
+    }
+
+    private void sendBroadcastUpdateAttribute(WindowAttribute attr, Property property) {
+        FLog.s(TAG, attr.getXID(), "sendBroadcastUpdateAttribute attr:" + attr);
+        Intent intent = new Intent(UPDATE_ACTIVITY_FROM_X);
+        intent.setPackage(getPackageName());
+        intent.putExtra(ACTION_X_WINDOW_ATTRIBUTE, attr);
+        intent.putExtra(ACTION_X_WINDOW_PROPERTY, property);
+        sendBroadcast(intent);
+    }
+
+    private void restartWindowForTypeChange(WindowAttribute attr, Property property, Class cls, float decorHeight) {
+        long xid = attr.getXID();
+        IActivityCallback callback = activityCallbackMap.get(xid);
+        if (callback == null) {
+            // 宿主 Activity 还没注册回调（启动窗口期），此时重启会重复创建宿主，
+            // 延迟重试等待宿主就绪
+            FLog.s(TAG, xid, "restartWindowForTypeChange: callback not ready, retry later");
+            mainHandler.postDelayed(() -> handleWindowAttributeUpdate(attr, property), 1000);
+            return;
+        }
+        FLog.s(TAG, xid, "restartWindowForTypeChange cls:" + cls.getSimpleName() + ", decorHeight:" + decorHeight);
+        try {
+            callback.finishActivityForRestart(xid);
+        } catch (RemoteException e) {
+            Log.e(TAG, "finishActivityForRestart RemoteException: " + e.getMessage());
+        }
+        runningMainWindow.remove(xid);
+        startingWindow.remove(xid);
+        windowHostKind.put(xid, cls == MainActivity.MainActivity1.class ? HOST_ACTIVITY_DECOR : HOST_ACTIVITY_NODECOR);
+        final WindowAttribute restartAttr = new WindowAttribute((int) attr.getOffsetX(), (int) attr.getOffsetY(),
+                (int) attr.getWidth(), (int) attr.getHeight(), attr.getIndex(), attr.getWindowPtr(),
+                attr.getXID(), attr.getWindow(), attr.getTaskTo(), property);
+        mainHandler.postDelayed(() -> startActLikeWindowWithDecorHeight(restartAttr, cls, decorHeight), RESTART_ACTIVITY_DELAY);
     }
 
     public void startActLikeWindow(WindowAttribute attr, Class cls) {
@@ -923,6 +1009,8 @@ public class XWindowService extends Service {
 
         runningMainWindow.add(attr.getXID());
         startingWindow.add(attr.getXID());
+        windowHostKind.put(attr.getXID(), cls == MainActivity.MainActivity1.class
+                ? HOST_ACTIVITY_DECOR : HOST_ACTIVITY_NODECOR);
         FLog.k(TAG, attr.getXID(), "startActLikeWindowWithDecorHeight: attr:" + attr + ", cls:" + cls + ", decorHeight:" + decorHeight + "");
         ActivityOptions options = ActivityOptions.makeBasic();
         options.setLaunchBounds(new Rect((int) attr.getOffsetX(),

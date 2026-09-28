@@ -42,6 +42,7 @@ typedef struct {
     int discard;
     int status;
     int override_window_type;
+    int tex_w, tex_h;
 } Widget;
 
 typedef struct {
@@ -59,7 +60,12 @@ typedef struct {
     Widget *widgets;
     void *widget;
     int widget_size ;
+    int widget_capacity;
     int discard;
+    int tex_w, tex_h;
+    // 窗口内容脏标记与 Damage 对象（仅顶层窗口注册）
+    int dirty;
+    void *window_damage;
     WindProperty prop;
     int level;
     Bool system_tray;

@@ -50,6 +50,8 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        // 记录框架创建的真实 Application 实例，避免 getApp() 落到伪实例上
+        instance = this;
         AppUtils.init(this);
         HttpLoggingInterceptor logInterceptor = new HttpLoggingInterceptor(new HttpLog("fde"));
         logInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);

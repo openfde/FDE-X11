@@ -72,6 +72,13 @@
 #define OPACITY_SET_STEP        (guint) 0x16000000
 #define OPACITY_SET_MIN         (guint) 0x40000000
 
+// 焦点状态定义（声明见 client.h，供 netwm.c 的 clientGetFocus 读取）
+Client *client_focus = NULL;
+Client *pending_focus = NULL;
+Client *user_focus = NULL;
+Client *delayed_focus = NULL;
+guint focus_timeout = 0;
+
 typedef struct _ButtonPressData ButtonPressData;
 struct _ButtonPressData
 {
@@ -1325,6 +1332,11 @@ clientFree (Client *c)
     logd ("client \"%s\" (0x%lx)", c->name, c->window);
 
     clientClearFocus (c);
+    // 清理移动/缩放的 passdata，避免窗口释放后 OnMotionNotify 解引用悬垂指针
+    if (c->screen_info && c->screen_info->passdata.c == c)
+    {
+        c->screen_info->passdata.c = NULL;
+    }
     // if (clientGetLastRaise (c->screen_info) == c)
     // {
     //     clientClearLastRaise (c->screen_info);
@@ -2049,26 +2061,9 @@ clientUnframe (Client *c, gboolean remap)
     display_info = screen_info->display_info;
 
     myDisplayRemoveClient (display_info, c);
-    // clientRemoveFromList (c);
-
-    g_assert (screen_info->client_count > 0);
-    screen_info->client_count--;
-    if (screen_info->client_count == 0)
-    {
-        screen_info->clients = NULL;
-    }
-    else
-    {
-        c->next->prev = c->prev;
-        c->prev->next = c->next;
-        if (c == screen_info->clients)
-        {
-            screen_info->clients = screen_info->clients->next;
-        }
-    }
-    screen_info->windows = g_list_remove (screen_info->windows, c);
-    clientSetNetClientList (screen_info, display_info->atoms[NET_CLIENT_LIST], screen_info->windows);
-    FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MANAGED);
+    // clientRemoveFromList 会同步从 windows 和 windows_stack 两个链表移除，
+    // 避免 clientFree 后 windows_stack 里残留悬垂指针
+    clientRemoveFromList (c);
 
 
     myDisplayGrabServer (display_info);
@@ -4427,6 +4422,16 @@ clientSetFocus (ScreenInfo *screen_info, Client *c, guint32 timestamp, unsigned 
                 client_focus = NULL;
                 clientFocusNone (screen_info, c2, timestamp);
             }
+            else
+            {
+                // XSetInputFocus 成功，更新焦点并同步 _NET_WM_STATE_FOCUSED
+                client_focus = c;
+                if (c2)
+                {
+                    clientSetNetState (c2);
+                }
+                clientSetNetState (c);
+            }
         }
         else if (flags & FOCUS_TRANSITION)
         {
@@ -4444,6 +4449,13 @@ clientSetFocus (ScreenInfo *screen_info, Client *c, guint32 timestamp, unsigned 
         {
             pending_focus = c;
             sendClientMessage (screen_info, c->window, WM_TAKE_FOCUS, timestamp);
+            // 该分支没有 FocusIn 事件处理，先记录焦点以保证 _NET_WM_STATE_FOCUSED 正确
+            client_focus = c;
+            if (c2)
+            {
+                clientSetNetState (c2);
+            }
+            clientSetNetState (c);
         }
     }
     else

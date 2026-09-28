@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/prctl.h>
+#include <stdint.h>
 #include <libgen.h>
 #include <globals.h>
 #include <xkbsrv.h>
@@ -31,6 +32,7 @@
 #include <signal.h>
 #include <arpa/inet.h>
 #include "native_log.h"
+#include "damage.h"
 
 Bool LOG_ENABLE;
 //Bool GL_CHECK_ERROR = FALSE;
@@ -50,7 +52,8 @@ const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
 
 static int argc = 0;
 static char **argv = NULL;
-int conn_fd = -1;
+volatile int conn_fd = -1;
+static pthread_mutex_t conn_fd_mutex = PTHREAD_MUTEX_INITIALIZER;
 extern DeviceIntPtr lorieMouse, lorieMouseRelative, lorieTouch, lorieKeyboard;
 extern ScreenPtr pScreenPtr;
 char *xtrans_unix_path_x11 = NULL;
@@ -95,11 +98,33 @@ void android_update_texture(Window window) {
         return;
     }
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
+    if (!pixmap) {
+        return;
+    }
     TexturePrivRecPtr ptr = dixLookupPrivate(&attr->pWin->devPrivates, &FDEWindowTexturePrivateKey);
     GLuint texture_id = 0;
     if (ptr) {
         texture_id = ptr->texture;
 //            loge( "android_update_texture texture:%x", ptr->texture);
+    }
+
+    // 依赖窗口 Damage 跟踪：内容未变化且纹理已就绪时跳过整幅纹理上传
+    if (texture_id == 0 && attr->texture_id != 0 && attr->window_damage != NULL && !attr->dirty
+        && attr->tex_w == pixmap->drawable.width && attr->tex_h == pixmap->drawable.height) {
+        // 不上传纹理，但仍需刷新窗口几何信息
+        attr->offset_x = (float) pixmap->screen_x;
+        attr->offset_y = (float) pixmap->screen_y;
+        attr->width = (float) pixmap->drawable.width;
+        attr->height = (float) pixmap->drawable.height;
+        return;
+    }
+    if (texture_id == 0 && (eglGetCurrentContext() == EGL_NO_CONTEXT || !pixmap->devPrivate.ptr
+                            || pixmap->drawable.width == 0 || pixmap->drawable.height == 0)) {
+        // 本次无法上传则保留 dirty，等下一次重绘重试
+        return;
+    }
+    if (texture_id == 0) {
+        attr->dirty = 0;
     }
 
     renderer_update_texture(pixmap->screen_x, pixmap->screen_y, pixmap->drawable.width,
@@ -153,6 +178,14 @@ void android_update_widget_texture(Widget *widget) {
 //    }
 //}
 
+static void android_destroy_window_damage(WindAttribute *attr) {
+    if (attr && attr->window_damage) {
+        // DamageDestroy 回调会把 attr->window_damage 置空，必须在 attr 被删除前调用
+        DamageDestroy((DamagePtr) attr->window_damage);
+        attr->window_damage = NULL;
+    }
+}
+
 void android_destroy_window(Window window) {
     logd( "android_destroy_window %x", window);
     _surface_log_traversal_window(sfWraper);
@@ -163,9 +196,8 @@ void android_destroy_window(Window window) {
         if(attribute.android_component == ANDROID_COMPONENT_VIEW){
             logd( "destroy view window:%x", attribute.window);
             android_destroy_view(0, attribute.pWin, attribute.prop.transient, attribute.window, ACTION_DISMISS);
-            attribute.discard = 1;
-            glDeleteTextures(1, &attribute.texture_id);
-            renderer_release_window(GetJavaEnv(), window);
+            android_destroy_window_damage(&attribute);
+            renderer_release_window(GetJavaEnv(), attribute.window);
             _surface_delete_window(sfWraper, attribute.window);
         } else {
             logd( "destroy activity window:%x", attribute.frame);
@@ -173,7 +205,7 @@ void android_destroy_window(Window window) {
                                      ACTION_DESTORY,
                                      attribute.prop.support_wm_delete);
 //            android_destroy_window(attribute.window);
-            glDeleteTextures(1, &attribute.texture_id);
+            android_destroy_window_damage(&attribute);
             renderer_release_window(GetJavaEnv(), attribute.window);
             _surface_delete_window(sfWraper, attribute.window);
         }
@@ -187,8 +219,7 @@ void android_destroy_window(Window window) {
             android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
         }
         widget->discard = 1;
-        glDeleteTextures(1, &widget->texture_id);
-        renderer_release_window(GetJavaEnv(), window);
+        renderer_release_window(GetJavaEnv(), widget->window);
         _surface_remove_widget(sfWraper, window);
     }
 }
@@ -203,9 +234,8 @@ void android_unmap_window(Window window) {
         if(attribute.android_component == ANDROID_COMPONENT_VIEW){
             logd( "unmap view window:%x", attribute.window);
             android_destroy_view(0, attribute.pWin, attribute.prop.transient, attribute.window, ACTION_DISMISS);
-            attribute.discard = 1;
-            glDeleteTextures(1, &attribute.texture_id);
-            renderer_release_window(GetJavaEnv(), window);
+            android_destroy_window_damage(&attribute);
+            renderer_release_window(GetJavaEnv(), attribute.window);
             _surface_delete_window(sfWraper, attribute.window);
         } else {
             if(attribute.prop.net_wm_name && STRING_EQUAL("WPS文字", attribute.prop.net_wm_name))
@@ -230,8 +260,7 @@ void android_unmap_window(Window window) {
             android_destroy_view(0, widget->pWin, widget->task_to, widget->window, ACTION_DISMISS);
         }
         widget->discard = 1;
-        glDeleteTextures(1, &widget->texture_id);
-        renderer_release_window(GetJavaEnv(), window);
+        renderer_release_window(GetJavaEnv(), widget->window);
         _surface_remove_widget(sfWraper, window);
     }
 }
@@ -409,6 +438,45 @@ if (already_redirected) {
     }
 }
  */
+// 窗口内容脏时只打标记，渲染阶段据此跳过未变化窗口的纹理上传
+static void lorie_window_damage_report(DamagePtr pDamage, RegionPtr pRegion, void *closure) {
+    WindAttribute *attr = (WindAttribute *) closure;
+    if (attr) {
+        attr->dirty = 1;
+    }
+    // 清空 damage 区域，下一次绘制才能再次触发回调
+    DamageEmpty(pDamage);
+}
+
+static void lorie_window_damage_destroy(DamagePtr pDamage, void *closure) {
+    WindAttribute *attr = (WindAttribute *) closure;
+    if (attr) {
+        attr->window_damage = NULL;
+        attr->dirty = 1;    // 失去 damage 跟踪后退化为每帧上传
+    }
+}
+
+// 只有顶层窗口（composite 重定向后拥有独立 pixmap，子树绘制也落在该 pixmap）才能按窗口跟踪
+void android_register_window_damage(WindowPtr pWin, Window window) {
+    if (!pWin || !pWin->parent || pWin->parent != pScreenPtr->root) {
+        return;
+    }
+    WindAttribute *attr = _surface_find_window(sfWraper, window);
+    if (!attr || attr->window_damage) {
+        return;
+    }
+    DamagePtr damage = DamageCreate(lorie_window_damage_report, lorie_window_damage_destroy,
+                                    DamageReportNonEmpty, TRUE, pScreenPtr, attr);
+    if (!damage) {
+        loge("android_register_window_damage: DamageCreate failed window:%lx", (unsigned long) window);
+        attr->dirty = 1;
+        return;
+    }
+    DamageRegister(&pWin->drawable, damage);
+    attr->window_damage = damage;
+    attr->dirty = 1;
+}
+
 void android_redirect_window(WindowPtr pWin) {
     //already redirect to android
     if(_surface_count_window_any(sfWraper, pWin->drawable.id)){
@@ -439,6 +507,7 @@ void android_redirect_window(WindowPtr pWin) {
         WindAttribute *attr = android_create_attr(pWin, p);
         attr->android_component = ANDROID_COMPONENT_ACTIVITY;
         _surface_redirect_window(sfWraper, pWin->drawable.id, attr, attr->prop.window_type);
+        android_register_window_damage(pWin, pWin->drawable.id);
         android_create_or_map_window(*attr, attr->prop, 0, false, true);
         return;
     }
@@ -456,6 +525,7 @@ void android_redirect_window(WindowPtr pWin) {
             attr->android_component = ANDROID_COMPONENT_VIEW;
             attr->override_window_type = _WM_WINDOW_TYPE_SYSTRAY;
             _surface_redirect_window(sfWraper, pWin->drawable.id, attr, attr->prop.window_type);
+            android_register_window_damage(pWin, pWin->drawable.id);
             android_create_or_map_window(*attr, attr->prop, 0, false, true);
             return;
         }
@@ -504,6 +574,7 @@ void android_redirect_window(WindowPtr pWin) {
             create_attr->override_window_type = _WM_WINDOW_TYPE_SYSTIP;
             create_attr->android_component = ANDROID_COMPONENT_VIEW;
             _surface_redirect_window(sfWraper, pWin->drawable.id, create_attr, create_attr->override_window_type);
+            android_register_window_damage(pWin, pWin->drawable.id);
             android_create_or_map_window(*create_attr, create_attr->prop, 0, false, true);
             return;
         }
@@ -541,6 +612,8 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
     windAttribute->texture_id = tid;
     windAttribute->widget_size = 0;
     windAttribute->discard = 0;
+    windAttribute->dirty = 1;
+    windAttribute->window_damage = NULL;
     windAttribute->status = 0;
     windAttribute->level = 0;
     property_win_copy(&windAttribute->prop, &windProperty);
@@ -556,6 +629,152 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
     return windAttribute;
 }
 
+// 仅读取与 Android 窗口宿主类型/装饰相关的属性；
+// 不复用 property_get 以避免反复转换 icon 造成 jobject global ref 泄漏
+static void property_get_type_info(WindowPtr pWin, WindProperty *prop) {
+    memset(prop, 0, sizeof(WindProperty));
+    prop->window = pWin->drawable.id;
+    bool overrideRedirect = pWin->overrideRedirect;
+    PropertyPtr pProper = (pWin->optional) ? pWin->optional->userProps : NULL;
+    while (pProper) {
+        ATOM name = pProper->propertyName;
+        unsigned char *propData = pProper->data;
+        if (STRING_EQUAL(NameForAtom(name), WINDOW_TYPE)) {
+            Atom *atoms = (Atom *) propData;
+            for (int i = 0; i < pProper->size; i++) {
+                if (atoms[i] == _WM_WINDOW_TYPE_SYSTRAY) {
+                    prop->window_type = _WM_WINDOW_TYPE_SYSTRAY;
+                    break;
+                }
+                if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_NORMAL)) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_NORMAL;
+                    if (!overrideRedirect) {
+                        break;
+                    } else {
+                        prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG)) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
+                    if (!overrideRedirect) {
+                        break;
+                    } else {
+                        prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_UTILITY)) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_UTILITY;
+                    if (overrideRedirect) {
+                        break;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_POPUP)) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_POPUP_MENU;
+                    if (overrideRedirect) {
+                        break;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_MENU)) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
+                    if (overrideRedirect) {
+                        break;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_TOOLTIP)) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_TOOLTIP;
+                    if (overrideRedirect) {
+                        break;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_COMBO)) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_COMBO;
+                    if (overrideRedirect) {
+                        break;
+                    }
+                } else {
+                    prop->window_type = atoms[i];
+                }
+            }
+        } else if (STRING_EQUAL(NameForAtom(name), WINDWO_TRANSIENT_FOR)) {
+            prop->transient = ((Window *) propData)[0];
+        } else if (STRING_EQUAL(NameForAtom(name), NET_WINDOW_NAME)) {
+            prop->net_wm_name = property_copy_data((char *) propData, pProper->size);
+        } else if (STRING_EQUAL(NameForAtom(name), WINDOW_CLASS)) {
+            prop->wm_class = property_copy_data((char *) propData, pProper->size);
+        } else if (STRING_EQUAL(NameForAtom(name), WINDOW_NAME)) {
+            prop->wm_name = property_copy_data((char *) propData, pProper->size);
+        } else if (STRING_EQUAL(NameForAtom(name), WINDOW_PROTOCOLS)) {
+            Atom *atoms = (Atom *) propData;
+            for (int i = 0; i < pProper->size; i++) {
+                if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_DELETE_WINDOW)) {
+                    prop->support_wm_delete = TRUE;
+                }
+            }
+        } else if (STRING_EQUAL(NameForAtom(name), WINDOW_MOTIF_WM_HINTS)) {
+            prop->support_motif = property_get_motif_hints(name, (uint32_t *) pProper->data,
+                                                           pProper->size, pProper->format);
+        }
+        pProper = pProper->next;
+    }
+}
+
+// X 窗口的类型/装饰/transient 属性变化时，把新的属性同步给 Java 侧已有宿主
+void android_update_window_attribute(WindowPtr pWin, WindAttribute *old_attr) {
+    WindProperty prop;
+    property_get_type_info(pWin, &prop);
+
+    int old_type = old_attr->override_window_type ? old_attr->override_window_type
+                                                  : old_attr->prop.window_type;
+    int new_type = old_attr->override_window_type ? old_attr->override_window_type
+                                                  : prop.window_type;
+    bool changed = old_type != new_type
+                   || old_attr->prop.support_motif != prop.support_motif
+                   || old_attr->prop.transient != prop.transient;
+    if (!changed) {
+        property_cleanup(&prop);
+        return;
+    }
+    loge("window:%lx type changed old:%d new:%d motif old:%d new:%d transient old:%lx new:%lx",
+         pWin->drawable.id, old_type, new_type,
+         old_attr->prop.support_motif, prop.support_motif,
+         old_attr->prop.transient, prop.transient);
+    WindAttribute *stored = _surface_find_window(sfWraper, old_attr->window);
+    if (!stored) {
+        property_cleanup(&prop);
+        return;
+    }
+    jobject old_icon = stored->prop.icon;
+    property_win_copy(&stored->prop, &prop);   // 深拷贝字符串
+    stored->prop.icon = old_icon;              // type_info 不携带 icon，保留原值
+
+    JNIEnv *JavaEnv = GetJavaEnv();
+    if (JavaEnv && JavaCmdEntryPointClass) {
+        jstring wm_name = NULL, net_wm_name = NULL, wm_class = NULL;
+        if (util_is_valid_utf8(prop.net_wm_name)) {
+            net_wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, prop.net_wm_name);
+        }
+        if (util_is_valid_utf8(prop.wm_name)) {
+            wm_name = (*JavaEnv)->NewStringUTF(JavaEnv, prop.wm_name);
+        }
+        if (util_is_valid_utf8(prop.wm_class)) {
+            wm_class = (*JavaEnv)->NewStringUTF(JavaEnv, prop.wm_class);
+        }
+        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                         "updateWindowAttribute",
+                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIIZIZJ)V");
+        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
+                                         (long) stored->window, (long) prop.transient, (long) prop.leader,
+                                         prop.window_type,
+                                         wm_class, net_wm_name == NULL ? wm_name : net_wm_name,
+                                         stored->pWin->drawable.x, stored->pWin->drawable.y,
+                                         stored->pWin->drawable.width, stored->pWin->drawable.height,
+                                         stored->index, (long) stored->pWin, (long) stored->window,
+                                         (long) prop.transient,
+                                         prop.support_wm_delete, prop.support_motif,
+                                         false, clientNum,
+                                         stored->android_component == ANDROID_COMPONENT_ACTIVITY,
+                                         (long) stored->child);
+        if (wm_name) (*JavaEnv)->DeleteLocalRef(JavaEnv, wm_name);
+        if (net_wm_name) (*JavaEnv)->DeleteLocalRef(JavaEnv, net_wm_name);
+        if (wm_class) (*JavaEnv)->DeleteLocalRef(JavaEnv, wm_class);
+    }
+    property_cleanup(&prop);
+}
+
 //update some effect property and do sth if need , eg. window icon
 void property_update_android(WindowPtr pWin, Atom prop, ClientPtr client) {
     WindAttribute attribute = {0};
@@ -564,25 +783,41 @@ void property_update_android(WindowPtr pWin, Atom prop, ClientPtr client) {
         return;
     }
     CHECK_WITH_PROP;
-    if (STRING_EQUAL(NameForAtom(prop), WINDOW_ICON)) {
+    const char *prop_name = NameForAtom(prop);
+    if (prop_name == NULL) {
+        return;
+    }
+    if (STRING_EQUAL(prop_name, WINDOW_ICON)) {
         loge("window:%lx name:%s", pWin->drawable.id, NameForAtom(prop))
         PropertyPtr pProp;
         int rc = dixLookupProperty(&pProp, pWin, prop, client,
                                    DixReadAccess);
-        if (rc == Success) {
-            unsigned char *propData = pProp->data;
-            int *icon_data = (int *) propData;
-            int width = *icon_data;
-            int height = *(icon_data + 1);
-            int *imageData = (int *) (icon_data + 2);
-            android_icon_update(imageData, width, height, (long) pWin->drawable.id);
+        if (rc == Success && pProp->size >= 2 && pProp->format == 32) {
+            int *icon_data = (int *) pProp->data;
+            int width = icon_data[0];
+            int height = icon_data[1];
+            long need = 2 + (long) width * height;
+            if (width > 0 && height > 0 && need <= (long) pProp->size) {
+                android_icon_update(icon_data + 2, width, height, (long) pWin->drawable.id);
+            } else {
+                loge("invalid _NET_WM_ICON w:%d h:%d size:%lu", width, height,
+                     (unsigned long) pProp->size);
+            }
         }
+    } else if (STRING_EQUAL(prop_name, WINDOW_TYPE)
+               || STRING_EQUAL(prop_name, WINDOW_MOTIF_WM_HINTS)
+               || STRING_EQUAL(prop_name, WINDWO_TRANSIENT_FOR)) {
+        android_update_window_attribute(pWin, &attribute);
     }
 }
 
 void android_icon_update(int *data, int width, int height, long window) {
     if (!data || width <= 0 || height <= 0) {
         loge( "Invalid input parameters: data=%p, width=%d, height=%d", data, width, height);
+        return;
+    }
+    if (width > 8192 || height > 8192 || (long) width * height > 8192L * 8192L) {
+        loge( "Icon too large: width=%d, height=%d", width, height);
         return;
     }
     JNIEnv *env = GetJavaEnv();
@@ -658,10 +893,10 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
             .inbounds = inBound
     };
 
-    // 动态调整 widgets 数组大小，而不是固定 10 个元素
-    if (!attr->widgets) {
-        size_t new_size = attr->widgets ? (attr->widget_size + 10) : 10;
-        Widget *new_widgets = realloc(attr->widgets, sizeof(Widget) * new_size);
+    // 动态扩容 widgets 数组，容量按 10 递增，避免固定 10 个元素导致的堆越界写
+    if (!attr->widgets || attr->widget_size >= attr->widget_capacity) {
+        size_t new_capacity = attr->widgets ? (size_t) (attr->widget_capacity + 10) : 10;
+        Widget *new_widgets = (Widget *) realloc(attr->widgets, sizeof(Widget) * new_capacity);
         if (!new_widgets) {
             loge("widget realloc failed");
             // 清理已分配的纹理资源
@@ -671,6 +906,7 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
             return;
         }
         attr->widgets = new_widgets;
+        attr->widget_capacity = (int) new_capacity;
     }
 
     attr->widgets[attr->widget_size] = widget;
@@ -972,7 +1208,7 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
     pthread_t t = 0;
     if ((*env)->GetJavaVM(env, &vm) != JNI_OK) {
         loge( "GetJavaVM fail")
-        return JNI_TRUE;
+        return JNI_FALSE;
     }
     logd( "vm address is %p ", vm)
     if (vm == NULL) {
@@ -981,9 +1217,9 @@ Java_com_fde_x11_Xserver_start(JNIEnv *env, unused jobject thiz, jobjectArray ar
     logd( "t address is %p ", &t)
     if (pthread_create(&t, NULL, startServer, vm) != 0) {
         logd( "t address is %p ", &t)
-        return JNI_TRUE;
+        return JNI_FALSE;
     }
-    return JNI_FALSE;
+    return JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL
@@ -1025,8 +1261,13 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
     if (ready & X_NOTIFY_ERROR) {
 //        RemoveNotifyFd(fd);
         InputThreadUnregisterDev(fd);
-        close(fd);
-        conn_fd = -1;
+        // 仅当仍是当前连接时才关闭，避免误关新建立的连接
+        pthread_mutex_lock(&conn_fd_mutex);
+        if (conn_fd == fd) {
+            close(fd);
+            conn_fd = -1;
+        }
+        pthread_mutex_unlock(&conn_fd_mutex);
         lorieEnableClipboardSync(FALSE);
         return;
     }
@@ -1200,21 +1441,28 @@ static Bool addFd(unused ClientPtr pClient, void *closure) {
 
 JNIEXPORT jobject JNICALL
 Java_com_fde_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
-    if (conn_fd == -1) {
-        int client[2];
-        jclass ParcelFileDescriptorClass = (*env)->FindClass(env,
-                                                             "android/os/ParcelFileDescriptor");
-        jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
-                                                      "(I)Landroid/os/ParcelFileDescriptor;");
-        socketpair(AF_UNIX, SOCK_STREAM, 0, client);
-        fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
-//        __android_log_print(ANDROID_LOG_ERROR, "native_android",
-//                            "getXConnection: conn_fd:%d fd[0]%d fd[1]%d", conn_fd, client[0], client[1]);
-        QueueWorkProc(addFd, NULL, (void *) (int64_t) client[1]);
-        return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
-    } else {
+    // 多个 Activity 可能并发 tryConnect，加锁避免创建多个 socketpair 覆盖 conn_fd
+    pthread_mutex_lock(&conn_fd_mutex);
+    if (conn_fd != -1) {
+        pthread_mutex_unlock(&conn_fd_mutex);
         return NULL;
     }
+    int client[2];
+    jclass ParcelFileDescriptorClass = (*env)->FindClass(env,
+                                                         "android/os/ParcelFileDescriptor");
+    jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
+                                                  "(I)Landroid/os/ParcelFileDescriptor;");
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, client) != 0) {
+        loge("getXConnection: socketpair failed: %s", strerror(errno));
+        pthread_mutex_unlock(&conn_fd_mutex);
+        return NULL;
+    }
+    fcntl(client[0], F_SETFL, fcntl(client[0], F_GETFL, 0) | O_NONBLOCK);
+    // 先在锁内占用 conn_fd，输入线程注册排队到主线程执行
+    conn_fd = client[1];
+    pthread_mutex_unlock(&conn_fd_mutex);
+    QueueWorkProc(addFd, NULL, (void *) (int64_t) client[1]);
+    return (*env)->CallStaticObjectMethod(env, ParcelFileDescriptorClass, adoptFd, client[0]);
 }
 
 void *logcatThread(void *arg) {
@@ -1326,12 +1574,16 @@ Java_com_fde_x11_LorieView_sendTextEvent(JNIEnv *env, unused jobject thiz, jbyte
         jsize length = (*env)->GetArrayLength(env, text);
         jbyte *str = (*env)->GetByteArrayElements(env, text, JNI_FALSE);
         char *p = (char *) str;
+        char *end = (char *) str + length;
         mbstate_t state = {0};
         logd( "Parsing text: %.*s", length, str);
 
-        while (*p) {
+        // 以数组长度作为边界，避免 JNI 数组没有 NUL 结尾时越界读取
+        while (p < end && *p) {
             wchar_t wc;
-            size_t len = mbrtowc(&wc, p, MB_CUR_MAX, &state);
+            size_t remain = (size_t) (end - p);
+            size_t max = remain > MB_CUR_MAX ? MB_CUR_MAX : remain;
+            size_t len = mbrtowc(&wc, p, max, &state);
 
             if (len == (size_t) -1 || len == (size_t) -2) {
                 loge( "Invalid UTF-8 sequence encountered");
@@ -1375,8 +1627,8 @@ void exit(int code) {
 
 #if 1
 
-JNIEXPORT void JNICALL
-Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window) {
+static Bool lorieTellFocusWindowProc(unused ClientPtr pClient, void *closure) {
+    long window = (long) (intptr_t) closure;
     logd( "tellFocusWindow window:%lx", window);
     focusWindow = window;
     if (_surface_count_window(sfWraper, window)) {
@@ -1385,12 +1637,31 @@ Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window
         window_top_level %= LEVEL_MAX;
         attr->level = window_top_level;
     }
+    return TRUE;
+}
+
+static Bool lorieRemoveWindowProc(unused ClientPtr pClient, void *closure) {
+    long window = (long) (intptr_t) closure;
+    logd( "removeWindow window:%lx (unbind only)", window);
+    // 仅解绑 Android Surface 与渲染资源，保留 SurfaceManager 中的窗口状态。
+    // 真正销毁由 X 窗口 DestroyNotify(compDestroyWindow) 驱动，
+    // 这样 Activity 因类型变化重启时可以重新绑定同一个 X 窗口。
+    if (!renderer_release_window(GetJavaEnv(), window)) {
+        logd("removeWindow: window:%lx not found, nothing to unbind", window);
+    }
+    return TRUE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_fde_x11_Xserver_tellFocusWindow(JNIEnv *env, jobject thiz, jlong window) {
+    // SurfaceManager 及渲染资源只能在 X server 主线程访问，排队执行避免与渲染并发
+    QueueWorkProc(lorieTellFocusWindowProc, NULL, (void *) (intptr_t) window);
 }
 
 JNIEXPORT void JNICALL
 Java_com_fde_x11_Xserver_removeWindow(JNIEnv *env, jobject thiz, jlong window) {
-    logd( "removeWindow window:%lx", window);
-    android_destroy_window(window);
+    // 同 tellFocusWindow：由 Java/Binder 线程调用，必须转移到 X server 主线程
+    QueueWorkProc(lorieRemoveWindowProc, NULL, (void *) (intptr_t) window);
 }
 
 JNIEXPORT void JNICALL

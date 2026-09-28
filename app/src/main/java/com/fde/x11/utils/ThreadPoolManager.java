@@ -1,5 +1,6 @@
 package com.fde.x11.utils;
 
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +16,16 @@ public final class ThreadPoolManager extends ThreadPoolExecutor {
         // 由于应用自身占用了一些线程数，故减去 300 - 100 = 200 个
         super(0, 200,
                 30L, TimeUnit.MILLISECONDS,
-                new SynchronousQueue<>());
+                new SynchronousQueue<>(),
+                new RejectedExecutionHandler() {
+                    @Override
+                    public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
+                        // 池满时退化为调用者线程执行，避免抛 RejectedExecutionException
+                        if (!executor.isShutdown()) {
+                            r.run();
+                        }
+                    }
+                });
     }
 
     public static ThreadPoolManager getInstance() {

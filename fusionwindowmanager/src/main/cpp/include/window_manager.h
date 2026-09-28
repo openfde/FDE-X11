@@ -11,8 +11,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <array>
 #include <memory>
 #include <mutex>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <string>
 #include <unordered_map>
 #include "util.hpp"
@@ -143,7 +147,9 @@ public:
     int raiseWindow(long window);
     bool isNormalWindow(long window);
     void initCompositor();
-    int stoped = False;
+    // 请求事件循环退出并等待其结束，返回 true 表示 Run() 已安全返回
+    bool RequestStop();
+    std::atomic<int> stoped{False};
     jint sendClipText(const char *pJstring);
     jint sendClipFile(const char *pJstring);
     jint circulaSubWindows(jlong window, jboolean lowest);
@@ -165,6 +171,11 @@ private:
     DisplayInfo *display_info;
     const Window root_;
     int screen_;
+    // 用于 RequestStop 唤醒事件循环以及优雅关闭
+    std::string display_str_;
+    std::mutex run_mutex_;
+    std::condition_variable run_cv_;
+    bool run_finished_ = false;
     Window back_window;
     int width_ = 1920;
     int height_ = 1080;
@@ -229,6 +240,8 @@ private:
 
     ::std::unordered_map<Window, Window> tray_window_map;
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
+    // 最近一次已同步给 Java 的窗口几何，用于过滤重复的 ConfigureRequest 事件
+    ::std::unordered_map<Window, ::std::array<int, 4>> last_synced_geometry;
     Window owner;
     Atom sel, utf8, xa_primary;
     std::string clip_text;

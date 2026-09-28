@@ -346,11 +346,13 @@ struct _ClientPair
     Client *highest;
 };
 
-static Client *client_focus  = NULL;
-static Client *pending_focus = NULL;
-static Client *user_focus    = NULL;
-static Client *delayed_focus = NULL;
-static guint focus_timeout   = 0;
+// 这些焦点状态需要跨编译单元共享（netwm.c 的 clientGetFocus 会读取），
+// 原先定义为 static 导致每个 .c 文件各持一份副本，实际从未生效
+extern Client *client_focus;
+extern Client *pending_focus;
+extern Client *user_focus;
+extern Client *delayed_focus;
+extern guint focus_timeout;
 
 
 // extern Client *clients;

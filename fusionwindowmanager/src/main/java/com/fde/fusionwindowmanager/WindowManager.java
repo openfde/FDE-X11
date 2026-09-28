@@ -34,7 +34,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class WindowManager  {
@@ -60,7 +62,8 @@ public class WindowManager  {
     public static final int MSG_START_WM = 1;
     public static final int MSG_STOP_WM = 2;
     public static List<WindowAttribute> PERFORM_WINDOW_LIST = new ArrayList<>();
-    public static Set<Long> WINDOW_XIDS = new HashSet<>();
+    // 广播接收器（主线程）与 native/其他线程并发访问，必须线程安全
+    public static Set<Long> WINDOW_XIDS = ConcurrentHashMap.newKeySet();
     private String display;
 
     public static final int WINDOW_ACTION_UNDEFINED = 0;
@@ -106,7 +109,7 @@ public class WindowManager  {
     public static final long SYSTEM_TRAY_CLICK = 4;
 
 
-    public static HashMap<Long, WindowAttribute> existTaskMap = new HashMap<>();
+    public static Map<Long, WindowAttribute> existTaskMap = new ConcurrentHashMap<>();
     IntentFilter intentFilter;
     public WindowManager() {
         mThread = new HandlerThread("WM");
@@ -179,11 +182,6 @@ public class WindowManager  {
             default:
                 break;
         }
-
-
-        EventBus.getDefault().post(new EventMessage(EventType.X_UNMAP_WINDOW,
-                        "xserver unmap any window",
-                new WindowAttribute(index, pWin, window), property));
     }
 
     public void startWindowManager(String displayGlobalParam) {

@@ -97,7 +97,8 @@ public class LorieView extends SurfaceView implements InputStub {
         @Override public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
 //            Log.d(TAG, "surfaceDestroyed: holder:" + holder + "" + this);
             if (mCallback != null){
-//                mCallback.onSurfaceDestroy(holder.getSurface());
+                // 必须通知 native 解绑，否则 native 会继续向已销毁的 Surface 渲染
+                mCallback.onSurfaceDestroy(holder.getSurface());
             }
         }
     };
@@ -153,7 +154,8 @@ public class LorieView extends SurfaceView implements InputStub {
             context = ((ContextWrapper) context).getBaseContext();
         }
 
-        throw new NullPointerException();
+        // service 进程的浮窗 LorieView 使用 Service context，这里返回 null 而不是抛异常
+        return null;
     }
 
     void getDimensionsFromSettings() {

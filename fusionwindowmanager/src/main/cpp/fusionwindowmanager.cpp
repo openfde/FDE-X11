@@ -182,8 +182,14 @@ JNIEXPORT jint JNICALL sendClipFile(JNIEnv * env, jobject obj, jstring string){
 JNIEXPORT jint JNICALL disconnect2Server(JNIEnv * env, jobject obj){
     if(window_manager){
         logd("disconnect2Server");
-        window_manager->stoped = True;
-        delete window_manager;
+        bool run_finished = window_manager->RequestStop();
+        if (run_finished) {
+            delete window_manager;
+        } else {
+            // Run() 线程尚未退出，此时 delete/XCloseDisplay 会与其并发访问同一 Display，
+            // 宁可泄漏也不造成 use-after-free（进程随后通常会被销毁）
+            loge("disconnect2Server: WM event loop did not exit in time, leaking WindowManager instance");
+        }
         window_manager = NULL;
     }
     return True;

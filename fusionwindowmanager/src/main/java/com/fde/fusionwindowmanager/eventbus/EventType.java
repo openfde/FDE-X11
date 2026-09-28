@@ -20,7 +20,8 @@ public enum EventType {
 
     X_RESIZE_TASK("resize_task"),
     X_CONFIGURE_WINDOW("configure_window"),
-    X_CONFIGURE_WIDGET("configure_widget");
+    X_CONFIGURE_WIDGET("configure_widget"),
+    X_UPDATE_WINDOW_ATTRIBUTE("update_window_attribute");
 
     public final String usefor;
     EventType(final String usefor){

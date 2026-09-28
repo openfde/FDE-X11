@@ -145,13 +145,15 @@ static const char vertex_shader[] =
     "varying vec2 outTexCoords;\n" \
     "uniform sampler2D texture;\n" \
     "void main(void) {\n" \
-    "   gl_FragColor = texture2D(texture, outTexCoords)" texture ";\n" \
+    "   gl_FragColor = vec4(texture2D(texture, outTexCoords)" texture ", 1.0);\n" \
     "}\n"
 
 maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int index, Widget widget);
 
-static const char fragment_shader[] = FRAGMENT_SHADER();
-static const char fragment_shader_bgra[] = FRAGMENT_SHADER(".bgra");
+// X 的 32bpp pixmap 中 alpha 字节通常为 0，若原样输出会让整个 Surface 变透明（黑屏），
+// 因此这里强制 alpha=1，只取 rgb
+static const char fragment_shader[] = FRAGMENT_SHADER(".rgb");
+static const char fragment_shader_bgra[] = FRAGMENT_SHADER(".bgr");
 static EGLDisplay global_egl_display = EGL_NO_DISPLAY;
 static EGLContext global_ctx = EGL_NO_CONTEXT;
 static EGLConfig global_config = 0;
@@ -393,7 +395,7 @@ int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
                 *flip = 1;
             } else if (pixel[0] != 0xAADDCCBB) {
                 logd("Xlorie: GLES receives broken pixels. Forcing legacy drawing. 0x%X\n",
-                    pixel[0]);
+                     pixel[0]);
                 *legacy_drawing = 1;
             }
             eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
@@ -532,14 +534,24 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
 //    logd("renderer_set_window_each 1")
-    if(!res->surface){
-        return;
-    }
-//    logd("renderer_set_window_each 2")
     bool isWidget = false;
+    WindAttribute *attr = NULL;
+    Widget *widget = NULL;
     if(_surface_count_window(sfWraper, res->window)){
 //        logd("set window attr")
-        WindAttribute *attr =  _surface_find_window(sfWraper, res->window);
+        attr = _surface_find_window(sfWraper, res->window);
+        if (!attr) {
+            return;
+        }
+        if (!res->surface) {
+            // 解绑：销毁 EGLSurface 并标记丢弃，保留 attr 以便窗口重新映射
+            if (attr->sfc != EGL_NO_SURFACE) {
+                eglDestroySurface(global_egl_display, attr->sfc);
+                attr->sfc = EGL_NO_SURFACE;
+            }
+            attr->discard = 1;
+            return;
+        }
         attr->status = 6;
         attr->discard = 0;
         attr->offset_x = res->offset_x;
@@ -552,7 +564,18 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     } else if(_surface_count_widget(sfWraper, res->window)){
 //        logd("set widget attr")
         isWidget = true;
-        Widget *widget = _surface_find_widget(sfWraper, res->window);
+        widget = _surface_find_widget(sfWraper, res->window);
+        if (!widget) {
+            return;
+        }
+        if (!res->surface) {
+            if (widget->sfc != EGL_NO_SURFACE) {
+                eglDestroySurface(global_egl_display, widget->sfc);
+                widget->sfc = EGL_NO_SURFACE;
+            }
+            widget->discard = 1;
+            return;
+        }
         widget->offset_x = res->offset_x;
         widget->offset_y = res->offset_y;
         widget->width = res->width;
@@ -567,17 +590,8 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     int width = window ? ANativeWindow_getWidth(window) : 0;
     int height = window ? ANativeWindow_getHeight(window) : 0;
     loge("key_process window:%p width:%d height:%d index:%d p:%x surface:%p new_surface:%p",
-        window, width, height, res->id, res->pWin, res->surface, new_surface);
-    EGLSurface sfc;
-    WindAttribute *attr;
-    Widget *widget;
-    if(isWidget){
-        widget = _surface_find_widget(sfWraper, res->window);
-        sfc = widget->sfc;
-    } else {
-        attr = _surface_find_window(sfWraper, res->window);
-        sfc = attr->sfc;
-    }
+         window, width, height, res->id, res->pWin, res->surface, new_surface);
+    EGLSurface sfc = isWidget ? widget->sfc : attr->sfc;
 //    _surface_log_traversal_window(sfWraper);
     if (sfc != EGL_NO_SURFACE) {
         if (eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT) !=
@@ -589,12 +603,26 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         }
         if (eglDestroySurface(global_egl_display, sfc) != EGL_TRUE) {
             logd("Xlorie: eglDestoySurface failed.\n");
-            ANativeWindow_release(window);
             eglCheckError(__LINE__);
+            ANativeWindow_release(window);
+            // 旧 surface 已不可用，避免后续拿悬空 EGLSurface 渲染
+            if (isWidget) {
+                widget->sfc = EGL_NO_SURFACE;
+                widget->discard = 1;
+            } else {
+                attr->sfc = EGL_NO_SURFACE;
+                attr->discard = 1;
+            }
             return;
         }
     }
     sfc = EGL_NO_SURFACE;
+    // 先清空旧 EGLSurface 引用，任何后续失败路径都不会留下已销毁的 surface
+    if (isWidget) {
+        widget->sfc = EGL_NO_SURFACE;
+    } else {
+        attr->sfc = EGL_NO_SURFACE;
+    }
     if (window && (width <= 0 || height <= 0)) {
         logd("Xlorie: We've got invalid surface. Probably it became invalid before we started working with it.\n");
         ANativeWindow_release(window);
@@ -602,17 +630,28 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         if (new_surface) {
             (*env)->CallVoidMethod(env, new_surface, Surface_release);
             (*env)->CallVoidMethod(env, new_surface, Surface_destroy);
-            (*env)->DeleteGlobalRef(env, new_surface);
+            // global ref 由 lorieChangeWindow 统一释放，这里不能 DeleteGlobalRef，否则 double free
             new_surface = NULL;
         }
     }
-    if (!window)
+    if (!window) {
+        if (isWidget) {
+            widget->discard = 1;
+        } else {
+            attr->discard = 1;
+        }
         return;
+    }
     sfc = eglCreateWindowSurface(global_egl_display, global_config, window, NULL);
     if (sfc == EGL_NO_SURFACE) {
         logd("Xlorie: eglCreateWindowSurface failed.\n");
         eglCheckError(__LINE__);
         ANativeWindow_release(window);
+        if (isWidget) {
+            widget->discard = 1;
+        } else {
+            attr->discard = 1;
+        }
         return;
     }
     ANativeWindow_release(window);
@@ -620,13 +659,25 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
     if (eglMakeCurrent(global_egl_display, sfc, sfc, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
+        eglDestroySurface(global_egl_display, sfc);
+        if (isWidget) {
+            widget->discard = 1;
+        } else {
+            attr->discard = 1;
+        }
         return;
     }
     if(isWidget){
         widget->sfc = sfc;
+        widget->discard = 0;
     } else {
         attr->sfc = sfc;
+        attr->discard = 0;
+        // 新 Surface 需要重新上传一次内容，避免内容未变化时跳过上传导致黑屏
+        attr->dirty = 1;
     }
+    // 关闭 vsync 阻塞，帧同步交给 renderer_redraw 的 fence 控制
+    eglSwapInterval(global_egl_display, 0);
 //    logd("renderer_set_window_each begin4 %p %d %d  sfc:%p", window, width, height, sfc);
     if (!g_texture_program) {
         g_texture_program = create_program(vertex_shader, fragment_shader);
@@ -675,7 +726,7 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         return;
     }
     logd("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-        w, h, data, flip, display_rect.width, display_rect.height );
+         w, h, data, flip, display_rect.width, display_rect.height );
     if (display_rect.width != (float) w || display_rect.height != (float) h) {
         display_rect.width = (float) w;
         display_rect.height = (float) h;
@@ -720,7 +771,7 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         checkGlError();
     }
     logd("renderer_update_root w:%d h:%d data:%p flip:%d display.width=%f display.height:%f",
-        w, h, data, flip, display_rect.width, display_rect.height);
+         w, h, data, flip, display_rect.width, display_rect.height);
 
 }
 
@@ -894,7 +945,12 @@ int renderer_should_redraw(void) {
 
 int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
     if (g_last_fence != EGL_NO_SYNC_KHR) {
-        eglClientWaitSyncKHR(global_egl_display, g_last_fence, 0, EGL_FOREVER);
+        // 带超时等待上一帧，避免 GPU 卡顿时 EGL_FOREVER 阻塞整个 X server 主线程
+        EGLint wait_result = eglClientWaitSyncKHR(global_egl_display, g_last_fence, 0,
+                                                  8 * 1000 * 1000 /* 8ms */);
+        if (wait_result != EGL_CONDITION_SATISFIED_KHR) {
+            logw("renderer_redraw: wait last frame fence result:%d, continue", wait_result);
+        }
         eglDestroySyncKHR(global_egl_display, g_last_fence);
         g_last_fence = EGL_NO_SYNC_KHR;
     }
@@ -914,50 +970,31 @@ int renderer_redraw(JNIEnv *env, uint8_t flip, bool empty) {
 }
 
 int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window window, bool empty) {
-    logd("renderer_redraw_traversal_1 index:%d window:%x", index, window);
     int err = EGL_SUCCESS;
     EGLSurface eglSurface = NULL;
-    int id, dri_id;
-    float width, height;
+    int id = 0, dri_id = 0;
+    float width = 0, height = 0;
     WindAttribute *attr = _surface_find_window(sfWraper, window);
-    if (attr && window != 0) {
-        android_update_texture(window);
-        eglSurface = attr->sfc;
-        id = attr->texture_id;
-        dri_id = attr->dri_texture_id;
-        width = attr->width;
-        height = attr->height;
-    }
-
-    if(width == 0 || height == 0){
+    if (!attr || window == 0) {
         return FALSE;
     }
-
-    if(attr->discard){
+    if (attr->discard) {
         return FALSE;
     }
-
-    if (!eglSurface ) {
+    eglSurface = attr->sfc;
+    if (!eglSurface) {
         logd("renderer_redraw_traversal_1 bad egl ");
         return FALSE;
     }
-
-    if (eglSurface  == EGL_NO_SURFACE) {
+    if (eglSurface == EGL_NO_SURFACE) {
         logd("EGL_NO_SURFACE ");
         return FALSE;
     }
-    if ( eglGetCurrentContext() == EGL_NO_CONTEXT ) {
-        logd("renderer_redraw_traversal_1 bad context ")
-        return FALSE;
-    }
-    if (!id) {
-        logd("renderer_redraw_traversal_1 id:%d ", id)
-        return FALSE;
-    }
-
-     logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
-         index, width, height, attr->offset_x, attr->offset_y, id);
-    checkGlError();
+    android_update_texture(window);
+    id = attr->texture_id;
+    dri_id = attr->dri_texture_id;
+    width = attr->width;
+    height = attr->height;
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
         logd("Xlorie: eglMakeCurrent failed.\n");
 //        eglCheckError(__LINE__);
@@ -969,18 +1006,20 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             return FALSE;
         }
     }
-//    if(!empty){
+
+    if(width == 0 || height == 0){
+        return FALSE;
+    }
+
+    if (!id) {
+        logd("renderer_redraw_traversal_1 id:%d ", id)
+        return FALSE;
+    }
+
+    logd("renderer_redraw_traversal_1 eglSurface:%p index:%d width:%.f height:%.f x:%.f y:%.f id:%d", eglSurface,
+         index, width, height, attr->offset_x, attr->offset_y, id);
+    checkGlError();
     if(id){
-        {
-            EGLint sfcW = 0, sfcH = 0;
-            eglQuerySurface(global_egl_display, eglSurface, EGL_WIDTH, &sfcW);
-            eglQuerySurface(global_egl_display, eglSurface, EGL_HEIGHT, &sfcH);
-//            if ((EGLint)width != sfcW || (EGLint)height != sfcH) {
-//                logd("size mismatch: surface=%dx%d pixmap=%.0fx%.0f skip window=%x",
-//                     sfcW, sfcH, width, height, window);
-//                return FALSE;
-//            }
-        }
         glViewport(0, 0, width, height);
 //        loge("renderer_redraw_traversal_1 id:%d", id);
         draw(id, -1.f, -1.f, 1.f, 1.f, flip);
@@ -1035,7 +1074,7 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         for(int i = 0 ; i < attr->widget_size ; i ++){
             Widget widget = attr->widgets[i];
             logd("renderer_redraw_traversal_1 widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
-                widget.texture_id);
+                 widget.texture_id);
             if((int)widget.texture_id <= 0 || !widget.window || !widget.pWin
                || !widget.inbounds || !widget.width || !widget.height
                || !widget.pWin->realized){
@@ -1061,11 +1100,11 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
 //    bool drawn = draw_cursor_1(index, window);
     if (eglSwapBuffers(global_egl_display, eglSurface) != EGL_TRUE) {
         err = eglGetError();
-        eglCheckError(__LINE__);
+        loge("Xlorie: eglSwapBuffers failed win:%x err:%d(%s)", window, err, eglErrorLabel(err));
         if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
             logd("We've got %s so window is to be destroyed. "
-                "Native window disconnected/abandoned, probably activity is destroyed or in background",
-                eglErrorLabel(err));
+                 "Native window disconnected/abandoned, probably activity is destroyed or in background",
+                 eglErrorLabel(err));
 //            renderer_clear_window(env, index);
 //            renderer_set_window(env, NULL, NULL);
 //            return FALSE;
@@ -1098,7 +1137,7 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
     float width = widget.width;
     float height = widget.height;
     logd("renderer_redraw_traversal_inner widget window:%x w:%.0f h:%.0f tid:%d ", widget.window, widget.width , widget.height,
-        widget.texture_id);
+         widget.texture_id);
 
     if (!eglSurface ) {
         logd("renderer_redraw_traversal_1 bad egl ");
@@ -1126,8 +1165,8 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
         eglCheckError(__LINE__);
         if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
             logd("We've got %s so window is to be destroyed. "
-                "Native window disconnected/abandoned, probably activity is destroyed or in background",
-                eglErrorLabel(err));
+                 "Native window disconnected/abandoned, probably activity is destroyed or in background",
+                 eglErrorLabel(err));
             return FALSE;
         }
     }
@@ -1137,7 +1176,7 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
 void renderer_print_fps(float millis) {
     if (renderedFrames)
         logd("%d frames in %.1f seconds = %.1f FPS",
-            renderedFrames, millis / 1000, (float) renderedFrames * 1000 / millis);
+             renderedFrames, millis / 1000, (float) renderedFrames * 1000 / millis);
     renderedFrames = 0;
 }
 
@@ -1324,8 +1363,8 @@ maybe_unused GLuint renderer_create_image(const int fd, CARD16 width, CARD16 hei
         eglCheckError(__LINE__);
     }
     logd("renderer_create_image fd:%d width:%ld height:%ld strides:%d offset:%d depth:%d bpp:%d modifier:0x%llx",
-        fd, width, height,
-        strides[0], offsets[0], depth, bpp, (unsigned long long) modifier)
+         fd, width, height,
+         strides[0], offsets[0], depth, bpp, (unsigned long long) modifier)
 
     EGLint drm_fourcc = DRM_FORMAT_XRGB8888;
     if (depth == 32 && bpp == 32)
@@ -1439,7 +1478,7 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
     }
     loge("query modifier num:%d", *num_modifiers)
     if (*num_modifiers <= 0 )
-	    return TRUE;
+        return TRUE;
     EGLBoolean * external_only = (EGLBoolean*)malloc(*num_modifiers * sizeof(EGLBoolean));
     *modifiers = (EGLuint64KHR*) malloc(*num_modifiers * sizeof(EGLuint64KHR));
     if (!external_only || !*modifiers) {
@@ -1447,7 +1486,7 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
         return FALSE;
     }
     if (!eglQueryDmaBufModifiersEXT(global_egl_display, format,
-                                               *num_modifiers,  *modifiers, external_only, num_modifiers)) {
+                                    *num_modifiers,  *modifiers, external_only, num_modifiers)) {
         loge("Failed to query DMA-BUF modifiers for format 0x%x.\n", format);
         free(*modifiers);
         free(external_only);
@@ -1459,19 +1498,59 @@ maybe_unused int renderer_get_modifier(__unused ScreenPtr screen, __unused uint3
 }
 
 maybe_unused int renderer_release_window(JNIEnv *env, Window window){
-//    loge("renderer_release_window window:%lx", window)
-//    if(!Surface_release){
-//        return FALSE;
-//    }
-//    if (_surface_count_window(sfWraper, window)) {
-//        WindAttribute *attr = _surface_find_window(sfWraper, window);
-//        (*env)->CallVoidMethod(env, attr->sfc, Surface_release);
-//        return TRUE;
-//    }else if(_surface_count_widget(sfWraper, window)){
-//        Widget *widget = _surface_find_widget(sfWraper, window);
-//        (*env)->CallVoidMethod(env, widget->sfc, Surface_release);
-//        return TRUE;
-//    } else {
+    loge("renderer_release_window window:%lx", window)
+    WindAttribute *attr = _surface_find_window(sfWraper, window);
+    if (attr) {
+        bool has_context = eglGetCurrentContext() != EGL_NO_CONTEXT;
+        if (has_context) {
+            if (attr->texture_id) {
+                glDeleteTextures(1, &attr->texture_id);
+            }
+            if (attr->dri_texture_id) {
+                glDeleteTextures(1, &attr->dri_texture_id);
+            }
+        }
+        attr->texture_id = 0;
+        attr->dri_texture_id = 0;
+        attr->tex_w = 0;
+        attr->tex_h = 0;
+        attr->dirty = 1;
+        if (attr->sfc != EGL_NO_SURFACE) {
+            eglDestroySurface(global_egl_display, attr->sfc);
+            attr->sfc = EGL_NO_SURFACE;
+        }
+        for (int i = 0; i < attr->widget_size; i++) {
+            Widget *w = &attr->widgets[i];
+            if (has_context && w->texture_id) {
+                glDeleteTextures(1, &w->texture_id);
+            }
+            w->texture_id = 0;
+            w->tex_w = 0;
+            w->tex_h = 0;
+            if (w->sfc != EGL_NO_SURFACE) {
+                eglDestroySurface(global_egl_display, w->sfc);
+                w->sfc = EGL_NO_SURFACE;
+            }
+        }
+        attr->discard = 1;
+        return TRUE;
+    }
+    Widget *widget = _surface_find_widget(sfWraper, window);
+    if (widget) {
+        bool has_context = eglGetCurrentContext() != EGL_NO_CONTEXT;
+        if (has_context && widget->texture_id) {
+            glDeleteTextures(1, &widget->texture_id);
+        }
+        widget->texture_id = 0;
+        widget->tex_w = 0;
+        widget->tex_h = 0;
+        if (widget->sfc != EGL_NO_SURFACE) {
+            eglDestroySurface(global_egl_display, widget->sfc);
+            widget->sfc = EGL_NO_SURFACE;
+        }
+        widget->discard = 1;
+        return TRUE;
+    }
     return FALSE;
 //    }
 }

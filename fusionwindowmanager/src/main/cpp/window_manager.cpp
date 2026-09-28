@@ -30,7 +30,27 @@ mutex WindowManager::wm_detected_mutex_;
         return nullptr;
     }
     // 2. Construct WindowManager instance.
-    return new WindowManager(display, width, height, density);
+    ::WindowManager *wm = new WindowManager(display, width, height, density);
+    wm->display_str_ = display_str;
+    return wm;
+}
+
+bool WindowManager::RequestStop()
+{
+    stoped = True;
+    // 通过第二条 X 连接修改 root 属性产生 PropertyNotify，唤醒阻塞中的 XNextEvent
+    Display *wake_display = XOpenDisplay(display_str_.c_str());
+    if (wake_display != nullptr) {
+        Atom wake_atom = XInternAtom(wake_display, "FDE_X11_WM_QUIT", False);
+        XChangeProperty(wake_display, DefaultRootWindow(wake_display), wake_atom, XA_STRING, 8,
+                        PropModeReplace, (const unsigned char *) "1", 1);
+        XFlush(wake_display);
+        XCloseDisplay(wake_display);
+    } else {
+        logd("RequestStop: failed to open display %s to wake up event loop", display_str_.c_str());
+    }
+    ::std::unique_lock<mutex> lock(run_mutex_);
+    return run_cv_.wait_for(lock, ::std::chrono::seconds(2), [this] { return run_finished_; });
 }
 
 WindowManager::WindowManager(Display *display, jint width, jint height, jint density)
@@ -145,7 +165,6 @@ bool WindowManager::isNormalWindow(long window)
     int actualFormat;
     unsigned long nItems, bytesAfter;
     unsigned char *propData = NULL;
-    char *atomName = XGetAtomName(display_, _NET_WM_WINDOW_TYPE);
     Atom type = display_info->atoms[NET_WM_WINDOW_TYPE];
     Atom type_nomarl = display_info->atoms[NET_WM_WINDOW_TYPE_NORMAL];
     Atom type_menu = display_info->atoms[NET_WM_WINDOW_TYPE_MENU];
@@ -157,7 +176,7 @@ bool WindowManager::isNormalWindow(long window)
         Success)
     {
         //        logd(" actualType = %ld \n", actualType);
-        if (actualType == XA_ATOM)
+        if (actualType == XA_ATOM && propData)
         {
             Atom *atoms = (Atom *)propData;
             for (int i = 0; i < nItems; i++)
@@ -169,15 +188,16 @@ bool WindowManager::isNormalWindow(long window)
                 else if (atoms[i] == type_menu || atoms[i] == type_dialog
                          || atoms[i] == type_popup || atoms[i] == _NET_WM_WINDOW_TYPE_TRAY)
                 {
-                    char *atomValue = XGetAtomName(display_, atoms[i]);
-                    //                    logd("%s not normal window %lx \n", atomValue, window);
-                    XFree(atomName);
+                    XFree(propData);
                     return False;
                 }
             }
         }
+        if (propData)
+        {
+            XFree(propData);
+        }
     }
-    XFree(propData);
     return True;
 }
 
@@ -216,6 +236,8 @@ void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &ev)
     {
         clientUnframe(c, FALSE);
     }
+    // 清理几何缓存，避免窗口销毁后残留
+    last_synced_geometry.erase(ev.window);
 
     if(dock_windows.count(ev.window)){
         Window tray = tray_window_map[ev.window];
@@ -447,8 +469,19 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
         && c
             )
     {
-        syncConfigureRequest(changes.x, changes.y, changes.width,
-                             changes.height, c->frame, 2);
+        // 几何未变化时跳过，避免 ConfigureRequest 与拖动事件叠加造成事件风暴
+        ::std::array<int, 4> geometry = {changes.x, changes.y, changes.width, changes.height};
+        auto it = last_synced_geometry.find(c->frame);
+        if (it == last_synced_geometry.end() || it->second != geometry)
+        {
+            last_synced_geometry[c->frame] = geometry;
+            syncConfigureRequest(changes.x, changes.y, changes.width,
+                                 changes.height, c->frame, 2);
+        }
+        else
+        {
+            logd("OnConfigureRequest: geometry unchanged for frame 0x%lx, skip sync", c->frame);
+        }
     }
 }
 
@@ -802,6 +835,35 @@ int WindowManager::OnXError(Display *display, XErrorEvent *e)
     return 0;
 }
 
+static Time windowEventTime(const XEvent &e)
+{
+    switch (e.type)
+    {
+        case KeyPress:
+        case KeyRelease:
+            return e.xkey.time;
+        case ButtonPress:
+        case ButtonRelease:
+            return e.xbutton.time;
+        case MotionNotify:
+            return e.xmotion.time;
+        case EnterNotify:
+        case LeaveNotify:
+            return e.xcrossing.time;
+        case PropertyNotify:
+            return e.xproperty.time;
+        case SelectionClear:
+            return e.xselectionclear.time;
+        case SelectionRequest:
+            return e.xselectionrequest.time;
+        case SelectionNotify:
+            return e.xselection.time;
+        default:
+            // 其余事件没有可靠的时间戳字段，保持 current_time 不变
+            return CurrentTime;
+    }
+}
+
 void WindowManager::Run()
 {
 
@@ -873,6 +935,18 @@ void WindowManager::Run()
     display_info = initialize(replace_wm, display_, back_window, root_, navigation_bar_height,
                               status_bar_height);
 
+    // screen.c 的 myScreenComputeSize 硬编码 1920x1080，这里用实际分辨率覆盖，
+    // 避免非 1080p 设备上 maximize/struts 计算错误
+    for (GSList *node = display_info->screens; node; node = node->next)
+    {
+        ScreenInfo *screen_info = (ScreenInfo *) node->data;
+        if (screen_info)
+        {
+            screen_info->width = width_;
+            screen_info->height = height_;
+        }
+    }
+
 
         char resource_data[1024];
     snprintf(resource_data, sizeof(resource_data),
@@ -898,6 +972,14 @@ void WindowManager::Run()
         // 1. Get next event.
         XEvent e;
         XNextEvent(display_, &e);
+        // 用事件时间戳刷新 current_time，避免 ICCCM/EWMH 时间恒为 0
+        {
+            Time event_time = windowEventTime(e);
+            if (event_time != CurrentTime && display_info)
+            {
+                display_info->current_time = (guint32) event_time;
+            }
+        }
         logd("------Received event: %s", ToString(e).c_str());
         //        logd("type:%d", e.type);
         // 2. Dispatch event.
@@ -980,6 +1062,11 @@ void WindowManager::Run()
                 //                logd("Ignored event");
         }
     }
+    {
+        ::std::lock_guard<mutex> lock(run_mutex_);
+        run_finished_ = true;
+    }
+    run_cv_.notify_all();
 }
 
 void WindowManager::ProcessClientMessage(XEvent e)

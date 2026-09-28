@@ -28,6 +28,7 @@ import static com.fde.x11.XWindowService.START_VIEW_FROM_X;
 import static com.fde.x11.XWindowService.STOP_VIEW_FROM_X;
 import static com.fde.x11.XWindowService.STOP_WINDOW_FROM_X;
 import static com.fde.x11.XWindowService.UNMODALED_ACTION_ACTIVITY_FROM_X;
+import static com.fde.x11.XWindowService.UPDATE_ACTIVITY_FROM_X;
 import static com.fde.x11.XWindowService.X_WINDOW_ATTRIBUTE;
 import static com.fde.x11.XWindowService.X_WINDOW_PROPERTY;
 import static com.fde.x11.Xserver.ACTION_START;
@@ -213,6 +214,8 @@ public class MainActivity extends Activity {
         return WindowCode;
     }
     private boolean killSelf;
+    // 窗口类型/装饰变化触发的重启：销毁时保留 X 窗口
+    private boolean mRestartingForTypeChange;
     private Rect mConfigureRect;
     //    @SuppressLint("StaticFieldLeak")
 //    private static MainActivity instance;
@@ -259,6 +262,9 @@ public class MainActivity extends Activity {
     }
 
     private void broadcastTaskId(boolean isAdd){
+        if (mAttribute == null) {
+            return;
+        }
         String targetPackage = getPackageName();
         Intent intent = new Intent();
         if(isAdd){
@@ -311,7 +317,9 @@ public class MainActivity extends Activity {
                 setTitle(title);
             }
             FLog.a("lifecycle",getWindowId(), title);
-            App.getApp().windowPropertyMap.put(mAttribute.getXID(), mProperty);
+            if (mAttribute != null) {
+                App.getApp().windowPropertyMap.put(mAttribute.getXID(), mProperty);
+            }
         }
         mXserviceWrapper = new XserviceInterfaceWrapper();
         mXserviceWrapper.mAttribute = mAttribute;
@@ -471,6 +479,12 @@ public class MainActivity extends Activity {
 
             @Override
             public void onSurfaceDestroy(Surface sfc) {
+                FLog.a("window", getWindowId(), "onSurfaceDestroy");
+                if (mAttribute != null && mXserviceWrapper != null && !mRestartingForTypeChange) {
+                    // Surface 已销毁，通知 native 解绑并停止渲染
+                    serviceWindowChange(null, 0, 0, -1, -1,
+                            mAttribute.getIndex(), mAttribute.getWindowPtr(), mAttribute.getXID());
+                }
             }
         });
 //        getLorieView().setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_NULL));
@@ -505,6 +519,7 @@ public class MainActivity extends Activity {
             addAction(SHOW_WINDOW_FROM_X);
             addAction(MODALED_ACTION_ACTIVITY_FROM_X);
             addAction(UNMODALED_ACTION_ACTIVITY_FROM_X);
+            addAction(UPDATE_ACTIVITY_FROM_X);
             addAction(ACTION_UPDATE_ICON);
             addAction(CONFIGURE_ACTIVITY_FROM_X);
             addAction(CONFIGURE_WIDGET_FROM_X);
@@ -649,9 +664,12 @@ public class MainActivity extends Activity {
     protected void onStop() {
         super.onStop();
         FLog.a("lifecycle", getWindowId(), "onStop");
-        serviceWindowChange(getLorieView().getHolder().getSurface(),
-                0, 0,-1, -1,
-                mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
+        // 类型切换重启期间不解绑：新宿主的绑定不能被旧宿主的事件打掉
+        if (mAttribute != null && !mRestartingForTypeChange) {
+            serviceWindowChange(getLorieView().getHolder().getSurface(),
+                    0, 0,-1, -1,
+                    mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
+        }
 //        unmapXWindow();
     }
 
@@ -664,7 +682,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        closeXWindow();
+        if (mRestartingForTypeChange) {
+            // 因窗口类型变化重启：保留 X 窗口，等待 service 以新的宿主类型重建
+            FLog.a("window", getWindowId(), "onDestroy: restarting for type change, keep X window alive");
+        } else {
+            closeXWindow();
+        }
         unregisterReceiver(receiver);
         unbindService(connection);
 //        stopFloatViews();
@@ -678,7 +701,9 @@ public class MainActivity extends Activity {
         mClipboardManager = null;
         mOnPrimaryClipChangedListener = null;
         EventBus.getDefault().unregister(this);
-        broadcastTaskId(false);
+        if (!mRestartingForTypeChange) {
+            broadcastTaskId(false);
+        }
         FLog.k(TAG, getWindowId(), "onDestroy");
     }
 
@@ -811,6 +836,33 @@ public class MainActivity extends Activity {
         getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
     }
 
+    /**
+     * X 窗口类型/标题等属性变化的原地更新（宿主类型不变时）
+     */
+    private void applyWindowAttributeUpdate(WindowAttribute attr, Property prop) {
+        FLog.a("window", getWindowId(), "applyWindowAttributeUpdate attr:" + attr + ", prop:" + prop);
+        if (prop != null) {
+            mProperty = prop;
+            mAttribute.setProperty(prop);
+            mAttribute.setSupportMotif(prop.getSupportMotif());
+            String wmClass = prop.getWm_class();
+            String netName = prop.getNet_name();
+            this.title = TextUtils.isEmpty(netName)
+                    ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX : APP_TITLE_PREFIX + ": " + wmClass)
+                    : APP_TITLE_PREFIX + ": " + netName;
+            if (prop.getIcon() != null) {
+                ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, prop.getIcon(), 0);
+                setTaskDescription(description);
+            }
+            setTitle(title);
+        }
+        if (attr != null) {
+            mWindowRect.set(attr.getRect());
+            mAttribute.setRect(attr.getRect());
+            getLorieView().setTag(R.id.WINDOW_ARRTRIBUTE, mAttribute);
+        }
+    }
+
     private boolean atSameSize(Rect rect) {
         Rect r = mWindowRect;
         return ( r.right - r.left ) == ( rect.right - rect.left )
@@ -848,6 +900,9 @@ public class MainActivity extends Activity {
 
     private void closeXWindow() {
         FLog.a("window", getWindowId(), "closeXWindow");
+        if (mAttribute == null) {
+            return;
+        }
         serviceWindowChange(getLorieView().getHolder().getSurface(),
                 0, 0,-1, -1,
                 mAttribute.getIndex(),mAttribute.getWindowPtr(), mAttribute.getXID());
@@ -932,15 +987,18 @@ public class MainActivity extends Activity {
     }
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {
-        if(mXserviceWrapper != null){
-            FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], mTaskState = [" + mTaskState + "], window = [" + window + "]");
-            mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
-//            mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), 0);
+        if(mXserviceWrapper == null){
+            return;
         }
+        FLog.k("window", getWindowId(), "serviceWindowChange() called with: sfc = [" + sfc + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "], index = [" + index + "], mTaskState = [" + mTaskState + "], window = [" + window + "]");
+        mXserviceWrapper.windowChanged(sfc, x, y, w, h, index, pWin, window);
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN,priority = 1)
     public void onReceiveMsg(EventMessage message){
+        if(mAttribute == null || message == null || message.getProperty() == null){
+            return;
+        }
         if(mAttribute.getXID() != message.getProperty().getTransientfor()){
             return;
         }
@@ -959,6 +1017,9 @@ public class MainActivity extends Activity {
     public synchronized void configureFromX() {
         FLog.a("window", getWindowId(), "configureFromX mConfigureRect:" + mConfigureRect);
         if(mConfigureRect != null /*&& !isTaskMoving*/){
+            if(mAttribute == null || mXserviceWrapper == null){
+                return;
+            }
             mAttribute.setRect(mConfigureRect);
             mWindowRect = mConfigureRect;
             Rect rect = mConfigureRect;
@@ -1031,7 +1092,11 @@ public class MainActivity extends Activity {
 
             @Override
             public void onSurfaceDestroy(Surface sfc) {
-
+                try {
+                    serviceWindowChange(null, 0, 0, -1, -1, attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+                } catch (Exception e) {
+                    Log.e(TAG, "serviceWindowChange Exception:" + e);
+                }
             }
         });
         InputEventSender inputEventSender = new InputEventSender(widgetView);
@@ -1364,7 +1429,21 @@ public class MainActivity extends Activity {
         public boolean finishActivity(long window) throws RemoteException {
             if(mAttribute != null && mAttribute.getXID() == window){
                 FLog.a(TAG, getWindowId(),"finisActivity: window:" + Long.toHexString(window));
-                finish();
+                // binder 线程回调，finish 必须回到主线程执行
+                runOnUiThread(MainActivity.this::finish);
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean finishActivityForRestart(long window) throws RemoteException {
+            if(mAttribute != null && mAttribute.getXID() == window){
+                FLog.a(TAG, getWindowId(),"finishActivityForRestart: window:" + Long.toHexString(window));
+                runOnUiThread(() -> {
+                    mRestartingForTypeChange = true;
+                    finish();
+                });
                 return true;
             }
             return false;
@@ -1489,6 +1568,13 @@ public class MainActivity extends Activity {
 //                            |FLAG_NOT_TOUCHABLE
                     );
                     setDecorCaptionViewFocuseable(true);
+                }
+            } else if(UPDATE_ACTIVITY_FROM_X.equals(intent.getAction())){
+                WindowAttribute attr = intent.getParcelableExtra(ACTION_X_WINDOW_ATTRIBUTE);
+                Property prop = intent.getParcelableExtra(ACTION_X_WINDOW_PROPERTY);
+                FLog.a("event", getWindowId(), "onReceive: UPDATE_ACTIVITY_FROM_X attr:" + attr);
+                if(mAttribute != null && attr != null && mAttribute.getXID() == attr.getXID()){
+                    applyWindowAttributeUpdate(attr, prop);
                 }
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
