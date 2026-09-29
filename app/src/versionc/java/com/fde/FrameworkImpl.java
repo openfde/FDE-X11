@@ -64,27 +64,41 @@ public class FrameworkImpl implements FrameworkOperations{
 
     @Override
     public void exitFullScreenWindow(Activity activity) {
-        Log.d(TAG, "exitFullScreenWindow() called with: activity = [" + activity + "]");
+        Log.d(TAG, "fullscreen_debug exitFullScreenWindow activity:" + activity
+                + " taskId:" + (activity != null ? activity.getTaskId() : -1)
+                + " service:" + mTaskCaptionService);
+        if (activity == null || mTaskCaptionService == null) {
+            Log.e(TAG, "fullscreen_debug exitFullScreenWindow: activity or service is null");
+            return;
+        }
         try {
-            mTaskCaptionService.executeTaskOperation(activity.getTaskId(), 4);
-            Log.e(TAG, "Task operation executed successfully");
+            mTaskCaptionService.executeTaskOperation(activity.getTaskId(), 2);
+            Log.d(TAG, "fullscreen_debug exitFullScreenWindow executeTaskOperation(taskId="
+                    + activity.getTaskId() + ", op=2) done");
         } catch (RemoteException e) {
-//            Log.e(TAG, "Failed to execute task operation, taskId: " + activity.getTaskId() + ", opCode: " + opCode, e);
+            Log.e(TAG, "fullscreen_debug exitFullScreenWindow RemoteException", e);
         } catch (NullPointerException e) {
-            Log.e(TAG, "Operation service is null, taskId: " + activity.getTaskId(), e);
+            Log.e(TAG, "fullscreen_debug exitFullScreenWindow NullPointerException", e);
         }
     }
 
     @Override
     public void startFullScreenWindow(Activity activity) {
-        Log.d(TAG, "startFullScreenWindow() called with: activity = [" + activity + "]");
+        Log.d(TAG, "fullscreen_debug startFullScreenWindow activity:" + activity
+                + " taskId:" + (activity != null ? activity.getTaskId() : -1)
+                + " service:" + mTaskCaptionService);
+        if (activity == null || mTaskCaptionService == null) {
+            Log.e(TAG, "fullscreen_debug startFullScreenWindow: activity or service is null");
+            return;
+        }
         try {
-            mTaskCaptionService.executeTaskOperation(activity.getTaskId(), 4);
-            Log.i(TAG, "Task operation executed successfully");
+            mTaskCaptionService.executeTaskOperation(activity.getTaskId(), 2);
+            Log.d(TAG, "fullscreen_debug startFullScreenWindow executeTaskOperation(taskId="
+                    + activity.getTaskId() + ", op=2) done");
         } catch (RemoteException e) {
-//            Log.e(TAG, "Failed to execute task operation, taskId: " + activity.getTaskId() + ", opCode: " + opCode, e);
+            Log.e(TAG, "fullscreen_debug startFullScreenWindow RemoteException", e);
         } catch (NullPointerException e) {
-            Log.e(TAG, "Operation service is null, taskId: " + activity.getTaskId(), e);
+            Log.e(TAG, "fullscreen_debug startFullScreenWindow NullPointerException", e);
         }
     }
 

@@ -1186,9 +1186,19 @@ void WindowManager::ProcessClientMessage(XEvent e)
             bool fullscreen =
                 a1 == display_info->atoms[NET_WM_STATE_FULLSCREEN] ||
                 a2 == display_info->atoms[NET_WM_STATE_FULLSCREEN];
+            bool was_fullscreen = FLAG_TEST(c->flags, CLIENT_FLAG_FULLSCREEN);
             //TODO operation in decoration
             int wm_action = clientUpdateNetState (c, ev);
+            bool now_fullscreen = FLAG_TEST(c->flags, CLIENT_FLAG_FULLSCREEN);
             if(fullscreen){
+                // 客户端（WPS PPT）会重复发送相同的 _NET_WM_STATE_FULLSCREEN 请求，
+                // 只有全屏状态真正变化时才通知 Java：否则 executeTaskOperation(op=2, toggle 语义)
+                // 会被调用两次，导致刚进入全屏又被切回窗口化
+                if (was_fullscreen == now_fullscreen) {
+                    logd("fullscreen_debug duplicate NET_WM_STATE_FULLSCREEN ignored, state:%d",
+                         now_fullscreen ? 1 : 0);
+                    return;
+                }
                 wm_action = WINDOW_ACTION_FULLSCREEN;
             }
             logd("NET_WM_STATE_FULLSCREEN window (0x%lx) a1:%s a2:%s wm_action:%d", ev->window, XGetAtomName(display_, a1),
@@ -1201,9 +1211,12 @@ void WindowManager::ProcessClientMessage(XEvent e)
                 setMaximizedState(ev->window, TRUE);
             }
             logd("client \"%s\" (0x%lx) has received a NET_WM_STATE event action:%d", c->name, c->window, wm_action);
+            logd("fullscreen_debug NET_WM_STATE client:0x%lx frame:0x%lx fullscreen:%d wm_action:%d",
+                 c->window, c->frame, fullscreen ? 1 : 0, wm_action);
             jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                             "updateWmStateClient", "(IJ)V");
             GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, c->frame);
+            logd("fullscreen_debug updateWmStateClient called window:0x%lx wm_action:%d", c->frame, wm_action);
         }
         else if ((ev->message_type == display_info->atoms[NET_WM_MOVERESIZE]) && (ev->format == 32))
         {
@@ -1702,6 +1715,7 @@ void WindowManager::HandleClientMessage(XEvent e)
         //        logd("HandleClientMessage w1:%lx w2:%s w3:%lx", e.xclient.data.l[0], XGetAtomName(display_, e.xclient.data.l[1] ), e.xclient.data.l[2]);
     }
     //    logd("HandleClientMessage final wm_action:%d window:%lx", wm_action, e.xclient.window);
+    logd("fullscreen_debug HandleClientMessage window:0x%lx wm_action:%d", e.xclient.window, wm_action);
     jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
                                                     "updateWmStateClient", "(IJ)V");
     GlobalEnv->CallStaticVoidMethod(staticClass, method, wm_action, e.xclient.window);

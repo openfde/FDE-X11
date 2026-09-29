@@ -290,7 +290,9 @@ public class WindowManager  {
                 break;
             case WINDOW_ACTION_FULLSCREEN:
                 //to avoid activity not start
+                Log.d(TAG, "updateWmStateClient: schedule FULLSCREEN_ACTION broadcast window:" + Long.toHexString(window) + " delay=3000ms");
                 mMainHandler.postDelayed(()->{
+                    Log.d(TAG, "updateWmStateClient: send FULLSCREEN_ACTION window:" + Long.toHexString(window));
                     sendBroadcastWmState(WINDOW_ACTION_FULLSCREEN_ACTION, window, context);
                 },3000);
                 break;

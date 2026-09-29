@@ -1649,14 +1649,17 @@ public class MainActivity extends Activity {
                 FLog.a("event", getWindowId(), "onReceive: "  +
                         "WINDOW_ACTION_MAXIMIZED change"  + " windowID:" + windowID +
                         " action:" + intent.getAction() );
-                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                if(mAttribute != null && windowID == mAttribute.getXID()){
+                    Log.d(TAG, "fullscreen_debug MAXIMIZED action:" + intent.getAction() + " match, updateWmStateInner");
                     updateWmStateInner(intent.getAction());
+                } else {
+                    Log.d(TAG, "fullscreen_debug MAXIMIZED action:" + intent.getAction() + " ignored, windowID:" + Long.toHexString(windowID));
                 }
             } else if(WINDOW_ACTION_MINIMIZE_ACTION.equals(intent.getAction())){
                 long windowID = intent.getLongExtra(WINDOW_ACTION_KEY_WINDOWID, -1);
                 FLog.a("event", getWindowId(), "onReceive: "  +
                         "WINDOW_ACTION_MINIMIZE_ACTION"  + " windowID:" + windowID );
-                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                if(mAttribute != null && windowID == mAttribute.getXID()){
                     moveTaskToBack(true);
 //                    ((ActivityManager)getSystemService(Context.ACTIVITY_SERVICE)).moveTaskToBack(true, mTaskID);
                 }
@@ -1665,7 +1668,8 @@ public class MainActivity extends Activity {
                 FLog.a("event", getWindowId(), "onReceive: "  +
                         "WINDOW_ACTION_FULLSCREEN change"  + " windowID:" + windowID +
                         " action:" + intent.getAction() );
-                if(windowID == Objects.requireNonNull(mAttribute).getXID()){
+                if(mAttribute != null && windowID == mAttribute.getXID()){
+                    Log.d(TAG, "fullscreen_debug FULLSCREEN match mXID:" + Long.toHexString(mAttribute.getXID()) + ", updateWmStateInner");
                     updateWmStateInner(intent.getAction());
 //                    handler.postDelayed(() -> {
 //                        if(mFrameworkOperations != null) {
@@ -1673,23 +1677,32 @@ public class MainActivity extends Activity {
 //                            mFrameworkOperations.exitFullScreenWindow(MainActivity.this);
 //                        }
 //                    }, 1000);
+                } else {
+                    Log.d(TAG, "fullscreen_debug FULLSCREEN ignored windowID:" + Long.toHexString(windowID)
+                            + " mXID:" + (mAttribute != null ? Long.toHexString(mAttribute.getXID()) : "null"));
                 }
             }
         }
     }
 
     private void updateWmStateInner(String action) {
-        Log.d(TAG, "updateWmStateInner() called with: action = [" + action + "]");
+        Log.d(TAG, "fullscreen_debug updateWmStateInner action:" + action
+                + " mTaskState:" + mTaskState + " mWmStateAction:" + mWmStateAction);
         if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mTaskState == 0){
+            Log.d(TAG, "fullscreen_debug updateWmStateInner skip (maximize_remove && mTaskState==0)");
             return;
         }
 
         if (WINDOW_ACTION_MAXIMIZED_ACTION.equals(action) && mTaskState == 1) {
+            Log.d(TAG, "fullscreen_debug updateWmStateInner skip (maximize && mTaskState==1)");
             return;
         }
 
         if(mFrameworkOperations != null){
+            Log.d(TAG, "fullscreen_debug updateWmStateInner call exitFullScreenWindow taskId:" + getTaskId());
             mFrameworkOperations.exitFullScreenWindow(this);
+        } else {
+            Log.d(TAG, "fullscreen_debug updateWmStateInner mFrameworkOperations is null");
         }
 
 //        if(mFrameworkOperations != null && WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)) {

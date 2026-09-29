@@ -996,13 +996,17 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
     width = attr->width;
     height = attr->height;
     if (eglMakeCurrent(global_egl_display, eglSurface, eglSurface, global_ctx) != EGL_TRUE) {
-        logd("Xlorie: eglMakeCurrent failed.\n");
-//        eglCheckError(__LINE__);
         EGLint err = eglGetError();
+        logd("Xlorie: eglMakeCurrent failed. window:%lx err:%x", window, err);
         if (err == EGL_BAD_NATIVE_WINDOW || err == EGL_BAD_SURFACE) {
-            // 【关键】如果是 Surface 失效，只跳过当前这一个，不要终止循环
-            // 并且解绑上下文，防止污染下一个 Surface
+            // Surface 已失效：解绑上下文，销毁 EGLSurface 并清空引用、标记 discard，
+            // 避免每帧重复 eglMakeCurrent 失败刷错误；等宿主重新创建 Surface 后再绑定渲染
             eglMakeCurrent(global_egl_display, EGL_NO_SURFACE, EGL_NO_SURFACE, global_ctx);
+            if (attr->sfc != EGL_NO_SURFACE) {
+                eglDestroySurface(global_egl_display, attr->sfc);
+                attr->sfc = EGL_NO_SURFACE;
+            }
+            attr->discard = 1;
             return FALSE;
         }
     }
