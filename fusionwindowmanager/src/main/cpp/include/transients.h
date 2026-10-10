@@ -11,6 +11,8 @@ gboolean                 clientSameGroup                        (Client *,
                                                                  Client *);
 gboolean                 clientIsModalFor                       (Client *,
                                                                  Client *);
+gboolean                 clientIsTransientFor                  (Client *,
+                                                                 Client *);
 gboolean                 clientTransientOrModalHasAncestor      (Client *,
                                                                  guint);
 gboolean                 clientIsTransientOrModalForGroup       (Client *);

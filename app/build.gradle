@@ -4,6 +4,7 @@ apply plugin: 'com.android.application'
 android {
     namespace 'com.fde.x11'
     compileSdkVersion 36
+    ndkVersion "26.1.10909125"
     defaultConfig {
         applicationId "com.fde.x11"
         minSdkVersion 30
@@ -232,7 +233,8 @@ dependencies {
     implementation 'com.caverock:androidsvg:1.4'
     implementation 'io.github.razerdp:BasePopup:3.2.1'
     implementation 'org.greenrobot:eventbus:3.2.0'
-    implementation 'com.github.ChickenHook:RestrictionBypass:2.2'
+    // 已移除未使用的 com.github.ChickenHook:RestrictionBypass（其 x86_64 版 libnrb.so
+    // 只有 4KB 对齐，会触发 16KB page size 警告；项目代码从未引用过它）
 
     implementation project(':x_recyclerview')
     implementation project(':fusionwindowmanager')

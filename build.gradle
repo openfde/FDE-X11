@@ -18,7 +18,8 @@ buildscript {
     dependencies {
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
-        classpath 'com.android.tools.build:gradle:8.1.2'
+        // 8.5.1 起 AGP 会自动把 APK 中未压缩的 .so 做 16KB zip 对齐（16KB page size 要求）。
+        classpath 'com.android.tools.build:gradle:8.5.1'
 //        classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") { changing = true }
 //        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.1.51"
     }

@@ -141,7 +141,12 @@ typedef struct _xReq *xReqPtr;
 #include <stdlib.h>
 #define sign(x) ((x) < 0 ? -1 : ((x) > 0 ? 1 : 0))
 /* this assumes b > 0 */
+/* Not defined in C++ mode: the name conflicts with std::modulus when libc++
+ * headers (e.g. <__functional/operations.h>) are included, and no C++ source
+ * in this project uses this macro. */
+#ifndef __cplusplus
 #define modulus(a, b, d)    if (((d) = (a) % (b)) < 0) (d) += (b)
+#endif
 /*
  * return the least significant bit in x which is set
  *

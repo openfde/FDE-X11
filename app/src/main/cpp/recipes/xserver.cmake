@@ -59,7 +59,7 @@ set(inc "${CMAKE_CURRENT_BINARY_DIR}"
 
 set(compile_options
         ${common_compile_options}
-        "-std=gnu99"
+        "$<$<COMPILE_LANGUAGE:C>:-std=gnu99>"
         "-DHAVE_DIX_CONFIG_H"
         "-fno-strict-aliasing"
         "-fvisibility=hidden"

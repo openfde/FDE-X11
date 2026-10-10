@@ -212,6 +212,7 @@ struct _ScreenInfo
 gboolean                 myScreenCheckWMAtom                    (ScreenInfo *,
                                                                  Atom atom);
 Display                 *myScreenGetXDisplay                    (ScreenInfo *);
+gboolean                 myScreenComputeSize                    (ScreenInfo *);
 
 ScreenInfo              *myScreenInit                           (DisplayInfo *,
                                                                  unsigned long,

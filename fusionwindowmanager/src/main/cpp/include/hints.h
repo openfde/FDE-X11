@@ -130,10 +130,10 @@ gboolean                 getHint                                (DisplayInfo *,
                                                                  Window,
                                                                  int,
                                                                  long *);
-// void                     setHint                                (DisplayInfo *,
-//                                                                  Window,
-//                                                                  int,
-//                                                                  long);
+void                     setHint                                (DisplayInfo *,
+                                                                 Window,
+                                                                 int,
+                                                                 long);
 void                     getDesktopLayout                       (DisplayInfo *,
                                                                  Window,
                                                                  int,
@@ -146,11 +146,11 @@ void                     setNetSupportedHint                    (DisplayInfo *,
                                                                   int,
                                                                   Atom **,
                                                                   int *);
-// gboolean                 getCardinalList                        (DisplayInfo *,
-//                                                                  Window,
-//                                                                  int,
-//                                                                  unsigned long **,
-//                                                                  int *);
+gboolean                 getCardinalList                        (DisplayInfo *,
+                                                                 Window,
+                                                                 int,
+                                                                 unsigned long **,
+                                                                 int *);
 // void                     setNetWorkarea                         (DisplayInfo *,
 //                                                                  Window,
 //                                                                  int,
@@ -217,9 +217,9 @@ gboolean                 getWindowHostname                      (DisplayInfo *,
 //                                                                  gchar **);
 Window                   getClientLeader                        (DisplayInfo *,
                                                                  Window);
-// gboolean                 getNetWMUserTime                       (DisplayInfo *,
-//                                                                  Window,
-//                                                                  guint32 *);
+gboolean                 getNetWMUserTime                       (DisplayInfo *,
+                                                                 Window,
+                                                                 guint32 *);
 Window                   getNetWMUserTimeWindow                 (DisplayInfo *,
                                                                  Window);
 // gboolean                 getClientID                            (DisplayInfo *,
@@ -254,7 +254,7 @@ gboolean                 setXAtomManagerOwner                   (DisplayInfo *,
 //                                                                  Window ,
 //                                                                  Window);
 // void                     updateXserverTime                      (DisplayInfo *);
-// guint32                  getXServerTime                         (DisplayInfo *);
+guint32                  getXServerTime                         (DisplayInfo *);
 // #ifdef ENABLE_KDE_SYSTRAY_PROXY
  gboolean                 checkKdeSystrayWindow                  (DisplayInfo *,
                                                                   Window);
