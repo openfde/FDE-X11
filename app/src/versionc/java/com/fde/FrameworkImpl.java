@@ -35,14 +35,23 @@ public class FrameworkImpl implements FrameworkOperations{
 
     @Override
     public void exitMaxmizeWindow(Activity activity) {
-        Log.d(TAG, "exitMaxmizeWindow() called with: activity = [" + activity + "]");
+        // op=4: Android 侧最大化/还原切换；op=2 是全屏切换，两者不能混用，
+        // 否则 Linux 窗口点最大化会把 Android 窗口切成全屏
+        Log.d(TAG, "fullscreen_debug exitMaxmizeWindow activity:" + activity
+                + " taskId:" + (activity != null ? activity.getTaskId() : -1)
+                + " service:" + mTaskCaptionService);
+        if (activity == null || mTaskCaptionService == null) {
+            Log.e(TAG, "fullscreen_debug exitMaxmizeWindow: activity or service is null");
+            return;
+        }
         try {
-            mTaskCaptionService.executeTaskOperation(activity.getTaskId(), 2);
-            Log.i(TAG, "Task operation executed successfully");
+            mTaskCaptionService.executeTaskOperation(activity.getTaskId(), 4);
+            Log.d(TAG, "fullscreen_debug exitMaxmizeWindow executeTaskOperation(taskId="
+                    + activity.getTaskId() + ", op=4) done");
         } catch (RemoteException e) {
-//            Log.e(TAG, "Failed to execute task operation, taskId: " + activity.getTaskId() + ", opCode: " + opCode, e);
+            Log.e(TAG, "fullscreen_debug exitMaxmizeWindow RemoteException", e);
         } catch (NullPointerException e) {
-            Log.e(TAG, "Operation service is null, taskId: " + activity.getTaskId(), e);
+            Log.e(TAG, "fullscreen_debug exitMaxmizeWindow NullPointerException", e);
         }
     }
 

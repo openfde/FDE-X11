@@ -1699,8 +1699,15 @@ public class MainActivity extends Activity {
         }
 
         if(mFrameworkOperations != null){
-            Log.d(TAG, "fullscreen_debug updateWmStateInner call exitFullScreenWindow taskId:" + getTaskId());
-            mFrameworkOperations.exitFullScreenWindow(this);
+            if(WINDOW_ACTION_FULLSCREEN_ACTION.equals(action)){
+                // 只有真正的全屏状态变化（如 WPS PPT 放映）才走 Android 全屏切换（op=2）
+                Log.d(TAG, "fullscreen_debug updateWmStateInner FULLSCREEN call exitFullScreenWindow taskId:" + getTaskId());
+                mFrameworkOperations.exitFullScreenWindow(this);
+            } else {
+                // 最大化/还原走 Android 最大化切换（op=4），不能触发全屏
+                Log.d(TAG, "fullscreen_debug updateWmStateInner MAXIMIZED call exitMaxmizeWindow action:" + action + " taskId:" + getTaskId());
+                mFrameworkOperations.exitMaxmizeWindow(this);
+            }
         } else {
             Log.d(TAG, "fullscreen_debug updateWmStateInner mFrameworkOperations is null");
         }
