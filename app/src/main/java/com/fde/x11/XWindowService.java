@@ -93,6 +93,9 @@ public class XWindowService extends Service {
 
     private WindowAttribute rightAttr;
 
+    /** 窗口角色诊断广播接收器（见 ACTION_DUMP_WINDOW_ROLES）。 */
+    private BroadcastReceiver roleDumpReceiver;
+
     public static final String CONFIGURE_ACTIVITY_FROM_X = "com.fde.x11.Xserver.action_configure";
     public static final String CONFIGURE_WIDGET_FROM_X = "com.fde.x11.Xserver.action_configure_widget";
 
@@ -115,6 +118,15 @@ public class XWindowService extends Service {
     public static final String ACTION_X_MAIN_WINDOW_SIZE = "action_x_main_window_size";
     public static final String X_MAIN_WINDOW_SIZE = "x_main_window_size";
     public static final String X_CLIENT_SIZE = "x_client_size";
+
+    /**
+     * 诊断入口：打印所有已登记窗口的"证据 + 策略建议 + 实际宿主"。
+     * <pre>adb shell am broadcast -a com.fde.x11.DUMP_WINDOW_ROLES -p com.fde.x11</pre>
+     */
+    public static final String ACTION_DUMP_WINDOW_ROLES = "com.fde.x11.DUMP_WINDOW_ROLES";
+
+    /** 诊断日志 tag，固定不随构建类型变化（release 包也要能看到）。 */
+    public static final String ROLE_DUMP_TAG = "winrole";
 
     public static final String X_WINDOW_RECT = "x_window_rect";
     public static final String X_WINDOW_INDEX = "x_window_index";
@@ -335,6 +347,19 @@ public class XWindowService extends Service {
                     mWidth, mHeight, density);
             fusionWindowManager.startWindowManager(DISPLAY_GLOBAL + "");
         }
+        // 窗口角色诊断入口（只读，不改变任何行为）
+        roleDumpReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                // 无条件打一行，用于区分"广播没到"和"广播到了但没数据"
+                Log.i(ROLE_DUMP_TAG, "received " + ACTION_DUMP_WINDOW_ROLES);
+                Xserver.dumpWindowRoles();
+            }
+        };
+        // 必须用 RECEIVER_EXPORTED(0x2)：0x4 是 RECEIVER_NOT_EXPORTED，
+        // 只接受同 UID 发送者，adb shell 发的广播会被静默丢弃。
+        registerReceiver(roleDumpReceiver, new IntentFilter(ACTION_DUMP_WINDOW_ROLES),
+                Context.RECEIVER_EXPORTED);
     }
 
     private int getSystemDensity() {
@@ -1063,6 +1088,14 @@ public class XWindowService extends Service {
     public void onDestroy() {
         super.onDestroy();
         FLog.s(TAG, "onDestroy");
+        if (roleDumpReceiver != null) {
+            try {
+                unregisterReceiver(roleDumpReceiver);
+            } catch (IllegalArgumentException ignored) {
+                // 未注册或已注销
+            }
+            roleDumpReceiver = null;
+        }
         Util.deleteRecursive(new File("/tmp/fde"));
         if (DWM_START_DEFAULT) {
             fusionWindowManager.stopWindowManager();

@@ -38,6 +38,7 @@ import com.fde.x11.input.InputManager;
 import com.fde.x11.utils.AppUtils;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
+import com.fde.x11.window.WindowRoleDiagnostics;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -51,6 +52,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Keep @SuppressLint({"StaticFieldLeak", "UnsafeDynamicallyLoadedCode"})
 public class Xserver {
@@ -83,6 +86,48 @@ public class Xserver {
     public static final int ACTION_DESTORY = 2;
     public static final int ACTION_DISMISS_VIEW = 3;
     public static volatile int X_ClientNum = 0;
+
+    /**
+     * xid -> 当前实际选用的宿主种类。
+     *
+     * <p>只用于"影子判定"诊断：把 {@link com.fde.x11.window.WindowRolePolicy} 的
+     * 建议和真正选出来的宿主做对比。不参与任何运行逻辑。
+     */
+    private static final Map<Long, String> ACTUAL_HOST_KINDS = new ConcurrentHashMap<>();
+
+    /**
+     * 把 startOrUpdateWindow 里的最终选择折算成"宿主种类"，语义要和
+     * XWindowService.computeHostKind 以及实际的 startActivity 分支保持一致。
+     */
+    private static String actualHostKind(boolean isActivity, int type, int supportMotif) {
+        if (type == _WM_WINDOW_TYPE_SYSTRAY) {
+            return "SYSTRAY";
+        }
+        if (!isActivity || type == _WM_WINDOW_TYPE_SYSTIP) {
+            return "VIEW";
+        }
+        if (type == 0 || type == _NET_WM_WINDOW_TYPE_NORMAL) {
+            return supportMotif > 0 ? "ACTIVITY_NODECOR" : "ACTIVITY_DECOR";
+        }
+        return "ACTIVITY_NODECOR";
+    }
+
+    /**
+     * 打印所有已登记窗口的"证据 + 策略建议 + 实际宿主"。
+     *
+     * <pre>adb shell am broadcast -a com.fde.x11.DUMP_WINDOW_ROLES</pre>
+     */
+    public static void dumpWindowRoles() {
+        try {
+            String[] facts = nativeDumpWindowFacts();
+            // 用常驻 tag 直接打，release 包（BuildConfig.DEBUG=false）下也要能看到
+            Log.i("winrole", "nativeDumpWindowFacts -> "
+                    + (facts == null ? "null" : facts.length + " row(s)"));
+            WindowRoleDiagnostics.dump(facts, ACTUAL_HOST_KINDS);
+        } catch (Throwable t) {
+            Log.e("winrole", "dumpWindowRoles failed", t);
+        }
+    }
 
 
     private static WeakReference<Service> context;
@@ -174,6 +219,8 @@ public class Xserver {
         if(!isActivity){
             type = _WM_WINDOW_TYPE_SYSTIP;
         }
+        // 记下"实际选了什么"，供 WindowRoleDiagnostics 做影子判定对比
+        ACTUAL_HOST_KINDS.put(aid, actualHostKind(isActivity, type, support_motif));
 
         if(isActivity){
             switch (type) {
@@ -309,6 +356,9 @@ public class Xserver {
                 ", taskTo:" + Long.toHexString(taskTo) + ", window:" + Long.toHexString(window) +
                 ", action:" + action + ", support_wm_delete:" + support_wm_delete + "" + " clientNum:" + clientNum, FLog.WARN);
         X_ClientNum = clientNum;
+        // 注意：这里**不能**从 ACTUAL_HOST_KINDS 里删掉。
+        // 窗口消失后 facts 仍保留一段历史（菜单/对话框只活几百毫秒），
+        // 诊断时需要拿它和当时的宿主做对比；XID 被复用时会被新记录覆盖。
         Property property = new Property();
         property.setSupportDeleteWindow(support_wm_delete);
         property.setTransientfor(taskTo);
@@ -494,6 +544,12 @@ public class Xserver {
 
     public native ParcelFileDescriptor getLogcatOutput();
     public static native boolean connected();
+
+    /**
+     * 导出所有已登记窗口的证据（每窗口一行 {@code k=v|k=v}）。
+     * 只读 native 侧的登记表，不碰 X server 数据结构，可以从任意线程调用。
+     */
+    public static native String[] nativeDumpWindowFacts();
 
     static {
         String path = "lib/" + Build.SUPPORTED_ABIS[0] + "/libXlorie.so";

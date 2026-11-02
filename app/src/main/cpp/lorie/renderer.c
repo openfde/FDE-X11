@@ -128,7 +128,11 @@ static void checkGlError(int line) {
     }
 }
 
-#define checkGlError() checkGlError(__LINE__)
+// glGetError() 在多数移动 GPU 驱动上需要刷命令队列才能回答，是同步点。
+// draw() 里有 8 处调用、每次纹理上传再有 8 处，等于每帧每窗口把 GPU 流水线
+// 切断十几到二十次。错误检查只保留在带日志的构建里。
+// 这个改动只影响日志，不改变任何渲染行为。
+#define checkGlError() do { if (APP_LOG) { checkGlError(__LINE__); } } while (0)
 
 
 static const char vertex_shader[] =
@@ -781,6 +785,10 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         return;
     }
     WindAttribute *attr = (WindAttribute *) _surface_find_window(sfWraper, window);
+    // 窗口可能在重绘循环里被销毁，这里必须判空（原来直接解引用，会崩）
+    if (!attr) {
+        return;
+    }
     if(attr->width != w || attr->height != h){
         logw("may avoid flick do not update texture")
 //        return;

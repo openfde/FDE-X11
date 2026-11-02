@@ -278,6 +278,7 @@ add_library(Xlorie SHARED
         "lorie/c_interface.cpp"
         "lorie/surface_manager.cpp"
         "lorie/StructPrinter.cpp"
+        "lorie/window_facts.c"
         "lorie/renderer.c")
 target_include_directories(Xlorie PRIVATE ${inc} "libxcvt/include")
 target_link_options(Xlorie PRIVATE "-Wl,--as-needed" "-Wl,--no-undefined" "-fvisibility=hidden")

@@ -33,6 +33,7 @@
 #include <arpa/inet.h>
 #include "native_log.h"
 #include "damage.h"
+#include "window_facts.h"
 
 Bool LOG_ENABLE;
 //Bool GL_CHECK_ERROR = FALSE;
@@ -222,6 +223,7 @@ void android_destroy_window(Window window) {
         renderer_release_window(GetJavaEnv(), widget->window);
         _surface_remove_widget(sfWraper, window);
     }
+    window_facts_forget(window);
 }
 
 void android_unmap_window(Window window) {
@@ -263,6 +265,7 @@ void android_unmap_window(Window window) {
         renderer_release_window(GetJavaEnv(), widget->window);
         _surface_remove_widget(sfWraper, window);
     }
+    window_facts_forget(window);
 }
 
 //void android_redirect_window_1(WindowPtr pWin) {
@@ -661,6 +664,14 @@ WindAttribute *android_create_attr(WindowPtr pWin, WindowPtr pPropWin) {
         pWin->drawable.id, x, y, w, h, pWin->overrideRedirect, windProperty.window_type,
         windProperty.transient, taskTo, pWin->mapped, clientNum, windProperty.window_type);
 
+    // 证据快照：把"这个窗口身上有哪些元数据"记下来，供
+    // WindowRolePolicy 做判定和诊断。这里只采集，不做任何判断。
+    {
+        WindowFacts facts;
+        window_facts_capture(pWin, pPropWin, &facts);
+        window_facts_record(&facts);
+    }
+
     return windAttribute;
 }
 
@@ -946,6 +957,15 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
 
     attr->widgets[attr->widget_size] = widget;
     attr->widget_size++;
+
+    // 内嵌子窗口不经过 android_create_attr，之前完全不在登记表里；而菜单/下拉/提示
+    // 绝大多数走这条路，所以必须单独记一份证据，否则诊断永远看不到它们。
+    {
+        WindowFacts facts;
+        window_facts_capture(pWin, pWin, &facts);
+        facts.actual_kind = inBound ? WF_ACTUAL_WIDGET : WF_ACTUAL_VIEW;
+        window_facts_record(&facts);
+    }
 
     if (!inBound) {
         android_create_view(widget, prop, window, inBound);
@@ -1319,7 +1339,9 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
             case EVENT_TOUCH: {
                 double x, y;
                 DDXTouchPointInfoPtr touch = TouchFindByDDXID(lorieTouch, e.touch.id, FALSE);
-                loge( "EVENT_TOUCH ");
+                // 这里原来每个触摸事件打一条 loge（不受 APP_LOG 门控）+ 一条
+                // __android_log_print(ERROR)，120Hz 采样下是每秒 240 行 ERROR 日志，
+                // 会直接拖慢触摸响应。降级为 logd。
                 x = (float) e.touch.x * 0xFFFF /
                     (float) pScreenPtr->GetScreenPixmap(pScreenPtr)->drawable.width;
                 y = (float) e.touch.y * 0xFFFF /
@@ -1342,8 +1364,8 @@ void handleLorieEvents(int fd, maybe_unused int ready, maybe_unused void *data) 
                 if (e.touch.type == XI_TouchEnd && (!touch || !touch->active))
                     break;
 
-                __android_log_print(ANDROID_LOG_ERROR, "tx11-request", "touch event: %d %d %d %d",
-                                    e.touch.type, e.touch.id, e.touch.x, e.touch.y);
+                logd("touch event: %d %d %d %d",
+                     e.touch.type, e.touch.id, e.touch.x, e.touch.y);
                 valuator_mask_set_double(&mask, 0, x);
                 valuator_mask_set_double(&mask, 1, y);
 //                loge( "EVENT_TOUCH button %d x:%.0f y:%.0f", e.mouse.detail, e.mouse.x,
