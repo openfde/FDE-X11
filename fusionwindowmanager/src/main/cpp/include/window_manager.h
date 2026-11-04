@@ -146,6 +146,8 @@ public:
     int mapWindow(long window);
     int raiseWindow(long window);
     bool isNormalWindow(long window);
+    /** 悬浮小工具条（UTILITY + SKIP_TASKBAR + 小尺寸）：位置由应用自己定。 */
+    bool isSelfPositionedToolbar(long window);
     void initCompositor();
     // 请求事件循环退出并等待其结束，返回 true 表示 Run() 已安全返回
     bool RequestStop();

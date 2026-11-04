@@ -39,6 +39,8 @@
 #define TYPE_DND           270
 #define TYPE_SYSTRAY       1000
 #define TYPE_SYSTIP        1001
+// FDE 补充：EWMH 里有、老的映射表没接的类型
+#define TYPE_SPLASH        277
 
 #define WF_MAX_WINDOWS 128
 #define WF_MAX_ELEMENTS 32
@@ -118,6 +120,7 @@ static int type_name_to_code(const char *name) {
     if (strcmp(name, "_NET_WM_WINDOW_TYPE_TOOLTIP") == 0) return TYPE_TOOLTIP;
     if (strcmp(name, "_NET_WM_WINDOW_TYPE_COMBO") == 0) return TYPE_COMBO;
     if (strcmp(name, "_NET_WM_WINDOW_TYPE_DND") == 0) return TYPE_DND;
+    if (strcmp(name, "_NET_WM_WINDOW_TYPE_SPLASH") == 0) return TYPE_SPLASH;
     if (strcmp(name, WF_NAME_SYSTRAY) == 0) return TYPE_SYSTRAY;
     if (strcmp(name, WF_NAME_SYSTIP) == 0) return TYPE_SYSTIP;
     return WF_TYPE_NONE;
@@ -149,21 +152,39 @@ static void parse_window_type(WindowFacts *f, unsigned char *data, unsigned long
         return;
     }
     ATOM *atoms = (ATOM *) data;
-    // 客户端可以列多个类型，按 EWMH 语义第一个是首选；
-    // 这里记录全部名字，并把第一个能识别的作为 type_code。
+    // 客户端可以列多个类型（EWMH 允许），但"第一个能识别的"不等于"最具体的"：
+    //   [_NET_WM_WINDOW_TYPE_NORMAL, _NET_WM_WINDOW_TYPE_TOOLTIP]
+    // 按顺序取会拿到 NORMAL，把 TOOLTIP 的意图丢掉。NORMAL 的语义是"没有更具体
+    // 的信息"，所以它只做兜底，具体类型先扫一遍。
+    // 名字仍然全部记录下来，规则调整时不用重新采集。
+    int specific = WF_TYPE_NONE;
+    int normal = WF_TYPE_NONE;
     for (unsigned long i = 0; i < size; i++) {
         const char *name = NameForAtom(atoms[i]);
         if (!name) {
             continue;
         }
         append_name(f->type_names, (int) sizeof(f->type_names), name, ",");
-        if (f->type_code == WF_TYPE_NONE) {
-            int code = type_name_to_code(name);
-            if (code != WF_TYPE_NONE) {
-                f->type_code = code;
+        if (strcmp(name, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE") == 0) {
+            // KDE 的"绕过 WM"类型：窗口可以不是 override-redirect，但仍然要求
+            // 不进任务栏、跟随浮层。它在 _NET_WM_WINDOW_TYPE 里而不是 _NET_WM_STATE
+            // 里，所以单独记成布尔事实，交给 Java 侧判定。
+            f->flags |= WF_FLAG_KDE_OVERRIDE;
+            continue;
+        }
+        int code = type_name_to_code(name);
+        if (code == WF_TYPE_NONE) {
+            continue;
+        }
+        if (code == TYPE_NORMAL) {
+            if (normal == WF_TYPE_NONE) {
+                normal = code;
             }
+        } else if (specific == WF_TYPE_NONE) {
+            specific = code;
         }
     }
+    f->type_code = (specific != WF_TYPE_NONE) ? specific : normal;
     if (f->type_names[0]) {
         f->present |= WF_PRESENT_EWMH_TYPE;
     }
@@ -438,6 +459,21 @@ int window_facts_count(void) {
     return n;
 }
 
+// 按 xid 取 flags。Java 侧用它判断"这个窗口要不要上 dock"，
+// 比把 skip-taskbar 一路加进 JNI 签名要小。
+int window_facts_flags(Window window) {
+    int flags = 0;
+    pthread_mutex_lock(&wf_lock);
+    for (int i = 0; i < WF_MAX_WINDOWS; i++) {
+        if (wf_entries[i].used && wf_entries[i].window == window) {
+            flags = (int) wf_entries[i].facts.flags;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&wf_lock);
+    return flags;
+}
+
 // ---------------------------------------------------------------------------
 // 编码
 // ---------------------------------------------------------------------------
@@ -574,6 +610,13 @@ int window_facts_present_mask(Window window) {
 // ---------------------------------------------------------------------------
 
 extern int util_is_valid_utf8(const char *string);
+
+JNIEXPORT jint JNICALL
+Java_com_fde_x11_Xserver_nativeWindowFactsFlags(JNIEnv *env, jclass cls, jlong window) {
+    (void) env;
+    (void) cls;
+    return (jint) window_facts_flags((Window) window);
+}
 
 JNIEXPORT jobjectArray JNICALL
 Java_com_fde_x11_Xserver_nativeDumpWindowFacts(JNIEnv *env, jclass cls) {

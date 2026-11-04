@@ -218,6 +218,8 @@ public class MainActivity extends Activity {
     // 窗口类型/装饰变化触发的重启：销毁时保留 X 窗口
     private boolean mRestartingForTypeChange;
     private Rect mConfigureRect;
+    // 本窗口是否已经做过一次"解除 X 侧最大化"。见 checkConfigBeforeExec 里的说明。
+    private boolean mXMaximizeCleared;
     //    @SuppressLint("StaticFieldLeak")
 //    private static MainActivity instance;
 //    public MainActivity() {
@@ -249,6 +251,14 @@ public class MainActivity extends Activity {
         AppUtils.updateSystemAttr(dm.widthPixels, dm.heightPixels);
         mSystemInsetTop = DECOR_CAPTION_HEIGHT;
         initXParams();
+        // 窗口创建时无条件设置一次任务描述。
+        // dock（taskplugin 的 DockAppsProvider）用 taskDescription.label 区分 X11 窗口：
+        //   val label = info.taskDescription?.label ?: return@forEach
+        // label 为空的窗口在 dock 里会被直接跳过，等于“不存在”。
+        // 而 label 以前只在收到 ACTION_UPDATE_ICON（客户端设了 _NET_WM_ICON）时才被写入，
+        // 所以不给图标的客户端（如 ToDesk）永远进不了 dock。
+        // 这里改成创建时就设，标题取 _NET_WM_NAME / WM_NAME / WM_CLASS，最后兜底。
+        applyInitialTaskDescription();
 //        Util.setBaseContext(this);
 //        requestWindowFeature(Window.FEATURE_NO_TITLE);
         initView();
@@ -307,7 +317,7 @@ public class MainActivity extends Activity {
             String netName = mProperty.getNet_name();
             FLog.a("lifecycle", getWindowId(), " wmclass:" + wmClass + " netName:" +  netName);
             this.title  = TextUtils.isEmpty(netName) ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX: APP_TITLE_PREFIX + ": "+ wmClass) : APP_TITLE_PREFIX + ": "+ netName;
-            if(mProperty.getIcon() != null) {
+            if(mProperty.getIcon() != null && !isHiddenFromDock()) {
                 ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, mProperty.getIcon(), 0);
                 MainActivity.this.setTaskDescription(description);
             }
@@ -337,6 +347,56 @@ public class MainActivity extends Activity {
             FLog.a(TAG, "updateWindowParams: " + AppUtils.GLOBAL_SCREEN_WIDTH  + " x "
                     + AppUtils.GLOBAL_SCREEN_HEIGHT);
         }
+    }
+
+    /**
+     * 窗口创建时设置一次任务描述，保证 dock 能识别这个 X11 窗口。
+     *
+     * <p>taskplugin 的 DockAppsProvider 用 {@code taskDescription.label} 作为 X11 窗口的
+     * 唯一标识（key = 包名 + "#" + label），label 为空会被直接丢弃：
+     * <pre>val label = info.taskDescription?.label ?: return@forEach</pre>
+     *
+     * <p>以前 label 只在收到 {@code ACTION_UPDATE_ICON} 时才写入，也就是客户端设置了
+     * {@code _NET_WM_ICON} 才有；不设图标的客户端（例如 ToDesk）因此永远不出现在 dock 里。
+     *
+     * <p>标题优先级：{@code _NET_WM_NAME} → {@code WM_NAME} → {@code WM_CLASS} → 兜底常量。
+     */
+    private void applyInitialTaskDescription() {
+        if (isHiddenFromDock()) {
+            // SKIP_TASKBAR：不设 label，DockAppsProvider 的
+            // `taskDescription?.label ?: return` 会直接跳过这个窗口。
+            // 不能用空串代替：空串不是 null，反而会占一个 key。
+            FLog.a(TAG, "applyInitialTaskDescription: skip (skip_taskbar)");
+            return;
+        }
+        String label = null;
+        if (mProperty != null) {
+            if (!TextUtils.isEmpty(mProperty.getNet_name())) {
+                label = mProperty.getNet_name();
+            } else if (!TextUtils.isEmpty(mProperty.getWm_class())) {
+                label = mProperty.getWm_class();
+            }
+        }
+        if (TextUtils.isEmpty(label)) {
+            label = "X11 Window";
+        }
+        setTaskDescription(new ActivityManager.TaskDescription(label));
+        FLog.a(TAG, "applyInitialTaskDescription: " + label);
+    }
+
+    /**
+     * 这个 X 窗口是不是明确要求不上任务栏
+     * （{@code _NET_WM_STATE_SKIP_TASKBAR} 或 {@code _KDE_NET_WM_WINDOW_TYPE_OVERRIDE}）。
+     *
+     * <p>dock 只认 {@code taskDescription.label}，所以"不上 dock"= 不写 label。
+     * 身份仍是 Task：窗口要能拿焦点、输入法，模态对话框尤其如此。
+     *
+     * <p>不能用 {@code Xserver.nativeWindowFactsFlags()} 在这里现查：native 的窗口
+     * 登记表在 xserver 进程里，本 Activity 在 app 进程，读到的永远是空表。
+     * 所以这个值由 {@link XWindowService} 在启动时算好、随 Intent 带过来。
+     */
+    private boolean isHiddenFromDock() {
+        return getIntent().getBooleanExtra(XWindowService.X_WINDOW_HIDE_FROM_DOCK, false);
     }
 
     private void initView() {
@@ -805,6 +865,27 @@ public class MainActivity extends Activity {
             boolean samePosition = atSamePosition(rect);
             boolean sameSize = atSameSize(rect);
             if( (newConfig ||  !samePosition || !sameSize) /* &&  !isTaskMoving*/ ){
+                // 上一轮把窗口最大化后关闭时，Android 的 task 和 X 侧窗口都会被恢复成最大化。
+                // 此时 xfwm（fusionwindowmanager 的窗口管理内核）会把自己的最大化几何重新套用，
+                // 我们下发的 rect 因此不生效，表现为「重开后尺寸对、位置差一个系统栏高度」。
+                // 处理办法：本窗口第一次同步几何时，先显式取消 X 侧最大化，再下发几何。
+                // 两件事分成两次调用（中间隔一帧），避免在 xfwm 的 configure 流程内部翻转状态机。
+                if (!mXMaximizeCleared) {
+                    mXMaximizeCleared = true;
+                    mXserviceWrapper.setWindowingMode(mAttribute.getXID(), mAttribute.getWindow(), 0);
+                    // 注意用 rect（本轮算出来的内容区）而不是 mAttribute 的旧值：
+                    // mAttribute 里存的是上一次同步的结果，最大化重开时它比真实内容区高一个标题栏。
+                    final int fixX = rect.left;
+                    final int fixY = rect.top;
+                    final int fixW = rect.right - rect.left;
+                    final int fixH = rect.bottom - rect.top;
+                    handler.postDelayed(() -> {
+                        if (mXserviceWrapper != null) {
+                            mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                                    fixX, fixY, fixW, fixH);
+                        }
+                    }, 50);
+                }
                 updateAttribueOnly(rect);
                 mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
                         (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
@@ -854,7 +935,7 @@ public class MainActivity extends Activity {
             this.title = TextUtils.isEmpty(netName)
                     ? (TextUtils.isEmpty(wmClass) ? APP_TITLE_PREFIX : APP_TITLE_PREFIX + ": " + wmClass)
                     : APP_TITLE_PREFIX + ": " + netName;
-            if (prop.getIcon() != null) {
+            if (prop.getIcon() != null && !isHiddenFromDock()) {
                 ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title, prop.getIcon(), 0);
                 setTaskDescription(description);
             }
@@ -1061,12 +1142,20 @@ public class MainActivity extends Activity {
                 floatView, floatParams);
         floatWindow.updateViewLayout(floatView,floatParams);
         LorieView widgetView = floatView.findViewById(R.id.widget_view);
+        // 浮层：Surface 尺寸必须等于 X 窗口尺寸，不做全局分辨率的等比裁剪
+        widgetView.setFloatingPopup(true);
         widgetView.updateCoordinate(attr);
         widgetView.setCallback(new LorieView.Callback() {
             @Override
             public void changed(Surface sfc, int surfaceWidth, int surfaceHeight, int screenWidth, int screenHeight) {
                 try {
-                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+                    // 这里必须用 X 侧最新的几何（widgetView 里保存的 coordinate），
+                    // 不能用创建时的 attr：那个 attr 是冻结的，会把已经缩小的窗口
+                    // 又顶回旧尺寸，和客户端形成 439 <-> 376 的拉锯。
+                    WindowAttribute current = widgetView.getAttribute();
+                    serviceWindowChange(sfc, current.getOffsetX(), current.getOffsetY(),
+                            current.getWidth(), current.getHeight(),
+                            current.getIndex(), current.getWindowPtr(), current.getXID());
                 } catch (Exception e) {
                     Log.e(TAG, "serviceWindowChange Exception:" + e);
                 }
@@ -1074,29 +1163,13 @@ public class MainActivity extends Activity {
 
             @Override
             public void realSizeChanged(Surface sfc, int width, int height) {
-                int[] location = new int[2];
-                widgetView.getLocationOnScreen(location);
-                int x = location[0];
-                int y = location[1];
-                int w = widgetView.getMeasuredWidth();
-                int h = widgetView.getMeasuredHeight();
-                attr.setOffsetX(x);
-                attr.setOffsetY(y);
-                attr.setWidth(w);
-                attr.setHeight(h);
-                widgetView.updateCoordinate(attr);
-//                if (mXserviceWrapper != null /*&& !isTaskMoving*/) {
-//                    mXserviceWrapper.configureWindow(
-//                            mAttribute.getWindowPtr(),
-//                            mAttribute.getXID(),
-//                            (int) attr.getOffsetX(),
-//                            (int) attr.getOffsetY(),
-//                            (int) attr.getWidth(),
-//                            (int) attr.getHeight()
-//                    );
-//                }
+                // 只把 Surface 的尺寸告诉 native，不要反过来改 X 窗口的几何：
+                // 视图尺寸是布局结果，窗口尺寸是客户端的决定，两边互相写会死循环。
+                WindowAttribute current = widgetView.getAttribute();
                 try {
-                    serviceWindowChange(sfc, attr.getOffsetX(), attr.getOffsetY(),attr.getWidth(), attr.getHeight(), attr.getIndex(), attr.getWindowPtr(), attr.getXID());
+                    serviceWindowChange(sfc, current.getOffsetX(), current.getOffsetY(),
+                            current.getWidth(), current.getHeight(),
+                            current.getIndex(), current.getWindowPtr(), current.getXID());
                 } catch (Exception e) {
                     Log.e(TAG, "serviceWindowChange Exception:" + e);
                 }
@@ -1190,17 +1263,10 @@ public class MainActivity extends Activity {
             LorieView widgetView = floatView.findViewById(R.id.widget_view);
             widgetView.updateCoordinate(attr);
             floatWindow.updateViewLayout(floatView, params);
-            Surface surface = widgetView.getHolder().getSurface();
-            if (mXserviceWrapper != null /*&& !isTaskMoving*/) {
-                mXserviceWrapper.configureWindow(
-                        attr.getWindowPtr(),
-                        attr.getXID(),
-                        (int) attr.getOffsetX(),
-                        (int) attr.getOffsetY(),
-                        (int) attr.getWidth(),
-                        (int) attr.getHeight()
-                );
-            }
+            // 不要在这里把几何写回 X 窗口：ConfigureNotify 广播是异步、带延迟的，
+            // 队列里可能同时排着 439x305 和 376x241 两条旧消息，每条都 configureWindow
+            // 一次就会和客户端形成"我改回去、它改回来"的拉锯（日志里那个 439<->376）。
+            // X 窗口的几何以客户端为准，浮层只负责跟随。
         }
 //        }
     }
@@ -1591,7 +1657,8 @@ public class MainActivity extends Activity {
             } else if(ACTION_UPDATE_ICON.equals(intent.getAction())){
                 long windowId = intent.getLongExtra("window_id", 0);
                 FLog.a(TAG, "ACTION_UPDATE_ICON: " + getTitle() + ", windowId:" + windowId + " " + mAttribute) ;
-                if(mAttribute !=  null && (windowId == mAttribute.getXID() || windowId == mAttribute.getWindow())){
+                if(mAttribute !=  null && (windowId == mAttribute.getXID() || windowId == mAttribute.getWindow())
+                        && !isHiddenFromDock()){
                     Bitmap windowIcon = intent.getParcelableExtra("window_icon");
                     ActivityManager.TaskDescription description = new ActivityManager.TaskDescription(title , windowIcon, 0);
                     MainActivity.this.setTaskDescription(description);
@@ -1633,8 +1700,12 @@ public class MainActivity extends Activity {
                 long taskTo = Objects.requireNonNull(attr).getTaskTo();
                 FLog.a("event", getWindowId(), "onReceive: "  +
                         "START_VIEW_FROM_X"  + " attr:" + attr + " prop:" + prop);
+                // WM_TRANSIENT_FOR 指向的是客户端的顶层窗口（如 ToDesk 的 0x800003），
+                // 而我们托管的是 WM 给的 frame（0x200004），所以两边都要比。
                 if(transientfor == Objects.requireNonNull(mAttribute).getXID()
-                        || taskTo == Objects.requireNonNull(mAttribute).getXID()){
+                        || transientfor == mAttribute.getWindow()
+                        || taskTo == mAttribute.getXID()
+                        || taskTo == mAttribute.getWindow()){
                     addFloatView(attr);
                 }
             } else if(STOP_VIEW_FROM_X.equals(intent.getAction())){

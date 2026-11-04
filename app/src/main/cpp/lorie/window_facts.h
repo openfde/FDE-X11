@@ -54,6 +54,7 @@ extern "C" {
 #define WF_FLAG_FULLSCREEN         (1u << 9)
 #define WF_FLAG_MAXIMIZED          (1u << 10)
 #define WF_FLAG_RESIZE_INC         (1u << 11) // WM_NORMAL_HINTS 带 PResizeInc（终端/编辑器）
+#define WF_FLAG_KDE_OVERRIDE       (1u << 12) // _NET_WM_WINDOW_TYPE 含 _KDE_NET_WM_WINDOW_TYPE_OVERRIDE
 
 // 窗口类型：沿用 android.h 里的内部枚举，0 表示客户端没有声明
 #define WF_TYPE_NONE 0
@@ -134,6 +135,9 @@ void window_facts_clear(void);
 
 // 当前登记窗口数量。
 int window_facts_count(void);
+
+// 按 xid 取采集到的 flags（未登记返回 0）。只读登记表，任意线程可调。
+int window_facts_flags(Window window);
 
 // 把第 index 个窗口的 facts 编码成 "k=v|k=v|..." 文本。
 // 返回实际写入长度；文本超长时截断（诊断用，不追求完整性）。

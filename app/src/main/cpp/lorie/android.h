@@ -38,6 +38,9 @@ typedef struct {
     Window task_to, window;
     WindowPtr pWin;
     bool inbounds;
+    // 这个 widget 对应的 X 窗口是否真的带 alpha 通道（ARGB32 / Depth 32）。
+    // 只有这种窗口才能按 alpha 混合，否则普通的 32bpp 窗口会被画成全透明。
+    bool has_alpha;
     EGLSurface sfc;
     int discard;
     int status;

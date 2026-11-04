@@ -101,9 +101,9 @@ xfwm_device_translate_event (XfwmDevices *devices, XEvent *xevent, XfwmEvent *ev
         case EnterNotify:
         case LeaveNotify:
             return xfwm_device_translate_event_crossing_core(xevent, event);
-
-            return xfwm_device_translate_event_common(xevent, event);
     }
+
+    return xfwm_device_translate_event_common(xevent, event);
 }
 
 gboolean

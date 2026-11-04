@@ -38,6 +38,7 @@ import com.fde.x11.input.InputManager;
 import com.fde.x11.utils.AppUtils;
 import com.fde.x11.utils.FLog;
 import com.fde.x11.utils.Util;
+import com.fde.x11.window.WindowFacts;
 import com.fde.x11.window.WindowRoleDiagnostics;
 
 import org.greenrobot.eventbus.EventBus;
@@ -78,6 +79,8 @@ public class Xserver {
     public  static final int _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
     public  static final int _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
     public  static final int _NET_WM_WINDOW_TYPE_UTILITY = 276;
+    /** FDE 补充：启动画面（native 侧同样定义为 277）。 */
+    public  static final int _NET_WM_WINDOW_TYPE_SPLASH = 277;
 
     public  static final int _WM_WINDOW_TYPE_SYSTRAY = 1000;
     public  static final int _WM_WINDOW_TYPE_SYSTIP = 1001;
@@ -96,6 +99,34 @@ public class Xserver {
     private static final Map<Long, String> ACTUAL_HOST_KINDS = new ConcurrentHashMap<>();
 
     /**
+     * 实时窗口判定日志开关。
+     *
+     * <p>打开后每个窗口产生时立刻打一行"证据 + 策略 + 实际宿主"，不会漏掉一闪而过的
+     * 菜单和提示。默认关闭，因为它在 X server 线程上额外跑一次 native 数据导出。
+     *
+     * <pre>adb shell setprop persist.sys.fde.window_role.live 1</pre>
+     * 然后重启窗口服务生效（属性在类加载时读取一次）。
+     */
+    private static final boolean LIVE_ROLE_DUMP =
+            "1".equals(AppUtils.getProperty("persist.sys.fde.window_role.live", "0"));
+
+    /** UTILITY / MENU / TOOLTIP 这类"挂在父窗口上的弹出层"类型。 */
+    private static boolean isAuxiliaryWindowType(int type) {
+        switch (type) {
+            case _NET_WM_WINDOW_TYPE_UTILITY:
+            case _NET_WM_WINDOW_TYPE_MENU:
+            case _NET_WM_WINDOW_TYPE_TOOLTIP:
+            case _NET_WM_WINDOW_TYPE_POPUP_MENU:
+            case _NET_WM_WINDOW_TYPE_COMBO:
+            case _NET_WM_WINDOW_TYPE_DROPDOWN_MENU:
+            case _NET_WM_WINDOW_TYPE_DND:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
      * 把 startOrUpdateWindow 里的最终选择折算成"宿主种类"，语义要和
      * XWindowService.computeHostKind 以及实际的 startActivity 分支保持一致。
      */
@@ -105,6 +136,10 @@ public class Xserver {
         }
         if (!isActivity || type == _WM_WINDOW_TYPE_SYSTIP) {
             return "VIEW";
+        }
+        // 辅助类型走浮层，落在父窗口里就是 WIDGET（和 policy 的 IN_PARENT 对齐）
+        if (isAuxiliaryWindowType(type)) {
+            return "WIDGET";
         }
         if (type == 0 || type == _NET_WM_WINDOW_TYPE_NORMAL) {
             return supportMotif > 0 ? "ACTIVITY_NODECOR" : "ACTIVITY_DECOR";
@@ -202,9 +237,11 @@ public class Xserver {
             bitmap = Util.scaleBitmapIfneed(bitmap);
             FLog.s(TAG, "scaled bitmap: " + bitmap.getWidth() + " X " + bitmap.getHeight());
         }
-        if( type == _NET_WM_WINDOW_TYPE_NORMAL || type ==  _NET_WM_WINDOW_TYPE_DIALOG ){
-            type = convert2AndroidType(type, x, y, w, h);
-        }
+        // 不再按尺寸把 NORMAL 改判 DIALOG。
+        // 窗口第一次映射时用的是客户端请求的初始尺寸（mate-terminal 是 361x76），
+        // 几十毫秒后才被 Android 侧的视图尺寸覆盖掉；按那一刻的尺寸判身份，
+        // 结果就是"普通窗口永久没有标题栏"（而且 resize 不会重新判定宿主）。
+        // 尺寸是装饰的弱信号，不参与身份判定，见 WindowRolePolicy 的类注释。
 
         if(type == _NET_WM_WINDOW_TYPE_DIALOG &&  inbound){
             type = _NET_WM_WINDOW_TYPE_MENU;
@@ -221,6 +258,10 @@ public class Xserver {
         }
         // 记下"实际选了什么"，供 WindowRoleDiagnostics 做影子判定对比
         ACTUAL_HOST_KINDS.put(aid, actualHostKind(isActivity, type, support_motif));
+        // 实时模式：窗口一产生就立刻打一行判定，不依赖手动广播
+        if (LIVE_ROLE_DUMP) {
+            WindowRoleDiagnostics.dumpOne(nativeDumpWindowFacts(), aid, ACTUAL_HOST_KINDS);
+        }
 
         if(isActivity){
             switch (type) {
@@ -238,6 +279,13 @@ public class Xserver {
                             new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
                             new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete)));
                     break ;
+                case _NET_WM_WINDOW_TYPE_SPLASH:
+                    // 启动画面：无装饰的独立窗口，浮在主窗之上，不进 dock
+                    message = new EventMessage(start ? EventType.X_START_ACTIVITY_WINDOW
+                            : EventType.X_MAP_ACTIVITY, "xserver open activity as splash",
+                            new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
+                            new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete)));
+                    break;
                 case _WM_WINDOW_TYPE_SYSTRAY:
                     message = new EventMessage(EventType.X_START_SYSTRAY, "start some view as systray",
                             new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
@@ -248,6 +296,22 @@ public class Xserver {
                             new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
                             new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete, support_motif, bitmap)));
                     FLog.s(TAG, "startOrUpdateWindow: " + message.getProperty());
+                    break;
+                // native 把非 override-redirect 的窗口一律判成 Activity，于是 UTILITY 这类
+                // 辅助窗口也会走进来。它们本质是挂在父窗口上的弹出层（ToDesk 的下拉菜单
+                // 就是 UTILITY + input=false），必须走浮层，否则会变成一块带自己阴影的
+                // 独立窗口，既不跟随父窗也不像菜单。
+                case _NET_WM_WINDOW_TYPE_UTILITY:
+                case _NET_WM_WINDOW_TYPE_MENU:
+                case _NET_WM_WINDOW_TYPE_TOOLTIP:
+                case _NET_WM_WINDOW_TYPE_POPUP_MENU:
+                case _NET_WM_WINDOW_TYPE_COMBO:
+                case _NET_WM_WINDOW_TYPE_DROPDOWN_MENU:
+                case _NET_WM_WINDOW_TYPE_DND:
+                    message = new EventMessage(EventType.X_START_VIEW,
+                            "xserver show auxiliary window as view",
+                            new WindowAttribute(x, y, w, h, index, p, xid, window, taskTo,
+                                    new Property(aid, transientfor, leader, type, wm_name, net_wm_name, support_wm_delete)));
                     break;
                 default:
                     break;
@@ -285,20 +349,6 @@ public class Xserver {
         }
     }
 
-    private static int convert2AndroidType(int type, int x, int y, int w, int h) {
-        //case 1:
-        if(type == _NET_WM_WINDOW_TYPE_NORMAL){
-            if(w < 400 || h < 250){
-                FLog.s(TAG, "change to type:dialog" +  ", w:" + w + ", h:" + h + "");
-                return _NET_WM_WINDOW_TYPE_DIALOG;
-            } else {
-                FLog.s(TAG, "change to type:normal" +  ", w:" + w + ", h:" + h + "");
-                return _NET_WM_WINDOW_TYPE_NORMAL;
-            }
-        }
-        return type;
-    }
-
     public static void configureWidget(long id, int x, int y, int w, int h){
         FLog.s(TAG, "configureWidget() called with: id = [" + Long.toHexString(id) + "], x = [" + x + "], y = [" + y + "], w = [" + w + "], h = [" + h + "]");
         EventMessage message = new EventMessage(EventType.X_CONFIGURE_WIDGET, "configure_window", new WindowAttribute(x, y, w, h, 0, 0, id), null);
@@ -322,9 +372,7 @@ public class Xserver {
                 + ", inbound:" + inbound + ", clientNum:" + clientNum
                 + ", window:" + Long.toHexString(window) + ", isActivity:" + isActivity);
         X_ClientNum = clientNum;
-        if (type == _NET_WM_WINDOW_TYPE_NORMAL || type == _NET_WM_WINDOW_TYPE_DIALOG) {
-            type = convert2AndroidType(type, x, y, w, h);
-        }
+        // 同理，这里也不能按尺寸改判：属性更新时的尺寸和映射时不是一回事。
         if (type == _NET_WM_WINDOW_TYPE_DIALOG && inbound) {
             type = _NET_WM_WINDOW_TYPE_MENU;
         }
@@ -550,6 +598,31 @@ public class Xserver {
      * 只读 native 侧的登记表，不碰 X server 数据结构，可以从任意线程调用。
      */
     public static native String[] nativeDumpWindowFacts();
+
+    /** 只读 native 登记表里这个窗口的 flags（未登记返回 0）。 */
+    public static native int nativeWindowFactsFlags(long xid);
+
+    /**
+     * 这个 X 窗口是否明确要求"不上任务栏"：{@code _NET_WM_STATE_SKIP_TASKBAR}
+     * 或 {@code _NET_WM_WINDOW_TYPE} 里的 {@code _KDE_NET_WM_WINDOW_TYPE_OVERRIDE}。
+     *
+     * <p>只用于"呈现"：不上 dock（不写 {@code taskDescription.label}）、
+     * 不进最近任务。不参与窗口类型判定——那件事由 {@code WindowRolePolicy} 做。
+     */
+    public static boolean isHiddenFromDockWindow(long xid) {
+        if (xid == 0) {
+            return false;
+        }
+        try {
+            // 只有 SKIP_TASKBAR 才表示"别放进任务栏"。
+            // 不能算上 KDE override：WPS 给它所有窗口（含主窗）都塞了这个 atom
+            // 当"不要装饰"用，算进去会让主窗从 dock 上消失。
+            return (nativeWindowFactsFlags(xid) & WindowFacts.FLAG_SKIP_TASKBAR) != 0;
+        } catch (Throwable t) {
+            // native 还没登记（窗口刚创建）时按 false 处理，下次属性更新会补上
+            return false;
+        }
+    }
 
     static {
         String path = "lib/" + Build.SUPPORTED_ABIS[0] + "/libXlorie.so";

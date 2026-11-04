@@ -49,7 +49,7 @@ clientMove (Client * c, XfwmEventButton *event)
 {
     ScreenInfo *screen_info;
     DisplayInfo *display_info;
-    XWindowChanges wc;
+    XWindowChanges wc = {0};
     MoveResizeData passdata;
     int changes;
     gboolean g1, g2;

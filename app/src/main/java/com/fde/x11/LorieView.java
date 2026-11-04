@@ -46,6 +46,20 @@ public class LorieView extends SurfaceView implements InputStub {
 
     private WindowAttribute mCoordinate;
 
+    /**
+     * 浮层（菜单、提示、工具条）模式。
+     *
+     * <p>浮层的大小必须严格等于它对应的 X 窗口大小：它没有"主显示区"的概念，
+     * 也不能按全局分辨率做等比裁剪。否则 onMeasure 会把视图量成另一个尺寸
+     * （439x305 的弹窗被量成 376x241），Surface 和窗口对不上，宿主边上就会
+     * 露出没被覆盖的黑边。
+     */
+    private boolean mFloatingPopup;
+
+    public void setFloatingPopup(boolean floatingPopup) {
+        this.mFloatingPopup = floatingPopup;
+    }
+
     public void updateCoordinate(WindowAttribute coordinate) {
         this.mCoordinate = coordinate;
     }
@@ -199,6 +213,12 @@ public class LorieView extends SurfaceView implements InputStub {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+
+        // 浮层：Surface 尺寸 = 布局尺寸 = X 窗口尺寸，不做任何等比裁剪
+        if (mFloatingPopup) {
+            getHolder().setSizeFromLayout();
+            return;
+        }
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getContext());
         if (preferences.getBoolean("displayStretch", false)

@@ -241,5 +241,9 @@ dependencies {
     implementation project(':dialogtiplib')
     implementation project(':easy')
 
+    // 窗口角色判定是纯 Java（不碰 Android API），用本地 JVM 单测锁行为：
+    // gradlew testVersioncDebugUnitTest --tests "com.fde.x11.window.*"
+    testImplementation 'junit:junit:4.13.2'
+
 //    debugImplementation ("com.squareup.leakcanary:leakcanary-android:2.5")
 }

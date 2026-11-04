@@ -45,6 +45,8 @@ public final class WindowFacts {
     public static final int FLAG_FULLSCREEN = 1 << 9;
     public static final int FLAG_MAXIMIZED = 1 << 10;
     public static final int FLAG_RESIZE_INC = 1 << 11;
+    /** _NET_WM_WINDOW_TYPE 里含 _KDE_NET_WM_WINDOW_TYPE_OVERRIDE。 */
+    public static final int FLAG_KDE_OVERRIDE = 1 << 12;
 
     // ---- 窗口类型：与 native / Xserver 的内部枚举保持一致 ----
     public static final int TYPE_NONE = 0;
@@ -57,6 +59,8 @@ public final class WindowFacts {
     public static final int TYPE_POPUP_MENU = 274;
     public static final int TYPE_TOOLTIP = 275;
     public static final int TYPE_UTILITY = 276;
+    /** FDE 补充：EWMH 里的启动画面类型（老的映射表没接，会落回 NORMAL）。 */
+    public static final int TYPE_SPLASH = 277;
     public static final int TYPE_SYSTRAY = 1000;
     public static final int TYPE_SYSTIP = 1001;
 

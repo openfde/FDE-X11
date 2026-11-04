@@ -47,16 +47,34 @@ public final class WindowRole {
     public final Decoration decoration;
     /** 是否让父窗口进入不可交互状态（模态）。 */
     public final boolean modal;
+    /**
+     * 是否不要出现在 dock / 任务栏里。
+     *
+     * <p>这跟三元组是正交的：窗口仍然是一个 Task（要能拿焦点、输入法），
+     * 只是不该在任务栏上占一个图标。对应 EWMH 的 {@code _NET_WM_STATE_SKIP_TASKBAR}。
+     */
+    public final boolean hideFromDock;
     /** 命中的规则文本，排查用。 */
     public final String reason;
 
     public WindowRole(Identity identity, Containment containment, Decoration decoration,
                       boolean modal, String reason) {
+        this(identity, containment, decoration, modal, false, reason);
+    }
+
+    public WindowRole(Identity identity, Containment containment, Decoration decoration,
+                      boolean modal, boolean hideFromDock, String reason) {
         this.identity = identity;
         this.containment = containment;
         this.decoration = decoration;
         this.modal = modal;
+        this.hideFromDock = hideFromDock;
         this.reason = reason;
+    }
+
+    /** 同一个角色，只是标记成"不进 dock"。 */
+    public WindowRole withHideFromDock() {
+        return new WindowRole(identity, containment, decoration, modal, true, reason);
     }
 
     /** 对应到现有实现里的宿主：Activity（带 decor）/ Activity（无 decor）/ View。 */
@@ -73,6 +91,8 @@ public final class WindowRole {
     @Override
     public String toString() {
         return identity + "/" + containment + "/" + decoration
-                + (modal ? "/modal" : "") + "(" + reason + ")";
+                + (modal ? "/modal" : "")
+                + (hideFromDock ? "/nodock" : "")
+                + "(" + reason + ")";
     }
 }

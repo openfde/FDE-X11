@@ -152,12 +152,25 @@ static const char vertex_shader[] =
     "   gl_FragColor = vec4(texture2D(texture, outTexCoords)" texture ", 1.0);\n" \
     "}\n"
 
+// 带 alpha 的版本：给真正带 alpha 通道的窗口用（ARGB32 visual / Depth 32）。
+// 普通的 32bpp pixmap 里 alpha 字节是垃圾值，不能走这条，否则整窗透明。
+#define FRAGMENT_SHADER_ALPHA(texture) \
+    "precision mediump float;\n" \
+    "varying vec2 outTexCoords;\n" \
+    "uniform sampler2D texture;\n" \
+    "void main(void) {\n" \
+    "   vec4 c = texture2D(texture, outTexCoords);\n" \
+    "   gl_FragColor = vec4(c" texture ", c.a);\n" \
+    "}\n"
+
 maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int index, Widget widget);
 
 // X 的 32bpp pixmap 中 alpha 字节通常为 0，若原样输出会让整个 Surface 变透明（黑屏），
 // 因此这里强制 alpha=1，只取 rgb
 static const char fragment_shader[] = FRAGMENT_SHADER(".rgb");
 static const char fragment_shader_bgra[] = FRAGMENT_SHADER(".bgr");
+static const char fragment_shader_alpha[] = FRAGMENT_SHADER_ALPHA(".rgb");
+static const char fragment_shader_alpha_bgra[] = FRAGMENT_SHADER_ALPHA(".bgr");
 static EGLDisplay global_egl_display = EGL_NO_DISPLAY;
 static EGLContext global_ctx = EGL_NO_CONTEXT;
 static EGLConfig global_config = 0;
@@ -191,6 +204,9 @@ static struct {
 } cursor;
 GLuint g_texture_program = 0, gv_pos = 0, gv_coords = 0;
 GLuint g_texture_program_bgra = 0, gv_pos_bgra = 0, gv_coords_bgra = 0;
+// 带 alpha 的着色器（只给真正有 alpha 通道的窗口用）
+GLuint g_texture_program_alpha = 0, gv_pos_alpha = 0, gv_coords_alpha = 0;
+GLuint g_texture_program_alpha_bgra = 0, gv_pos_alpha_bgra = 0, gv_coords_alpha_bgra = 0;
 
 int renderer_init(JNIEnv *env, int *legacy_drawing, uint8_t *flip) {
     EGLint major, minor;
@@ -520,6 +536,17 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
         checkGlError();
         gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords");
         checkGlError();
+        // 带 alpha 的两个版本（ARGB32 窗口用）
+        g_texture_program_alpha = create_program(vertex_shader, fragment_shader_alpha);
+        g_texture_program_alpha_bgra = create_program(vertex_shader, fragment_shader_alpha_bgra);
+        if (g_texture_program_alpha) {
+            gv_pos_alpha = (GLuint) glGetAttribLocation(g_texture_program_alpha, "position");
+            gv_coords_alpha = (GLuint) glGetAttribLocation(g_texture_program_alpha, "texCoords");
+        }
+        if (g_texture_program_alpha_bgra) {
+            gv_pos_alpha_bgra = (GLuint) glGetAttribLocation(g_texture_program_alpha_bgra, "position");
+            gv_coords_alpha_bgra = (GLuint) glGetAttribLocation(g_texture_program_alpha_bgra, "texCoords");
+        }
         glActiveTexture(GL_TEXTURE0);
         checkGlError();
         glGenTextures(1, &display_rect.id);
@@ -538,6 +565,8 @@ void renderer_set_window_init(JNIEnv *env, AHardwareBuffer *new_buffer) {
 
 void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new_buffer) {
 //    logd("renderer_set_window_each 1")
+    logd("set_window_each win:%x at %.0f,%.0f size %.0fx%.0f surface:%p", res->window,
+         res->offset_x, res->offset_y, res->width, res->height, res->surface);
     bool isWidget = false;
     WindAttribute *attr = NULL;
     Widget *widget = NULL;
@@ -586,6 +615,7 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         widget->height = res->height;
         widget->window = res->window;
     } else {
+        logd("set_window_each: %x not in attrs/widgets, ignore", res->window);
         return;
     }
 
@@ -704,6 +734,17 @@ void renderer_set_window_each(JNIEnv *env, SurfaceRes *res, AHardwareBuffer *new
         checkGlError();
         gv_coords_bgra = (GLuint) glGetAttribLocation(g_texture_program_bgra, "texCoords");
         checkGlError();
+        g_texture_program_alpha = create_program(vertex_shader, fragment_shader_alpha);
+        g_texture_program_alpha_bgra = create_program(vertex_shader, fragment_shader_alpha_bgra);
+        if (g_texture_program_alpha) {
+            gv_pos_alpha = (GLuint) glGetAttribLocation(g_texture_program_alpha, "position");
+            gv_coords_alpha = (GLuint) glGetAttribLocation(g_texture_program_alpha, "texCoords");
+        }
+        if (g_texture_program_alpha_bgra) {
+            gv_pos_alpha_bgra = (GLuint) glGetAttribLocation(g_texture_program_alpha_bgra, "position");
+            gv_coords_alpha_bgra = (GLuint) glGetAttribLocation(g_texture_program_alpha_bgra, "texCoords");
+        }
+        checkGlError();
     }
     glActiveTexture(GL_TEXTURE0);
     checkGlError();
@@ -744,33 +785,15 @@ void renderer_update_root(int w, int h, void *data, uint8_t flip) {
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
-        size_t tex_size = (size_t)w * h * 4;
-        void *staging = malloc(tex_size);
-        if (staging) {
-            memcpy(staging, data, tex_size);
-            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, staging);
-            free(staging);
-        } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
-        }
+        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                     flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     } else {
         glBindTexture(GL_TEXTURE_2D, display_rect.id);
         checkGlError();
         {
-            size_t tex_size = (size_t)w * h * 4;
-            void *staging = malloc(tex_size);
-            if (staging) {
-                memcpy(staging, data, tex_size);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-                                GL_UNSIGNED_BYTE, staging);
-                free(staging);
-            } else {
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
-                                GL_UNSIGNED_BYTE, data);
-            }
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, flip ? GL_RGBA : GL_BGRA_EXT,
+                        GL_UNSIGNED_BYTE, data);
         }
         checkGlError();
     }
@@ -799,9 +822,6 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
     attr->width = (float) w;
     attr->height = (float) h;
     if (texture_id != 0) {
-        if (attr->texture_id != 0 && attr->texture_id != texture_id) {
-            glDeleteTextures(1, &attr->texture_id);
-        }
         attr->texture_id = texture_id;
     } else {
         if (!attr->texture_id) {
@@ -818,17 +838,8 @@ void renderer_update_texture(int x, int y, int w, int h, void *data, uint8_t fli
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
-        size_t tex_size = (size_t)w * h * 4;
-        void *staging = malloc(tex_size);
-        if (staging) {
-            memcpy(staging, data, tex_size);
-            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, staging);
-            free(staging);
-        } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
-        }
+        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                     flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
 }
@@ -848,10 +859,6 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
     widget->width = (float) w;
     widget->height = (float) h;
     if (texture_id != 0) {
-        /* 旧纹理由本地 glGenTextures 创建，被覆盖前需要删除 */
-        if (widget->texture_id != 0 && widget->texture_id != texture_id) {
-            glDeleteTextures(1, &widget->texture_id);
-        }
         widget->texture_id = texture_id;
     } else {
         if (!widget->texture_id) {
@@ -868,17 +875,8 @@ void renderer_update_widget_texture(int x, int y, int w, int h, void *data, uint
         checkGlError();
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         checkGlError();
-        size_t tex_size = (size_t)w * h * 4;
-        void *staging = malloc(tex_size);
-        if (staging) {
-            memcpy(staging, data, tex_size);
-            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, staging);
-            free(staging);
-        } else {
-            glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
-                         flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
-        }
+        glTexImage2D(GL_TEXTURE_2D, 0, flip ? GL_RGBA : GL_BGRA_EXT, w, h, 0,
+                     flip ? GL_RGBA : GL_BGRA_EXT, GL_UNSIGNED_BYTE, data);
         checkGlError();
     }
 }
@@ -939,6 +937,7 @@ void renderer_set_cursor_coordinates(int x, int y) {
 }
 
 static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip);
+static void draw_alpha(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip);
 
 static bool draw_cursor_1(int index, Window window);
 
@@ -1103,7 +1102,12 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
             float y0 = (y - attr->offset_y) * 2.0f / height - 1.0f;
             float x1 = x0 + w / width * 2.0f;
             float y1 = y0 + h / height * 2.0f;
-            draw(widget.texture_id, x0, y0, x1, y1, flip);
+            if (widget.has_alpha) {
+                // ARGB32 子窗口：透明区域透出父窗口的内容，而不是画成黑底
+                draw_alpha(widget.texture_id, x0, y0, x1, y1, flip);
+            } else {
+                draw(widget.texture_id, x0, y0, x1, y1, flip);
+            }
             logd("renderer_redraw_traversal_1 text 3")
 //            logd("renderer_redraw_traversal x0:%.5f y0:%.5f x1:%.5f y1:%.5f", x0, y0, x1, y1);
         }
@@ -1169,6 +1173,20 @@ maybe_unused int renderer_redraw_traversal_inner(JNIEnv* env, uint8_t flip, int 
         logd("Xlorie: eglMakeCurrent failed.\n");
         eglCheckError(__LINE__);
         return FALSE;
+    }
+    // 诊断：把"画多大"(viewport) 和 "Surface 实际多大" 打出来。
+    // 两者不一致时，多出来的那条就是屏幕上的黑边。
+    {
+        static long long last_log = 0;
+        long long now = (long long) time(NULL);
+        if (now != last_log) {
+            last_log = now;
+            EGLint sw = 0, sh = 0;
+            eglQuerySurface(global_egl_display, eglSurface, EGL_WIDTH, &sw);
+            eglQuerySurface(global_egl_display, eglSurface, EGL_HEIGHT, &sh);
+            logd("draw widget %x quad %.0fx%.0f surface %dx%d sfc:%p",
+                 widget.window, width, height, sw, sh, eglSurface);
+        }
     }
     draw(id, -1.f, -1.f, 1.f, 1.f, flip);
 //    draw_cursor_1(index, window);
@@ -1316,6 +1334,47 @@ static void draw(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip
 //
 //    glDrawArrays (GL_TRIANGLES, 0, 3);
 //    glUseProgram (GL_NONE);
+}
+
+// 带 alpha 的绘制：ARGB32 窗口（XRender 语义是预乘 alpha）用它，
+// 透明像素会露出下面已经画好的内容（内嵌 widget 时就是父窗口）。
+static void draw_alpha(GLuint id, float x0, float y0, float x1, float y1, uint8_t flip) {
+    float coords[20] = {
+            x0, -y0, 0.f, 0.f, 0.f,
+            x1, -y0, 0.f, 1.f, 0.f,
+            x0, -y1, 0.f, 0.f, 1.f,
+            x1, -y1, 0.f, 1.f, 1.f,
+    };
+
+    GLuint program = flip ? g_texture_program_alpha_bgra : g_texture_program_alpha;
+    GLuint p = flip ? gv_pos_alpha_bgra : gv_pos_alpha;
+    GLuint c = flip ? gv_coords_alpha_bgra : gv_coords_alpha;
+    if (!program) {
+        // 着色器没建起来就退回不透明版本，宁可有黑底也别丢内容
+        draw(id, x0, y0, x1, y1, flip);
+        return;
+    }
+
+    glEnable(GL_BLEND);
+    // XRender 的 ARGB32 是预乘 alpha，所以源因子用 GL_ONE
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    glActiveTexture(GL_TEXTURE0);
+    checkGlError();
+    glUseProgram(program);
+    checkGlError();
+    glBindTexture(GL_TEXTURE_2D, id);
+    checkGlError();
+    glVertexAttribPointer(p, 3, GL_FLOAT, GL_FALSE, 20, coords);
+    checkGlError();
+    glVertexAttribPointer(c, 2, GL_FLOAT, GL_FALSE, 20, &coords[3]);
+    checkGlError();
+    glEnableVertexAttribArray(p);
+    checkGlError();
+    glEnableVertexAttribArray(c);
+    checkGlError();
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    checkGlError();
+    glDisable(GL_BLEND);
 }
 
 maybe_unused static bool draw_cursor_1(int index, Window window) {

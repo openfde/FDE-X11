@@ -136,6 +136,8 @@ public class XWindowService extends Service {
     public Handler mainHandler = new Handler(Looper.getMainLooper());
     public static final String X_WINDOW_ATTRIBUTE = "x_window_attribute";
     public static final String X_WINDOW_PROPERTY = "x_window_property";
+    /** 该 X 窗口是否要求不上 dock / 不进最近任务（SKIP_TASKBAR 或 KDE override）。 */
+    public static final String X_WINDOW_HIDE_FROM_DOCK = "x_window_hide_from_dock";
     private static final int DESTROY_ACTIVITY_RETRY = 1;
     private static final int DESTROY_ACTIVITY_DELAY = 0;
     private static final int CREATE_ACTIVITY_DELAY = 300;
@@ -271,6 +273,17 @@ public class XWindowService extends Service {
         @Override
         public void registerActivityCallback(long window, IActivityCallback callback) throws RemoteException {
             activityCallbackMap.put(window, callback);
+            // 窗口在这个宿主连上来之前就已经没了：直接收掉，别让它变成空壳窗口
+            WindowAttribute pendingDestroy = shouldDestroyMap.remove(window);
+            if (pendingDestroy != null) {
+                FLog.s(TAG, window, "registerActivityCallback: window already destroyed, finish host");
+                try {
+                    callback.finishActivity(window);
+                } catch (RemoteException e) {
+                    Log.e(TAG, "finishActivity for pending destroy failed", e);
+                }
+                return;
+            }
             shouldWindowManagerFinishActivity(window);
             shouldResizeActivity(window);
         }
@@ -433,6 +446,20 @@ public class XWindowService extends Service {
             case X_DESTROY_ACTIVITY: {
                 WindowAttribute destroyAttr = message.getWindowAttribute();
 //                Log.d(TAG, "onReceiveMsg() called with: destroyAttr = [" + destroyAttr + "]");
+                // 内嵌 widget（画在父窗口 Surface 里的菜单/工具条）没有独立宿主：
+                // native 已经把它从父窗口里摘掉了，这里不能再走 stopWindow——
+                // 否则 closeOrDestroyWindow 带的 taskTo 会把父窗口的宿主一起收掉
+                // （WPS 的登录框就是这样被子工具条"连坐"销毁的）。
+                if (!isHostedWindow(destroyAttr.getXID())) {
+                    FLog.s(TAG, destroyAttr.getXID(), "skip destroy for non-hosted window");
+                    break;
+                }
+                // Activity 还没连上来就收到销毁：广播会丢在启动窗口期，等它注册回调时再收尾，
+                // 否则那个宿主会一直留在屏幕上，变成一个空壳窗口（kylin-os-manager 的
+                // 那批 716x36 临时窗就是这样留下 4 个幽灵 Activity 的）。
+                if (!activityCallbackMap.containsKey(destroyAttr.getXID())) {
+                    shouldDestroyMap.put(destroyAttr.getXID(), destroyAttr);
+                }
                 if (mFloatTrays.get(destroyAttr.getXID()) != null) {
                     stopFloatTrayAndTip(destroyAttr, TYPE_TRAY);
                 } else if (mFloatTips.get(destroyAttr.getXID()) != null) {
@@ -472,6 +499,12 @@ public class XWindowService extends Service {
 //   TODO for test             startActLikeWindowWithDecorHeight(message.getWindowAttribute(), MainActivity.MainActivity1.class, 42f);
                 break;
             case X_DISMISS_WINDOW:
+                if (!isHostedWindow(message.getWindowAttribute().getXID())) {
+                    // 同上：内嵌 widget 的 dismiss 不该外溢到父窗口
+                    FLog.s(TAG, message.getWindowAttribute().getXID(),
+                            "skip dismiss for non-hosted window");
+                    break;
+                }
                 if (mFloatTrays.get(message.getWindowAttribute().getXID()) != null) {
                     stopFloatTrayAndTip(message.getWindowAttribute(), TYPE_TRAY);
                 } else if (mFloatTips.get(message.getWindowAttribute().getXID()) != null) {
@@ -667,6 +700,8 @@ public class XWindowService extends Service {
         }
 //        systemWindowManager.updateViewLayout(floatView,floatParams);
         LorieView widgetView = floatView.findViewById(R.id.widget_view);
+        // 托盘/提示也是浮层：Surface 尺寸跟着布局走，不要按全局分辨率裁剪
+        widgetView.setFloatingPopup(true);
         widgetView.updateCoordinate(attr);
         mainHandler.post(() -> widgetView.setCallback(new LorieView.Callback() {
             @Override
@@ -919,6 +954,20 @@ public class XWindowService extends Service {
         }
     }
 
+    /**
+     * 这个 xid 是不是一个"独立宿主"（Activity 或浮层窗口）。
+     *
+     * <p>内嵌 widget（画在父窗口 Surface 里的菜单/工具条）不是宿主：它们的销毁只该由
+     * native 从父窗口里摘掉，不能走 stopWindow——否则会把父窗口的宿主一起收掉。
+     */
+    private boolean isHostedWindow(long xid) {
+        return runningMainWindow.contains(xid)
+                || mFloatTrays.containsKey(xid)
+                || mFloatTips.containsKey(xid)
+                || activityCallbackMap.containsKey(xid)
+                || stopingWindow.contains(xid);
+    }
+
     private void stopWindow(WindowAttribute attr) {
         if (stopingWindow.contains(attr.getXID())) {
             return;
@@ -1020,6 +1069,8 @@ public class XWindowService extends Service {
 
     public void startActLikeWindowWithDecorHeight(WindowAttribute attr, Class cls, float decorHeight) {
         stopingWindow.remove(attr.getXID());
+        // XID 会被复用：同一个 id 上来了新窗口，不能继承上一个窗口的"待销毁"标记
+        shouldDestroyMap.remove(attr.getXID());
         if (startingWindow.contains(attr.getXID())) {
             return;
         }
@@ -1055,6 +1106,14 @@ public class XWindowService extends Service {
         }
         intent.putExtra(X_WINDOW_ATTRIBUTE, attr);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        // _NET_WM_STATE_SKIP_TASKBAR / _KDE_NET_WM_WINDOW_TYPE_OVERRIDE：宿主仍是
+        // Activity（要能拿焦点/输入法），但不进最近任务，也不上 dock。必须在这里算：
+        // 只有本进程（xserver）能读到 native 的窗口登记表，MainActivity 在另一个进程里读不到。
+        boolean hideFromDock = Xserver.isHiddenFromDockWindow(attr.getXID());
+        intent.putExtra(X_WINDOW_HIDE_FROM_DOCK, hideFromDock);
+        if (hideFromDock) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+        }
         startActivity(intent, options.toBundle());
 //        }
     }

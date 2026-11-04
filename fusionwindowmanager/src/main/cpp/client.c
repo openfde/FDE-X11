@@ -621,7 +621,7 @@ static void
 clientConfigureWindows (Client *c, XWindowChanges * wc, unsigned long mask, unsigned short flags)
 {
     unsigned long change_mask_frame, change_mask_client;
-    XWindowChanges change_values;
+    XWindowChanges change_values = {0};
     DisplayInfo *display_info;
     ScreenInfo *screen_info;
 
@@ -867,7 +867,7 @@ clientConfigure (Client *c, XWindowChanges * wc, unsigned long mask, unsigned sh
 void
 clientReconfigure (Client *c, unsigned short flags)
 {
-    XWindowChanges wc;
+    XWindowChanges wc = {0};
 
     g_return_if_fail (c != NULL);
     logd ("client \"%s\" (0x%lx)", c->name, c->window);
@@ -1001,7 +1001,7 @@ clientApplyMWMHints (Client *c, gboolean update)
 {
     ScreenInfo *screen_info;
     DisplayInfo *display_info;
-    XWindowChanges wc;
+    XWindowChanges wc = {0};
 
     g_return_if_fail (c != NULL);
     g_return_if_fail (c->window != None);
@@ -1122,7 +1122,7 @@ clientGetWMNormalHints (Client *c, gboolean update)
 {
     ScreenInfo *screen_info;
     DisplayInfo *display_info;
-    XWindowChanges wc;
+    XWindowChanges wc = {0};
     unsigned long previous_value;
     long dummy;
     int result, status;
@@ -1597,8 +1597,13 @@ clientApplyInitialState (Client *c)
 //     return FALSE;
 // }
 
-// 弹窗判别：_NET_WM_STATE 含 _NET_WM_STATE_SKIP_TASKBAR 且
-// _NET_WM_WINDOW_TYPE 含 _KDE_NET_WM_WINDOW_TYPE_OVERRIDE 的窗口按 override-redirect 处理
+// 弹窗判别：命中后不建 frame、直接 XMapWindow，坐标保持绝对的。
+// 判据必须和 X server 侧（lorie/android.c 的 window_is_popup_like）保持一致，
+// 否则会出现"WM 托管、宿主按浮层渲染"的错位：位置由 WM 决定，菜单会飞到屏幕顶上。
+//
+//   1) _NET_WM_WINDOW_TYPE 属于菜单/提示类：本来就不该被 reparent
+//   2) UTILITY 且 WM_HINTS.input == False：ToDesk 的下拉菜单是这类，要键盘的工具窗不算
+//   3) _KDE_NET_WM_WINDOW_TYPE_OVERRIDE + SKIP_TASKBAR：老的"伪 OR"判据
 static gboolean
 checkPopupLikeWindow (DisplayInfo *display_info, Window w)
 {
@@ -1606,6 +1611,8 @@ checkPopupLikeWindow (DisplayInfo *display_info, Window w)
     int n_atoms = 0;
     gboolean skip_taskbar = FALSE;
     gboolean kde_override = FALSE;
+    gboolean menu_type = FALSE;
+    gboolean utility_type = FALSE;
 
     if (getAtomList (display_info, w, NET_WM_STATE, &atoms, &n_atoms))
     {
@@ -1620,25 +1627,129 @@ checkPopupLikeWindow (DisplayInfo *display_info, Window w)
         XFree (atoms);
         atoms = NULL;
     }
-    if (!skip_taskbar)
-    {
-        return FALSE;
-    }
 
     if (getAtomList (display_info, w, NET_WM_WINDOW_TYPE, &atoms, &n_atoms))
     {
         Atom kde_override_atom = XInternAtom (display_info->dpy, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE", False);
+        Atom menu_atom = XInternAtom (display_info->dpy, "_NET_WM_WINDOW_TYPE_MENU", False);
+        Atom popup_atom = XInternAtom (display_info->dpy, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
+        Atom dropdown_atom = XInternAtom (display_info->dpy, "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", False);
+        Atom combo_atom = XInternAtom (display_info->dpy, "_NET_WM_WINDOW_TYPE_COMBO", False);
+        Atom tooltip_atom = XInternAtom (display_info->dpy, "_NET_WM_WINDOW_TYPE_TOOLTIP", False);
+        Atom dnd_atom = XInternAtom (display_info->dpy, "_NET_WM_WINDOW_TYPE_DND", False);
+        Atom utility_atom = XInternAtom (display_info->dpy, "_NET_WM_WINDOW_TYPE_UTILITY", False);
         for (int i = 0; i < n_atoms; ++i)
         {
             if (atoms[i] == kde_override_atom)
             {
                 kde_override = TRUE;
-                break;
+            }
+            else if (atoms[i] == utility_atom)
+            {
+                utility_type = TRUE;
+            }
+            else if (atoms[i] == menu_atom || atoms[i] == popup_atom
+                     || atoms[i] == dropdown_atom || atoms[i] == combo_atom
+                     || atoms[i] == tooltip_atom || atoms[i] == dnd_atom)
+            {
+                menu_type = TRUE;
             }
         }
         XFree (atoms);
     }
-    return kde_override;
+
+    if (menu_type)
+    {
+        return TRUE;
+    }
+
+    /* 小尺寸浮动工具条（WPS 的 102x40 黑条）：UTILITY + KDE override + 小尺寸。
+       这里不能用 _NET_WM_STATE 的 SKIP_TASKBAR 做判据——WPS 是 map 之后才通过
+       ClientMessage 设状态的，而 clientFrame 在 MapRequest 时就做决定了，那时还读不到。
+       KDE override 是 _NET_WM_WINDOW_TYPE 里的 atom，创建时就有。 */
+    if (utility_type && kde_override)
+    {
+        XWindowAttributes attrs;
+        if (XGetWindowAttributes (display_info->dpy, w, &attrs)
+            && attrs.width > 0 && attrs.width <= 320
+            && attrs.height > 0 && attrs.height <= 120)
+        {
+            return TRUE;
+        }
+    }
+
+    /* 要键盘的窗口不能当弹层：浮层宿主是 FLAG_NOT_FOCUSABLE。
+       WPS 的"账号登录"是 UTILITY + KDE override + input=true，
+       按老判据会被塞进浮层，登录框就变成能看不能打字。 */
+    gboolean no_input = FALSE;
+    XWMHints *hints = XGetWMHints (display_info->dpy, w);
+    if (hints)
+    {
+        no_input = (hints->flags & InputHint) && !hints->input;
+        XFree (hints);
+    }
+
+    if (utility_type && no_input)
+    {
+        return TRUE;
+    }
+
+    /* KDE override + SKIP_TASKBAR：应用明确表示"这是不参与任务管理的弹层"。
+       WPS 的下拉面板（wps，280x62 / 220x281，[KDE_OVERRIDE, NORMAL] + SKIP_TASKBAR）
+       就是这一类。以前还要求 input == FALSE，但它们的 input 是 TRUE，
+       于是被当成普通窗口建了 frame，在 Android 侧变成独立 Activity——
+       交互上从"点一下浮层"变成了"切任务"，差别很大。
+       登录框（[KDE_OVERRIDE, NORMAL]，没有 SKIP_TASKBAR）不受影响，仍然是 Task。 */
+    return (kde_override && skip_taskbar);
+}
+
+/* 不托管的弹层没有 WM 的摆位逻辑，应用（WPS 的悬浮工具条）通常把坐标留在 (0,0)，
+   指望 WM 把它放到父窗口附近。这里补一个"父窗口右上角"的默认位置。 */
+static void
+placePopupNearTransient (DisplayInfo *display_info, Window w, XWindowAttributes *attr)
+{
+    Window root = DefaultRootWindow (display_info->dpy);
+    Window transient = None;
+
+    getTransientFor (display_info, root, w, &transient);
+    if (transient == None || transient == root)
+    {
+        return;
+    }
+    /* 应用明确指定过位置就别动它 */
+    if (attr->x != 0 || attr->y != 0)
+    {
+        return;
+    }
+
+    XWindowAttributes parent;
+    if (!XGetWindowAttributes (display_info->dpy, transient, &parent))
+    {
+        return;
+    }
+
+    int px = 0, py = 0;
+    Window child = None;
+    if (!XTranslateCoordinates (display_info->dpy, transient, root, 0, 0, &px, &py, &child))
+    {
+        return;
+    }
+
+    // 贴着父窗口右上角（和 WPS 自己在原生桌面上摆的位置一致）
+    const int margin = 0;
+    int x = px + parent.width - attr->width - margin;
+    int y = py + margin;
+    if (x < 0)
+    {
+        x = margin;
+    }
+    if (y < 0)
+    {
+        y = margin;
+    }
+    logd ("placePopupNearTransient 0x%lx -> %d,%d (parent at %d,%d %dx%d)",
+          w, x, y, px, py, parent.width, parent.height);
+    XMoveWindow (display_info->dpy, w, x, y);
 }
 
 Client *
@@ -1700,6 +1811,9 @@ clientFrame (DisplayInfo *display_info, Window w, gboolean recapture)
             // 这里跳过管理后必须手动映射，后续 MapNotify -> NameWindowPixmap
             // -> android_redirect_window 才能把它重定向为 Android 弹窗
             logd ("popup-like window 0x%lx, map it without frame", w);
+            // 应用（WPS）把这种小悬浮条的坐标留在 (0,0)，指望 WM 把它摆到父窗口附近。
+            // 不托管就没有 WM 的摆位逻辑了，这里补一个"父窗口右上角"。
+            placePopupNearTransient (display_info, w, &attr);
             XMapWindow (display_info->dpy, w);
         }
         logd ("override redirect window 0x%lx", w);
@@ -4769,7 +4883,7 @@ clientToggleMaximizedAtPoint (Client *c, gint cx, gint cy, int mode, gboolean re
 {
     DisplayInfo *display_info;
     ScreenInfo *screen_info;
-    XWindowChanges wc;
+    XWindowChanges wc = {0};
     // GdkRectangle rect;
     unsigned long old_flags;
 

@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <libgen.h>
 #include <globals.h>
+#include <mi.h>
 #include <xkbsrv.h>
 #include <errno.h>
 #include <wchar.h>
@@ -50,6 +51,8 @@ const Atom _NET_WM_WINDOW_TYPE_NORMAL = 273;
 const Atom _NET_WM_WINDOW_TYPE_POPUP_MENU = 274;
 const Atom _NET_WM_WINDOW_TYPE_TOOLTIP = 275;
 const Atom _NET_WM_WINDOW_TYPE_UTILITY = 276;
+// FDE 内部补充的类型码：EWMH 里有、但老的映射表没接的
+const Atom _NET_WM_WINDOW_TYPE_SPLASH = 277;
 
 static int argc = 0;
 static char **argv = NULL;
@@ -91,6 +94,15 @@ void android_update_texture(Window window) {
 //    loge( "android_update_texture window:%x", window);
     WindAttribute *attr = _surface_find_window(sfWraper, window);
     if (!attr) {
+        // 内嵌 widget（transient 弹层，比如 ToDesk 的二维码窗）不在 window_attrs 里，
+        // 只存在于父窗口的 widgets[] 数组。以前这里直接 return，导致这类窗口在
+        // 创建之后再也不更新纹理——窗口从 376x241 长到 439x305 时，画的还是旧内容，
+        // 右边和下边就是黑的。
+        Widget *widget = _surface_find_widget(sfWraper, window);
+        if (widget) {
+            android_update_widget_texture(widget);
+            return;
+        }
         logw( "android_update_texture not find window:%x", window);
         return;
     }
@@ -101,6 +113,14 @@ void android_update_texture(Window window) {
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(attr->pWin);
     if (!pixmap) {
         return;
+    }
+    // 诊断：窗口尺寸和它的 backing pixmap 尺寸不一致时，画出来就会缺一块
+    // （ToDesk 弹窗 439x305 的窗口只画了 376x241 的内容，边上一条黑）。
+    if (pixmap->drawable.width != attr->pWin->drawable.width
+        || pixmap->drawable.height != attr->pWin->drawable.height) {
+        logw("pixmap size mismatch window:%lx win:%dx%d pixmap:%dx%d attr:%.0fx%.0f",
+             window, attr->pWin->drawable.width, attr->pWin->drawable.height,
+             pixmap->drawable.width, pixmap->drawable.height, attr->width, attr->height);
     }
     TexturePrivRecPtr ptr = dixLookupPrivate(&attr->pWin->devPrivates, &FDEWindowTexturePrivateKey);
     GLuint texture_id = 0;
@@ -135,6 +155,14 @@ void android_update_texture(Window window) {
 
 void android_update_widget_texture(Widget *widget) {
     PixmapPtr pixmap = (PixmapPtr) (*pScreenPtr->GetWindowPixmap)(widget->pWin);
+    // 诊断：窗口尺寸 vs 它 backing pixmap 的尺寸。两者不一致时，纹理里只有
+    // pixmap 那一块有内容，其余是黑的——屏幕上就是"内容比窗口小一圈"。
+    if (pixmap && (pixmap->drawable.width != widget->pWin->drawable.width
+                   || pixmap->drawable.height != widget->pWin->drawable.height)) {
+        logw("widget pixmap mismatch %lx win:%dx%d pixmap:%dx%d",
+             widget->window, widget->pWin->drawable.width, widget->pWin->drawable.height,
+             pixmap->drawable.width, pixmap->drawable.height);
+    }
 //    loge( "android_update_texture pixmap:%x", pixmap->drawable.id)
     TexturePrivRecPtr ptr = dixLookupPrivate(&widget->pWin->devPrivates, &FDEWindowTexturePrivateKey);
     GLuint texture_id = 0;
@@ -480,12 +508,56 @@ void android_register_window_damage(WindowPtr pWin, Window window) {
     attr->dirty = 1;
 }
 
-// 弹窗判别：_NET_WM_STATE 含 _NET_WM_STATE_SKIP_TASKBAR 且
-// _NET_WM_WINDOW_TYPE 含 _KDE_NET_WM_WINDOW_TYPE_OVERRIDE 的窗口按 override-redirect 处理
-static bool window_is_popup_like(WindowPtr pWin) {
-    bool skipTaskbar = false;
-    bool kdeOverride = false;
+// 弹窗判别：决定这个窗口用 View 还是 Activity 承载，也决定 WM 要不要给它建 frame。
+// 两边（这里和 fusionwindowmanager 的 checkPopupLikeWindow）必须用同一套判据，
+// 否则会出现"WM 托管、宿主按浮层渲染"的错位——位置由 WM 定，菜单就飞到屏幕顶上。
+//
+//   1) _NET_WM_WINDOW_TYPE 属于菜单/提示类（MENU/POPUP_MENU/DROPDOWN_MENU/COMBO/
+//      TOOLTIP/DND）：本来就不该被 reparent，坐标是绝对的；
+//   2) UTILITY 且 WM_HINTS.input == False：ToDesk 的下拉菜单是这类，要键盘的
+//      工具窗（调色板）不算；
+//   3) _KDE_NET_WM_WINDOW_TYPE_OVERRIDE + SKIP_TASKBAR：老的"伪 OR"判据。
+static bool window_is_menu_type(const char *name) {
+    return name && (STRING_EQUAL(name, "_NET_WM_WINDOW_TYPE_MENU")
+                    || STRING_EQUAL(name, "_NET_WM_WINDOW_TYPE_POPUP_MENU")
+                    || STRING_EQUAL(name, "_NET_WM_WINDOW_TYPE_DROPDOWN_MENU")
+                    || STRING_EQUAL(name, "_NET_WM_WINDOW_TYPE_COMBO")
+                    || STRING_EQUAL(name, "_NET_WM_WINDOW_TYPE_TOOLTIP")
+                    || STRING_EQUAL(name, "_NET_WM_WINDOW_TYPE_DND"));
+}
 
+static bool window_hints_input_false(WindowPtr pWin) {
+    PropertyPtr pHints = NULL;
+    if (property_lookup_string(&pHints, pWin, "WM_HINTS") && pHints && pHints->data
+        && pHints->format == 32 && pHints->size >= 2) {
+        CARD32 *v = (CARD32 *) pHints->data;
+        // ICCCM WM_HINTS：flags 第 0 位是 InputHint，第 1 个字是 input
+        return (v[0] & (1u << 0)) && v[1] == 0;
+    }
+    return false;
+}
+
+static bool window_is_popup_like(WindowPtr pWin) {
+    bool kdeOverride = false;
+    bool utility = false;
+    bool skipTaskbar = false;
+    bool inputFalse = window_hints_input_false(pWin);
+
+    PropertyPtr pType;
+    if (property_lookup_string(&pType, pWin, WINDOW_TYPE) && pType && pType->data) {
+        ATOM *atoms = (ATOM *) pType->data;
+        for (int i = 0; i < pType->size; i++) {
+            const char *name = NameForAtom(atoms[i]);
+            if (window_is_menu_type(name)) {
+                return true;
+            }
+            if (name && STRING_EQUAL(name, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE")) {
+                kdeOverride = true;
+            } else if (name && STRING_EQUAL(name, "_NET_WM_WINDOW_TYPE_UTILITY")) {
+                utility = true;
+            }
+        }
+    }
     PropertyPtr pState;
     if (property_lookup_string(&pState, pWin, "_NET_WM_STATE") && pState && pState->data) {
         ATOM *atoms = (ATOM *) pState->data;
@@ -497,22 +569,29 @@ static bool window_is_popup_like(WindowPtr pWin) {
             }
         }
     }
-    if (!skipTaskbar) {
+
+    // 小尺寸浮动工具条（WPS 的 102x40 黑条）：UTILITY + (KDE override 或 SKIP_TASKBAR)
+    // + 小尺寸。即使 input=1 也按浮层处理——它只吃鼠标，做成独立窗口反而多一个任务窗口。
+    if (utility && (kdeOverride || skipTaskbar)
+        && pWin->drawable.width > 0 && pWin->drawable.width <= 320
+        && pWin->drawable.height > 0 && pWin->drawable.height <= 120) {
+        return true;
+    }
+    if (utility && inputFalse) {
+        return true;
+    }
+    // KDE override + SKIP_TASKBAR：不参与任务管理的弹层（WPS 的下拉面板）。
+    // 不看 input —— 这类面板 input 常常是 TRUE，但做成独立窗口交互就变味了。
+    if (kdeOverride && skipTaskbar) {
+        return true;
+    }
+    // 要键盘的窗口不能走浮层：浮层宿主是 FLAG_NOT_FOCUSABLE，
+    // WPS 的"账号登录"就是 UTILITY + KDE override + input=true，
+    // 按老判据会被塞进浮层，结果登录框能看不能打字。
+    if (!kdeOverride || !inputFalse) {
         return false;
     }
-
-    PropertyPtr pType;
-    if (property_lookup_string(&pType, pWin, WINDOW_TYPE) && pType && pType->data) {
-        ATOM *atoms = (ATOM *) pType->data;
-        for (int i = 0; i < pType->size; i++) {
-            const char *name = NameForAtom(atoms[i]);
-            if (name && STRING_EQUAL(name, "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE")) {
-                kdeOverride = true;
-                break;
-            }
-        }
-    }
-    return kdeOverride;
+    return false;
 }
 
 void android_redirect_window(WindowPtr pWin) {
@@ -541,6 +620,13 @@ void android_redirect_window(WindowPtr pWin) {
             p = pWin->firstChild;
         } else {
             p = pWin->firstChild->nextSib;
+        }
+        // 一个属性都没有的顶层窗口：ICCCM 要求属性在 map 之前设好，map 之后还一个都没有的，
+        // 基本都是工具包建了就马上销毁的临时窗（kylin-os-manager 启动时会建两个 716x36
+        // 的裸窗口，每次都会闪出一个空宿主）。直接不重定向，让它安静地消失。
+        if (!p || !p->optional || !p->optional->userProps) {
+            logd("skip redirect for propertyless window %lx", p ? p->drawable.id : 0);
+            return;
         }
         WindAttribute *attr = android_create_attr(pWin, p);
         attr->android_component = ANDROID_COMPONENT_ACTIVITY;
@@ -582,13 +668,10 @@ void android_redirect_window(WindowPtr pWin) {
             {
                 logd( "redirect_view %x for transient found attr:%x", pWin->drawable.id, attr->window)
             }
-        } else if(windProperty.leader){
-            attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , windProperty.leader);
-            if(attr)
-            {
-                logd( "redirect_view %x for leader found attr:%x", pWin->drawable.id, attr->window)
-            }
         } else if(focusWindow){
+            // 不再用 leader 找父窗口：同一个应用的所有窗口共享一个 leader
+            // （WPS 的登录框/工具栏就被挂到了 splash 上）。找不到 transient
+            // 时优先跟随当前焦点窗口，再退回 pid。
             attr = _surface_find_window_in_type(sfWraper, TYPE_ANY , focusWindow);
             if(attr)
             {
@@ -601,7 +684,16 @@ void android_redirect_window(WindowPtr pWin) {
                 logd( "redirect_view %x for pid found attr:%x", pWin->drawable.id, attr->window)
             }
         }
-        if(attr && attr->status >= ANDROID_STATUS_FOCUSED && attr->android_component > ANDROID_COMPONENT_VIEW){
+        // transient 的弹层优先内嵌进父窗口的 Surface（相当于 X 里当子窗口画）：
+        // 层级跟随父窗口、超出部分被裁掉，这才是 KDE override 这类"贴片"该有的行为。
+        // 以前还要求 attr->status >= FOCUSED，父窗口一失焦就退化成独立浮层，
+        // 于是它浮到了所有窗口上面。
+        // 只把"真正的 transient 子窗口"内嵌进父窗口的 Surface。
+        // 没有 WM_TRANSIENT_FOR 的（ToDesk 的二维码弹窗 transient=0）内嵌进当前焦点
+        // 窗口是错的：它在 surface manager 里只有 widget 记录、没有 window_attrs 登记，
+        // 后续 configure/damage 都找不到它，纹理停在创建时的大小（439x305 的窗口
+        // 只画了 376x241 的内容，边上一条黑）。这种窗口走独立 view 分支。
+        if(windProperty.transient && attr && attr->android_component > ANDROID_COMPONENT_VIEW){
             logd( "redirect_widget  %x should create view for widget", pWin->drawable.id)
             android_redirect_widget(pWin, windProperty, attr->window);
             property_cleanup(&windProperty);
@@ -699,6 +791,16 @@ static void property_get_type_info(WindowPtr pWin, WindProperty *prop) {
                     } else {
                         prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
                     }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), "_NET_WM_WINDOW_TYPE_SPLASH")) {
+                    // 启动画面：不能落回 NORMAL，否则会被当成普通窗口套上标题栏
+                    prop->window_type = _NET_WM_WINDOW_TYPE_SPLASH;
+                    if (!overrideRedirect) {
+                        break;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE")) {
+                    // KDE override = "别装饰我、别进任务栏"；support_motif 在老 Java 侧
+                    // 就表示"无装饰"，直接置 1，避免 splash/登录框被套上标题栏
+                    prop->support_motif = 1;
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG)) {
                     prop->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
                     if (!overrideRedirect) {
@@ -908,7 +1010,15 @@ bool util_check_window_bounds(WindowPtr pWindow, WindAttribute *attr) {
     int y1 = attr->offset_y;
     int w1 = attr->width;
     int h1 = attr->height;
-    bool inbound = util_check_bounds(x, y, w, h, x1, y1, w1, h1);
+    // 容差 2px：应用把悬浮条贴着父窗口右上角摆时，会出现 +1/+2 的溢出
+    // （WPS 的 102 宽贴片在 800 宽的登录框上，右边缘正好差 1px，上边缘差 1px），
+    // 严格包含判断会让它掉进"独立 view"分支，变成浮在所有窗口上的顶层窗口。
+    // 注意容差要加在父窗口矩形上，不能加在子窗口矩形上——把子窗口矩形放大反而
+    // 会让它更容易超出父窗口上边缘（y=241 的贴片，放大后 239 < 240 直接判失败）。
+    const int tolerance = 2;
+    bool inbound = util_check_bounds(x, y, w, h,
+                                     x1 - tolerance, y1 - tolerance,
+                                     w1 + tolerance * 2, h1 + tolerance * 2);
     logd( "inbound:%d", inbound);
     return inbound;
 }
@@ -936,7 +1046,8 @@ void android_redirect_widget(WindowPtr pWin, WindProperty prop, Window window) {
             .window = pWin->drawable.id,
             .pWin = pWin,
             .task_to = window,
-            .inbounds = inBound
+            .inbounds = inBound,
+            .has_alpha = (pWin->drawable.depth == 32)
     };
 
     // 动态扩容 widgets 数组，容量按 10 递增，避免固定 10 个元素导致的堆越界写
@@ -1067,8 +1178,58 @@ void android_configure_window(WindowPtr pWin, short x, short y, short w, short h
 //    WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
     logd( "rediret:%d pWin:%lx x:%d y:%d w:%d h:%d",
         pWin->overrideRedirect, pWin->drawable.id, x, y, w, h)
-    if (!pWin->overrideRedirect) {
+    // 普通窗口的几何由 WM 的 frame 负责（syncConfigureRequest 那条路）。
+    // 这里不能用 window_is_popup_like() 做闸门：它是按"当前"属性判定的，
+    // 而客户端映射之后可能改写/删除 WM_HINTS，判定结果就从中变成否，
+    // 于是这个窗口再也拿不到几何更新（ToDesk 弹窗宽度 357->439 就是这样丢的）。
+    // 改成看"它现在是不是真的被我们托管成浮层/widget"。
+    WindAttribute *hosted_attr = _surface_find_window(sfWraper, pWin->drawable.id);
+    Widget *hosted_widget = hosted_attr ? NULL : _surface_find_widget(sfWraper, pWin->drawable.id);
+    if (!hosted_attr && !hosted_widget) {
         return;
+    }
+    // 渲染用的几何在 native 侧的 WindAttribute 里，这里必须同步更新；
+    // 只通知 Java 的话，宿主 Surface 变成新尺寸了，纹理却还按旧尺寸画，
+    // 露出的一圈就是黑的（ToDesk 二维码弹窗右边/下边那条黑带）。
+    {
+        WindAttribute *attr = hosted_attr;
+        if (!attr) {
+            // 内嵌 widget（transient 弹层）不登记在 window_attrs 里，只存在父窗口的
+            // widgets[] 中。它的绘制几何（widget->width/height）和纹理都要跟着窗口
+            // resize 更新，否则窗口 439x305 了还按创建时的 357 宽去画，右边一条黑。
+            Widget *widget = _surface_find_widget(sfWraper, pWin->drawable.id);
+            if (widget) {
+                if (widget->width != w || widget->height != h
+                    || widget->offset_x != x || widget->offset_y != y) {
+                    logd("configure_window widget %x: (%.0f,%.0f %.0fx%.0f) -> (%d,%d %dx%d)",
+                         pWin->drawable.id, widget->offset_x, widget->offset_y,
+                         widget->width, widget->height, x, y, w, h);
+                    widget->offset_x = (float) x;
+                    widget->offset_y = (float) y;
+                    widget->width = (float) w;
+                    widget->height = (float) h;
+                    widget->tex_w = 0;
+                    widget->tex_h = 0;
+                }
+            } else {
+                loge("configure_window: no attr/widget for %lx", pWin->drawable.id);
+            }
+        } else {
+            if (attr->width != w || attr->height != h
+                || attr->offset_x != x || attr->offset_y != y) {
+                logd("configure_window geometry %x: (%d,%d %dx%d) -> (%d,%d %dx%d)",
+                     pWin->drawable.id, attr->offset_x, attr->offset_y, attr->width, attr->height,
+                     x, y, w, h);
+                attr->offset_x = x;
+                attr->offset_y = y;
+                attr->width = w;
+                attr->height = h;
+                // 纹理尺寸也变了，强制重新上传一次整窗内容
+                attr->dirty = 1;
+                attr->tex_w = 0;
+                attr->tex_h = 0;
+            }
+        }
     }
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
@@ -1883,6 +2044,13 @@ void property_get(WindowPtr pWin, WindProperty *prop) {
                     } else {
                         prop->window_type = _NET_WM_WINDOW_TYPE_MENU;
                     }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), "_NET_WM_WINDOW_TYPE_SPLASH")) {
+                    prop->window_type = _NET_WM_WINDOW_TYPE_SPLASH;
+                    if (!overrideRedirect) {
+                        break;
+                    }
+                } else if (STRING_EQUAL(NameForAtom(atoms[i]), "_KDE_NET_WM_WINDOW_TYPE_OVERRIDE")) {
+                    prop->support_motif = 1;
                 } else if (STRING_EQUAL(NameForAtom(atoms[i]), WINDOW_TYPE_DIALOG)) {
                     prop->window_type = _NET_WM_WINDOW_TYPE_DIALOG;
                     if (!overrideRedirect) {

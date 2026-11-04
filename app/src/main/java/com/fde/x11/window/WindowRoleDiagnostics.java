@@ -31,6 +31,7 @@ public final class WindowRoleDiagnostics {
     private static final String MATCH = "MATCH";
     private static final String IDENTITY_DIFF = "IDENTITY_DIFF";
     private static final String DECOR_DIFF = "DECOR_DIFF";
+    private static final String CONTAINMENT_DIFF = "CONTAINMENT_DIFF";
     private static final String UNKNOWN = "ACTUAL_UNKNOWN";
 
     private WindowRoleDiagnostics() {
@@ -77,6 +78,7 @@ public final class WindowRoleDiagnostics {
         int match = 0;
         int identityDiff = 0;
         int decorDiff = 0;
+        int containmentDiff = 0;
         int unknown = 0;
         Map<String, Integer> reasons = new HashMap<>();
 
@@ -103,17 +105,24 @@ public final class WindowRoleDiagnostics {
                 verdict = DECOR_DIFF;
                 decorDiff++;
                 bump(reasons, "decor " + role.decoration + " <- " + actual + " : " + role.reason);
+            } else if (!containmentMatches(role, actual)) {
+                // 归属维度：策略认为该内嵌、实际却是独立浮窗，或者反过来。
+                // 以前不比较这一维，所以像"结构性判据提前"这类重排在这里是看不见的。
+                verdict = CONTAINMENT_DIFF;
+                containmentDiff++;
+                bump(reasons, "containment " + role.containment + " <- " + actual
+                        + " : " + role.reason);
             } else {
                 verdict = MATCH;
                 match++;
             }
 
             log(String.format(
-                    "  xid=0x%x class=%s name=%s type=%d[%s] state=[%s] or=%b input=%d "
+                    "  xid=0x%x class=%s name=%s type=%d[%s] state=[%s] or=%b input=%d flags=0x%x "
                             + "geom=%dx%d@%d,%d transient=0x%x leader=0x%x present=0x%x "
                             + "motif=%d/%d/%d age=%s | policy=%s | actual=%s | %s",
                     f.xid, f.wmClass, f.displayName(), f.typeCode, f.typeNames,
-                    f.stateNames, f.overrideRedirect, f.hintInput,
+                    f.stateNames, f.overrideRedirect, f.hintInput, f.flags,
                     f.w, f.h, f.x, f.y, f.transientFor, f.leader, f.present,
                     f.motifPresent, f.motifFlags, f.motifDecorations,
                     ageText(f),
@@ -122,7 +131,7 @@ public final class WindowRoleDiagnostics {
 
         log("summary: total=" + factsList.size() + " match=" + match
                 + " identityDiff=" + identityDiff + " decorDiff=" + decorDiff
-                + " unknown=" + unknown);
+                + " containmentDiff=" + containmentDiff + " unknown=" + unknown);
         for (Map.Entry<String, Integer> e : reasons.entrySet()) {
             log("  diff[" + e.getValue() + "] " + e.getKey());
         }
@@ -178,6 +187,75 @@ public final class WindowRoleDiagnostics {
     }
 
     /** 装饰维度：只有 Task 才有"要不要 Shell 标题栏"这个问题。 */
+
+    /**
+     * 归属维度：策略说要内嵌（IN_PARENT）的窗口，实际必须是以 WIDGET 形式承载；
+     * 说要独立浮窗（FREE）的，实际应该是 VIEW / 独立任务窗口。
+     * 只有 OVERLAY 身份有意义，任务窗口和任务栏图标恒为 FREE。
+     */
+    private static boolean containmentMatches(WindowRole role, String actual) {
+        if (role.identity != WindowRole.Identity.OVERLAY) {
+            return true;
+        }
+        boolean actualContained = "WIDGET".equals(actual);
+        return role.containment == WindowRole.Containment.IN_PARENT ? actualContained : !actualContained;
+    }
+
+    /**
+     * 实时模式：单个窗口产生时立刻打一行，由 Xserver.startOrUpdateWindow 调用。
+     * 和 dump() 用同一套判定，只是只输出一条、不打 summary。
+     */
+    public static void dumpOne(String[] encoded, long xid, Map<Long, String> actualHosts) {
+        if (encoded == null || encoded.length == 0) {
+            return;
+        }
+        WindowFacts target = null;
+        for (String line : encoded) {
+            WindowFacts f = WindowFacts.parse(line);
+            if (f != null && f.xid == xid) {
+                target = f;
+                break;
+            }
+        }
+        if (target == null) {
+            // 窗口还没进登记表（例如内嵌 widget 没走 android_create_attr）
+            log("[live] xid=0x" + Long.toHexString(xid) + " 尚未登记");
+            return;
+        }
+        WindowFacts parent = null;
+        for (String line : encoded) {
+            WindowFacts f = WindowFacts.parse(line);
+            if (f == null) {
+                continue;
+            }
+            if (f.xid == target.transientFor || f.propSource == target.transientFor) {
+                parent = f;
+                break;
+            }
+        }
+        WindowRole role = WindowRolePolicy.decide(target, parent);
+        String actual = actualHosts == null ? null : actualHosts.get(xid);
+        if (actual == null) {
+            actual = target.actualKindName();
+        }
+        String verdict;
+        if (actual == null) {
+            verdict = UNKNOWN;
+        } else if (!identityMatches(role.identity, actual)) {
+            verdict = IDENTITY_DIFF;
+        } else if (!decorMatches(role.decoration, actual)) {
+            verdict = DECOR_DIFF;
+        } else if (!containmentMatches(role, actual)) {
+            verdict = CONTAINMENT_DIFF;
+        } else {
+            verdict = MATCH;
+        }
+        log(String.format("[live] xid=0x%x class=%s type=%d[%s] input=%d or=%b flags=0x%x "
+                        + "| policy=%s | actual=%s | %s",
+                target.xid, target.wmClass, target.typeCode, target.typeNames,
+                target.hintInput, target.overrideRedirect, target.flags, role, actual, verdict));
+    }
+
     private static boolean decorMatches(WindowRole.Decoration decoration, String actual) {
         if (!actual.startsWith("ACTIVITY")) {
             return true;

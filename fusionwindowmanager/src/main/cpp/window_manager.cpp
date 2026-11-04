@@ -159,9 +159,75 @@ WindowManager::~WindowManager()
     XCloseDisplay(display_);
 }
 
-bool WindowManager::isNormalWindow(long window)
+// 悬浮小工具条：UTILITY 类型 + SKIP_TASKBAR + 尺寸很小。
+// 这类窗口的位置是应用自己算的（比如 WPS 的 102x40 悬浮条），
+// 如果按 WM 记的 c->x/c->y 走，会永远停在 (0, decoration_height) 左上角。
+bool WindowManager::isSelfPositionedToolbar(long window)
 {
+    XWindowAttributes attrs;
+    if (!XGetWindowAttributes(display_, window, &attrs))
+    {
+        return false;
+    }
+    // 先按尺寸快速排除，避免给每个 ConfigureRequest 都去读属性
+    if (attrs.width > 400 || attrs.height > 200)
+    {
+        return false;
+    }
+
+    Atom typeProp = XInternAtom(display_, "_NET_WM_WINDOW_TYPE", False);
+    Atom utilityAtom = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_UTILITY", False);
+    Atom stateProp = XInternAtom(display_, "_NET_WM_STATE", False);
+    Atom skipTaskbarAtom = XInternAtom(display_, "_NET_WM_STATE_SKIP_TASKBAR", False);
+    bool utility = false;
+    bool skipTaskbar = false;
+
     Atom actualType;
+    int actualFormat;
+    unsigned long nItems, bytesAfter;
+    unsigned char *propData = NULL;
+
+    if (XGetWindowProperty(display_, window, typeProp, 0, 64, False, AnyPropertyType,
+                           &actualType, &actualFormat, &nItems, &bytesAfter, &propData) == Success
+        && actualType == XA_ATOM && propData)
+    {
+        Atom *atoms = (Atom *) propData;
+        for (unsigned long i = 0; i < nItems; i++)
+        {
+            if (atoms[i] == utilityAtom)
+            {
+                utility = true;
+                break;
+            }
+        }
+        XFree(propData);
+        propData = NULL;
+    }
+    if (!utility)
+    {
+        return false;
+    }
+
+    if (XGetWindowProperty(display_, window, stateProp, 0, 64, False, AnyPropertyType,
+                           &actualType, &actualFormat, &nItems, &bytesAfter, &propData) == Success
+        && actualType == XA_ATOM && propData)
+    {
+        Atom *atoms = (Atom *) propData;
+        for (unsigned long i = 0; i < nItems; i++)
+        {
+            if (atoms[i] == skipTaskbarAtom)
+            {
+                skipTaskbar = true;
+                break;
+            }
+        }
+        XFree(propData);
+    }
+    return skipTaskbar;
+}
+
+bool WindowManager::isNormalWindow(long window)
+{    Atom actualType;
     int actualFormat;
     unsigned long nItems, bytesAfter;
     unsigned char *propData = NULL;
@@ -170,6 +236,9 @@ bool WindowManager::isNormalWindow(long window)
     Atom type_menu = display_info->atoms[NET_WM_WINDOW_TYPE_MENU];
     Atom type_dialog = display_info->atoms[NET_WM_WINDOW_TYPE_DIALOG];
     Atom type_popup = display_info->atoms[NET_WM_WINDOW_TYPE_MENU];
+    // UTILITY / SPLASH 不是"普通窗口"：装饰高度夹取、居中之类的普通窗口规则不该套在它们身上
+    Atom type_utility = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_UTILITY", False);
+    Atom type_splash = XInternAtom(display_, "_NET_WM_WINDOW_TYPE_SPLASH", False);
     //    logd("isNormalWindow ? %lx", window);
     if (XGetWindowProperty(display_, window, type, 0, 1024, False, AnyPropertyType,
                            &actualType, &actualFormat, &nItems, &bytesAfter, &propData) ==
@@ -186,7 +255,8 @@ bool WindowManager::isNormalWindow(long window)
                     continue;
                 }
                 else if (atoms[i] == type_menu || atoms[i] == type_dialog
-                         || atoms[i] == type_popup || atoms[i] == _NET_WM_WINDOW_TYPE_TRAY)
+                         || atoms[i] == type_popup || atoms[i] == _NET_WM_WINDOW_TYPE_TRAY
+                         || atoms[i] == type_utility || atoms[i] == type_splash)
                 {
                     XFree(propData);
                     return False;
@@ -317,7 +387,11 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
                 logd ("ignore_unmap for \"%s\" is now %i", c->name, c->ignore_unmap);
                 unmapWindowFromX(c->frame, ACTION_UNMAP, True);
             } else {
-                unmapWindowFromX(c->frame, ACTION_DESTORY, False);
+                // 客户端把窗口 unmap 掉只表示"暂时不显示"，不代表窗口结束。
+                // 以前这里直接 ACTION_DESTORY 把宿主 Activity 收掉，之后客户端再 map
+                // 回来时 X server 认为"已经 redirect 过"，不会再建宿主，窗口就永远
+                // 显示不出来（WPS 的登录框就是 unmap 再 map 的用法）。
+                unmapWindowFromX(c->frame, ACTION_UNMAP, False);
             }
         }
 
@@ -491,17 +565,23 @@ Atom getWindowType(Display *display, Window window) {
 void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
 {
     Client *c;
-    XWindowChanges changes;
+    XWindowChanges changes = {0};
     bool normal = isNormalWindow(e.window);
+    // 客户端真正请求了哪些字段。后面会往 value_mask 里补 CWY（装饰高度修正），
+    // 但"补出来的"不等于"客户端要的"：纯 StackMode 的请求里 e.x/e.y 是 0，
+    // 不能拿来当坐标，否则会把握好的悬浮工具条拽回 (0, 44)。
+    const unsigned long requested_mask = e.value_mask;
+    const bool requestedX = (requested_mask & CWX) != 0;
+    const bool requestedY = (requested_mask & CWY) != 0;
     changes.x = e.x;
-    changes.y = (e.y < decorcationview_height && normal) ? decorcationview_height : e.y;
+    changes.y = (requestedY && e.y < decorcationview_height && normal) ? decorcationview_height : e.y;
     changes.width = e.width;
     changes.height = e.height;
     changes.border_width = e.border_width;
     changes.sibling = e.above;
     changes.stack_mode = e.detail;
     unsigned long value_mask = e.value_mask;
-    if (e.y < decorcationview_height)
+    if (requestedY && e.y < decorcationview_height)
     {
         value_mask = e.value_mask | CWY;
         //        logd("value_mask : %lu", value_mask);
@@ -522,9 +602,22 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
     c = myDisplayGetClientFromWindow (display_info, ev->window, SEARCH_WINDOW);
     if (c)
     {
-        changes.x = c->x;
-        changes.y = c->y;
-        logd ("OnConfigureRequest \"%s\" (0x%lx) x:%d y:%d e.x:%d e.y:%d", c->name, c->window, c->x, c->y, e.x, e.y);
+        // 悬浮小工具条（WPS 那个 102x40 的黑条）自己算位置：请求里带坐标时用它。
+        bool selfPositioned = isSelfPositionedToolbar(ev->window);
+        // 关键：只有客户端"原始请求掩码"里真的包含 CWX/CWY 时，e.x/e.y 才有意义。
+        // 用 value_mask 不行——上面为了装饰高度可能往里补过 CWY。
+        bool requestHasX = requestedX;
+        bool requestHasY = requestedY;
+        if (!selfPositioned || !requestHasX)
+        {
+            changes.x = c->x;
+        }
+        if (!selfPositioned || !requestHasY)
+        {
+            changes.y = c->y;
+        }
+        logd ("OnConfigureRequest \"%s\" (0x%lx) x:%d y:%d e.x:%d e.y:%d selfPositioned:%d requested:0x%lx mask:0x%lx",
+              c->name, c->window, c->x, c->y, e.x, e.y, selfPositioned, requested_mask, value_mask);
         if (FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))
         {
             /* Sorry, but it's not the right time for configure request */
@@ -545,14 +638,15 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
         && c
             )
     {
+        // 同步的是"WM 实际应用后的几何"（c 里），不是请求里的 changes：
+        // 请求里没带的字段在 changes 里是 0/旧值，直接同步会把宿主拽回 (0, 44)。
         // 几何未变化时跳过，避免 ConfigureRequest 与拖动事件叠加造成事件风暴
-        ::std::array<int, 4> geometry = {changes.x, changes.y, changes.width, changes.height};
+        ::std::array<int, 4> geometry = {c->x, c->y, c->width, c->height};
         auto it = last_synced_geometry.find(c->frame);
         if (it == last_synced_geometry.end() || it->second != geometry)
         {
             last_synced_geometry[c->frame] = geometry;
-            syncConfigureRequest(changes.x, changes.y, changes.width,
-                                 changes.height, c->frame, 2);
+            syncConfigureRequest(c->x, c->y, c->width, c->height, c->frame, 2);
         }
         else
         {
@@ -622,7 +716,7 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e)
         int final_y = origin_y + (e.y_root - screen_info->passdata.my);
         c->x = final_x;
         c->y = final_y;
-        XWindowChanges changes;
+        XWindowChanges changes = {0};
         changes.x = final_x;
         changes.y = final_y;
         changes.width = c->width;
@@ -1446,7 +1540,7 @@ void WindowManager::ReparentDockWindow(Window window)
 //        int offsetx = (SYSTEM_TRAY_ICON_WIDTH - attrs.width) / 2;
 //        int offsety = (SYSTEM_TRAY_ICON_WIDTH - attrs.height) / 2;
 
-        XWindowChanges changes;
+        XWindowChanges changes = {0};
         changes.width = system_tray_icon_width;
         changes.height = system_tray_icon_width;
         XConfigureWindow(display_, window, CWWidth | CWHeight, &changes);
@@ -2185,7 +2279,7 @@ int WindowManager::moveWindow(long window, int x, int y)
 int WindowManager::configureWindow(long window, int x, int y, int w, int h)
 {
     Client *c;
-    XWindowChanges changes;
+    XWindowChanges changes = {0};
     changes.x = x;
     changes.y = y;
     changes.width = w;

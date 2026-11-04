@@ -705,8 +705,7 @@ clientNetMoveResize (Client * c, XClientMessageEvent * ev)
              break;
          case NET_WM_MOVERESIZE_CANCEL:
              FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING);
-//             FALLTHROUGH;
-             break;
+             return;
          default: /* Do nothing */
              return;
              break;
@@ -732,7 +731,7 @@ clientNetMoveResize (Client * c, XClientMessageEvent * ev)
 void
 clientNetMoveResizeWindow (Client * c, XClientMessageEvent * ev)
 {
-    XWindowChanges wc;
+    XWindowChanges wc = {0};
     unsigned long mask;
     int gravity;
 
