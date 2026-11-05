@@ -9,8 +9,8 @@ android {
         applicationId "com.fde.x11"
         minSdkVersion 30
         targetSdkVersion 36
-        versionCode 162
-        versionName "1.6.2"
+        versionCode 172
+        versionName "1.7.2"
         buildConfigField "String", "COMMIT", "\"" + ("git rev-parse HEAD\n".execute().getText().trim() ?: (System.getenv('CURRENT_COMMIT') ?: "NO_COMMIT")) + "\""
         manifestPlaceholders = [MainActivityMinHeight: "50dp",
                                 MainActivityMinWidth: "50dp",
