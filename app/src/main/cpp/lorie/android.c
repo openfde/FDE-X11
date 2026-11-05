@@ -1231,13 +1231,25 @@ void android_configure_window(WindowPtr pWin, short x, short y, short w, short h
             }
         }
     }
-    JNIEnv *JavaEnv = GetJavaEnv();
-    if (JavaEnv && JavaCmdEntryPointClass) {
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "configureWidget", "(JIIII)V");
-        (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
-                                         (long) pWin->drawable.id,
-                                         x, y, w, h);
+    /* 需要通知 Java 的只有两类：
+       - 内嵌 widget（hosted_widget）：宿主 Activity 的 mFloatViews 里按 XID 找到浮层视图；
+       - 独立浮层（hosted_attr 且 android_component == ANDROID_COMPONENT_VIEW）：
+         SYSTIP / override-redirect / tray 这些窗口也登记在 window_attrs 里，但 Java 侧同样
+         用 mFloatViews + X_CONFIGURE_WIDGET 更新它们的位置和尺寸。
+       主窗口（ANDROID_COMPONENT_ACTIVITY）不在这里发：它的几何走 WM 的 frame →
+       syncConfigureRequest → resizeTask，Java 侧 mFloatViews 里也没有这个 XID，
+       发了也只是让所有 MainActivity 各收一份广播再扔掉。 */
+    if (hosted_attr == NULL
+        || hosted_attr->android_component == ANDROID_COMPONENT_VIEW)
+    {
+        JNIEnv *JavaEnv = GetJavaEnv();
+        if (JavaEnv && JavaCmdEntryPointClass) {
+            jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
+                                                             "configureWidget", "(JIIII)V");
+            (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
+                                             (long) pWin->drawable.id,
+                                             x, y, w, h);
+        }
     }
 }
 

@@ -382,6 +382,13 @@ void                     clientReconfigure                      (Client *,
 void                     clientMoveResizeWindow                 (Client *,
                                                                  XWindowChanges *,
                                                                  unsigned long);
+/* 几何同步的唯一出口，实现在 window_manager.cpp（extern "C"）：
+ * clientConfigure() 把 WM 实际应用后的几何回传给 Android，内部负责去重。 */
+void                     wmClientGeometryApplied               (Client *);
+/* 暂停/恢复几何回传：最大化、还原这类动作本身的 configure 不要回传，
+ * 否则 Java 会抢先 resizeTask，把 shell 的 toggle 方向翻掉。 */
+void                     wmBeginGeometrySyncSuppress           (void);
+void                     wmEndGeometrySyncSuppress             (void);
 void                     clientGetMWMHints                      (Client *);
 void                     clientApplyMWMHints                    (Client *,
                                                                  gboolean);

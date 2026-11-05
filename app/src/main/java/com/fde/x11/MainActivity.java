@@ -1546,8 +1546,28 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public boolean configureActivity(long window) throws RemoteException {
-            return false;
+        public void configureActivity(long window, int x, int y, int width, int height) {
+            if (mAttribute == null || mAttribute.getXID() != window) {
+                return;
+            }
+            // binder 线程回调：几何处理（resizeTask / configureWindow）必须回主线程
+            handler.post(() -> {
+                if (mAttribute == null || mAttribute.getXID() != window) {
+                    return;
+                }
+                FLog.a("event", getWindowId(), "configureActivity: window:" + Long.toHexString(window)
+                        + " rect:(" + x + "," + y + ") " + width + "x" + height
+                        + " isFullscreen:" + isFullscreen);
+                mConfigureRect = new Rect(x, y, x + width, y + height);
+                if (!isFullscreen) {
+                    configureFromX();
+                } else if (mXserviceWrapper != null) {
+                    // 全屏时保持旧行为：把当前内容区重新推给 X
+                    mXserviceWrapper.configureWindow(mAttribute.getWindowPtr(), mAttribute.getXID(),
+                            (int) mAttribute.getOffsetX(), (int) mAttribute.getOffsetY(),
+                            mWindowRect.right - mWindowRect.left, mWindowRect.bottom - mWindowRect.top);
+                }
+            });
         }
     };
 
@@ -1777,6 +1797,18 @@ public class MainActivity extends Activity {
     private void updateWmStateInner(String action) {
         Log.d(TAG, "fullscreen_debug updateWmStateInner action:" + action
                 + " mTaskState:" + mTaskState + " mWmStateAction:" + mWmStateAction);
+        // op=4 是"切换"语义：方向完全取决于此刻 task 是不是最大化。
+        // 用缓存的 mTaskState 判定会被中间态骗到（现场：还原动作刚落地、缓存还是 1，
+        // 于是 toggle 把窗口又最大化，表现为"一直跳回最大化"）。这里先取一次即时状态。
+        if (WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action)
+                || WINDOW_ACTION_MAXIMIZED_ACTION.equals(action)) {
+            if (mFrameworkOperations != null) {
+                int freshState = mFrameworkOperations.getTaskState();
+                Log.d(TAG, "fullscreen_debug updateWmStateInner fresh taskState:" + freshState
+                        + " (cached:" + mTaskState + ")");
+                mTaskState = freshState;
+            }
+        }
         if(WINDOW_ACTION_MAXIMIZED_REMOVE_ACTION.equals(action) && mTaskState == 0){
             Log.d(TAG, "fullscreen_debug updateWmStateInner skip (maximize_remove && mTaskState==0)");
             return;

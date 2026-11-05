@@ -341,10 +341,43 @@ public class XWindowService extends Service {
 
     private Handler handler = new Handler();
 
+    // ---------------------------------------------------------------------
+    // X ↔ Android 通信统计（P3-11）：每 5 秒一行，优化前后可以直接对比。
+    // 只统计我们改过的那几条几何通道，渲染/内容刷新不在内。
+    // 全部在主线程累加（EventBus 是 MAIN，service handler 也是主线程）。
+    // ---------------------------------------------------------------------
+    private static final long COMM_STATS_INTERVAL_MS = 5000;
+    private int statGeometryReports;      // X→Android 几何回传（X_RESIZE_TASK / X_CONFIGURE_WINDOW）
+    private int statEchoSkips;            // 其中判定为「Android 自己请求的回声」被跳过
+    private int statResizeTasks;          // 真正下发到 framework 的 resizeTask
+    private int statConfigureCallbacks;   // 定向回调 configureActivity
+    private int statConfigureBroadcasts;  // 宿主没注册回调时的兜底广播
+
+    private final Runnable commStatsTicker = new Runnable() {
+        @Override
+        public void run() {
+            if (statGeometryReports > 0 || statResizeTasks > 0 || statConfigureCallbacks > 0
+                    || statConfigureBroadcasts > 0 || statEchoSkips > 0) {
+                FLog.s(TAG, "comm-stats/5s: geometry=" + statGeometryReports
+                        + " echoSkip=" + statEchoSkips
+                        + " resizeTask=" + statResizeTasks
+                        + " callback=" + statConfigureCallbacks
+                        + " broadcast=" + statConfigureBroadcasts);
+                statGeometryReports = 0;
+                statEchoSkips = 0;
+                statResizeTasks = 0;
+                statConfigureCallbacks = 0;
+                statConfigureBroadcasts = 0;
+            }
+            handler.postDelayed(this, COMM_STATS_INTERVAL_MS);
+        }
+    };
+
     @SuppressLint("WrongConstant")
     @Override
     public void onCreate() {
         super.onCreate();
+        handler.postDelayed(commStatsTicker, COMM_STATS_INTERVAL_MS);
         taskManager = (ActivityTaskManager) getSystemService("activity_task");
         systemWindowManager = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
         am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
@@ -538,7 +571,17 @@ public class XWindowService extends Service {
 
     private void shouldResizeActivity(WindowAttribute attr) {
         android.util.Log.d("GeometryToken", "msg RESIZE_TASK isMoving=" + attr.getIsMoving()
+                + " req=" + attr.getGeometryRequestId()
                 + " rect=" + attr.getRect());
+        statGeometryReports++;
+        if (attr.getGeometryRequestId() != 0) {
+            // 这是 Android 自己那次 configureWindow 的回声（WM 原样应用了请求）。
+            // task 本来就在我们请求的几何上，再 resizeTask 只会抖动，直接跳过。
+            statEchoSkips++;
+            android.util.Log.d("GeometryToken", "geometry echo req=" + attr.getGeometryRequestId()
+                    + " -> skip resizeTask, rect=" + attr.getRect());
+            return;
+        }
         FLog.k(TAG,  attr.getXID(), "shouldResizeActivity attr: " +  attr);
         WindowAttribute resize = WindowManager.existTaskMap.get(attr.getXID());
         if (resize != null && resize.getTaskId() != 0) {
@@ -547,6 +590,7 @@ public class XWindowService extends Service {
                     attr.getRect().right,
                     attr.getRect().bottom);
             long token = geometrySeq.incrementAndGet();
+                        statResizeTasks++;
                         android.util.Log.d("GeometryToken", "send task=" + resize.getTaskId()
                                 + " rect=" + rect + " token=" + token + " isMoving=" + attr.getIsMoving());
                         taskManager.resizeTask(resize.getTaskId(), rect, token);
@@ -558,6 +602,7 @@ public class XWindowService extends Service {
     private void shouldMoveActivity(WindowAttribute attr) {
         android.util.Log.d("GeometryToken", "msg MOVE_TASK isMoving=" + attr.getIsMoving()
                 + " rect=" + attr.getRect());
+        statGeometryReports++;
         WindowAttribute resize = WindowManager.existTaskMap.get(attr.getXID());
         if (resize != null && resize.getTaskId() != 0) {
             Rect rect = new Rect(attr.getRect().left,
@@ -578,10 +623,18 @@ public class XWindowService extends Service {
                 }
             }
             if (attr.getIsMoving() == 2) {
-                long token = geometrySeq.incrementAndGet();
+                if (attr.getGeometryRequestId() != 0) {
+                    // 同上：Android 自己那次 configureWindow 的回声，不用再 resizeTask
+                    statEchoSkips++;
+                    android.util.Log.d("GeometryToken", "geometry echo req=" + attr.getGeometryRequestId()
+                            + " -> skip resizeTask, rect=" + attr.getRect());
+                } else {
+                    long token = geometrySeq.incrementAndGet();
+                        statResizeTasks++;
                         android.util.Log.d("GeometryToken", "send task=" + resize.getTaskId()
                                 + " rect=" + rect + " token=" + token + " isMoving=" + attr.getIsMoving());
                         taskManager.resizeTask(resize.getTaskId(), rect, token);
+                }
             }
         }
     }
@@ -923,9 +976,29 @@ public class XWindowService extends Service {
         sendBroadcast(intent);
     }
 
+    /**
+     * 把 X 侧的窗口几何同步给宿主 Activity。
+     *
+     * <p>优先走已经注册的 {@link IActivityCallback#configureActivity}：一次 oneway 定向
+     * Binder 直达宿主进程，不再经过 AMS 广播，也不需要每个 MainActivity 各自按 XID 过滤。
+     * 只有宿主还没注册回调（窗口刚创建 / 正在重启）时才退回原来的包内广播。
+     */
     private void sendBroadcastConfigureWindow(WindowAttribute attr) {
         handler.postDelayed(() -> {
             FLog.s(TAG, "sendBroadcastConfigureWindow: attr:" + attr + "");
+            IActivityCallback callback = activityCallbackMap.get(attr.getXID());
+            if (callback != null) {
+                try {
+                    Rect rect = attr.getRect();
+                    callback.configureActivity(attr.getXID(), rect.left, rect.top,
+                            rect.width(), rect.height());
+                    statConfigureCallbacks++;
+                    return;
+                } catch (RemoteException e) {
+                    Log.e(TAG, "configureActivity failed, fallback to broadcast: " + e.getMessage());
+                }
+            }
+            statConfigureBroadcasts++;
             String targetPackage = getPackageName();
             Intent intent = new Intent(CONFIGURE_ACTIVITY_FROM_X);
             intent.setPackage(targetPackage);
@@ -1157,6 +1230,7 @@ public class XWindowService extends Service {
     public void onDestroy() {
         super.onDestroy();
         FLog.s(TAG, "onDestroy");
+        handler.removeCallbacks(commStatsTicker);
         if (roleDumpReceiver != null) {
             try {
                 unregisterReceiver(roleDumpReceiver);

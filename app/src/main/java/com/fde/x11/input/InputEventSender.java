@@ -65,19 +65,38 @@ public final class InputEventSender {
         mEventInterface = xEventInterface;
     }
 
+    /**
+     * 鼠标事件是否走 LorieView 的 native socket 快路径。
+     *
+     * <p>触摸/键盘/文本早就是这条路（{@code mInjector} 直接写 X server 的 socket），
+     * 只有鼠标还在走 {@code mEventInterface} → Binder 到 XWindowService。鼠标 motion 是
+     * 60~120Hz，每条都跨进程，开销和延迟都不小。两条路最终注入的 X 事件是一样的
+     * （android.c 的 EVENT_MOUSE 与 Xserver_sendMouseEvent 逻辑逐行一致）。
+     *
+     * <p>出问题把这里改回 false 即可回到 Binder 路径，其它逻辑不用动。
+     */
+    private static final boolean MOUSE_OVER_SOCKET = true;
+
+    private InputStub mouseInput() {
+        if (MOUSE_OVER_SOCKET || mEventInterface == null) {
+            return mInjector;
+        }
+        return mEventInterface;
+    }
+
     private static final List<Integer> buttons = List.of(BUTTON_UNDEFINED, BUTTON_LEFT, BUTTON_MIDDLE, BUTTON_RIGHT);
     public void sendMouseEvent(PointF pos, int button, boolean down, boolean relative) {
         if (!buttons.contains(button))
             return;
         FLog.event(TAG, "sendMouseEvent() relative  = [" + relative + "], down = [" + down + "]");
         if(button == BUTTON_RIGHT && down){
-            InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+            InputStub input = mouseInput();
             input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
                     ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
             input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, false, relative,
                     ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
         } else {
-            InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+            InputStub input = mouseInput();
             input.sendMouseEvent(pos != null ? (int) pos.x : 0, pos != null ? (int) pos.y : 0, button, down, relative,
                     ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
         }
@@ -87,7 +106,7 @@ public final class InputEventSender {
         if (!buttons.contains(button))
             return;
         FLog.event(TAG, "sendMouseDown() called with: button = [" + button + "], relative = [" + this + "]");
-        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        InputStub input = mouseInput();
         input.sendMouseEvent(0, 0, button, true, relative,
                 ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex() );
     }
@@ -96,7 +115,7 @@ public final class InputEventSender {
         if (!buttons.contains(button))
             return;
         FLog.event(TAG, "sendMouseUp() called with: button = [" + button + "], relative = [" + this + "]");
-        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        InputStub input = mouseInput();
         input.sendMouseEvent(0, 0, button, false, relative,
                 ((LorieView)mInjector).getAttribute() == null ? 0 : ((LorieView)mInjector).getAttribute().getIndex()  );
     }
@@ -105,7 +124,7 @@ public final class InputEventSender {
         if (!buttons.contains(button))
             return;
         LorieView lorieView = (LorieView) mInjector;
-        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        InputStub input = mouseInput();
         FLog.event(TAG, "sendMouseClick() called with: button = [" + button + "], relative = [" + this + "]");
         input.sendMouseEvent(0, 0, button, true, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
@@ -118,7 +137,7 @@ public final class InputEventSender {
         if (!buttons.contains(button))
             return;
         LorieView lorieView = (LorieView) mInjector;
-        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        InputStub input = mouseInput();
         FLog.event(TAG, "sendMouseClick() called with: x = [" + x + "], y = [" + y + "]");
         input.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, false,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
@@ -134,7 +153,7 @@ public final class InputEventSender {
 
     public void sendCursorMove(MotionEvent e, boolean relative) {
         LorieView lorieView = (LorieView) mInjector;
-        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        InputStub input = mouseInput();
         FLog.event(TAG, "sendCursorMove() called with: x = [" + e.getRawX() + "], y = [" + e.getRawY() + "], relative = [" + relative + "], index = [" + (lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex()) + "]");
         input.sendMouseEvent(e.getRawX(), e.getRawY(), BUTTON_UNDEFINED, false, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());
@@ -150,7 +169,7 @@ public final class InputEventSender {
             y += offsetY;
         }
         FLog.event(TAG, "sendCursorMove mouse : x = [" + x + "], y = [" + y + "], relative = [" + this + "]");
-        InputStub input = mEventInterface != null ? mEventInterface: mInjector;
+        InputStub input = mouseInput();
 //        if( mLastEventTime != 0 && System.currentTimeMillis() - mLastEventTime > 16) {
         input.sendMouseEvent(x, y, BUTTON_UNDEFINED, false, relative,
                 lorieView.getAttribute() == null ? 0 : lorieView.getAttribute().getIndex());

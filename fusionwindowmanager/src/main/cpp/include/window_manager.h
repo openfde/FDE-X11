@@ -37,7 +37,9 @@ extern "C"
 #include "display.h"
 }
 
-static JavaVM *jniVM = nullptr;
+// jniVM 必须是真全局（定义在 window_manager.cpp，create() 里赋值）：
+// 回调可能从 Binder 线程进来，需要用 VM 取"当前线程"的 JNIEnv，见 wmEnv()。
+extern JavaVM *jniVM;
 static JNIEnv *GlobalEnv = nullptr;
 static jobject bitmap = nullptr;
 static jclass staticClass = nullptr;
@@ -247,8 +249,8 @@ private:
 
     ::std::unordered_map<Window, Window> tray_window_map;
     ::std::unordered_map<Window, XConfigureEvent> configedTopWindow;
-    // 最近一次已同步给 Java 的窗口几何，用于过滤重复的 ConfigureRequest 事件
-    ::std::unordered_map<Window, ::std::array<int, 4>> last_synced_geometry;
+    // 最近一次同步给 Java 的几何缓存不在类里：client.c 是 C 文件，访问不到成员。
+    // 见 window_manager.cpp 的 last_synced_geometry / wmClientGeometryApplied()。
     Window owner;
     Atom sel, utf8, xa_primary;
     std::string clip_text;

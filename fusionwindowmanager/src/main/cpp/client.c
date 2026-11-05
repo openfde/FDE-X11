@@ -858,6 +858,25 @@ clientConfigure (Client *c, XWindowChanges * wc, unsigned long mask, unsigned sh
         clientSendConfigureNotify (c);
     }
 
+    /*
+     * 几何同步的唯一出口。
+     *
+     * 以前是把几何回传挂在 OnConfigureRequest 末尾，但 ConfigureRequest 并不是
+     * 几何变化的唯一入口：X 侧最大化重算（clientToggleMaximizedAtPoint）、边框
+     * 重算、拖动收尾都会直接改 frame，Android 那边收不到，于是偶发错位
+     * （日志里 "X 自己变成 777 却没有 emit" 就是这个）。
+     *
+     * 所有改动 frame 几何的路径最终都会走到这里，所以把回传放在这里，只在本次
+     * 调用真的动了 frame 时才回传（CWStackMode 之类的空转不触发）。
+     * 去重、以及"这条回传是不是 Android 自己那次 configureWindow 的回声"（带
+     * requestId 回传，Java 侧据此跳过 resizeTask）都在 wmClientGeometryApplied()
+     * 里（window_manager.cpp）。
+     */
+    if (mask & (CWX | CWY | CWWidth | CWHeight))
+    {
+        wmClientGeometryApplied (c);
+    }
+
     // c->applied_geometry.x = c->x;
     // c->applied_geometry.y = c->y;
     // c->applied_geometry.width = c->width;
@@ -4970,7 +4989,12 @@ clientToggleMaximizedAtPoint (Client *c, gint cx, gint cy, int mode, gboolean re
         //     /* It's a shame, we are configuring the same client twice in a row */
         //     clientUnshade (c);
         // }
+        /* 这次 configure 是"最大化/还原"动作本身的结果，几何真值由 Android 侧自己的配置
+           变更决定。不暂停回传的话，Java 会抢在 executeTaskOperation(op=4, toggle 语义)
+           前面 resizeTask，把还原动作翻成最大化（现场：点还原后一直跳回最大化）。 */
+        wmBeginGeometrySyncSuppress ();
         clientConfigure (c, &wc, CWWidth | CWHeight | CWX | CWY, CFG_FORCE_REDRAW);
+        wmEndGeometrySyncSuppress ();
     }
     /* Do not update the state while moving/resizing, CSD windows may resize */
 //    if (!FLAG_TEST (c->xfwm_flags, XFWM_FLAG_MOVING_RESIZING))

@@ -230,13 +230,18 @@ public class WindowManager  {
     public native int disconnect2Server();
 
     //called from native code
-    public static void  syncConfigureRequest(int x, int y, int width, int height, long window, int isMoving){
-        Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "]");
+    // requestId != 0：这条回传是 Android 自己那次 configureWindow 请求被原样应用后的回声，
+    // Java 侧据此跳过 resizeTask（以前只能靠 isMoving==2 + 去抖缓存猜）。
+    // requestId == 0：WM 实际应用的几何和 Android 请求的不一样，需要 Android 跟上。
+    public static void  syncConfigureRequest(int x, int y, int width, int height, long window, int isMoving, long requestId){
+        Log.d(TAG, "syncConfigureRequest() called with: x = [" + x + "], y = [" + y + "], width = [" + width + "], height = [" + height + "], window = [" + window + "], isMoving = [" + isMoving + "], requestId = [" + requestId + "]");
+        WindowAttribute attribute = new WindowAttribute(x, y, width, height, 0, 0, window, isMoving);
+        attribute.setGeometryRequestId(requestId);
         if(existTaskMap.get(window) != null  && existTaskMap.get(window).getTaskId() != -1){
-            EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window, isMoving), null);
+            EventMessage message = new EventMessage(EventType.X_RESIZE_TASK, "configure_window", attribute, null);
             EventBus.getDefault().post(message);
         } else {
-            EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", new WindowAttribute(x, y, width, height, 0, 0, window, isMoving), null);
+            EventMessage message = new EventMessage(EventType.X_CONFIGURE_WINDOW, "configure_window", attribute, null);
             EventBus.getDefault().post(message);
         }
     }

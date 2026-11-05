@@ -15,11 +15,57 @@ bool WindowManager::wm_detected_;
 bool WindowManager::support_composite;
 mutex WindowManager::wm_detected_mutex_;
 
+// jniVM 以前在头文件里是 static（每个 TU 一份、永远是 nullptr），现在放开成真正的全局，
+// 在 create() 里用 env->GetJavaVM() 存一份，供 wmEnv() 判断"当前线程是不是已经挂着 VM"。
+JavaVM *jniVM = nullptr;
+
+// 取当前线程可用的 JNIEnv。
+//
+// GlobalEnv 是创建 WM 那个线程（Java 侧 "WM" HandlerThread）的 JNIEnv，别的线程拿去用是
+// UB；而回调确实会从 Binder 线程进来（configureWindow → clientConfigure → GeometrySync，
+// 以及 setWindowingMode 等）。所以先问 VM 要当前线程的 env，没挂上就 attach。
+static JNIEnv *wmEnv()
+{
+    if (jniVM == nullptr)
+    {
+        return GlobalEnv;
+    }
+    JNIEnv *env = nullptr;
+    if (jniVM->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK || env == nullptr)
+    {
+        if (jniVM->AttachCurrentThread(&env, nullptr) != JNI_OK)
+        {
+            return GlobalEnv;
+        }
+    }
+    return env != nullptr ? env : GlobalEnv;
+}
+
+// 静态方法 ID 缓存：这些回调都在热路径上（每次几何/状态变化都会调），
+// GetStaticMethodID 每次都要做一次签名查找，缓存一次即可。
+static jmethodID cachedStaticMethod(jmethodID *cache, const char *name, const char *signature)
+{
+    if (*cache == nullptr)
+    {
+        JNIEnv *env = wmEnv();
+        if (env == nullptr || staticClass == nullptr)
+        {
+            return nullptr;
+        }
+        *cache = env->GetStaticMethodID(staticClass, name, signature);
+    }
+    return *cache;
+}
+
 ::WindowManager *WindowManager::create(char *export_display, JNIEnv *env, jclass cls, jint width,
                                        jint height, jint density)
 {
     staticClass = cls;
     GlobalEnv = env;
+    if (env != nullptr)
+    {
+        env->GetJavaVM(&jniVM);
+    }
     std::string unixstring = "unix:/tmp/.X11-unix/X";
     std::string exportstring(export_display);
     std::string display_str = unixstring + exportstring;
@@ -271,28 +317,151 @@ bool WindowManager::isNormalWindow(long window)
     return True;
 }
 
-void syncConfigureRequest(int x, int y, int w, int h, XID window, int isMoving)
+void syncConfigureRequest(int x, int y, int w, int h, XID window, int isMoving, long requestId)
 {
-    logd("syncConfigureRequest %d %d %d %d %lx %d", x, y, w, h, window, isMoving);
-    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                                                    "syncConfigureRequest", "(IIIIJI)V");
-    GlobalEnv->CallStaticVoidMethod(staticClass, method, x, y, w, h, window, isMoving);
+    static jmethodID method = nullptr;
+    JNIEnv *env = wmEnv();
+    if (env == nullptr || cachedStaticMethod(&method, "syncConfigureRequest", "(IIIIJIJ)V") == nullptr)
+    {
+        return;
+    }
+    logd("syncConfigureRequest %d %d %d %d %lx %d req:%ld", x, y, w, h, window, isMoving, requestId);
+    env->CallStaticVoidMethod(staticClass, method, x, y, w, h, window, isMoving, requestId);
+}
+
+// ---------------------------------------------------------------------------
+// 几何同步：X → Android 的唯一出口
+//
+// client.c 的 clientConfigure() 在每次真正改动 frame 几何后调用这里。以前回传挂
+// 在 OnConfigureRequest 末尾，但 ConfigureRequest 不是几何变化的唯一入口：X 侧
+// 最大化重算（clientToggleMaximizedAtPoint）、拖动收尾（moveresize.c）、边框重算
+// 都会直接改 frame，Android 收不到，于是偶发错位（"X 自己变成 777 却没有 emit"）。
+// ---------------------------------------------------------------------------
+
+// 最近一次已同步给 Java 的窗口几何（按 frame 窗口号），过滤重复回传。
+// 原来放在 WindowManager 里，但 client.c 是 C 文件拿不到成员，改成文件级缓存。
+static ::std::unordered_map<Window, ::std::array<int, 4>> last_synced_geometry;
+static mutex last_synced_geometry_mutex;
+
+// Android 通过 configureWindow() 明确下发的几何：WM 若原样应用，回传时带上这条请求的
+// requestId，Java 侧据此确定性地判断"这是我自己那次下发的回声"，不用再去猜 isMoving。
+static struct
+{
+    bool valid = false;
+    int x = 0;
+    int y = 0;
+    int w = 0;
+    int h = 0;
+    long requestId = 0;
+} expected_geometry;
+
+// Android→X 几何请求的序号：只用于日志关联和回声判定，不需要跨进程唯一。
+static long geometry_request_seq = 0;
+
+// >0 时暂停几何回传（见 wmClientGeometryApplied 里的说明）：最大化/还原动作本身产生的
+// 那次 configure 不回传，交给 Android 侧自己的配置变更去决定最终几何。
+static int geometry_sync_suppress_depth = 0;
+
+extern "C" void wmBeginGeometrySyncSuppress(void)
+{
+    ++geometry_sync_suppress_depth;
+}
+
+extern "C" void wmEndGeometrySyncSuppress(void)
+{
+    if (geometry_sync_suppress_depth > 0)
+    {
+        --geometry_sync_suppress_depth;
+    }
+}
+
+// 作用域内标记"这段是 Android 下发的几何"（并分配一个 requestId），退出时自动失效。
+class ExpectedGeometryScope
+{
+public:
+    ExpectedGeometryScope(int x, int y, int w, int h)
+    {
+        expected_geometry.valid = true;
+        expected_geometry.x = x;
+        expected_geometry.y = y;
+        expected_geometry.w = w;
+        expected_geometry.h = h;
+        expected_geometry.requestId = ++geometry_request_seq;
+    }
+    ~ExpectedGeometryScope()
+    {
+        expected_geometry.valid = false;
+    }
+};
+
+extern "C" void wmClientGeometryApplied(Client *c)
+{
+    if (c == nullptr || c->frame == None)
+    {
+        return;
+    }
+
+    if (geometry_sync_suppress_depth > 0)
+    {
+        // 这次几何变化是"最大化/还原"这个动作本身的结果：真值由 Android 侧自己的配置
+        // 变更决定。此时回传会触发 Java 再 resizeTask 一次，抢在 shell 的
+        // executeTaskOperation(op=4, toggle 语义) 前面把状态改掉，于是还原动作被翻成
+        // 最大化（现象：最大化后点还原，一直跳回最大化）。
+        logd("GeometrySync frame 0x%lx x:%d y:%d w:%d h:%d suppressed (maximize/restore in progress)",
+             c->frame, c->x, c->y, c->width, c->height);
+        return;
+    }
+
+    const ::std::array<int, 4> geometry = {c->x, c->y, c->width, c->height};
+    const bool matches_expected = expected_geometry.valid
+                                  && geometry[0] == expected_geometry.x
+                                  && geometry[1] == expected_geometry.y
+                                  && geometry[2] == expected_geometry.w
+                                  && geometry[3] == expected_geometry.h;
+
+    {
+        ::std::lock_guard<mutex> lock(last_synced_geometry_mutex);
+        auto it = last_synced_geometry.find(c->frame);
+        if (it != last_synced_geometry.end() && it->second == geometry)
+        {
+            return;
+        }
+        last_synced_geometry[c->frame] = geometry;
+    }
+
+    // 原样应用了 Android 的请求 → 带上 requestId 回传，Java 侧据此跳过 resizeTask；
+    // WM 自己改过（约束 / 最大化重算 / 客户端 ConfigureRequest）→ requestId=0，Java 要跟。
+    const long requestId = matches_expected ? expected_geometry.requestId : 0;
+    logd("GeometrySync frame 0x%lx x:%d y:%d w:%d h:%d req:%ld%s", c->frame, c->x, c->y,
+         c->width, c->height, requestId,
+         (expected_geometry.valid && !matches_expected)
+             ? " (WM adjusted the geometry Android asked for)" : "");
+    syncConfigureRequest(c->x, c->y, c->width, c->height, c->frame, 2, requestId);
 }
 
 void updateSystemTrayIcon(jobject icon, XID window, long opcode)
 {
-    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                                                    "updateSystemTrayIcon", "(Landroid/graphics/Bitmap;JJ)V");
-    GlobalEnv->CallStaticVoidMethod(staticClass, method, icon, window, opcode);
+    static jmethodID method = nullptr;
+    JNIEnv *env = wmEnv();
+    if (env == nullptr || cachedStaticMethod(&method, "updateSystemTrayIcon",
+                                             "(Landroid/graphics/Bitmap;JJ)V") == nullptr)
+    {
+        return;
+    }
+    env->CallStaticVoidMethod(staticClass, method, icon, window, opcode);
 }
 
 void unmapWindowFromX(Window window, int action, Bool wm_delete)
 {
-    jmethodID method = GlobalEnv->GetStaticMethodID(staticClass,
-                                                    "unmapWindowFromX", "(IJJJIII)V");
-    GlobalEnv->CallStaticVoidMethod(staticClass, method, 0,
-                                    (long) 0, 0L, (long) window, action, wm_delete,
-                                    0);
+    static jmethodID method = nullptr;
+    JNIEnv *env = wmEnv();
+    if (env == nullptr || cachedStaticMethod(&method, "unmapWindowFromX", "(IJJJIII)V") == nullptr)
+    {
+        return;
+    }
+    env->CallStaticVoidMethod(staticClass, method, 0,
+                              (long) 0, 0L, (long) window, action, wm_delete,
+                              0);
 }
 
 void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {
@@ -302,12 +471,20 @@ void WindowManager::OnCreateNotify(const XCreateWindowEvent &e) {
 void WindowManager::OnDestroyNotify(const XDestroyWindowEvent &ev)
 {
     Client *c = myDisplayGetClientFromWindow(display_info, ev.window, SEARCH_WINDOW);
+    Window frame = c ? c->frame : None;
     if (c)
     {
         clientUnframe(c, FALSE);
     }
-    // 清理几何缓存，避免窗口销毁后残留
-    last_synced_geometry.erase(ev.window);
+    // 清理几何缓存，避免窗口销毁后残留（缓存按 frame 窗口号索引）
+    {
+        ::std::lock_guard<mutex> lock(last_synced_geometry_mutex);
+        last_synced_geometry.erase(ev.window);
+        if (frame != None)
+        {
+            last_synced_geometry.erase(frame);
+        }
+    }
 
     if(dock_windows.count(ev.window)){
         Window tray = tray_window_map[ev.window];
@@ -637,25 +814,9 @@ void WindowManager::OnConfigureRequest(const XConfigureRequestEvent &e)
         myDisplayErrorTrapPopIgnored (display_info);
     }
 
-    if ((value_mask & CWX || value_mask & CWY || value_mask & CWWidth || value_mask & CWHeight)
-        && c
-            )
-    {
-        // 同步的是"WM 实际应用后的几何"（c 里），不是请求里的 changes：
-        // 请求里没带的字段在 changes 里是 0/旧值，直接同步会把宿主拽回 (0, 44)。
-        // 几何未变化时跳过，避免 ConfigureRequest 与拖动事件叠加造成事件风暴
-        ::std::array<int, 4> geometry = {c->x, c->y, c->width, c->height};
-        auto it = last_synced_geometry.find(c->frame);
-        if (it == last_synced_geometry.end() || it->second != geometry)
-        {
-            last_synced_geometry[c->frame] = geometry;
-            syncConfigureRequest(c->x, c->y, c->width, c->height, c->frame, 2);
-        }
-        else
-        {
-            logd("OnConfigureRequest: geometry unchanged for frame 0x%lx, skip sync", c->frame);
-        }
-    }
+    // 几何回传已经统一收到 client.c 的 clientConfigure() 里（唯一出口），
+    // 这里不再重复同步：否则 X 侧自己改 frame 的路径仍然会漏，而这里又会
+    // 和 clientConfigure 那条路互相覆盖。
 }
 
 void WindowManager::OnButtonPress(const XButtonEvent &e)
@@ -684,7 +845,7 @@ void WindowManager::OnButtonRelease(const XButtonEvent &e) {
     c = myDisplayGetClientFromWindow (display_info, e.window, SEARCH_WINDOW);
     if(isTaskMoving && c){
         isTaskMoving = FALSE;
-        syncConfigureRequest(0, 0, 0, 0, c->frame, isTaskMoving);
+        syncConfigureRequest(0, 0, 0, 0, c->frame, isTaskMoving, 0);
     }
 }
 
@@ -731,7 +892,7 @@ void WindowManager::OnMotionNotify(const XMotionEvent &e)
         {
             isTaskMoving = TRUE;
             syncConfigureRequest(changes.x, changes.y, changes.width,
-                                 changes.height, c->frame, isTaskMoving);
+                                 changes.height, c->frame, isTaskMoving, 0);
         }
     }
     else if (e.state & Button3Mask)
@@ -1290,6 +1451,15 @@ void WindowManager::ProcessClientMessage(XEvent e)
             bool fullscreen =
                 a1 == display_info->atoms[NET_WM_STATE_FULLSCREEN] ||
                 a2 == display_info->atoms[NET_WM_STATE_FULLSCREEN];
+            // 这条消息到底是不是在说"最大化"。以前不看这个，任何未被识别成
+            // wm_action 的 _NET_WM_STATE（FOCUSED / DEMANDS_ATTENTION / …）都会掉进
+            // else 分支被 setMaximizedState(TRUE)，表现就是"还原之后随便一条状态消息
+            // 就让窗口跳回最大化"。
+            bool maximize_atom =
+                a1 == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ] ||
+                a2 == display_info->atoms[NET_WM_STATE_MAXIMIZED_HORZ] ||
+                a1 == display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT] ||
+                a2 == display_info->atoms[NET_WM_STATE_MAXIMIZED_VERT];
             bool was_fullscreen = FLAG_TEST(c->flags, CLIENT_FLAG_FULLSCREEN);
             //TODO operation in decoration
             int wm_action = clientUpdateNetState (c, ev);
@@ -1311,8 +1481,13 @@ void WindowManager::ProcessClientMessage(XEvent e)
                 setMaximizedState(ev->window, TRUE);
             } else if(wm_action == WINDOW_ACTION_MAXIMIZED_REMOVE){
                 setMaximizedState(ev->window, FALSE);
-            } else {
+            } else if(maximize_atom){
                 setMaximizedState(ev->window, TRUE);
+            } else {
+                // 和最大化无关的状态变化（FOCUSED / HIDDEN / …）：不要碰最大化状态，
+                // 否则刚还原的窗口会被重新标成 MAXIMIZED。
+                logd("NET_WM_STATE: not a maximize/fullscreen message (wm_action:%d), leave maximize state alone",
+                     wm_action);
             }
             logd("client \"%s\" (0x%lx) has received a NET_WM_STATE event action:%d", c->name, c->window, wm_action);
             logd("fullscreen_debug NET_WM_STATE client:0x%lx frame:0x%lx fullscreen:%d wm_action:%d",
@@ -1327,7 +1502,7 @@ void WindowManager::ProcessClientMessage(XEvent e)
             logd("client \"%s\" (0x%lx) has received a NET_WM_MOVERESIZE event", c->name, c->window);
             //TODO operation in decoration
             clientNetMoveResize (c, ev);
-            syncConfigureRequest(0, 0, 0, 0, c->frame, true);
+            syncConfigureRequest(0, 0, 0, 0, c->frame, true, 0);
         }
         else if ((ev->message_type == display_info->atoms[NET_MOVERESIZE_WINDOW]) && (ev->format == 32))
         {
@@ -2306,6 +2481,9 @@ int WindowManager::configureWindow(long window, int x, int y, int w, int h)
             loge("Sorry, but it's not the right time for configure request");
             return False;
         }
+        // 这段几何是 Android 自己下发的：记下 requestId，回传时带上，
+        // Java 侧据此跳过 resizeTask（见 wmClientGeometryApplied）。
+        ExpectedGeometryScope expected(x, y, w, h);
         clientMoveResizeWindow (c, &changes, value_mask);
     }
     else

@@ -25,6 +25,13 @@ public class WindowAttribute implements Parcelable {
 
     int isMoving = 1;
 
+    /**
+     * 这条几何回传对应的是哪一次 Android 发起的 configureWindow。
+     * 非 0 表示 WM 原样应用了那次请求（回声，Android 侧应跳过 resizeTask）；
+     * 0 表示 WM 调整过几何（约束 / 最大化重算 / 客户端 ConfigureRequest），Android 需要跟上。
+     */
+    long geometryRequestId;
+
     int taskId = - 1;
 
     public WindowAttribute() {
@@ -238,10 +245,20 @@ public class WindowAttribute implements Parcelable {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             focusable = in.readBoolean();
         }
+        // 放在最后：与 writeToParcel 的顺序保持一致（追加字段不影响老字段的偏移）
+        geometryRequestId = in.readLong();
     }
 
     public int getIsMoving() {
         return isMoving;
+    }
+
+    public long getGeometryRequestId() {
+        return geometryRequestId;
+    }
+
+    public void setGeometryRequestId(long geometryRequestId) {
+        this.geometryRequestId = geometryRequestId;
     }
 
     public void setIsMoving(int isMoving) {
@@ -279,6 +296,8 @@ public class WindowAttribute implements Parcelable {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             dest.writeBoolean(focusable);
         }
+        // 追加字段放最后，与 Parcel 构造器的读取顺序一致
+        dest.writeLong(geometryRequestId);
     }
 
     public static final Creator<WindowAttribute> CREATOR = new Creator<WindowAttribute>() {

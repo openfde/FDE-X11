@@ -17,15 +17,19 @@ interface ICmdEntryInterface {
 
 //    ParcelFileDescriptor getLogcatOutput();
 
-    void configureWindow(long winPtr, long window, int x, int y, int w, int h);
+    // 高频几何/焦点类调用改成 oneway：它们都在 Activity 主线程上调用，同步 Binder 会让
+    // UI 线程等 xserver 进程返回（配置变更、拖动、全屏切换时尤其明显）。oneway 在同一
+    // 线程内仍然保序，所以 "configureWindow 之后立刻 raiseWindow" 的顺序不受影响。
+    // 生命周期类（close/unmap/map/windowChanged）保持同步，避免销毁顺序被打乱。
+    oneway void configureWindow(long winPtr, long window, int x, int y, int w, int h);
 
-    void setWindowingMode(long frame, long window, int mode);
+    oneway void setWindowingMode(long frame, long window, int mode);
 
-    void moveWindow(long winPtr, long window, int x, int y);
+    oneway void moveWindow(long winPtr, long window, int x, int y);
 
-    void resizeWindow(long window, int w, int h);
+    oneway void resizeWindow(long window, int w, int h);
 
-    void raiseWindow(long window);
+    oneway void raiseWindow(long window);
 
     void circulaSubWindows(long window, boolean lowest);
 
