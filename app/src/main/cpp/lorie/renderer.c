@@ -1022,6 +1022,25 @@ int renderer_redraw_traversal_1(JNIEnv *env, uint8_t flip, int index, Window win
         return FALSE;
     }
 
+    /* viewport 用 EGL surface 的真实尺寸。
+       attr->width/height 来自 Java 侧的 WindowAttribute，可能比实际 Surface 晚一帧
+       （退出全屏现场：attr 763 / surface 759），用大了会让内容按错误比例铺满、
+       底部被裁掉。查询失败时退回 attr 的值。 */
+    {
+        EGLint surface_w = 0;
+        EGLint surface_h = 0;
+        if (eglQuerySurface(global_egl_display, eglSurface, EGL_WIDTH, &surface_w) == EGL_TRUE
+            && eglQuerySurface(global_egl_display, eglSurface, EGL_HEIGHT, &surface_h) == EGL_TRUE
+            && surface_w > 0 && surface_h > 0
+            && ((float) surface_w != width || (float) surface_h != height))
+        {
+            logd("renderer_redraw_traversal_1 use surface size %dx%d (attr %.0fx%.0f) window:%lx",
+                 surface_w, surface_h, width, height, window);
+            width = (float) surface_w;
+            height = (float) surface_h;
+        }
+    }
+
     if (!id) {
         logd("renderer_redraw_traversal_1 id:%d ", id)
         return FALSE;

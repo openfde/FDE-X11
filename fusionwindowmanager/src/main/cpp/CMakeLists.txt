@@ -134,3 +134,15 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
         EGL
         GLESv2
         log)
+# ---------------------------------------------------------------------------
+# FDE-X11 geometry sync (X side receipt via _NET_WM_SYNC_REQUEST)
+#
+# The implementation is complete but inert: client.c / window_manager.cpp /
+# display.c guard it with HAVE_XSYNC. To enable it, uncomment the two lines
+# below, rebuild, and verify with:
+#   adb logcat | grep -E "XSync initialized|xsync confirmed"
+# Keep this as its own commit so it can be reverted in one step.
+#
+# add_definitions(-DHAVE_XSYNC)
+# target_link_libraries(fusionwindowmanager Xext)
+# ---------------------------------------------------------------------------

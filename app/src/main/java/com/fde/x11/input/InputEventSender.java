@@ -174,6 +174,21 @@ public final class InputEventSender {
     public void sendTouchEvent(MotionEvent event, RenderData renderData) {
         FLog.event(TAG, "sendTouchEvent() called with: event = [" + event + "], renderData = [" + renderData + "]");
         int action = event.getActionMasked();
+        // MotionEvent.getX/Y 是 LorieView 局部坐标，而 native 端触摸事件按整块 X 屏幕
+        // 归一化（android.c: x = e.touch.x * 0xFFFF / screenPixmap->width），所以必须
+        // 加上窗口在屏幕上的原点。窗口在 (0,0)（全屏）时两者等价；退出全屏后窗口落在
+        // 例如 (269,131)，少了这一步每次触摸都会整体偏掉一个窗口位置。
+        // 鼠标路径已经这么做了：sendCursorMove(MotionEvent) 用 getRawX/getRawY，
+        // sendCursorMove(float, float) 显式 += attribute.getOffsetX/Y。
+        float offsetX = 0f;
+        float offsetY = 0f;
+        if (mInjector instanceof LorieView) {
+            WindowAttribute attribute = ((LorieView) mInjector).getAttribute();
+            if (attribute != null) {
+                offsetX = attribute.getOffsetX();
+                offsetY = attribute.getOffsetY();
+            }
+        }
 
         if (action == ACTION_MOVE || action == ACTION_HOVER_MOVE || action == ACTION_HOVER_ENTER || action == ACTION_HOVER_EXIT) {
             // In order to process all of the events associated with an ACTION_MOVE event, we need
@@ -185,8 +200,8 @@ public final class InputEventSender {
                 pointers[event.getPointerId(p)] = false;
 
             for (int p = 0; p < pointerCount; p++) {
-                int x = clamp((int) (event.getX(p) * renderData.scale.x), 0, renderData.screenWidth);
-                int y = clamp((int) (event.getY(p) * renderData.scale.y), 0, renderData.screenHeight);
+                int x = toScreenCoordinate(event.getX(p), renderData.scale.x, offsetX, renderData.screenWidth);
+                int y = toScreenCoordinate(event.getY(p), renderData.scale.y, offsetY, renderData.screenHeight);
                 pointers[event.getPointerId(p)] = true;
                 mInjector.sendTouchEvent(XI_TouchUpdate, event.getPointerId(p), x, y);
             }
@@ -202,13 +217,24 @@ public final class InputEventSender {
             // cause confusion on the remote OS side and result in broken touch gestures.
             int activePointerIndex = event.getActionIndex();
             int id = event.getPointerId(activePointerIndex);
-            int x =  clamp((int) (event.getX(activePointerIndex) * renderData.scale.x), 0, renderData.screenWidth);
-            int y =  clamp((int) (event.getY(activePointerIndex) * renderData.scale.y), 0, renderData.screenHeight);
+            int x = toScreenCoordinate(event.getX(activePointerIndex), renderData.scale.x, offsetX,
+                    renderData.screenWidth);
+            int y = toScreenCoordinate(event.getY(activePointerIndex), renderData.scale.y, offsetY,
+                    renderData.screenHeight);
             int a = (action == MotionEvent.ACTION_DOWN || action == ACTION_POINTER_DOWN) ? XI_TouchBegin : XI_TouchEnd;
             if (a == XI_TouchEnd)
                 mInjector.sendTouchEvent(XI_TouchUpdate, id, x, y);
             mInjector.sendTouchEvent(a, id, x, y);
         }
+    }
+
+    /**
+     * 局部坐标 → X 屏幕绝对坐标：乘缩放、加窗口原点，再按窗口右/下边缘 clamp。
+     * （clamp 上限用 view 尺寸 + 原点，避免加完原点后被 view 尺寸裁掉右/下边缘。）
+     */
+    private int toScreenCoordinate(float local, float scale, float offset, int viewExtent) {
+        int max = (int) (viewExtent * scale + offset);
+        return clamp((int) (local * scale + offset), 0, max);
     }
 
     int i = 0;

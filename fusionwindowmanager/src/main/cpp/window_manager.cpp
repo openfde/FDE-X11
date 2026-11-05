@@ -410,7 +410,10 @@ void WindowManager::OnUnmapNotify(const XUnmapEvent &ev)
 
 void WindowManager::OnConfigureNotify(const XConfigureEvent &e)
 {
-        logd("OnConfigureNotify window:%lx above:%lx", e.window, e.above);
+        // 几何同步排查用：X 侧最终生效的几何都从这里过，
+        // 与 FDE 推下来的 rect 对比即可定位哪一步没同步上。
+        logd("OnConfigureNotify window:%lx above:%lx x:%d y:%d w:%d h:%d",
+             e.window, e.above, e.x, e.y, e.width, e.height);
 //    if (clients_.count(e.above))
 //    {
 //        //        logd("OnConfigureNotify %lx", e.window);
@@ -1164,6 +1167,13 @@ void WindowManager::Run()
             case ReparentNotify:
                 OnReparentNotify(e.xreparent);
                 break;
+#ifdef HAVE_XSYNC
+            case XSyncAlarmNotify:
+                // The client confirmed it has drawn the size we configured;
+                // this is the X-side receipt that replaces the fixed delays.
+                OnXSyncAlarmNotify((XSyncAlarmNotifyEvent *) &e);
+                break;
+#endif /* HAVE_XSYNC */
             case MapNotify:
                 OnMapNotify(e.xmap);
                 break;
@@ -2511,3 +2521,23 @@ int WindowManager::SetRootResourceManager(Display *display, const char *resource
     XSync(display, False);
     return 0;
 }
+
+#ifdef HAVE_XSYNC
+/* Find the client that owns this sync alarm and hand the receipt to it. */
+void WindowManager::OnXSyncAlarmNotify(const XSyncAlarmNotifyEvent *e)
+{
+    if (e == NULL)
+    {
+        return;
+    }
+    for (auto &pair : clients_)
+    {
+        Client *c = myDisplayGetClientFromWindow(display_info, pair.first, SEARCH_WINDOW);
+        if (c != NULL && c->xsync_alarm != None && c->xsync_alarm == e->alarm)
+        {
+            clientHandleXSyncAlarm(c, (XSyncAlarmNotifyEvent *) e);
+            return;
+        }
+    }
+}
+#endif /* HAVE_XSYNC */

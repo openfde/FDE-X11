@@ -170,6 +170,30 @@ myDisplayInit(Display *dpy)
     }
     display->devices = xfwm_devices_new ();
 
+    /* XSync is what makes _NET_WM_SYNC_REQUEST work: the client publishes a counter,
+       we bump it on every configure and get an alarm back once the new size has been
+       drawn. That receipt is what the geometry sync waits for instead of a fixed delay. */
+    display->have_xsync = FALSE;
+#ifdef HAVE_XSYNC
+    {
+        int xsync_ev_base = 0;
+        int xsync_err_base = 0;
+        int xsync_major = 1;
+        int xsync_minor = 1;
+
+        if (XSyncQueryExtension (display->dpy, &xsync_ev_base, &xsync_err_base)
+            && XSyncInitialize (display->dpy, &xsync_major, &xsync_minor))
+        {
+            display->have_xsync = TRUE;
+            logd ("XSync initialized (major:%d minor:%d)", xsync_major, xsync_minor);
+        }
+        else
+        {
+            logd ("XSync extension not available");
+        }
+    }
+#endif /* HAVE_XSYNC */
+
 
     for (int j = 0; j < ATOM_COUNT; j++)
     {

@@ -879,6 +879,13 @@ clientReconfigure (Client *c, unsigned short flags)
     clientConfigure (c, &wc, CWX | CWY | CWWidth | CWHeight, flags);
 }
 
+#ifdef HAVE_XSYNC
+/* Implemented at the end of this file; declared here so the resize path can use them. */
+void clientSendXSyncRequest (Client *c);
+void clientStartXSyncTimeout (Client *c);
+void clientStopXSyncTimeout (Client *c);
+#endif /* HAVE_XSYNC */
+
 void
 clientMoveResizeWindow (Client *c, XWindowChanges * wc, unsigned long mask)
 {
@@ -972,6 +979,17 @@ clientMoveResizeWindow (Client *c, XWindowChanges * wc, unsigned long mask)
     }
     /* And finally, configure the window */
     clientConfigure (c, wc, mask, flags);
+
+#ifdef HAVE_XSYNC
+    /* Ask the client to confirm it has drawn the new geometry. The confirmation
+       arrives as an XSyncAlarmNotify and is what the Android side waits for,
+       instead of a fixed delay. Clients without the counter keep the old path. */
+    if (c->xsync_counter != None && (mask & (CWX | CWY | CWWidth | CWHeight)))
+    {
+        clientSendXSyncRequest (c);
+        clientStartXSyncTimeout (c);
+    }
+#endif /* HAVE_XSYNC */
 }
 
 void
@@ -5003,3 +5021,162 @@ clientRemoveFromList (Client * c)
 
     FLAG_UNSET (c->xfwm_flags, XFWM_FLAG_MANAGED);
 }
+
+#ifdef HAVE_XSYNC
+/* Re-create the counter published by the client via _NET_WM_SYNC_REQUEST_COUNTER. */
+void
+clientGetXSyncCounter (Client *c)
+{
+    DisplayInfo *display_info;
+    Atom actual_type;
+    int actual_format;
+    unsigned long nitems, bytes_after;
+    unsigned char *data = NULL;
+    XSyncValue value;
+
+    g_return_if_fail (c != NULL);
+    display_info = c->screen_info->display_info;
+
+    if (XGetWindowProperty (display_info->dpy, c->window,
+                            display_info->atoms[NET_WM_SYNC_REQUEST_COUNTER],
+                            0L, 1L, False, XA_CARDINAL, &actual_type, &actual_format,
+                            &nitems, &bytes_after, &data) != Success || data == NULL)
+    {
+        return;
+    }
+
+    XSyncIntToValue (&value, (int) *(long *) data);
+    c->xsync_counter = XSyncCreateCounter (display_info->dpy, value);
+    XFree (data);
+}
+
+/* Arm the alarm that fires once the client has drawn the new size. */
+void
+clientCreateXSyncAlarm (Client *c)
+{
+    DisplayInfo *display_info;
+    XSyncAlarmAttributes attr;
+
+    g_return_if_fail (c != NULL);
+    display_info = c->screen_info->display_info;
+
+    if (c->xsync_counter == None)
+    {
+        return;
+    }
+    if (c->xsync_alarm != None)
+    {
+        XSyncDestroyAlarm (display_info->dpy, c->xsync_alarm);
+        c->xsync_alarm = None;
+    }
+
+    attr.trigger.counter = c->xsync_counter;
+    attr.trigger.value_type = XSyncAbsolute;
+    XSyncIntToValue (&attr.trigger.wait_value, (int) c->next_xsync_value);
+    attr.trigger.test_type = XSyncValueGreaterOrEqual;
+    attr.events = True;
+
+    c->xsync_alarm = XSyncCreateAlarm (display_info->dpy,
+                                       XSyncCACounter | XSyncCAValueType |
+                                       XSyncCAValue | XSyncCATestType | XSyncCAEvents,
+                                       &attr);
+}
+#endif /* HAVE_XSYNC */
+#ifdef HAVE_XSYNC
+/* Ask the client to confirm when it has drawn the size we just configured. */
+void
+clientSendXSyncRequest (Client *c)
+{
+    DisplayInfo *display_info;
+    XSyncValue value;
+    XClientMessageEvent ev;
+
+    g_return_if_fail (c != NULL);
+    if (c->xsync_counter == None)
+    {
+        return;
+    }
+    display_info = c->screen_info->display_info;
+
+    XSyncIntToValue (&value, (int) ++c->next_xsync_value);
+
+    memset (&ev, 0, sizeof (ev));
+    ev.type = ClientMessage;
+    ev.window = c->window;
+    ev.message_type = display_info->atoms[NET_WM_SYNC_REQUEST];
+    ev.format = 32;
+    ev.data.l[0] = (long) CurrentTime;
+    ev.data.l[1] = (long) value.lo;
+    ev.data.l[2] = (long) value.hi;
+
+    myDisplayErrorTrapPush (display_info);
+    XSendEvent (display_info->dpy, c->window, False, NoEventMask, (XEvent *) &ev);
+    myDisplayErrorTrapPopIgnored (display_info);
+}
+#endif /* HAVE_XSYNC */
+#ifdef HAVE_XSYNC
+/* Fallback: if the client never confirms, give up waiting after CLIENT_XSYNC_TIMEOUT. */
+static gboolean
+clientXSyncTimeout (gpointer data)
+{
+    Client *c = (Client *) data;
+
+    c->xsync_timeout_id = 0;
+    FLAG_UNSET (c->flags, CLIENT_FLAG_XSYNC_WAITING);
+
+    return FALSE;
+}
+
+void
+clientStartXSyncTimeout (Client *c)
+{
+    g_return_if_fail (c != NULL);
+
+    if (c->xsync_timeout_id != 0)
+    {
+        g_source_remove (c->xsync_timeout_id);
+        c->xsync_timeout_id = 0;
+    }
+    FLAG_SET (c->flags, CLIENT_FLAG_XSYNC_WAITING);
+    c->xsync_timeout_id = g_timeout_add (CLIENT_XSYNC_TIMEOUT, clientXSyncTimeout, c);
+}
+
+void
+clientStopXSyncTimeout (Client *c)
+{
+    g_return_if_fail (c != NULL);
+
+    if (c->xsync_timeout_id != 0)
+    {
+        g_source_remove (c->xsync_timeout_id);
+        c->xsync_timeout_id = 0;
+    }
+    FLAG_UNSET (c->flags, CLIENT_FLAG_XSYNC_WAITING);
+}
+#endif /* HAVE_XSYNC */
+
+#ifdef HAVE_XSYNC
+/* The client confirmed it has drawn the size we asked for. */
+void
+clientHandleXSyncAlarm (Client *c, XSyncAlarmNotifyEvent *ev)
+{
+    g_return_if_fail (c != NULL);
+    if (ev == NULL || c->xsync_alarm == None || ev->alarm != c->xsync_alarm)
+    {
+        return;
+    }
+    if (ev->state == XSyncAlarmActive)
+    {
+        /* Counter did not reach the target yet; keep waiting. */
+        return;
+    }
+
+    c->xsync_value = (XID) ev->counter_value.lo;
+    clientStopXSyncTimeout (c);
+
+    /* TODO(B): once the WM owns the geometry transaction, trigger the Android
+       side sync here instead of waiting for the fixed delay. */
+    logd ("xsync confirmed client \"%s\" (0x%lx) value:%lu",
+          c->name, c->window, (unsigned long) c->xsync_value);
+}
+#endif /* HAVE_XSYNC */

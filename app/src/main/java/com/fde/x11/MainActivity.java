@@ -56,6 +56,7 @@ import android.content.pm.ConfigurationInfo;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.app.WindowConfiguration;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.Rect;
@@ -205,8 +206,6 @@ public class MainActivity extends Activity {
     private int density = 160;
     private long lastHoverExitTime;
 
-    public static final String NAME_MATE_TERMINAL = "mate-terminal";
-    public static final int CONFIGURE_WINDOW_DELAY_MS = 300;
     private int mWindowingMode = 5;
     private boolean mSystemBarVisible = true;
     private String mWmStateAction = "";
@@ -820,6 +819,38 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** 最近一次由 framework 主动告知的 bounds 变化（带来源与请求方 token）。 */
+    private Rect mCallbackBounds;
+    /** 上一次推给 X 的几何，用于去抖（避免拖拽时重复 configure）。 */
+    private int[] mLastPushedGeometry;
+    private Rect mCallbackAppBounds;
+    private int mCallbackSource = BOUNDS_SOURCE_UNKNOWN;
+    private long mCallbackToken;
+
+    private static final int BOUNDS_SOURCE_UNKNOWN = 0;
+    private static final int BOUNDS_SOURCE_USER_DRAG = 1;
+    private static final int BOUNDS_SOURCE_REQUESTER = 2;
+    private static final int BOUNDS_SOURCE_DISPLAY = 3;
+
+    /**
+     * framework 在 bounds 变化时、完整配置变更之前回调这里。
+     *
+     * <p>它<b>不替代</b> {@link #onConfigurationChanged(Configuration)}：资源、布局、标题栏那些
+     * 仍然走配置变更。它替代的是原来"靠 {@code isMoving} + {@code postDelayed} 猜这次变化是
+     * 不是自己引起的"那套做法——这里能拿到 source 和请求方 token，回声判定变成确定性的。
+     */
+    @Override
+    public void onBoundsChanged(Rect bounds, Rect appBounds, int source, long geometryToken) {
+        super.onBoundsChanged(bounds, appBounds, source, geometryToken);
+        mCallbackBounds = bounds;
+        mCallbackAppBounds = appBounds;
+        mCallbackSource = source;
+        mCallbackToken = geometryToken;
+        android.util.Log.d("GeometryToken", "task=" + getTaskId()
+                + " bounds=" + bounds + " app=" + appBounds
+                + " source=" + source + " token=" + geometryToken);
+    }
+
     private void checkConfigBeforeExec(Configuration configuration, boolean newConfig){
         if(configuration == null || mXserviceWrapper == null || mAttribute == null){
             return;
@@ -834,7 +865,16 @@ public class MainActivity extends Activity {
         Matcher matcher = pattern.matcher(configuration.toString());
         if (matcher.find()) {
             String windowingMode = matcher.group(1);
+            boolean wasFullscreen = isFullscreen;
             isFullscreen = TextUtils.equals(windowingMode, "fullscreen");
+            if (wasFullscreen != isFullscreen) {
+                // 全屏/还原切换时窗口外框语义会变（标题栏有无、可用高度差 44px），
+                // 去抖记录必须清掉：否则"恢复后的几何"可能和更早的普通窗口几何相同，
+                // 被误判为重复推送而跳过，表现为恢复后内容不刷新（mate-terminal 的现象）。
+                mLastPushedGeometry = null;
+                android.util.Log.d("GeometryToken", "fullscreen changed -> reset push cache, fullscreen="
+                        + isFullscreen);
+            }
             boolean isFreeform = TextUtils.equals(windowingMode, "freeform");
             FLog.a("window", getWindowId(), "windowingMode:" + windowingMode
                     + " isCaptionShowing:" + isCaptionShowing());
@@ -844,17 +884,22 @@ public class MainActivity extends Activity {
             return;
         }
         //no reason, when hide View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR must get from ""
-        if(isFullscreen && !isCaptionShowing()){
-            pattern = Pattern.compile("mBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
-        } else {
-            pattern = Pattern.compile("mAppBounds=Rect\\((-?\\d+), (-?\\d+) - (-?\\d+), (-?\\d+)\\)");
+        // 直接读 WindowConfiguration（集成打过补丁的 framework.jar 后可用），
+        // 不再用 Configuration.toString() 的正则去抠 mBounds / mAppBounds。
+        WindowConfiguration windowConfiguration = configuration.windowConfiguration;
+        Rect geometry = null;
+        if (windowConfiguration != null) {
+            geometry = (isFullscreen && !isCaptionShowing())
+                    ? windowConfiguration.getBounds()
+                    : (windowConfiguration.getAppBounds() != null
+                            ? windowConfiguration.getAppBounds()
+                            : windowConfiguration.getBounds());
         }
-        matcher = pattern.matcher(configuration.toString());
-        if(matcher.find()){
-            int left = Integer.parseInt(Objects.requireNonNull(matcher.group(1)));
-            int top = Integer.parseInt(Objects.requireNonNull(matcher.group(2)));
-            int right = Integer.parseInt(Objects.requireNonNull(matcher.group(3)));
-            int bottom = Integer.parseInt(Objects.requireNonNull(matcher.group(4)));
+        if (geometry != null) {
+            int left = geometry.left;
+            int top = geometry.top;
+            int right = geometry.right;
+            int bottom = geometry.bottom;
 
             float topMargin = isCaptionShowing() ? mDecorCaptionViewHeight : 0;
 //            FLog.a(TAG, "topMargin: " + topMargin);
@@ -1009,66 +1054,39 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * when android 14 in fullscreen mode, configure window only when surface size changed
-     * @param sfc
-     * @param width
-     * @param height
+     * Surface 尺寸变化：只把 Surface 交给 native 渲染，**不**在这里推 X 窗口几何。
+     *
+     * <p>X 窗口几何统一由 {@link #checkConfigBeforeExec} 按 Configuration 计算下发。
+     * 原来这里会拿 LorieView 的屏幕位置 + Surface 尺寸再推一次 configureWindow，但退出
+     * 全屏时这个回调先于标题栏重排触发：那一刻 LorieView 还铺满整个 task（位置=任务顶、
+     * 高度=任务高），拿它推 X 窗口会把窗口顶到 Android 恢复位置上方 44px（现场：
+     * 14:42:19 的 configureWindow(269,131,1382x777)），随后 WM 回传几何又触发一次
+     * resizeTask(269,87)，窗口就在恢复后 ~200ms 往上"跳"44px。
+     *
+     * <p>mate-terminal 原来还有一条 300ms 延迟重推，它把"执行时才读的 attribute offset"
+     * 和"入队时捕获的 Surface 尺寸"拼在一起，落地的矩形从未存在过（777 vs 763），
+     * 一并去掉。
      */
     private void onSurfaceRealSizeChanged(Surface sfc, int width, int height) {
         FLog.a("window", getWindowId(), "onSurfaceRealSizeChanged "
                 + "sfc = [" + sfc + "], width = [" + width + "], height = [" + height + "]");
-//        final int screenWidth = AppUtils.GLOBAL_SCREEN_WIDTH;
-//        final int screenHeight = AppUtils.GLOBAL_SCREEN_HEIGHT;
-//        final int statusBarHeight = AppUtils.STATUSBAR_HEIGHT_U;
-//        final int navBarHeight = AppUtils.NAVIGATION_BAR_HEIGHT_U;
-//        final int captionHeight = isCaptionShowing() ? DECOR_CAPTION_HEIGHT : 0;
-//        final int MAXIMIZE_HEIGHT = screenHeight - statusBarHeight - captionHeight - navBarHeight;
-        LorieView lorieView = getLorieView();
-        int[] location = new int[2];
-        lorieView.getLocationOnScreen(location);
-        Rect rect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
-        View decorView = getWindow().getDecorView();
-        decorView.getLocationOnScreen(location);
-        Rect decorRect = new Rect(location[0], location[1], location[0] + width, location[1] + height);
-        updateAttribueOnly(rect);
-        int delayMS = 0;
-        postWindowChanged(rect, sfc ,0);
-        if(!TextUtils.isEmpty(title) && title.contains(NAME_MATE_TERMINAL)){
-            delayMS = CONFIGURE_WINDOW_DELAY_MS;
+        if (mAttribute == null || mXserviceWrapper == null) {
+            return;
         }
-        if(delayMS > 0){
-            postWindowChanged(rect, sfc ,delayMS);
-        }
-    }
-
-    private void postWindowChanged(Rect rect, Surface sfc, int delayMS) {
-        handler.postDelayed(() -> {
-            if (mXserviceWrapper != null /*&& !isTaskMoving*/) {
-                mXserviceWrapper.configureWindow(
-                        mAttribute.getWindowPtr(),
-                        mAttribute.getXID(),
-                        (int) mAttribute.getOffsetX(),
-                        (int) mAttribute.getOffsetY(),
-                        rect.width(),
-                        rect.height()
-                );
-                mXserviceWrapper.raiseWindow(mAttribute.getXID());
-                InputManager.getInstance().setFocusView(getLorieView());
-//                if (needSurface) {
-                serviceWindowChange(
-                        sfc,
-                        mAttribute.getOffsetX(),
-                        mAttribute.getOffsetY(),
-                        mAttribute.getWidth(),
-                        mAttribute.getHeight(),
-                        mAttribute.getIndex(),
-                        mAttribute.getWindowPtr(),
-                        mAttribute.getXID()
-                );
-                needSurface = false;
-//                }
-            }
-        }, delayMS);
+        // 只负责渲染用的 Surface 绑定；几何只由 checkConfigBeforeExec 决定。
+        mXserviceWrapper.raiseWindow(mAttribute.getXID());
+        InputManager.getInstance().setFocusView(getLorieView());
+        serviceWindowChange(
+                sfc,
+                mAttribute.getOffsetX(),
+                mAttribute.getOffsetY(),
+                mAttribute.getWidth(),
+                mAttribute.getHeight(),
+                mAttribute.getIndex(),
+                mAttribute.getWindowPtr(),
+                mAttribute.getXID()
+        );
+        needSurface = false;
     }
 
     private void serviceWindowChange(Surface sfc, float x, float y, float w, float h, int index, long pWin, long window) {

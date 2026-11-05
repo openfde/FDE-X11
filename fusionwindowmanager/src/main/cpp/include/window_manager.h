@@ -145,6 +145,11 @@ public:
     int unmapWindow(long window);
     int mapWindow(long window);
     int raiseWindow(long window);
+#ifdef HAVE_XSYNC
+    /** X 侧回执：客户端确认已按新尺寸绘制。 */
+    void OnXSyncAlarmNotify(const XSyncAlarmNotifyEvent *e);
+#endif
+
     bool isNormalWindow(long window);
     /** 悬浮小工具条（UTILITY + SKIP_TASKBAR + 小尺寸）：位置由应用自己定。 */
     bool isSelfPositionedToolbar(long window);

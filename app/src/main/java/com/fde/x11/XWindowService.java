@@ -151,6 +151,8 @@ public class XWindowService extends Service {
     private boolean mBound = false;
 
     private ActivityTaskManager taskManager;
+    // FDE-X11: 几何事务序号，随 resizeTask 传给 framework，用于识别"这次变化是自己请求的回声"
+    private final java.util.concurrent.atomic.AtomicLong geometrySeq = new java.util.concurrent.atomic.AtomicLong(1);
     private android.view.WindowManager systemWindowManager;
     private final Map<Long, Property> propertyHashMap = new ConcurrentHashMap<>();
 
@@ -535,26 +537,31 @@ public class XWindowService extends Service {
     }
 
     private void shouldResizeActivity(WindowAttribute attr) {
+        android.util.Log.d("GeometryToken", "msg RESIZE_TASK isMoving=" + attr.getIsMoving()
+                + " rect=" + attr.getRect());
         FLog.k(TAG,  attr.getXID(), "shouldResizeActivity attr: " +  attr);
         WindowAttribute resize = WindowManager.existTaskMap.get(attr.getXID());
         if (resize != null && resize.getTaskId() != 0) {
             Rect rect = new Rect(attr.getRect().left,
                     attr.getRect().top - resize.getCaptionHeight(),
-//                            attr.getRect().top,
                     attr.getRect().right,
                     attr.getRect().bottom);
-            taskManager.resizeTask(resize.getTaskId(), rect);
+            long token = geometrySeq.incrementAndGet();
+                        android.util.Log.d("GeometryToken", "send task=" + resize.getTaskId()
+                                + " rect=" + rect + " token=" + token + " isMoving=" + attr.getIsMoving());
+                        taskManager.resizeTask(resize.getTaskId(), rect, token);
         } else {
             shouldResizeMap.put(attr.getXID(), attr);
         }
     }
 
     private void shouldMoveActivity(WindowAttribute attr) {
+        android.util.Log.d("GeometryToken", "msg MOVE_TASK isMoving=" + attr.getIsMoving()
+                + " rect=" + attr.getRect());
         WindowAttribute resize = WindowManager.existTaskMap.get(attr.getXID());
         if (resize != null && resize.getTaskId() != 0) {
             Rect rect = new Rect(attr.getRect().left,
                     attr.getRect().top - resize.getCaptionHeight(),
-//                            attr.getRect().top,
                     attr.getRect().right,
                     attr.getRect().bottom);
             FLog.k(TAG,  attr.getXID(), "shouldConfigureActivity: " + " " + resize + " " + rect);
@@ -571,7 +578,10 @@ public class XWindowService extends Service {
                 }
             }
             if (attr.getIsMoving() == 2) {
-                taskManager.resizeTask(resize.getTaskId(), rect);
+                long token = geometrySeq.incrementAndGet();
+                        android.util.Log.d("GeometryToken", "send task=" + resize.getTaskId()
+                                + " rect=" + rect + " token=" + token + " isMoving=" + attr.getIsMoving());
+                        taskManager.resizeTask(resize.getTaskId(), rect, token);
             }
         }
     }
