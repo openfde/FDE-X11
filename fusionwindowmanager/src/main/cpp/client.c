@@ -704,7 +704,8 @@ void
 clientConfigure (Client *c, XWindowChanges * wc, unsigned long mask, unsigned short flags)
 {
     int px, py, pwidth, pheight;
-    gboolean win_moved, win_resized;
+    // Geometry-change tracking is currently disabled; keep initialized to avoid UB/miscompile
+    gboolean win_moved = FALSE, win_resized = FALSE;
 
     g_return_if_fail (c != NULL);
     g_return_if_fail (c->window != None);
@@ -1796,7 +1797,8 @@ clientFrame (DisplayInfo *display_info, Window w, gboolean recapture)
     XWindowAttributes attr;
     XSetWindowAttributes attributes;
     Client *c = NULL;
-    gboolean shaped;
+    // clientCheckShape() is currently disabled; keep this initialized to avoid UB/miscompile
+    gboolean shaped = FALSE;
     gchar *wm_name;
     unsigned long valuemask;
     int i;
