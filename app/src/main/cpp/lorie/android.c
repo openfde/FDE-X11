@@ -594,6 +594,42 @@ static bool window_is_popup_like(WindowPtr pWin) {
     return false;
 }
 
+/* ---------------------------------------------------------------------------
+ * JNI 方法 ID 缓存
+ *
+ * 这些回调都在窗口生命周期/几何变化的热路径上（每个窗口创建、每次 configure 都要走），
+ * 而 GetStaticMethodID 每次都要按"类 + 名字 + 签名"重新查一遍表，属于纯重复劳动。
+ * 这里用"文件级静态变量 + 小助手"缓存，第一次查到后直接复用。
+ *
+ * JavaCmdEntryPointClass 是全局引用、类不会被卸载；android.graphics.* 和
+ * ParcelFileDescriptor 是系统类，同样不会卸载，所以缓存的 jmethodID 一直有效。
+ * 多线程同时首次进入时最多各自查一次，结果相同，无害。
+ * --------------------------------------------------------------------------- */
+static jmethodID cache_static_method(JNIEnv *env, jclass cls, jmethodID *cache,
+                                     const char *name, const char *signature)
+{
+    if (*cache == NULL && env != NULL && cls != NULL)
+    {
+        *cache = (*env)->GetStaticMethodID(env, cls, name, signature);
+    }
+    return *cache;
+}
+
+/* Xserver 的静态入口 */
+static jmethodID m_xserverMapWindow;
+static jmethodID m_updateWindowAttribute;
+static jmethodID m_createBitmapFromNative;
+static jmethodID m_startOrUpdateWindow;
+static jmethodID m_configureWidget;
+static jmethodID m_closeOrDestroyWindow;
+static jmethodID m_updateCursor;
+static jmethodID m_updateXserverCliptext;
+static jmethodID m_requestConnection;
+/* 系统类 */
+static jmethodID m_pfdAdoptFd;
+static jmethodID m_bitmapCreateBitmap;
+static jmethodID m_bitmapConfigValueOf;
+
 void android_redirect_window(WindowPtr pWin) {
     //already redirect to android
     if(_surface_count_window_any(sfWraper, pWin->drawable.id)){
@@ -601,8 +637,11 @@ void android_redirect_window(WindowPtr pWin) {
         WindAttribute *attr = _surface_find_window(sfWraper, pWin->drawable.id);
         JNIEnv *JavaEnv = GetJavaEnv();
         if (JavaEnv && JavaCmdEntryPointClass) {
-            jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass, "xserverMapWindow", "(J)V");
-            (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass,  method, (long) pWin->drawable.id);
+            jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_xserverMapWindow,
+                                                   "xserverMapWindow", "(J)V");
+            if (method) {
+                (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass,  method, (long) pWin->drawable.id);
+            }
         }
         return;
     }
@@ -901,9 +940,9 @@ void android_update_window_attribute(WindowPtr pWin, WindAttribute *old_attr) {
         if (util_is_valid_utf8(prop.wm_class)) {
             wm_class = (*JavaEnv)->NewStringUTF(JavaEnv, prop.wm_class);
         }
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "updateWindowAttribute",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIIZIZJ)V");
+        jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_updateWindowAttribute,
+                                               "updateWindowAttribute",
+                                               "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIIZIZJ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          (long) stored->window, (long) prop.transient, (long) prop.leader,
                                          prop.window_type,
@@ -984,8 +1023,8 @@ void android_icon_update(int *data, int width, int height, long window) {
         loge( "Failed to find class com/fde/x11/Xserver");
         return;
     }
-    jmethodID mid = (*env)->GetStaticMethodID(env, JavaCmdEntryPointClass, "createBitmapFromNative",
-                                              "([IIIJ)V");
+    jmethodID mid = cache_static_method(env, JavaCmdEntryPointClass, &m_createBitmapFromNative,
+                                        "createBitmapFromNative", "([IIIJ)V");
     if (!mid) {
         loge( "Failed to get method ID for createBitmapFromNative");
         (*env)->DeleteLocalRef(env, javaData);
@@ -1110,9 +1149,9 @@ void android_create_view(Widget widget, WindProperty aProperty, Window taskTo, b
 //        int index = widget.index;
         WindowPtr windowPtr = widget.pWin;
         Window window = widget.window;
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "startOrUpdateWindow",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIILandroid/graphics/Bitmap;ZIZJZ)V");
+        jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_startOrUpdateWindow,
+                                               "startOrUpdateWindow",
+                                               "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIILandroid/graphics/Bitmap;ZIZJZ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          aWindow, aTransient, aLeader, aType, wm_class,
                                          net_wm_name == NULL ? wm_name : net_wm_name,
@@ -1156,9 +1195,9 @@ void android_create_or_map_window(WindAttribute attribute, WindProperty prop, Wi
         int index = attribute.index;
         WindowPtr windowPtr = attribute.pWin;
 //        Window window = attribute.window;
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "startOrUpdateWindow",
-                                                         "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIILandroid/graphics/Bitmap;ZIZJZ)V");
+        jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_startOrUpdateWindow,
+                                               "startOrUpdateWindow",
+                                               "(JJJILjava/lang/String;Ljava/lang/String;IIIIIJJJIILandroid/graphics/Bitmap;ZIZJZ)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                          (long) aid, (long) aTransient, (long) aLeader, aType,
                                          wm_class, net_wm_name == NULL ? wm_name : net_wm_name,
@@ -1244,8 +1283,8 @@ void android_configure_window(WindowPtr pWin, short x, short y, short w, short h
     {
         JNIEnv *JavaEnv = GetJavaEnv();
         if (JavaEnv && JavaCmdEntryPointClass) {
-            jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                             "configureWidget", "(JIIII)V");
+            jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_configureWidget,
+                                                   "configureWidget", "(JIIII)V");
             (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method,
                                              (long) pWin->drawable.id,
                                              x, y, w, h);
@@ -1258,8 +1297,8 @@ void android_destroy_activity(int index, WindowPtr pWin, Window window, int acti
         window, clientNum);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "closeOrDestroyWindow", "(IJJJIII)V");
+        jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_closeOrDestroyWindow,
+                                                "closeOrDestroyWindow", "(IJJJIII)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
                                          (long) pWin, 0L, (long) window, action, wm_delete,
                                          clientNum);
@@ -1270,8 +1309,8 @@ void android_destroy_view(int index, WindowPtr pWin, Window task_to, Window wind
     logd( "index%d task_to:%p window:%lx", index, task_to, window);
     JNIEnv *JavaEnv = GetJavaEnv();
     if (JavaEnv && JavaCmdEntryPointClass) {
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "closeOrDestroyWindow", "(IJJJIII)V");
+        jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_closeOrDestroyWindow,
+                                                "closeOrDestroyWindow", "(IJJJIII)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, index,
                                          (long) pWin, (long) task_to, (long) window, action, 0,
                                          clientNum);
@@ -1283,9 +1322,9 @@ void android_update_cursor(int w, int h, int xhot, int yhot, void *data) {
     (*jniVM)->GetEnv(jniVM, (void **) &JavaEnv, JNI_VERSION_1_6);
     if (JavaEnv && JavaCmdEntryPointClass) {
         jobject cursor_icon = property_icon_convert_bitmap(data, w, h);
-        jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                         "updateCursor",
-                                                         "(Landroid/graphics/Bitmap;II)V");
+        jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_updateCursor,
+                                               "updateCursor",
+                                               "(Landroid/graphics/Bitmap;II)V");
         (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, cursor_icon, xhot,
                                          yhot);
     }
@@ -1654,9 +1693,9 @@ void lorieSendClipboardData(const char *data) {
         JNIEnv *JavaEnv = GetJavaEnv();
         if (JavaEnv && JavaCmdEntryPointClass && util_is_valid_utf8(data)) {
             jstring cliptext = (*JavaEnv)->NewStringUTF(JavaEnv, data);
-            jmethodID method = (*JavaEnv)->GetStaticMethodID(JavaEnv, JavaCmdEntryPointClass,
-                                                             "updateXserverCliptext",
-                                                             "(Ljava/lang/String;)V");
+            jmethodID method = cache_static_method(JavaEnv, JavaCmdEntryPointClass, &m_updateXserverCliptext,
+                                                   "updateXserverCliptext",
+                                                   "(Ljava/lang/String;)V");
             (*JavaEnv)->CallStaticVoidMethod(JavaEnv, JavaCmdEntryPointClass, method, cliptext);
         }
     }
@@ -1680,8 +1719,8 @@ Java_com_fde_x11_Xserver_getXConnection(JNIEnv *env, unused jobject cls) {
     int client[2];
     jclass ParcelFileDescriptorClass = (*env)->FindClass(env,
                                                          "android/os/ParcelFileDescriptor");
-    jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
-                                                  "(I)Landroid/os/ParcelFileDescriptor;");
+    jmethodID adoptFd = cache_static_method(env, ParcelFileDescriptorClass, &m_pfdAdoptFd, "adoptFd",
+                                            "(I)Landroid/os/ParcelFileDescriptor;");
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, client) != 0) {
         loge("getXConnection: socketpair failed: %s", strerror(errno));
         pthread_mutex_unlock(&conn_fd_mutex);
@@ -1707,8 +1746,8 @@ void *logcatThread(void *arg) {
 JNIEXPORT jobject JNICALL
 Java_com_fde_x11_Xserver_getLogcatOutput(JNIEnv *env, unused jobject cls) {
     jclass ParcelFileDescriptorClass = (*env)->FindClass(env, "android/os/ParcelFileDescriptor");
-    jmethodID adoptFd = (*env)->GetStaticMethodID(env, ParcelFileDescriptorClass, "adoptFd",
-                                                  "(I)Landroid/os/ParcelFileDescriptor;");
+    jmethodID adoptFd = cache_static_method(env, ParcelFileDescriptorClass, &m_pfdAdoptFd, "adoptFd",
+                                            "(I)Landroid/os/ParcelFileDescriptor;");
     const char *debug = getenv("TERMUX_X11_DEBUG");
     if (debug && !strcmp(debug, "1")) {
         pthread_t t;
@@ -1735,8 +1774,8 @@ static inline void checkConnection(JNIEnv *env) {
     if ((retval = recv(conn_fd, &b, 1, MSG_PEEK)) <= 0 && errno != EAGAIN) {
         logd( "recv %d %s", retval, strerror(errno));
         jclass cls = (*env)->FindClass(env, "com/fde/x11/Xserver");
-        jmethodID method = !cls ? NULL : (*env)->GetStaticMethodID(env, cls, "requestConnection",
-                                                                   "()V");
+        jmethodID method = !cls ? NULL : cache_static_method(env, cls, &m_requestConnection,
+                                                             "requestConnection", "()V");
         if (method)
             (*env)->CallStaticVoidMethod(env, cls, method);
 
@@ -2253,9 +2292,9 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
         loge( "Failed to find class android/graphics/Bitmap");
         return NULL;
     }
-    jmethodID createBitmapMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapClass,
-                                                                 "createBitmap",
-                                                                 "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+    jmethodID createBitmapMethod = cache_static_method(JavaEnv, bitmapClass, &m_bitmapCreateBitmap,
+                                                       "createBitmap",
+                                                       "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
     if (!createBitmapMethod) {
         loge( "Failed to get method ID for createBitmap");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, bitmapClass);
@@ -2270,8 +2309,9 @@ jobject property_icon_convert_bitmap(int *data, int width, int height) {
         return NULL;
     }
 
-    jmethodID valueOfMethod = (*JavaEnv)->GetStaticMethodID(JavaEnv, bitmapConfigClass, "valueOf",
-                                                            "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
+    jmethodID valueOfMethod = cache_static_method(JavaEnv, bitmapConfigClass, &m_bitmapConfigValueOf,
+                                                  "valueOf",
+                                                  "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
     if (!valueOfMethod) {
         loge( "Failed to get method ID for valueOf");
         (*JavaEnv)->DeleteLocalRef(JavaEnv, configName);
